@@ -1,0 +1,22 @@
+# Start with .gitignore logic
+.git
+.next
+node_modules
+
+# Allow specific env file
+!.env.local
+
+# Ignore other env files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local.example
+
+# Ignore logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore system files
+.DS_Store

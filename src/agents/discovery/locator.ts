@@ -1,3 +1,4 @@
+import { AgentModels } from "../config";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { BaseIdentity } from '@/agents/types';
 
@@ -12,7 +13,7 @@ export class LocatorAgent {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel(
             {
-                model: "gemini-2.5-flash",
+                model: AgentModels.DEFAULT_FAST_MODEL,
                 tools: [{
                     // @ts-ignore
                     googleSearch: {}

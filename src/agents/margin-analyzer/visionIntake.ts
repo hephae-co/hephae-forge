@@ -1,8 +1,9 @@
+import { AgentModels } from "../config";
 import { LlmAgent } from "@google/adk";
 
 export const visionIntakeAgent = new LlmAgent({
     name: 'VisionIntakeAgent',
-    model: 'gemini-2.5-flash',
+    model: AgentModels.DEFAULT_FAST_MODEL,
     instruction: `
     You are The Vision Intake Agent. Your job is to extract all menu items from the provided image.
     You will receive a base64 encoded menu image in the prompt.

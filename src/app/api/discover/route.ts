@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { discoveryParallelAgent } from '@/agents/discovery/discoverySubAgents';
 import { BaseIdentity, EnrichedProfile } from '@/agents/types';
 import { Runner, InMemorySessionService } from "@google/adk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(req: NextRequest) {
     try {
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
         });
 
         const prompt = `
-            Please discover the menu, social links, and Google Maps URL for:
+            Please discover the menu, social links, Google Maps URL, and exactly 3 local competitors for:
             Name: ${identity.name}
             Address: ${identity.address}
             URL: ${identity.officialUrl}
@@ -64,11 +65,33 @@ export async function POST(req: NextRequest) {
             parsedSocials = state.socialLinks as any;
         }
 
+        // Safely parse competitors if Gemini included markdown
+        let parsedCompetitors = [];
+        if (typeof state.competitors === 'string') {
+            try {
+                const cleanStr = state.competitors.replace(/```json/g, '').replace(/```/g, '').trim();
+                parsedCompetitors = JSON.parse(cleanStr);
+            } catch (e) {
+                console.warn("[API/Discover] Failed to parse competitors JSON explicitly, running intelligent extraction...");
+                try {
+                    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+                    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
+                    const res = await model.generateContent(`Extract exactly 3 restaurant competitors from the following text into a JSON array of objects with strictly these keys: "name", "url", "reason". TEXT: ${state.competitors}`);
+                    parsedCompetitors = JSON.parse(res.response.text());
+                } catch (extractErr) {
+                    console.error("[API/Discover] Forced extraction failed", extractErr);
+                }
+            }
+        } else if (Array.isArray(state.competitors)) {
+            parsedCompetitors = state.competitors;
+        }
+
         const enrichedProfile: EnrichedProfile = {
             ...identity,
             menuScreenshotBase64: state.menuScreenshotBase64 as string | undefined,
             socialLinks: parsedSocials,
-            googleMapsUrl: state.googleMapsUrl as string | undefined
+            googleMapsUrl: state.googleMapsUrl as string | undefined,
+            competitors: parsedCompetitors.length > 0 ? parsedCompetitors : undefined
         };
 
         return NextResponse.json(enrichedProfile);

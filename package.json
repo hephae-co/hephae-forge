@@ -11,6 +11,7 @@
   "dependencies": {
     "@google/adk": "^0.3.0",
     "@google/generative-ai": "^0.24.1",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "cheerio": "^1.2.0",
     "clsx": "^2.1.1",
     "firebase": "^12.9.0",

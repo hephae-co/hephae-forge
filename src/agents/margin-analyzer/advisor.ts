@@ -1,8 +1,9 @@
+import { AgentModels } from "../config";
 import { LlmAgent } from "@google/adk";
 
 export const advisorAgent = new LlmAgent({
     name: 'AdvisorAgent',
-    model: 'gemini-2.5-flash',
+    model: AgentModels.DEFAULT_FAST_MODEL,
     instruction: `
     You are 'The Advisor', a savvy New Jersey business consultant for a restaurant.
     You will pull the JSON array called 'menuAnalysis' from the session state, which contains the top profit leaks identified by The Surgeon.

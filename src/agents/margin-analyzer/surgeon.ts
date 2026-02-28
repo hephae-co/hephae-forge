@@ -1,3 +1,4 @@
+import { AgentModels } from "../config";
 import { FunctionTool, LlmAgent } from "@google/adk";
 import { z } from "zod";
 import { MenuItem, CompetitorPrice, CommodityTrend, MenuAnalysisItem } from '@/lib/types';
@@ -65,7 +66,7 @@ const PerformSurgeryTool = new FunctionTool({
 
 export const surgeonAgent = new LlmAgent({
     name: 'SurgeonAgent',
-    model: 'gemini-2.5-flash',
+    model: AgentModels.DEFAULT_FAST_MODEL,
     instruction: `
     You are The Surgeon. You will pull three JSON arrays from the session state: 'parsedMenuItems', 'competitorBenchmarks', and 'commodityTrends'.
     Step 1: Call the 'perform_margin_surgery' tool with these three arrays precisely.

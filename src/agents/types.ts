@@ -22,5 +22,10 @@ export interface EnrichedProfile extends BaseIdentity {
         twitter?: string;
     };
     googleMapsUrl?: string;
+    competitors?: {
+        name: string;
+        url: string;
+        reason?: string;
+    }[];
     _debugError?: string;
 }

@@ -9,12 +9,14 @@ import { MenuItem, MenuAnalysisItem, SurgicalReport } from "@/lib/types";
 import { EnrichedProfile } from '@/agents/types';
 import { LocatorAgent } from '@/agents/discovery/locator';
 import { ProfilerAgent } from '@/agents/business-profiler/profiler';
+import { generateAndDraftMarketingContent } from '@/agents/marketing-swarm/orchestrator';
 
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { url, enrichedProfile } = body;
+        const { url, enrichedProfile, advancedMode } = body;
 
         let identity: EnrichedProfile;
 
@@ -80,41 +82,62 @@ export async function POST(req: NextRequest) {
         } catch (e) { console.warn("Vision parse failed"); }
         if (menuItems.length === 0) return NextResponse.json({ error: "Failed to parse menu items from crawled screenshot.", rawOutput: menuItemsPrompt }, { status: 422 });
 
-        // 2. Benchmarker
-        console.log("[API/Analyze] Step 2: Benchmarker...");
-        const benchmarkRunner = new Runner({ appName: 'hephae-hub', agent: benchmarkerAgent, sessionService });
-        let benchmarkPrompt = "";
+        let benchmarkPrompt = "[]";
+        let commodityPrompt = "[]";
 
-        const bStream = benchmarkRunner.runAsync({
-            userId, sessionId,
-            newMessage: { role: 'user', parts: [{ text: `Here are the parsed menu items:\n${menuItemsPrompt}` }] }
-        });
-        for await (const rawEvent of bStream) {
-            const event = rawEvent as any;
-            if (event.actions?.stateDelta?.competitorBenchmarks) {
-                benchmarkPrompt = typeof event.actions.stateDelta.competitorBenchmarks === 'string'
-                    ? event.actions.stateDelta.competitorBenchmarks : JSON.stringify(event.actions.stateDelta.competitorBenchmarks);
+        if (advancedMode) {
+            // 2. Benchmarker
+            console.log("[API/Analyze] Step 2: Benchmarker (Advanced Mode)...");
+            const benchmarkRunner = new Runner({ appName: 'hephae-hub', agent: benchmarkerAgent, sessionService });
+
+            const bStream = benchmarkRunner.runAsync({
+                userId, sessionId,
+                newMessage: { role: 'user', parts: [{ text: `Here are the parsed menu items for ${finalIdentity.name} in ${finalIdentity.address || "their local area"}:\n${menuItemsPrompt}` }] }
+            });
+            for await (const rawEvent of bStream) {
+                const event = rawEvent as any;
+                if (event.actions?.stateDelta?.competitorBenchmarks) {
+                    benchmarkPrompt = typeof event.actions.stateDelta.competitorBenchmarks === 'string'
+                        ? event.actions.stateDelta.competitorBenchmarks : JSON.stringify(event.actions.stateDelta.competitorBenchmarks);
+                }
             }
-        }
-        benchmarkPrompt = benchmarkPrompt.replace(/```json/gi, "").replace(/```/g, "").trim();
+            benchmarkPrompt = benchmarkPrompt.replace(/```json/gi, "").replace(/```/g, "").trim();
 
-        // 3. Commodity Watchdog
-        console.log("[API/Analyze] Step 3: Commodity Watchdog...");
-        const commodityRunner = new Runner({ appName: 'hephae-hub', agent: commodityWatchdogAgent, sessionService });
-        let commodityPrompt = "";
+            // 3. Commodity Watchdog
+            console.log("[API/Analyze] Step 3: Commodity Watchdog (Advanced Mode)...");
+            const commodityRunner = new Runner({ appName: 'hephae-hub', agent: commodityWatchdogAgent, sessionService });
 
-        const cStream = commodityRunner.runAsync({
-            userId, sessionId,
-            newMessage: { role: 'user', parts: [{ text: `Here are the parsed menu items:\n${menuItemsPrompt}` }] }
-        });
-        for await (const rawEvent of cStream) {
-            const event = rawEvent as any;
-            if (event.actions?.stateDelta?.commodityTrends) {
-                commodityPrompt = typeof event.actions.stateDelta.commodityTrends === 'string'
-                    ? event.actions.stateDelta.commodityTrends : JSON.stringify(event.actions.stateDelta.commodityTrends);
+            const cStream = commodityRunner.runAsync({
+                userId, sessionId,
+                newMessage: { role: 'user', parts: [{ text: `Here are the parsed menu items:\n${menuItemsPrompt}` }] }
+            });
+            for await (const rawEvent of cStream) {
+                const event = rawEvent as any;
+                if (event.actions?.stateDelta?.commodityTrends) {
+                    commodityPrompt = typeof event.actions.stateDelta.commodityTrends === 'string'
+                        ? event.actions.stateDelta.commodityTrends : JSON.stringify(event.actions.stateDelta.commodityTrends);
+                }
             }
+            commodityPrompt = commodityPrompt.replace(/```json/gi, "").replace(/```/g, "").trim();
+
+        } else {
+            console.log("[API/Analyze] Fast Mode: Bypassing Benchmarker and Watchdog LLMs.");
+            // Provide lightweight dummy fallback data to keep the Surgeon Agent grounded
+            benchmarkPrompt = JSON.stringify({
+                competitors: menuItems.map(item => ({
+                    competitor_name: "Local Average (Estimate)",
+                    item_match: item.item_name,
+                    price: parseFloat(((item.current_price || 0) * 1.05).toFixed(2)),
+                    source_url: "",
+                    distance_miles: 1.0
+                })),
+                macroeconomic_context: { analysis_hint: "Standard estimation mode enabled. Assume moderate inflation." }
+            });
+
+            commodityPrompt = JSON.stringify([
+                { ingredient: "GENERAL", inflation_rate_12mo: 3.2, trend_description: "Standard national food-at-home inflation estimate." }
+            ]);
         }
-        commodityPrompt = commodityPrompt.replace(/```json/gi, "").replace(/```/g, "").trim();
 
         // 4. Surgeon
         console.log("[API/Analyze] Step 4: The Surgeon...");
@@ -192,6 +215,9 @@ export async function POST(req: NextRequest) {
             overall_score: score,
             generated_at: new Date().toISOString()
         };
+
+        // Fire and forget the marketing pipeline
+        generateAndDraftMarketingContent(report, 'Margin Surgery').catch(console.error);
 
         return NextResponse.json(report);
 

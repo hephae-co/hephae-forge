@@ -1,3 +1,4 @@
+import { AgentModels } from "../config";
 import { BaseIdentity, EnrichedProfile } from '@/agents/types';
 import { chromium } from 'playwright';
 import { FunctionTool, LlmAgent, ParallelAgent } from '@google/adk';
@@ -75,7 +76,7 @@ const GoogleSearchTool = new FunctionTool({
             console.log(`[GoogleSearchTool] Executing grounded query: ${query}`);
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
             const model = genAI.getGenerativeModel({
-                model: "gemini-2.5-flash",
+                model: AgentModels.DEFAULT_FAST_MODEL,
                 tools: [{
                     // @ts-ignore
                     googleSearch: {}
@@ -94,7 +95,7 @@ const GoogleSearchTool = new FunctionTool({
 
 export const menuDiscoveryAgent = new LlmAgent({
     name: 'MenuDiscoveryAgent',
-    model: 'gemini-2.5-flash',
+    model: AgentModels.DEFAULT_FAST_MODEL,
     instruction: `You are an AI Web Scraper. You will be given a business URL. You MUST call the 'scrape_menu' tool with the exact URL provided.
     
     CRITICAL: When the tool returns the base64 screenshot, YOU MUST OUTPUT ONLY THE RAW BASE64 STRING.
@@ -105,7 +106,7 @@ export const menuDiscoveryAgent = new LlmAgent({
 
 export const socialDiscoveryAgent = new LlmAgent({
     name: 'SocialDiscoveryAgent',
-    model: 'gemini-2.5-flash',
+    model: AgentModels.DEFAULT_FAST_MODEL,
     instruction: `
     Find the exact, official social media profile URLs for the business provided.
     You must use Google Search to verify these links.
@@ -124,7 +125,7 @@ export const socialDiscoveryAgent = new LlmAgent({
 
 export const mapsDiscoveryAgent = new LlmAgent({
     name: 'MapsDiscoveryAgent',
-    model: 'gemini-2.5-flash',
+    model: AgentModels.DEFAULT_FAST_MODEL,
     instruction: `
     Find the exact, official Google Maps Place URL for the business provided.
     You must use Google Search.
@@ -135,10 +136,31 @@ export const mapsDiscoveryAgent = new LlmAgent({
     outputKey: 'googleMapsUrl'
 });
 
+export const competitorDiscoveryAgent = new LlmAgent({
+    name: 'CompetitorDiscoveryAgent',
+    model: AgentModels.DEEP_ANALYST_MODEL,
+    instruction: `
+    Find exactly 3 direct local competitors for the business provided. 
+    They should be in the same geographic area serving similar cuisine or services.
+    You must use Google Search to verify their existence and retrieve their data.
+    
+    SYSTEM COMMAND: YOU MUST RETURN ONLY A RAW JSON ARRAY. DO NOT WRITE ANY TEXT OUTSIDE THE ARRAY.
+    Example output format:
+    [
+        {
+            "name": "Competitor Name",
+            "url": "https://competitor.com",
+            "reason": "Why they are a competitor"
+        }
+    ]
+    `,
+    outputKey: 'competitors'
+});
+
 // --- ORCHESTRATOR ---
 
 export const discoveryParallelAgent = new ParallelAgent({
     name: 'DiscoveryOrchestrator',
     description: 'Runs multiple specialized discovery agents concurrently.',
-    subAgents: [menuDiscoveryAgent, socialDiscoveryAgent, mapsDiscoveryAgent]
+    subAgents: [menuDiscoveryAgent, socialDiscoveryAgent, mapsDiscoveryAgent, competitorDiscoveryAgent]
 });

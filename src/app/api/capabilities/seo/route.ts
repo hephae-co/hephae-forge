@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { SeoAuditorAgent } from '@/agents/seo-auditor/seoAuditor';
+import { generateAndDraftMarketingContent } from '@/agents/marketing-swarm/orchestrator';
+
+export const maxDuration = 60;
+
 import { BaseIdentity } from '@/agents/types';
 import { Runner, InMemorySessionService } from '@google/adk';
 
@@ -69,6 +73,9 @@ export async function POST(req: Request) {
             ...reportData,
             url: identity.officialUrl
         };
+
+        // Fire and forget marketing generation
+        generateAndDraftMarketingContent({ identity, seo: finalReport }, 'SEO Deep Audit').catch(console.error);
 
         return NextResponse.json(finalReport);
     } catch (e: any) {

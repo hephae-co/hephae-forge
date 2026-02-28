@@ -190,6 +190,8 @@ const eventsGatherer = new LlmAgent({
     - Generic "things to do" listicles with no specific date
     - Political news or government announcements
 
+    **TIMEZONE RULE:** Always report event times in the LOCAL timezone of the business location (e.g., EST/EDT for New Jersey, PST/PDT for California). Never blindly copy timezone abbreviations from search results — convert them to the correct local timezone for the given location.
+
     If no qualifying events are found, output "No major foot-traffic events scheduled in this area for the next 3 days."
     Output a day-by-day list of UPCOMING events only as clean markdown text.`,
     tools: [GoogleSearchTool],

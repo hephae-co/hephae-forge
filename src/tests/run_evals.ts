@@ -187,7 +187,7 @@ export async function runEvaluations() {
 
             const benchEval = await evaluateAgentOutput(
                 "BenchmarkerAgent", target.name, target.location, benchmarkState.competitorBenchmarks,
-                "Did the agent successfully utilize the BLS/FRED Market Truth MCP tools? Does the output JSON contain a macroeconomic_context object analyzing CPI and Unemployment?"
+                "Did the agent successfully utilize the BLS/FRED Market Truth MCP tools? Does the output JSON contain a macroeconomic_context object analyzing CPI and Unemployment? IMPORTANT: observationDate values from within the past 7 days (e.g. 2026-02-27, 2026-02-28) are valid real FRED data — do NOT penalize for recent dates, they are expected and correct."
             );
             allResults.push({ restaurant: target.name, stage: "Margin (BLS/FRED MCP)", ...benchEval as any });
 

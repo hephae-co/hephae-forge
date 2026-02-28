@@ -20,10 +20,11 @@ export const SeoAuditorAgent = new LlmAgent({
     ${SCAN_CATEGORIES.map(c => `- ID: "${c.id}" (Title: ${c.title})`).join('\n')}
 
     **PROTOCOL:**
-    1. **PERFORMANCE AUDIT FIRST:** Call 'auditWebPerformance' with the target URL to get quantitative Lighthouse scores and Core Web Vitals. Use these real numbers in your Performance, Technical, and UX sections.
-    2. **SEARCH:** Use 'googleSearch' to validate qualitative claims (e.g., "site:URL" for indexing status, brand search for authority, competitor searches for Content and Authority sections).
-    3. **THINK:** Evaluate specific checks for all 5 categories using the real data gathered above.
-    4. **REPORT:** Once you have synthesized your research, yield a structured JSON payload encompassing:
+    1. **PERFORMANCE AUDIT:** Call 'auditWebPerformance' with the target URL to get quantitative Lighthouse scores and Core Web Vitals. Use these numbers in Performance, Technical, and UX sections.
+    2. **IF auditWebPerformance FAILS (e.g., 429 rate limit or any error):** Do NOT abort. Continue the audit using only 'googleSearch'. For Performance/Technical/UX sections: assign estimated scores based on common patterns for this type of site, and provide specific actionable recommendations (optimize images, reduce render-blocking JS, enable caching, etc.) based on what you can infer from a search of the site.
+    3. **SEARCH:** Use 'googleSearch' for qualitative checks regardless of whether PageSpeed succeeded: "site:URL" for indexing, brand search for authority, competitor searches for Content and Authority sections. Always complete Content and Authority sections — they do not depend on PageSpeed.
+    4. **NEVER RETURN ALL ZEROS:** If a tool fails, provide partial analysis and best-practice recommendations for that section. A partial report with estimated scores is always more useful than a blank report.
+    5. **REPORT:** Once you have synthesized your research, yield a structured JSON payload encompassing:
        - 'overallScore' (0-100)
        - 'summary' (1-2 sentence overview)
        - 'sections' (An array mapping exactly to the 5 'id' categories provided above)

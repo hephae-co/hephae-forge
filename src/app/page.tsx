@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, BrainCircuit, X, Download, BarChart3, Users, Search, Share2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2 } from 'lucide-react';
 import { SurgicalReport } from '@/lib/types';
 import clsx from 'clsx';
 import ChatInterface from '@/components/Chatbot/ChatInterface';
+import HephaeLogo from '@/components/HephaeLogo';
 import { DailyForecast, TimeSlot } from '@/components/Chatbot/types';
 import DetailPanel from '@/components/Chatbot/DetailPanel';
 import MapVisualizer from '@/components/Chatbot/MapVisualizer';
@@ -12,13 +13,36 @@ import HeatmapGrid from '@/components/Chatbot/HeatmapGrid';
 import { ChatMessage, ForecastResponse } from '@/components/Chatbot/types';
 import { BaseIdentity } from '@/agents/types';
 import { NeuralBackground } from '@/components/Chatbot/NeuralBackground';
+import BlobBackground from '@/components/BlobBackground';
 import { EmailWall } from '@/components/Chatbot/EmailWall';
 import ResultsDashboard from '@/components/Chatbot/seo/ResultsDashboard';
+import DiscoveryProgress, { ALL_DISCOVERY_MESSAGES, useRotatingMessage } from '@/components/Chatbot/DiscoveryProgress';
 import { SeoReport } from '@/lib/types';
+
+const LOADING_QUOTES = [
+  // Data-driven
+  "A 1% drop in food costs has 3× the profit impact of a 1% revenue increase.",
+  "The top 20% of menu items typically drive 70% of a restaurant's revenue.",
+  "Food-away-from-home inflation has outpaced grocery prices for 18 straight months.",
+  "Egg prices surged 60%+ in two years — we track that live against your menu.",
+  "73% of diners check a restaurant online before walking in.",
+  "Restaurants that price-optimize see 10–15% margin improvement on average.",
+  "Heavy rain can drop foot traffic by up to 40% — we factor weather into forecasts.",
+  // Humorous / engaging
+  "Crunching numbers harder than a Friday night kitchen rush...",
+  "Our AI doesn't eat, but it has very strong opinions about your pricing.",
+  "Running more calculations than a waiter splitting a 12-top check.",
+  "If this analysis were a dish, it would be the chef's tasting menu — thorough.",
+  "Scanning the web faster than a foodie doom-scrolling Yelp reviews.",
+  "Hold tight — genius takes a minute. Mediocrity is instant.",
+  "Doing the math your accountant wishes they could do this fast.",
+  "No menus were harmed in the making of this report.",
+  "Teaching our AI to appreciate the fine art of menu engineering...",
+];
 
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '1', role: 'model', text: 'Hi! I am Hephae.\nType the name of a business you want to analyze or just ask me anything.' }
+    { id: '1', role: 'model', text: 'Hi! I am Hephae.\nSearch for your restaurant to get started.' }
   ]);
   const [isTyping, setIsTyping] = useState(false);
 
@@ -62,6 +86,10 @@ export default function Home() {
     }
   }, []);
 
+  // Rotating messages for the loading overlay
+  const { message: loadingQuote, visible: loadingQuoteVisible } = useRotatingMessage(LOADING_QUOTES, 4000, isTyping && !isDiscovering);
+  const { message: discoveryMsg, visible: discoveryMsgVisible } = useRotatingMessage(ALL_DISCOVERY_MESSAGES, 3500, isDiscovering);
+
   const handleEmailSubmit = async (email: string) => {
     if (!searchDocId) return;
     const res = await fetch('/api/track', {
@@ -87,7 +115,27 @@ export default function Home() {
     }
   };
 
+  // Map action-oriented follow-up chips to capability IDs
+  const ACTION_CHIP_MAP: Record<string, string> = {
+    "Now forecast the foot traffic": "traffic",
+    "How's their online presence?": "seo",
+    "Now analyze the menu margins": "surgery",
+    "Now scan the menu for profit leaks": "surgery",
+    "How do they rank on Google?": "seo",
+    "Run an SEO audit next": "seo",
+    "Let's check the menu margins": "surgery",
+    "Will rain hurt their traffic?": "traffic",
+  };
+
   const sendMessage = async (text: string) => {
+    // Route action chips directly to executeCapability
+    const mappedCapability = ACTION_CHIP_MAP[text];
+    if (mappedCapability && locatedBusiness) {
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text }]);
+      handleSelectCapability(mappedCapability);
+      return;
+    }
+
     // 1. Append user message
     const newMessages: ChatMessage[] = [...messages, { id: Date.now().toString(), role: 'user', text }];
     setMessages(newMessages);
@@ -118,7 +166,17 @@ export default function Home() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages })
+        body: JSON.stringify({
+          messages: newMessages,
+          context: {
+            businessName: locatedBusiness?.name,
+            address: locatedBusiness?.address,
+            seoReport: seoReport ? { overallScore: seoReport.overallScore, sections: seoReport.sections?.map((s: any) => ({ name: s.name, score: s.score, recommendations: s.recommendations })), summary: seoReport.summary } : undefined,
+            marginReport: report ? { overall_score: report.overall_score, menu_items: report.menu_items?.slice(0, 10), strategic_advice: report.strategic_advice } : undefined,
+            trafficForecast: forecast ? { summary: forecast.summary, daily: forecast.daily?.slice(0, 5) } : undefined,
+            competitiveReport: competitiveReport ? { market_summary: competitiveReport.market_summary, competitors: competitiveReport.competitors, recommendations: competitiveReport.recommendations } : undefined,
+          }
+        })
       });
 
       if (!res.ok) throw new Error("Chat request failed");
@@ -173,7 +231,12 @@ export default function Home() {
           { id: 'seo', label: 'Run SEO Deep Audit' },
           { id: 'competitive', label: 'Run Competitive Analysis' }
         ]);
-        // Note: we do NOT add a new message, we just unlock the capabilities in the UI
+        // Add a discovery-complete message to chat
+        setMessages(prev => [...prev, {
+          id: `discovery-done-${Date.now()}`,
+          role: 'model',
+          text: `Discovery complete for **${enrichedProfile.name || identity.name}**! I've mapped out their digital presence, brand identity, social profiles, and competitive landscape. Pick any capability below to dive deeper.`
+        }]);
       }
     } catch (e) {
       console.error("Discovery failed", e);
@@ -187,6 +250,48 @@ export default function Home() {
     } finally {
       setIsDiscovering(false);
     }
+  };
+
+  // Fast-track location from Places Autocomplete — skips LLM/LocatorAgent entirely
+  const handlePlaceSelect = async (identity: BaseIdentity) => {
+    // Track for lead capture
+    if (!hasProvidedEmail && !searchDocId) {
+      try {
+        const trackRes = await fetch('/api/track', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: identity.name })
+        });
+        if (trackRes.ok) {
+          const trackData = await trackRes.json();
+          setSearchDocId(trackData.id);
+        }
+      } catch (e) { console.error("Tracking failed", e); }
+    }
+
+    // Add chat messages
+    const userMsgId = Date.now().toString();
+    const modelMsgId = (Date.now() + 1).toString();
+    setMessages(prev => [
+      ...prev,
+      { id: userMsgId, role: 'user', text: identity.name },
+      { id: modelMsgId, role: 'model', text: `I found **${identity.name}** at ${identity.address}. What would you like to do next?` }
+    ]);
+
+    // Reset and set located business
+    setLocatedBusiness(identity);
+    setReport(null);
+    setForecast(null);
+    setSeoReport(null);
+    setCompetitiveReport(null);
+    setCapabilities([]);
+    setProfileReportUrl(null);
+    setMarginReportUrl(null);
+    setTrafficReportUrl(null);
+    setSeoReportUrl(null);
+    setCompetitiveReportUrl(null);
+
+    // Trigger background discovery
+    triggerDiscoveryOrchestrator(identity);
   };
 
   const handleSelectCapability = async (capId: string) => {
@@ -214,6 +319,11 @@ export default function Home() {
   const executeCapability = async (capId: string) => {
     if (!locatedBusiness) return;
 
+    // Strip large binary fields before sending to capability APIs.
+    // menuScreenshotBase64 can be 2-5 MB as base64, which exceeds Next.js's
+    // default request body size limit and causes a 422 response.
+    const { menuScreenshotBase64: _stripped, ...identityForApi } = locatedBusiness as any;
+
     if (capId === 'surgery') {
       const msgId = Date.now().toString();
       setMessages(prev => [...prev, { id: msgId, role: 'model', text: "Starting Margin Surgery. Deploying ProfilerAgent to crawl the website, this may take a moment to retrieve the menu screenshots and calculate commodity impacts... ⏱️" }]);
@@ -221,10 +331,10 @@ export default function Home() {
       setIsTyping(true);
 
       try {
-        // We now pass the enriched business down to /api/analyze to skip Crawler if menuScreenshotBase64 exists
+        // Pass the enriched profile (without base64) so /api/analyze can skip the Crawler
         const payload = {
           url: locatedBusiness.officialUrl,
-          enrichedProfile: locatedBusiness,
+          enrichedProfile: identityForApi,
           advancedMode: false
         };
         const res = await fetch('/api/analyze', {
@@ -262,7 +372,7 @@ export default function Home() {
         const res = await fetch('/api/capabilities/traffic', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identity: locatedBusiness }),
+          body: JSON.stringify({ identity: identityForApi }),
         });
 
         if (!res.ok) {
@@ -300,7 +410,7 @@ export default function Home() {
         const res = await fetch('/api/capabilities/seo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identity: locatedBusiness }),
+          body: JSON.stringify({ identity: identityForApi }),
         });
 
         if (!res.ok) {
@@ -309,12 +419,27 @@ export default function Home() {
         }
 
         const data = await res.json();
-        setSeoReport(data);
-        if (data.reportUrl) {
-          setSeoReportUrl(data.reportUrl);
-          sendReportEmailAsync('seo', data.reportUrl, locatedBusiness!.name, `SEO score: ${data.overallScore ?? 'N/A'}/100. ${data.sections?.length || 0} categories analyzed. ${data.summary || ''}`);
+        const sectionCount = data.sections?.length || 0;
+
+        if (sectionCount === 0) {
+          // Agent returned no sections — don't show a blank dashboard
+          const scoreNote = data.overallScore ? ` (estimated score: ${data.overallScore}/100)` : '';
+          setMessages(prev => [...prev, {
+            id: (Date.now() + 1).toString(), role: 'model',
+            text: `The SEO Auditor completed but returned incomplete data${scoreNote}. ${data.summary || 'The model may have hit a rate limit or timed out.'}\n\nYou can try running the audit again from the action bar.`
+          }]);
+          // Re-enable capabilities so user can retry
+          setCapabilities(prev => prev.length > 0 ? prev : [
+            { id: 'seo', label: 'Retry SEO Audit', icon: undefined },
+          ]);
+        } else {
+          setSeoReport(data);
+          if (data.reportUrl) {
+            setSeoReportUrl(data.reportUrl);
+            sendReportEmailAsync('seo', data.reportUrl, locatedBusiness!.name, `SEO score: ${data.overallScore ?? 'N/A'}/100. ${sectionCount} categories analyzed. ${data.summary || ''}`);
+          }
+          setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: `SEO Audit complete! Verified ${sectionCount} critical infrastructure categories.` }]);
         }
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: `SEO Audit complete! Verified ${data.sections?.length || 0} critical infrastructure categories.` }]);
 
       } catch (e: any) {
         setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: `Failed to execute SEO Audit: ${e.message}` }]);
@@ -336,7 +461,7 @@ export default function Home() {
         const res = await fetch('/api/capabilities/competitive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identity: locatedBusiness }),
+          body: JSON.stringify({ identity: identityForApi }),
         });
 
         if (!res.ok) {
@@ -400,23 +525,23 @@ export default function Home() {
     const topLeaks = menu_items.filter(i => i.price_leakage > 0).sort((a, b) => b.price_leakage - a.price_leakage);
 
     return (
-      <div className="w-full h-full overflow-y-auto pb-20 p-8 animate-fade-in" style={{ backgroundColor: '#0f172a', color: '#ffffff' }}>
-        <header className="flex justify-between items-center mb-8 p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md">
+      <div className="w-full h-full overflow-y-auto pb-20 p-8 animate-fade-in" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
+        <header className="flex justify-between items-center mb-8 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
           <div className="flex items-center gap-4">
             {identity.logoUrl && <img src={identity.logoUrl} className="h-12 w-12 rounded-full object-cover" alt="Logo" />}
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: identity.primaryColor }}>{identity.name}</h1>
-              <p className="text-sm opacity-70">{identity.persona}</p>
+              <h1 className="text-2xl font-bold text-gray-900" style={{ color: identity.primaryColor }}>{identity.name}</h1>
+              <p className="text-sm text-gray-500">{identity.persona}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <div className="text-sm opacity-60">Surgical Score</div>
-              <div className={clsx("text-4xl font-black", overall_score > 80 ? "text-green-400" : "text-yellow-400")}>{overall_score}/100</div>
+              <div className="text-sm text-gray-500">Surgical Score</div>
+              <div className={clsx("text-4xl font-black", overall_score > 80 ? "text-green-600" : "text-yellow-600")}>{overall_score}/100</div>
             </div>
             <button
               onClick={() => setReport(null)}
-              className="ml-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+              className="ml-4 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors"
               title="Close Report"
             >
               <X size={20} />
@@ -425,49 +550,51 @@ export default function Home() {
         </header>
 
         <div className="grid grid-cols-1 gap-8">
-          <div className="p-8 rounded-3xl bg-gradient-to-br from-red-900/40 to-slate-900 border border-red-500/30">
-            <h3 className="text-red-300 font-medium mb-1 flex items-center gap-2">
+          <div className="p-8 rounded-3xl bg-red-50 border border-red-200 animate-fade-in-up stagger-1">
+            <h3 className="text-red-600 font-medium mb-1 flex items-center gap-2">
               <AlertTriangle size={18} /> DETECTED PROFIT LEAKAGE
             </h3>
-            <div className="text-5xl font-bold text-white tracking-tight">
-              ${totalLeakage.toLocaleString()} <span className="text-xl opacity-50 font-normal">/ cycle</span>
+            <div className="text-5xl font-bold text-gray-900 tracking-tight">
+              ${totalLeakage.toLocaleString()} <span className="text-xl text-gray-400 font-normal">/ cycle</span>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-            <div className="p-6 border-b border-white/10"><h3 className="font-bold text-lg">Surgical Breakdown</h3></div>
+          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden animate-fade-in-up stagger-2">
+            <div className="p-6 border-b border-gray-100"><h3 className="font-bold text-lg text-gray-900">Surgical Breakdown</h3></div>
             <table className="w-full text-left text-sm">
-              <thead className="bg-white/5 text-xs uppercase tracking-wider opacity-60">
+              <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
                 <tr>
                   <th className="p-4">Item</th>
                   <th className="p-4">Benchmark</th>
                   <th className="p-4">Price</th>
-                  <th className="p-4 text-green-400">Rec.</th>
+                  <th className="p-4 text-green-600">Rec.</th>
                   <th className="p-4 text-right">Leakage</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/10">
+              <tbody className="divide-y divide-gray-100">
                 {topLeaks.map((item, i) => (
-                  <tr key={i} className="hover:bg-white/5">
-                    <td className="p-4">{item.item_name}</td>
-                    <td className="p-4 opacity-70">${item.competitor_benchmark.toFixed(2)}</td>
-                    <td className="p-4 opacity-70 border-l border-white/5">${item.current_price.toFixed(2)}</td>
-                    <td className="p-4 font-bold text-green-400 border-l border-white/5">${item.recommended_price.toFixed(2)}</td>
-                    <td className="p-4 text-right font-mono text-red-400">+${item.price_leakage.toFixed(2)}</td>
+                  <tr key={i} className="hover:bg-gray-50 animate-fade-in-right" style={{ animationDelay: `${0.18 + i * 0.04}s` }}>
+                    <td className="p-4 text-gray-900">{item.item_name}</td>
+                    <td className="p-4 text-gray-500">${item.competitor_benchmark.toFixed(2)}</td>
+                    <td className="p-4 text-gray-500 border-l border-gray-100">${item.current_price.toFixed(2)}</td>
+                    <td className="p-4 font-bold text-green-600 border-l border-gray-100">${item.recommended_price.toFixed(2)}</td>
+                    <td className="p-4 text-right font-mono text-red-600">+${item.price_leakage.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <div className="p-6 rounded-2xl bg-blue-900/20 border border-blue-500/30">
-            <h3 className="text-blue-300 font-bold mb-4 flex items-center gap-2"><TrendingUp size={18} /> STRATEGIC ADVICE</h3>
+          <div className="p-6 rounded-2xl bg-blue-50 border border-blue-100 animate-fade-in-up stagger-3">
+            <h3 className="text-blue-700 font-bold mb-4 flex items-center gap-2"><TrendingUp size={18} /> STRATEGIC ADVICE</h3>
             <div className="space-y-4">
-              {strategic_advice.map((tip, i) => <div key={i} className="p-4 rounded-xl bg-blue-950/50 border border-blue-800/50 text-sm">"{tip}"</div>)}
+              {strategic_advice.map((tip, i) => (
+                <div key={i} className="p-4 rounded-xl bg-white border border-blue-100 text-sm text-gray-700 animate-fade-in-up" style={{ animationDelay: `${0.24 + i * 0.06}s` }}>"{tip}"</div>
+              ))}
             </div>
           </div>
 
-          <button onClick={downloadSocialCard} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all">
+          <button onClick={downloadSocialCard} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all animate-fade-in-up stagger-4">
             <Download size={20} /> Download Integrity Report
           </button>
         </div>
@@ -478,17 +605,17 @@ export default function Home() {
   const renderTrafficForecast = () => {
     if (!forecast) return null;
     return (
-      <div className="w-full h-full overflow-y-auto pb-20 p-8 animate-fade-in" style={{ backgroundColor: '#0f172a', color: '#ffffff' }}>
-        <header className="flex justify-between items-center mb-6 p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md">
+      <div className="w-full h-full overflow-y-auto pb-20 p-8 animate-fade-in" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
+        <header className="flex justify-between items-center mb-6 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
           <div className="flex items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: '#4ade80' }}>{forecast.business.name}</h1>
-              <p className="text-sm opacity-70">Hephae Traffic forecaster</p>
+              <h1 className="text-2xl font-bold text-green-700">{forecast.business.name}</h1>
+              <p className="text-sm text-gray-500">Hephae Traffic Forecast</p>
             </div>
           </div>
           <button
             onClick={() => setForecast(null)}
-            className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors shadow-lg"
+            className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors shadow-sm"
             title="Close Forecast"
           >
             <X size={20} />
@@ -496,7 +623,7 @@ export default function Home() {
         </header>
 
         {selectedSlot && selectedDay && (
-          <div className="mb-6 rounded-3xl overflow-hidden shadow-2xl">
+          <div className="mb-6 rounded-3xl overflow-hidden shadow-2xl animate-fade-in-up stagger-1">
             <DetailPanel
               day={selectedDay}
               slot={selectedSlot}
@@ -508,7 +635,7 @@ export default function Home() {
           </div>
         )}
 
-        <div className="p-8 rounded-3xl bg-slate-900 border border-slate-700 shadow-xl overflow-hidden mb-6">
+        <div className="p-8 rounded-3xl bg-white border border-gray-100 shadow-sm overflow-hidden mb-6 animate-fade-in-up stagger-2">
           <HeatmapGrid
             forecast={forecast.forecast}
             onSlotClick={(day, slot) => {
@@ -525,33 +652,33 @@ export default function Home() {
   const renderCompetitiveReport = () => {
     if (!competitiveReport) return null;
     return (
-      <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in" style={{ backgroundColor: '#0f172a', color: '#ffffff' }}>
-        <header className="flex justify-between items-center mb-8 p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md">
-          <h1 className="text-2xl font-bold text-orange-400 flex items-center gap-3"><Swords size={28} /> Competitive Market Strategy</h1>
+      <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
+        <header className="flex justify-between items-center mb-8 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
+          <h1 className="text-2xl font-bold text-orange-600 flex items-center gap-3"><Swords size={28} /> Competitive Market Strategy</h1>
         </header>
 
-        <div className="p-6 rounded-2xl bg-orange-900/20 border border-orange-500/30 mb-8">
-          <h3 className="text-orange-300 font-bold mb-2">Executive Summary</h3>
-          <p className="text-slate-300 text-sm leading-relaxed">{competitiveReport.market_summary}</p>
+        <div className="p-6 rounded-2xl bg-orange-50 border border-orange-200 mb-8 animate-fade-in-up stagger-1">
+          <h3 className="text-orange-700 font-bold mb-2">Executive Summary</h3>
+          <p className="text-gray-800 text-sm leading-relaxed">{competitiveReport.market_summary}</p>
         </div>
 
-        <div className="space-y-6 mb-8">
-          <h3 className="font-bold text-lg text-white">Rival Positioning Radar</h3>
+        <div className="space-y-6 mb-8 animate-fade-in-up stagger-2">
+          <h3 className="font-bold text-lg text-gray-900">Rival Positioning Radar</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {competitiveReport.competitor_analysis.map((comp: any, i: number) => (
-              <div key={i} className="p-5 rounded-3xl bg-black/40 border border-white/10 hover:border-orange-500/50 transition-colors">
+              <div key={i} className="p-5 rounded-3xl bg-white border border-gray-100 hover:border-orange-300 shadow-sm transition-colors animate-fade-in-up" style={{ animationDelay: `${0.18 + i * 0.08}s` }}>
                 <div className="flex justify-between items-center mb-4">
-                  <span className="font-bold text-indigo-300 truncate pr-2 text-lg">{comp.name}</span>
-                  <span className="text-xs font-mono px-3 py-1.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">Threat: {comp.threat_level}/10</span>
+                  <span className="font-bold text-indigo-700 truncate pr-2 text-lg">{comp.name}</span>
+                  <span className="text-xs font-mono px-3 py-1.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">Threat: {comp.threat_level}/10</span>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1"><TrendingUp size={12} /> KEY STRENGTH</div>
-                    <div className="text-sm text-slate-300 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 leading-relaxed">{comp.key_strength}</div>
+                    <div className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1"><TrendingUp size={12} /> KEY STRENGTH</div>
+                    <div className="text-sm text-gray-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3 leading-relaxed">{comp.key_strength}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1"><AlertTriangle size={12} /> EXPLOITABLE WEAKNESS</div>
-                    <div className="text-sm text-slate-300 bg-red-500/10 border border-red-500/20 rounded-xl p-3 leading-relaxed">{comp.key_weakness}</div>
+                    <div className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1"><AlertTriangle size={12} /> EXPLOITABLE WEAKNESS</div>
+                    <div className="text-sm text-gray-700 bg-red-50 border border-red-200 rounded-xl p-3 leading-relaxed">{comp.key_weakness}</div>
                   </div>
                 </div>
               </div>
@@ -559,12 +686,12 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="p-6 rounded-2xl bg-indigo-900/20 border border-indigo-500/30 shadow-lg">
-          <h3 className="text-indigo-300 font-bold mb-5 flex items-center gap-2"><Swords size={18} /> Strategic Advantages to Leverage</h3>
+        <div className="p-6 rounded-2xl bg-indigo-50 border border-indigo-200 shadow-sm animate-fade-in-up stagger-3">
+          <h3 className="text-indigo-700 font-bold mb-5 flex items-center gap-2"><Swords size={18} /> Strategic Advantages to Leverage</h3>
           <ul className="space-y-3">
             {competitiveReport.strategic_advantages.map((adv: string, i: number) => (
-              <li key={i} className="flex gap-4 text-sm text-slate-300 bg-indigo-950/50 border border-indigo-800/50 p-4 rounded-xl leading-relaxed items-start">
-                <div className="mt-0.5 p-1 bg-indigo-500/20 rounded-lg text-indigo-400 border border-indigo-500/30">
+              <li key={i} className="flex gap-4 text-sm text-gray-700 bg-white border border-indigo-100 p-4 rounded-xl leading-relaxed items-start animate-fade-in-right" style={{ animationDelay: `${0.24 + i * 0.05}s` }}>
+                <div className="mt-0.5 p-1 bg-indigo-100 rounded-lg text-indigo-600 border border-indigo-200">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 </div>
                 {adv}
@@ -574,12 +701,12 @@ export default function Home() {
         </div>
 
         {competitiveReport.sources?.length > 0 && (
-          <div className="p-6 rounded-2xl bg-slate-800/40 border border-white/10 mt-6">
-            <h3 className="text-slate-400 font-bold mb-3 text-sm uppercase tracking-wider">Analysis Sources</h3>
+          <div className="p-6 rounded-2xl bg-gray-50 border border-gray-200 mt-6 animate-fade-in-up stagger-4">
+            <h3 className="text-gray-500 font-bold mb-3 text-sm uppercase tracking-wider">Analysis Sources</h3>
             <ul className="space-y-1">
               {competitiveReport.sources.map((s: any, i: number) => (
                 <li key={i}>
-                  <a href={s.url} target="_blank" rel="noreferrer" className="text-indigo-400 text-sm hover:underline">↗ {s.title || s.url}</a>
+                  <a href={s.url} target="_blank" rel="noreferrer" className="text-indigo-600 text-sm hover:underline">↗ {s.title || s.url}</a>
                 </li>
               ))}
             </ul>
@@ -591,20 +718,64 @@ export default function Home() {
 
   const isCentered = !locatedBusiness && !report && !forecast && !seoReport && !competitiveReport;
 
+  // Dynamic follow-up chips that change based on what the user has done
+  const dynamicChips = useMemo(() => {
+    if (isCentered) {
+      return ["Bosphorus Nutley NJ", "Tick Tock Diner Clifton NJ"];
+    }
+    if (isDiscovering || isTyping) return []; // Hidden during loading
+
+    const chips: string[] = [];
+    const name = locatedBusiness?.name || 'this business';
+
+    if (report) {
+      // After margin analysis
+      chips.push("Which item is bleeding the most money?");
+      if (!forecast) chips.push("Now forecast the foot traffic");
+      if (!seoReport) chips.push("How's their online presence?");
+    } else if (seoReport) {
+      // After SEO audit
+      chips.push("What's the biggest SEO red flag?");
+      if (!report) chips.push("Now analyze the menu margins");
+      if (!forecast) chips.push("Will rain hurt their traffic?");
+    } else if (forecast) {
+      // After traffic forecast
+      chips.push("When is the worst time to be short-staffed?");
+      if (!report) chips.push("Now scan the menu for profit leaks");
+      if (!seoReport) chips.push("How do they rank on Google?");
+    } else if (competitiveReport) {
+      // After competitive analysis
+      chips.push("Who's their biggest threat?");
+      if (!report) chips.push("Let's check the menu margins");
+      if (!seoReport) chips.push("Run an SEO audit next");
+    } else if (capabilities.length > 0) {
+      // Discovery complete, no analyses run yet
+      chips.push(`What did you find about ${name}?`);
+      chips.push("Where is their money leaking?");
+      chips.push("How visible are they online?");
+    }
+
+    return chips.slice(0, 3);
+  }, [isCentered, isDiscovering, isTyping, locatedBusiness, report, seoReport, forecast, competitiveReport, capabilities]);
+
   return (
-    <main className={`flex h-screen w-screen overflow-hidden relative transition-colors duration-700 ${isCentered ? 'bg-white' : 'bg-slate-950'}`}>
+    <main className={`flex h-screen w-screen overflow-hidden relative transition-colors duration-700 ${isCentered ? 'bg-white' : 'bg-gray-50'}`}>
 
       {/* BACKGROUND ANIMATION */}
       {isCentered && (
-        <div className="absolute inset-0 z-0 opacity-40 mix-blend-multiply pointer-events-none">
-          <NeuralBackground />
-        </div>
+        <>
+          <div className="absolute inset-0 z-0 opacity-70">
+            <NeuralBackground />
+          </div>
+          <BlobBackground className="z-0 opacity-70" />
+        </>
       )}
 
       {/* LEFT VISUALIZER PANEL - Hidden when centered, fills remaining space when active */}
       <div className={`relative z-10 transition-all duration-700 ease-in-out flex flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden' : 'flex-1 opacity-100'}`}>
         {!isCentered && (
           <>
+            {(isTyping || isDiscovering) && <BlobBackground className="z-0 opacity-30" />}
             {/* Copy-link toast */}
             {copyToast && (
               <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-xl border border-white/10 animate-fade-in-up pointer-events-none">
@@ -660,6 +831,84 @@ export default function Home() {
               )}
             </div>
 
+            {/* Business identity pill — only in empty fallback (no map), so it doesn't overlap MapVisualizer */}
+            {!report && !forecast && !seoReport && !competitiveReport && !isTyping && locatedBusiness && !locatedBusiness.coordinates && (
+              <div className="absolute top-4 left-4 z-50 flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl shadow-lg border border-gray-200/80 max-w-xs">
+                {((locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon) ? (
+                  <img
+                    src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon}
+                    alt="Logo"
+                    className="w-9 h-9 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-4 h-4 text-indigo-600" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <div
+                    className="text-sm font-bold leading-tight truncate"
+                    style={{ color: (locatedBusiness as any).primaryColor || '#1e293b' }}
+                  >
+                    {locatedBusiness.name}
+                  </div>
+                  {(locatedBusiness.address || (locatedBusiness as any).persona) && (
+                    <div className="text-xs text-gray-500 leading-tight truncate">
+                      {(locatedBusiness as any).persona || locatedBusiness.address}
+                    </div>
+                  )}
+                </div>
+                {isDiscovering && <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />}
+              </div>
+            )}
+
+            {/* Full-panel loading overlay — only during active chat typing (not discovery, which shows the map) */}
+            {isTyping && !isDiscovering && !report && !forecast && !seoReport && !competitiveReport && (
+              <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-12 gap-8">
+                <BlobBackground className="opacity-20" />
+                <div className="relative z-10 flex flex-col items-center gap-6 max-w-xl text-center">
+                  {/* Animated logo ring */}
+                  <div className="relative flex items-center justify-center w-28 h-28">
+                    <div className="absolute inset-0 rounded-full border-4 border-[#0052CC]/10 animate-pulse" />
+                    <div className="absolute inset-1 rounded-full border-2 border-[#00C2FF]/30 animate-spin" style={{ animationDuration: '3s' }} />
+                    {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
+                      <img
+                        src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon}
+                        className="w-14 h-14 rounded-full object-cover"
+                        alt=""
+                      />
+                    ) : (
+                      <HephaeLogo size="md" variant="color" showWordmark={false} />
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="text-xl font-bold text-gray-900 mb-1">
+                      {locatedBusiness?.name || 'Analyzing...'}
+                    </div>
+                    <div className="text-sm text-indigo-600 font-semibold tracking-wide">
+                      {isDiscovering ? 'Deep-diving into the business...' : 'Deep analysis in progress...'}
+                    </div>
+                  </div>
+
+                  {/* Large rotating message — discovery-specific or general quotes */}
+                  <div
+                    className="text-lg font-medium text-gray-600 leading-relaxed italic transition-opacity duration-500 px-4"
+                    style={{ opacity: isDiscovering ? (discoveryMsgVisible ? 1 : 0) : (loadingQuoteVisible ? 1 : 0) }}
+                  >
+                    "{isDiscovering ? discoveryMsg : loadingQuote}"
+                  </div>
+
+                  <div className="flex gap-2">
+                    <span className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-bounce" />
+                    <span className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
+                    <span className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {report ? (
               renderSurgeonReport()
             ) : forecast ? (
@@ -667,14 +916,72 @@ export default function Home() {
             ) : competitiveReport ? (
               renderCompetitiveReport()
             ) : seoReport ? (
-              <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in" style={{ backgroundColor: '#0f172a' }}>
+              <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in" style={{ backgroundColor: '#ffffff' }}>
                 <ResultsDashboard report={seoReport} groundingChunks={(seoReport as any).groundingChunks || []} />
               </div>
             ) : locatedBusiness && locatedBusiness.coordinates ? (
-              <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} />
+              <>
+                <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} />
+
+                {/* Discovery overlay — faded map peeks through, progress text overlaid */}
+                {isDiscovering && !isTyping && (
+                  <div className="absolute inset-0 z-20 bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center animate-fade-in">
+                    <div className="absolute inset-0 opacity-15 pointer-events-none">
+                      <NeuralBackground />
+                    </div>
+                    <div className="relative z-10 flex flex-col items-center gap-6 max-w-md text-center px-8">
+                      {/* Animated logo ring */}
+                      <div className="relative flex items-center justify-center w-24 h-24">
+                        <div className="absolute inset-0 rounded-full border-4 border-[#0052CC]/10 animate-pulse" />
+                        <div className="absolute inset-1 rounded-full border-2 border-[#00C2FF]/30 animate-spin" style={{ animationDuration: '3s' }} />
+                        {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
+                          <img
+                            src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon}
+                            className="w-12 h-12 rounded-full object-cover"
+                            alt=""
+                          />
+                        ) : (
+                          <HephaeLogo size="md" variant="color" showWordmark={false} />
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="text-lg font-bold text-gray-900 mb-1">
+                          {locatedBusiness.name}
+                        </div>
+                        <div className="text-sm text-indigo-600 font-semibold tracking-wide">
+                          Running deep discovery...
+                        </div>
+                      </div>
+
+                      {/* Large rotating message */}
+                      <div
+                        className="text-base font-medium text-gray-600 leading-relaxed italic transition-opacity duration-500"
+                        style={{ opacity: discoveryMsgVisible ? 1 : 0 }}
+                      >
+                        &ldquo;{discoveryMsg}&rdquo;
+                      </div>
+
+                      <div className="flex gap-2">
+                        <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" />
+                        <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
+                        <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-transparent mt-16 px-4">
-                {/* Fallback space when left panel is active but no content is loaded */}
+              <div className="w-full h-full flex flex-col items-center justify-center bg-transparent gap-4 p-8">
+                {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) && (
+                  <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 shadow-sm" alt="" />
+                )}
+                {locatedBusiness && (
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-gray-700">{locatedBusiness.name}</div>
+                    <div className="text-sm text-gray-400 mt-1">Gathering location data...</div>
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -686,7 +993,9 @@ export default function Home() {
         <ChatInterface
           messages={messages}
           onSendMessage={sendMessage}
+          onPlaceSelect={handlePlaceSelect}
           isTyping={isTyping}
+          isDiscovering={isDiscovering}
           onReset={() => {
             setMessages([{ id: '1', role: 'model', text: 'Hi! I am Hephae. Type the name of a business you want to analyze or just ask me anything.' }]);
             setLocatedBusiness(null);
@@ -705,15 +1014,7 @@ export default function Home() {
           capabilities={capabilities}
           onSelectCapability={handleSelectCapability}
           isCentered={isCentered}
-          followUpChips={
-            isCentered
-              ? ["Analyze Bosphorus Nutley", "Find Tick Tock Diner Clifton", "What is my profit margin?"]
-              : (locatedBusiness ? [
-                `Tell me more about ${locatedBusiness.name}`,
-                `Who are ${locatedBusiness.name}'s competitors?`,
-                `What are the busiest hours?`
-              ] : [])
-          }
+          followUpChips={dynamicChips}
         />
       </div>
 

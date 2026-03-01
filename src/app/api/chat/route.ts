@@ -5,7 +5,7 @@ import { LocatorAgent } from '@/agents/discovery/locator';
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { messages } = body;
+        const { messages, context } = body;
 
         if (!messages || !Array.isArray(messages)) {
             return NextResponse.json({ error: "Invalid messages array" }, { status: 400 });
@@ -15,12 +15,28 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
         }
 
+        // Build context-aware system instruction
+        let systemInstruction = "You are Hephae, an intelligent assistant for business owners. Your primary capability is locating businesses and triggering deep-dives like Margin Analysis or Foot Traffic. If the user mentions a business, immediately use the `locate_business` tool to find its coordinates and URL. Be concise.";
+
+        if (context) {
+            const parts: string[] = [];
+            if (context.businessName) parts.push(`Business: ${context.businessName} (${context.address || 'address unknown'})`);
+            if (context.seoReport) parts.push(`SEO Audit Results (score ${context.seoReport.overallScore}/100):\n${JSON.stringify(context.seoReport, null, 1)}`);
+            if (context.marginReport) parts.push(`Margin Analysis (score ${context.marginReport.overall_score}/100):\n${JSON.stringify(context.marginReport, null, 1)}`);
+            if (context.trafficForecast) parts.push(`Traffic Forecast:\n${JSON.stringify(context.trafficForecast, null, 1)}`);
+            if (context.competitiveReport) parts.push(`Competitive Analysis:\n${JSON.stringify(context.competitiveReport, null, 1)}`);
+
+            if (parts.length > 0) {
+                systemInstruction += `\n\nYou have the following analysis data for this business. Use it to answer questions with specific numbers, data points, and actionable insights. Be direct, cite actual findings, and use the "sassy advisor" tone — highlight what's costing the owner money.\n\n${parts.join('\n\n')}`;
+            }
+        }
+
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
         // Using function calling to give Gemini the ability to search for businesses
         const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash",
-            systemInstruction: "You are Hephae, an intelligent assistant for business owners. Your primary capability is locating businesses and triggering deep-dives like Margin Analysis or Foot Traffic. If the user mentions a business, immediately use the `locate_business` tool to find its coordinates and URL. Be concise.",
+            systemInstruction,
             tools: [
                 {
                     functionDeclarations: [

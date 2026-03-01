@@ -42,3 +42,32 @@ The pipeline follows a strict sequence to generate high-conviction "Surgical Int
 
 ## Data Strategy
 - Use `src/lib/data/standard_recipes.json` for "Standard Industry Benchmarks" to estimate COGS without internal recipes.
+
+## Database Rules (strictly enforced)
+
+### No blobs in Firestore or BigQuery
+Never write binary data to Firestore or BigQuery. This includes:
+- `menuScreenshotBase64` or any base64-encoded image
+- Raw HTML report content
+- Any logo, favicon, or image buffer
+Always upload binary assets to GCS first (`everything-hephae` bucket), then store only the resulting `https://storage.googleapis.com/everything-hephae/...` URL.
+
+### Agent Versioning — mandatory on breaking changes
+Every agent definition in `src/agents/` has an `agentVersion` string in `src/agents/config.ts` under `AgentVersions`. When making any of the following changes to an agent, you MUST increment its semantic version:
+- Adding, removing, or renaming output fields
+- Changing the JSON schema of the agent's output
+- Changing the agent's model tier (e.g. Flash → Pro)
+- Splitting one agent into two or merging two agents
+
+Version format: `MAJOR.MINOR.PATCH`
+- MAJOR: output schema change (fields added/removed/renamed)
+- MINOR: logic change, same schema
+- PATCH: prompt wording, no logic change
+
+The `AgentVersions` map in `src/agents/config.ts` is the single source of truth. Every call to `writeAgentResult()` must pass `agentVersion: AgentVersions.AGENT_NAME`.
+
+### Zip code is a first-class field
+Always parse and store `zipCode` as an explicit top-level field — never derive it from the address string at query time. This applies to both Firestore `businesses/{slug}` and all BigQuery tables. The weekly analysis pipeline operates at zipcode granularity.
+
+### Firestore document size
+The `businesses/{slug}` top-level document must never contain arrays that grow over time (no `reports[]`, no `analyses[]`). All historical data lives in BigQuery. Firestore stores only current state via `latestOutputs.{agentName}` map keys.

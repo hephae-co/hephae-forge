@@ -22,3 +22,31 @@ export const StorageConfig = {
     BUCKET: 'everything-hephae',
     BASE_URL: 'https://storage.googleapis.com/everything-hephae',
 } as const;
+
+/**
+ * Agent version registry.
+ *
+ * MANDATORY: Increment the version for any agent when its output schema changes
+ * (fields added/removed/renamed = MAJOR bump), logic changes (MINOR bump),
+ * or prompt-only wording changes (PATCH bump).
+ *
+ * These values are written to BigQuery on every agent run so historical runs
+ * can be distinguished from runs under a different schema.
+ */
+export const AgentVersions = {
+    // Discovery pipeline
+    MENU_DISCOVERY:        '1.0.0',
+    SOCIAL_DISCOVERY:      '1.0.0',
+    MAPS_DISCOVERY:        '1.0.0',
+    COMPETITOR_DISCOVERY:  '1.0.0',
+    THEME_DISCOVERY:       '1.0.0',
+
+    // Analysis agents
+    MARGIN_SURGEON:        '1.0.0',
+    SEO_AUDITOR:           '1.0.0',
+    TRAFFIC_FORECASTER:    '1.0.0',
+    COMPETITIVE_ANALYZER:  '1.0.0',
+
+    // Marketing
+    MARKETING_SWARM:       '1.0.0',
+} as const;

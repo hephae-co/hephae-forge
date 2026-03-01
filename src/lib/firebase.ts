@@ -4,7 +4,7 @@ if (!admin.apps.length) {
     try {
         admin.initializeApp({
             credential: admin.credential.applicationDefault(),
-            projectId: 'hephae-co',
+            projectId: 'hephae-co-dev',
         });
         console.log("[Firebase] Admin SDK Initialized correctly.");
     } catch (e: any) {

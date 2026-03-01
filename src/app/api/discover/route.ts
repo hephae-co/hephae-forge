@@ -3,8 +3,10 @@ import { discoveryParallelAgent } from '@/agents/discovery/discoverySubAgents';
 import { BaseIdentity, EnrichedProfile } from '@/agents/types';
 import { Runner, InMemorySessionService } from "@google/adk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { saveReport, generateSlug } from '@/lib/reportStorage';
+import { generateSlug, uploadReport, uploadMenuScreenshot } from '@/lib/reportStorage';
 import { buildProfileReport } from '@/lib/reportTemplates';
+import { writeDiscovery } from '@/lib/db';
+import { AgentVersions } from '@/agents/config';
 
 export async function POST(req: NextRequest) {
     try {
@@ -46,7 +48,6 @@ export async function POST(req: NextRequest) {
             newMessage: { role: 'user', parts: [{ text: prompt }] }
         });
 
-        // Drain the generator to await completion of all sub-agents
         for await (const event of stream) { }
 
         const finalSession = await sessionService.getSession({ appName: 'hephae-hub', userId, sessionId });
@@ -54,12 +55,11 @@ export async function POST(req: NextRequest) {
 
         console.log("[API/Discover] ADK Pipeline Finished. State keys:", Object.keys(state));
 
-        // Safely parse social links if Gemini included markdown
-        let parsedSocials = {};
+        // Parse social links
+        let parsedSocials: any = {};
         if (typeof state.socialLinks === 'string') {
             try {
-                const cleanStr = state.socialLinks.replace(/```json/g, '').replace(/```/g, '').trim();
-                parsedSocials = JSON.parse(cleanStr);
+                parsedSocials = JSON.parse(state.socialLinks.replace(/```json/g, '').replace(/```/g, '').trim());
             } catch (e) {
                 console.warn("[API/Discover] Failed to parse social links JSON:", e);
             }
@@ -67,18 +67,17 @@ export async function POST(req: NextRequest) {
             parsedSocials = state.socialLinks as any;
         }
 
-        // Safely parse competitors if Gemini included markdown
-        let parsedCompetitors = [];
+        // Parse competitors
+        let parsedCompetitors: any[] = [];
         if (typeof state.competitors === 'string') {
             try {
-                const cleanStr = state.competitors.replace(/```json/g, '').replace(/```/g, '').trim();
-                parsedCompetitors = JSON.parse(cleanStr);
+                parsedCompetitors = JSON.parse(state.competitors.replace(/```json/g, '').replace(/```/g, '').trim());
             } catch (e) {
-                console.warn("[API/Discover] Failed to parse competitors JSON explicitly, running intelligent extraction...");
+                console.warn("[API/Discover] Failed to parse competitors JSON, attempting extraction...");
                 try {
                     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
                     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
-                    const res = await model.generateContent(`Extract exactly 3 restaurant competitors from the following text into a JSON array of objects with strictly these keys: "name", "url", "reason". TEXT: ${state.competitors}`);
+                    const res = await model.generateContent(`Extract exactly 3 restaurant competitors from the following text into a JSON array with keys: "name", "url", "reason". TEXT: ${state.competitors}`);
                     parsedCompetitors = JSON.parse(res.response.text());
                 } catch (extractErr) {
                     console.error("[API/Discover] Forced extraction failed", extractErr);
@@ -88,25 +87,23 @@ export async function POST(req: NextRequest) {
             parsedCompetitors = state.competitors;
         }
 
-        // Clean menu base64 — agent may prefix with conversational text or echo tool JSON
+        // Extract and clean menu base64 — will be uploaded to GCS, not stored in DB
         let menuBase64 = state.menuScreenshotBase64 as string | undefined;
         if (menuBase64) {
             try {
                 const parsed = JSON.parse(menuBase64);
                 if (parsed.screenshotBase64) menuBase64 = parsed.screenshotBase64;
             } catch {
-                // Not JSON — strip any leading text, keeping only the base64 payload
                 const base64Match = menuBase64.match(/[A-Za-z0-9+/]{200,}={0,2}/);
                 if (base64Match) menuBase64 = base64Match[0];
             }
         }
 
-        // Safely parse theme data
+        // Parse theme data
         let parsedTheme: any = {};
         if (typeof state.themeData === 'string') {
             try {
-                const cleanStr = state.themeData.replace(/```json\n?|\n?```/g, '').trim();
-                parsedTheme = JSON.parse(cleanStr);
+                parsedTheme = JSON.parse(state.themeData.replace(/```json\n?|\n?```/g, '').trim());
             } catch (e) {
                 console.warn("[API/Discover] Failed to parse themeData JSON:", e);
             }
@@ -114,18 +111,27 @@ export async function POST(req: NextRequest) {
             parsedTheme = state.themeData as any;
         }
 
-        const socials = parsedSocials as any;
+        const slug = generateSlug(identity.name);
+
+        // Upload menu screenshot to GCS — never store base64 in DB
+        let menuImageUrl: string | undefined;
+        if (menuBase64) {
+            const url = await uploadMenuScreenshot(slug, menuBase64);
+            if (url) menuImageUrl = url;
+        }
+
         const enrichedProfile: EnrichedProfile = {
             ...identity,
+            // Send base64 back to UI for immediate display, but DB only gets the GCS URL
             menuScreenshotBase64: menuBase64,
             socialLinks: {
-                instagram: socials.instagram || undefined,
-                facebook: socials.facebook || undefined,
-                twitter: socials.twitter || undefined,
+                instagram: parsedSocials.instagram || undefined,
+                facebook: parsedSocials.facebook || undefined,
+                twitter: parsedSocials.twitter || undefined,
             },
-            phone: socials.phone || undefined,
-            email: socials.email || undefined,
-            hours: socials.hours || undefined,
+            phone: parsedSocials.phone || undefined,
+            email: parsedSocials.email || undefined,
+            hours: parsedSocials.hours || undefined,
             googleMapsUrl: state.googleMapsUrl as string | undefined,
             competitors: parsedCompetitors.length > 0 ? parsedCompetitors : undefined,
             favicon: parsedTheme.favicon || undefined,
@@ -135,15 +141,21 @@ export async function POST(req: NextRequest) {
             persona: parsedTheme.persona || undefined,
         };
 
-        const slug = generateSlug(enrichedProfile.name);
-        const reportUrl = await saveReport({
+        // Upload HTML report to GCS
+        const reportUrl = await uploadReport({
             slug,
             type: 'profile',
-            htmlContent: buildProfileReport(enrichedProfile),
+            htmlContent: buildProfileReport({ ...enrichedProfile, menuScreenshotBase64: undefined }),
             identity: enrichedProfile,
             summary: `Business profile for ${enrichedProfile.name}`,
-            rawData: enrichedProfile,
         });
+
+        // Write to Firestore + BQ — no blobs
+        writeDiscovery({
+            profile: enrichedProfile,
+            menuImageUrl,
+            triggeredBy: 'user',
+        }).catch(err => console.error('[API/Discover] writeDiscovery failed:', err));
 
         return NextResponse.json({ ...enrichedProfile, reportUrl: reportUrl || undefined });
 

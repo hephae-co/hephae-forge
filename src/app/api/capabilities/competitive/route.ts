@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { Runner, InMemorySessionService } from "@google/adk";
 import { CompetitorProfilerAgent, MarketPositioningAgent } from "@/agents/competitive-analysis/analyzer";
 import { generateAndDraftMarketingContent } from "@/agents/marketing-swarm/orchestrator";
-import { saveReport, generateSlug } from '@/lib/reportStorage';
+import { generateSlug, uploadReport } from '@/lib/reportStorage';
 import { buildCompetitiveReport } from '@/lib/reportTemplates';
+import { writeAgentResult } from '@/lib/db';
+import { AgentVersions } from '@/agents/config';
 
 export const maxDuration = 60;
 
@@ -75,13 +77,25 @@ export async function POST(req: NextRequest) {
         generateAndDraftMarketingContent({ identity, competitive: payload }, 'Competitive Strategy').catch(console.error);
 
         const slug = generateSlug(identity.name);
-        const reportUrl = await saveReport({
+
+        const reportUrl = await uploadReport({
             slug,
             type: 'competitive',
             htmlContent: buildCompetitiveReport(payload, identity),
             identity,
             summary: payload.market_summary || 'Competitive analysis complete',
         });
+
+        writeAgentResult({
+            businessSlug: slug,
+            businessName: identity.name,
+            agentName: 'competitive_analyzer',
+            agentVersion: AgentVersions.COMPETITIVE_ANALYZER,
+            triggeredBy: 'user',
+            summary: payload.market_summary || 'Competitive analysis complete',
+            reportUrl: reportUrl || undefined,
+            rawData: payload,
+        }).catch(err => console.error('[API/Competitive] writeAgentResult failed:', err));
 
         return NextResponse.json({ ...payload, reportUrl: reportUrl || undefined });
     } catch (e: any) {

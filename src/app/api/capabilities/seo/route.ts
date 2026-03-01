@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { SeoAuditorAgent } from '@/agents/seo-auditor/seoAuditor';
 import { generateAndDraftMarketingContent } from '@/agents/marketing-swarm/orchestrator';
-import { saveReport, generateSlug } from '@/lib/reportStorage';
+import { generateSlug, uploadReport } from '@/lib/reportStorage';
 import { buildSeoReport } from '@/lib/reportTemplates';
+import { writeAgentResult } from '@/lib/db';
+import { AgentVersions } from '@/agents/config';
 
 export const maxDuration = 60;
 
@@ -80,13 +82,26 @@ export async function POST(req: Request) {
         generateAndDraftMarketingContent({ identity, seo: finalReport }, 'SEO Deep Audit').catch(console.error);
 
         const slug = generateSlug(identity.name || identity.officialUrl);
-        const reportUrl = await saveReport({
+
+        const reportUrl = await uploadReport({
             slug,
             type: 'seo',
             htmlContent: buildSeoReport(finalReport),
             identity,
             summary: finalReport.summary || `SEO score: ${finalReport.overallScore}/100`,
         });
+
+        writeAgentResult({
+            businessSlug: slug,
+            businessName: identity.name || identity.officialUrl,
+            agentName: 'seo_auditor',
+            agentVersion: AgentVersions.SEO_AUDITOR,
+            triggeredBy: 'user',
+            score: finalReport.overallScore,
+            summary: finalReport.summary || `SEO score: ${finalReport.overallScore}/100`,
+            reportUrl: reportUrl || undefined,
+            rawData: finalReport,
+        }).catch(err => console.error('[API/SEO] writeAgentResult failed:', err));
 
         return NextResponse.json({ ...finalReport, reportUrl: reportUrl || undefined });
     } catch (e: any) {

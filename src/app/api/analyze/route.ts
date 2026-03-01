@@ -10,8 +10,10 @@ import { EnrichedProfile } from '@/agents/types';
 import { LocatorAgent } from '@/agents/discovery/locator';
 import { ProfilerAgent } from '@/agents/business-profiler/profiler';
 import { generateAndDraftMarketingContent } from '@/agents/marketing-swarm/orchestrator';
-import { saveReport, generateSlug } from '@/lib/reportStorage';
+import { generateSlug, uploadReport } from '@/lib/reportStorage';
 import { buildMarginReport } from '@/lib/reportTemplates';
+import { writeAgentResult } from '@/lib/db';
+import { AgentVersions } from '@/agents/config';
 
 export const maxDuration = 60;
 
@@ -221,15 +223,33 @@ export async function POST(req: NextRequest) {
         // Fire and forget the marketing pipeline
         generateAndDraftMarketingContent(report, 'Margin Surgery').catch(console.error);
 
-        const totalLeakage = report.menu_items.reduce((s, i) => s + i.price_leakage, 0);
         const slug = generateSlug(finalIdentity.name);
-        const reportUrl = await saveReport({
+
+        // Upload HTML report to GCS
+        const reportUrl = await uploadReport({
             slug,
             type: 'margin',
             htmlContent: buildMarginReport(report),
             identity: finalIdentity,
             summary: `$${totalLeakage.toLocaleString()} profit leakage detected. Score: ${score}/100`,
         });
+
+        // Strip binary blobs before writing to DB
+        const { menuScreenshotBase64: _stripped, ...safeIdentity } = finalIdentity;
+        const safeReport = { ...report, identity: safeIdentity };
+
+        writeAgentResult({
+            businessSlug: slug,
+            businessName: finalIdentity.name,
+            agentName: 'margin_surgeon',
+            agentVersion: AgentVersions.MARGIN_SURGEON,
+            triggeredBy: 'user',
+            score,
+            summary: `$${totalLeakage.toLocaleString()} profit leakage. Score: ${score}/100`,
+            reportUrl: reportUrl || undefined,
+            kpis: { totalLeakage },
+            rawData: safeReport,
+        }).catch(err => console.error('[API/Analyze] writeAgentResult failed:', err));
 
         return NextResponse.json({ ...report, reportUrl: reportUrl || undefined });
 

@@ -49,12 +49,15 @@ export default function Home() {
   const [showEmailWall, setShowEmailWall] = useState(false);
   const [hasProvidedEmail, setHasProvidedEmail] = useState(false);
   const [pendingCapability, setPendingCapability] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('hephae_has_provided_email');
       if (stored === 'true') {
         setHasProvidedEmail(true);
+        const storedEmail = localStorage.getItem('hephae_user_email');
+        if (storedEmail) setUserEmail(storedEmail);
       }
     }
   }, []);
@@ -67,9 +70,11 @@ export default function Home() {
       body: JSON.stringify({ id: searchDocId, email })
     });
     if (res.ok) {
+      setUserEmail(email);
       setShowEmailWall(false);
       setHasProvidedEmail(true);
       localStorage.setItem('hephae_has_provided_email', 'true');
+      localStorage.setItem('hephae_user_email', email);
 
       // Resume the capability execution if one was pending
       if (pendingCapability) {
@@ -157,7 +162,10 @@ export default function Home() {
       });
       if (res.ok) {
         const enrichedProfile = await res.json();
-        if (enrichedProfile.reportUrl) setProfileReportUrl(enrichedProfile.reportUrl);
+        if (enrichedProfile.reportUrl) {
+          setProfileReportUrl(enrichedProfile.reportUrl);
+          sendReportEmailAsync('profile', enrichedProfile.reportUrl, enrichedProfile.name || identity.name, `Business profile for ${enrichedProfile.name || identity.name} has been compiled.`);
+        }
         setLocatedBusiness(enrichedProfile); // Update to enriched profile
         setCapabilities([
           { id: 'surgery', label: 'Analyze Menu Margins' },
@@ -194,6 +202,15 @@ export default function Home() {
     executeCapability(capId);
   };
 
+  const sendReportEmailAsync = (reportType: string, reportUrl: string, businessName: string, summary: string) => {
+    if (!userEmail || !reportUrl) return;
+    fetch('/api/send-report-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: userEmail, reportUrl, reportType, businessName, summary }),
+    }).catch((err) => console.error('[Email] Fire-and-forget failed:', err));
+  };
+
   const executeCapability = async (capId: string) => {
     if (!locatedBusiness) return;
 
@@ -223,7 +240,11 @@ export default function Home() {
 
         const data = await res.json();
         setReport(data);
-        if (data.reportUrl) setMarginReportUrl(data.reportUrl);
+        if (data.reportUrl) {
+          setMarginReportUrl(data.reportUrl);
+          const totalLeakage = data.menu_items?.reduce((s: number, i: { price_leakage: number }) => s + i.price_leakage, 0) || 0;
+          sendReportEmailAsync('margin', data.reportUrl, locatedBusiness!.name, `$${totalLeakage.toFixed(2)} total profit leakage detected across ${data.menu_items?.length || 0} menu items. Overall score: ${data.overall_score}/100.`);
+        }
         setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: "Surgery complete. The surgical dashboard has been rendered." }]);
 
       } catch (e: any) {
@@ -251,7 +272,10 @@ export default function Home() {
 
         const data = await res.json();
         setForecast(data);
-        if (data.reportUrl) setTrafficReportUrl(data.reportUrl);
+        if (data.reportUrl) {
+          setTrafficReportUrl(data.reportUrl);
+          sendReportEmailAsync('traffic', data.reportUrl, locatedBusiness!.name, data.summary || 'Your 3-day foot traffic forecast is ready.');
+        }
 
         if (data.forecast?.length) {
           const firstDay = data.forecast[0];
@@ -286,7 +310,10 @@ export default function Home() {
 
         const data = await res.json();
         setSeoReport(data);
-        if (data.reportUrl) setSeoReportUrl(data.reportUrl);
+        if (data.reportUrl) {
+          setSeoReportUrl(data.reportUrl);
+          sendReportEmailAsync('seo', data.reportUrl, locatedBusiness!.name, `SEO score: ${data.overallScore ?? 'N/A'}/100. ${data.sections?.length || 0} categories analyzed. ${data.summary || ''}`);
+        }
         setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: `SEO Audit complete! Verified ${data.sections?.length || 0} critical infrastructure categories.` }]);
 
       } catch (e: any) {
@@ -319,7 +346,10 @@ export default function Home() {
 
         const data = await res.json();
         setCompetitiveReport(data);
-        if (data.reportUrl) setCompetitiveReportUrl(data.reportUrl);
+        if (data.reportUrl) {
+          setCompetitiveReportUrl(data.reportUrl);
+          sendReportEmailAsync('competitive', data.reportUrl, locatedBusiness!.name, data.market_summary || 'Your competitive strategy report is ready.');
+        }
         setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: `Competitive Strategy complete! ${data.market_summary}` }]);
 
       } catch (e: any) {

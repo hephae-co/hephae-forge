@@ -37,9 +37,9 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create app user
-RUN addgroup --system --gid 1001 appuser && \
-    adduser --system --uid 1001 --ingroup appuser appuser
+# Create app user (use high GID/UID to avoid conflicts with base image)
+RUN addgroup --system --gid 1099 appuser && \
+    adduser --system --uid 1099 --ingroup appuser appuser
 
 # Copy Python libraries
 COPY --from=python-deps /pylibs /pylibs

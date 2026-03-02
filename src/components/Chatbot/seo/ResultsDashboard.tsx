@@ -59,6 +59,13 @@ const ResultsDashboard: React.FC<ResultsDashboardProps> = ({ report, groundingCh
       }
     }
 
+    // Filter out blank/malformed recommendations
+    for (const section of newReport.sections) {
+      section.recommendations = section.recommendations.filter(
+        (r: any) => r && (r.title || r.description)
+      );
+    }
+
     return newReport;
   }, [report]);
 

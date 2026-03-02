@@ -49,7 +49,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
     const isEnriched = !isDiscovering && business && 'phone' in business;
 
     // Determine which tabs have actual data (hide empty tabs once enrichment is done)
-    const hasTheme = isDiscovering || !!(profile?.logoUrl || profile?.favicon);
+    const hasTheme = isDiscovering || !!(profile?.logoUrl || profile?.favicon || profile?.primaryColor || profile?.persona);
     const hasContact = isDiscovering || !!(profile?.phone || profile?.email || profile?.hours);
     const hasSocial = isDiscovering || !!(
         profile?.socialLinks?.instagram || profile?.socialLinks?.facebook ||

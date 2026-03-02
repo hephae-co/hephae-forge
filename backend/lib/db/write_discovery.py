@@ -63,6 +63,23 @@ async def write_discovery(
 
     # --- 1. Firestore upsert ---
     try:
+        # Enriched fields live at the top level for direct queries AND
+        # inside identity for backwards compatibility
+        enriched_fields = {
+            "phone": profile.get("phone"),
+            "email": profile.get("email"),
+            "hours": profile.get("hours"),
+            "googleMapsUrl": profile.get("googleMapsUrl"),
+            "socialLinks": profile.get("socialLinks", {}),
+            "logoUrl": profile.get("logoUrl"),
+            "favicon": profile.get("favicon"),
+            "primaryColor": profile.get("primaryColor"),
+            "secondaryColor": profile.get("secondaryColor"),
+            "persona": profile.get("persona"),
+            "menuUrl": profile.get("menuUrl"),
+            "competitors": profile.get("competitors", []),
+        }
+
         doc_data: dict[str, Any] = {
             "name": profile.get("name"),
             "address": profile.get("address"),
@@ -70,20 +87,10 @@ async def write_discovery(
             "coordinates": profile.get("coordinates"),
             "updatedAt": run_at,
             "createdAt": SERVER_TIMESTAMP,
-            "identity": {
-                "phone": profile.get("phone"),
-                "email": profile.get("email"),
-                "hours": profile.get("hours"),
-                "googleMapsUrl": profile.get("googleMapsUrl"),
-                "socialLinks": profile.get("socialLinks", {}),
-                "logoUrl": profile.get("logoUrl"),
-                "favicon": profile.get("favicon"),
-                "primaryColor": profile.get("primaryColor"),
-                "secondaryColor": profile.get("secondaryColor"),
-                "persona": profile.get("persona"),
-                "menuUrl": profile.get("menuUrl"),
-                "competitors": profile.get("competitors", []),
-            },
+            # Top-level enriched fields
+            **enriched_fields,
+            # Also keep identity sub-object for backwards compatibility
+            "identity": enriched_fields,
         }
         if resolved_zip:
             doc_data["zipCode"] = resolved_zip

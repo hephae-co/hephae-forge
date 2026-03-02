@@ -79,16 +79,15 @@ async def analyze(request: Request):
         advanced_mode = body.get("advancedMode", False)
 
         # FAST PATH: We already ran the Parallel Discovery Subagents
-        if enriched_profile and (
-            enriched_profile.get("menuUrl") or enriched_profile.get("menuScreenshotBase64")
-        ):
+        if enriched_profile and enriched_profile.get("officialUrl"):
             logger.info(f"[API/Analyze] Fast Path: Bypassing Profiler for {enriched_profile.get('name')}")
             identity = {**enriched_profile}
 
-            # If discovery gave us a menuUrl but no screenshot, re-screenshot now
-            if not identity.get("menuScreenshotBase64") and identity.get("menuUrl"):
-                logger.info(f"[API/Analyze] Fast Path: Re-screenshotting menu page: {identity['menuUrl']}")
-                screenshot = await _scrape_menu_screenshot(identity["menuUrl"])
+            # Screenshot the menu page (or main site as fallback)
+            if not identity.get("menuScreenshotBase64"):
+                target_url = identity.get("menuUrl") or identity["officialUrl"]
+                logger.info(f"[API/Analyze] Fast Path: Screenshotting {target_url}")
+                screenshot = await _scrape_menu_screenshot(target_url)
                 if screenshot:
                     identity["menuScreenshotBase64"] = screenshot
 
@@ -98,7 +97,7 @@ async def analyze(request: Request):
             identity.setdefault("persona", "Local Business")
 
         else:
-            # SLOW PATH: Legacy sequential flow
+            # SLOW PATH: Legacy sequential flow (no enriched profile provided)
             logger.info(f"[API/Analyze] Slow Path: Analyzing identity and crawling menu for: {url}")
             base_identity = await LocatorAgent.resolve(url or "")
             identity = await ProfilerAgent.profile(base_identity)

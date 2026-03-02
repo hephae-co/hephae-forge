@@ -20,7 +20,7 @@ RUN npm run build
 FROM python:3.12-slim-bookworm AS python-deps
 WORKDIR /app
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir --target=/pylibs ".[all]"
+RUN pip install --no-cache-dir --target=/pylibs ".[dev]"
 
 # --- Stage 4: Combined runner (Playwright base for browser support) ---
 FROM mcr.microsoft.com/playwright/python:v1.49.1-noble AS runner
@@ -55,6 +55,10 @@ COPY --chown=appuser:appuser backend/ ./backend/
 
 # Copy supervisord config
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Copy test runner scripts and pytest config
+COPY --chown=appuser:appuser scripts/ ./scripts/
+COPY --chown=appuser:appuser pyproject.toml ./
 
 # Copy .env.local if it exists (non-fatal if missing)
 COPY --chown=appuser:appuser .env.local* ./

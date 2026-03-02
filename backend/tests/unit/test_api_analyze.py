@@ -106,7 +106,7 @@ async def client():
         patch("backend.routers.analyze.generate_slug", side_effect=lambda n: n.lower().replace(" ", "-")),
         patch("backend.routers.analyze.write_agent_result", new_callable=AsyncMock, return_value=None),
         patch("backend.routers.analyze.generate_and_draft_marketing_content", new_callable=AsyncMock, return_value=None),
-        patch("backend.routers.analyze._scrape_menu_screenshot", new_callable=AsyncMock, return_value="rescreenshotbase64"),
+        patch("backend.routers.analyze._scrape_menu_screenshot", new_callable=AsyncMock, return_value="/9j/4AAQSkZJRg=="),
         patch("backend.routers.analyze.LocatorAgent") as mock_locator,
         patch("backend.routers.analyze.ProfilerAgent") as mock_profiler,
     ):
@@ -172,12 +172,19 @@ def _configure_fast_mode_runners(client, vision_events=None, surgeon_events=None
 
 class TestInputValidation:
     @pytest.mark.asyncio
-    async def test_422_no_screenshot(self, client):
-        """When fast path profile has no screenshot AND no menuUrl, should return 422."""
+    async def test_422_no_screenshot_no_url(self, client):
+        """When no officialUrl, menuUrl, or screenshot is provided, slow path triggers -> 422."""
+        profile = {**ENRICHED_PROFILE, "menuScreenshotBase64": None, "menuUrl": None, "officialUrl": None}
+        res = await client.post("/api/analyze", json={"enrichedProfile": profile})
+        # No officialUrl -> falls to slow path. Mocked ProfilerAgent returns no screenshot -> 422
+        assert res.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_fast_path_screenshots_official_url(self, client):
+        """When menuUrl is missing but officialUrl exists, fast path screenshots officialUrl."""
         profile = {**ENRICHED_PROFILE, "menuScreenshotBase64": None, "menuUrl": None}
         res = await client.post("/api/analyze", json={"enrichedProfile": profile})
-        # With both menuUrl and menuScreenshotBase64 None, the fast-path condition
-        # fails, triggering slow path. The mocked ProfilerAgent returns no screenshot -> 422
+        # Fast path takes officialUrl, screenshots it, but Vision returns nothing -> 422
         assert res.status_code == 422
 
     @pytest.mark.asyncio

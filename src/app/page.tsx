@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2 } from 'lucide-react';
 import { SurgicalReport } from '@/types/api';
 import clsx from 'clsx';
@@ -68,6 +68,10 @@ export default function Home() {
   const [selectedDay, setSelectedDay] = useState<DailyForecast | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
 
+  // Unique message ID generator
+  const msgIdCounter = useRef(0);
+  const nextMsgId = () => `msg-${Date.now()}-${++msgIdCounter.current}`;
+
   // Email Lead Capture States
   const [searchDocId, setSearchDocId] = useState<string | null>(null);
   const [showEmailWall, setShowEmailWall] = useState(false);
@@ -131,13 +135,13 @@ export default function Home() {
     // Route action chips directly to executeCapability
     const mappedCapability = ACTION_CHIP_MAP[text];
     if (mappedCapability && locatedBusiness) {
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text }]);
+      setMessages(prev => [...prev, { id: nextMsgId(), role: 'user', text }]);
       handleSelectCapability(mappedCapability);
       return;
     }
 
     // 1. Append user message
-    const newMessages: ChatMessage[] = [...messages, { id: Date.now().toString(), role: 'user', text }];
+    const newMessages: ChatMessage[] = [...messages, { id: nextMsgId(), role: 'user', text }];
     setMessages(newMessages);
     setIsTyping(true);
     setCapabilities([]); // Clear capabilities when a new message is sent
@@ -182,7 +186,7 @@ export default function Home() {
       if (!res.ok) throw new Error("Chat request failed");
       const data = await res.json();
 
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: data.text }]);
+      setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: data.text }]);
 
       // Trigger Orchestrator State Change
       if (data.triggerCapabilityHandoff && data.locatedBusiness) {
@@ -204,7 +208,7 @@ export default function Home() {
 
     } catch (e: any) {
       console.error(e);
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: "I encountered an error connecting to my core logic layer." }]);
+      setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: "I encountered an error connecting to my core logic layer." }]);
     } finally {
       setIsTyping(false);
     }
@@ -227,7 +231,7 @@ export default function Home() {
         setLocatedBusiness(enrichedProfile); // Update to enriched profile
         // Add a discovery-complete message to chat
         setMessages(prev => [...prev, {
-          id: `discovery-done-${Date.now()}`,
+          id: nextMsgId(),
           role: 'model',
           text: `Discovery complete for **${enrichedProfile.name || identity.name}**! I've mapped out their digital presence, brand identity, social profiles, and competitive landscape. Pick any capability below to dive deeper.`
         }]);
@@ -265,8 +269,8 @@ export default function Home() {
     }
 
     // Add chat messages
-    const userMsgId = Date.now().toString();
-    const modelMsgId = (Date.now() + 1).toString();
+    const userMsgId = nextMsgId();
+    const modelMsgId = nextMsgId();
     setMessages(prev => [
       ...prev,
       { id: userMsgId, role: 'user', text: identity.name },
@@ -321,7 +325,7 @@ export default function Home() {
     const { menuScreenshotBase64: _stripped, ...identityForApi } = locatedBusiness as any;
 
     if (capId === 'surgery') {
-      const msgId = Date.now().toString();
+      const msgId = nextMsgId();
       setMessages(prev => [...prev, { id: msgId, role: 'model', text: "Starting Margin Surgery. Deploying ProfilerAgent to crawl the website, this may take a moment to retrieve the menu screenshots and calculate commodity impacts... ⏱️" }]);
       setCapabilities([]);
       setIsTyping(true);
@@ -352,15 +356,15 @@ export default function Home() {
           const totalLeakage = data.menu_items?.reduce((s: number, i: { price_leakage: number }) => s + i.price_leakage, 0) || 0;
           sendReportEmailAsync('margin', data.reportUrl, locatedBusiness!.name, `$${totalLeakage.toFixed(2)} total profit leakage detected across ${data.menu_items?.length || 0} menu items. Overall score: ${data.overall_score}/100.`);
         }
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: "Surgery complete. The surgical dashboard has been rendered." }]);
+        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: "Surgery complete. The surgical dashboard has been rendered." }]);
 
       } catch (e: any) {
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: `Failed to execute Margin Surgery: ${e.message}` }]);
+        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute Margin Surgery: ${e.message}` }]);
       } finally {
         setIsTyping(false);
       }
     } else if (capId === 'traffic') {
-      const msgId = Date.now().toString();
+      const msgId = nextMsgId();
       setMessages(prev => [...prev, { id: msgId, role: 'model', text: "Starting Foot Traffic Forecast. Deploying ForecasterAgent to analyze local events, weather, and compute traffic models... ⏱️" }]);
       setCapabilities([]);
       setIsTyping(true);
@@ -391,15 +395,15 @@ export default function Home() {
           setSelectedSlot(firstDay.slots.find((s: any) => s.score > 70) || firstDay.slots[0]);
         }
 
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: `Forecast complete!\n\n**Executive Summary**:\n${data.summary}` }]);
+        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Forecast complete!\n\n**Executive Summary**:\n${data.summary}` }]);
 
       } catch (e: any) {
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: `Failed to execute Foot Traffic Forecast: ${e.message}` }]);
+        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute Foot Traffic Forecast: ${e.message}` }]);
       } finally {
         setIsTyping(false);
       }
     } else if (capId === 'seo') {
-      const msgId = Date.now().toString();
+      const msgId = nextMsgId();
       setMessages(prev => [...prev, { id: msgId, role: 'model', text: "Deploying SEO Auditor to analyze indexing, web vitals, and content hierarchy... ⏱️" }]);
       setCapabilities([]);
       setIsTyping(true);
@@ -424,7 +428,7 @@ export default function Home() {
           // Agent returned no sections — don't show a blank dashboard
           const scoreNote = data.overallScore ? ` (estimated score: ${data.overallScore}/100)` : '';
           setMessages(prev => [...prev, {
-            id: (Date.now() + 1).toString(), role: 'model',
+            id: nextMsgId(), role: 'model',
             text: `The SEO Auditor completed but returned incomplete data${scoreNote}. ${data.summary || 'The model may have hit a rate limit or timed out.'}\n\nYou can try running the audit again from the action bar.`
           }]);
           // Re-enable capabilities so user can retry
@@ -437,21 +441,21 @@ export default function Home() {
             setSeoReportUrl(data.reportUrl);
             sendReportEmailAsync('seo', data.reportUrl, locatedBusiness!.name, `SEO score: ${data.overallScore ?? 'N/A'}/100. ${sectionCount} categories analyzed. ${data.summary || ''}`);
           }
-          setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: `SEO Audit complete! Verified ${sectionCount} critical infrastructure categories.` }]);
+          setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `SEO Audit complete! Verified ${sectionCount} critical infrastructure categories.` }]);
         }
 
       } catch (e: any) {
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: `Failed to execute SEO Audit: ${e.message}` }]);
+        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute SEO Audit: ${e.message}` }]);
       } finally {
         setIsTyping(false);
       }
     } else if (capId === 'marketing') {
       setMessages(prev => [...prev, {
-        id: Date.now().toString(), role: 'model',
+        id: nextMsgId(), role: 'model',
         text: `Social Media Strategy for **${locatedBusiness.name}** is coming soon! This module will auto-generate platform-specific posts, campaign ideas, and content calendars based on your business profile and local market data.`
       }]);
     } else if (capId === 'competitive') {
-      const msgId = Date.now().toString();
+      const msgId = nextMsgId();
       setMessages(prev => [...prev, { id: msgId, role: 'model', text: "Deploying Competitive Analyzer to compare your business against exactly 3 local rivals... ⏱️" }]);
       setCapabilities([]);
       setIsTyping(true);
@@ -475,10 +479,10 @@ export default function Home() {
           setCompetitiveReportUrl(data.reportUrl);
           sendReportEmailAsync('competitive', data.reportUrl, locatedBusiness!.name, data.market_summary || 'Your competitive strategy report is ready.');
         }
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: `Competitive Strategy complete! ${data.market_summary}` }]);
+        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Competitive Strategy complete! ${data.market_summary}` }]);
 
       } catch (e: any) {
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: `Failed to execute Competitive Analysis: ${e.message}` }]);
+        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute Competitive Analysis: ${e.message}` }]);
       } finally {
         setIsTyping(false);
       }
@@ -525,8 +529,9 @@ export default function Home() {
     const topLeaks = menu_items.filter(i => i.price_leakage > 0).sort((a, b) => b.price_leakage - a.price_leakage);
 
     return (
-      <div className="w-full h-full overflow-y-auto pb-20 p-8 animate-fade-in" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
-        <header className="flex justify-between items-center mb-8 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
+      <div className="w-full h-full overflow-y-auto pb-20 p-8 animate-fade-in relative" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
+        <BlobBackground className="opacity-15 fixed" />
+        <header className="relative z-10 flex justify-between items-center mb-8 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
           <div className="flex items-center gap-4">
             {identity.logoUrl && <img src={identity.logoUrl} className="h-12 w-12 rounded-full object-cover" alt="Logo" />}
             <div>
@@ -549,7 +554,7 @@ export default function Home() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 gap-8">
+        <div className="relative z-10 grid grid-cols-1 gap-8">
           <div className="p-8 rounded-3xl bg-red-50 border border-red-200 animate-fade-in-up stagger-1">
             <h3 className="text-red-600 font-medium mb-1 flex items-center gap-2">
               <AlertTriangle size={18} /> DETECTED PROFIT LEAKAGE
@@ -605,8 +610,9 @@ export default function Home() {
   const renderTrafficForecast = () => {
     if (!forecast) return null;
     return (
-      <div className="w-full h-full overflow-y-auto pb-20 p-8 animate-fade-in" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
-        <header className="flex justify-between items-center mb-6 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
+      <div className="w-full h-full overflow-y-auto pb-20 p-8 animate-fade-in relative" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
+        <BlobBackground className="opacity-15 fixed" />
+        <header className="relative z-10 flex justify-between items-center mb-6 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
           <div className="flex items-center gap-4">
             <div>
               <h1 className="text-2xl font-bold text-green-700">{forecast.business.name}</h1>
@@ -622,28 +628,30 @@ export default function Home() {
           </button>
         </header>
 
-        {selectedSlot && selectedDay && (
-          <div className="mb-6 rounded-3xl overflow-hidden shadow-2xl animate-fade-in-up stagger-1">
-            <DetailPanel
-              day={selectedDay}
-              slot={selectedSlot}
-              onAskAI={(query) => {
-                setForecast(null);
-                sendMessage(query);
+        <div className="relative z-10">
+          {selectedSlot && selectedDay && (
+            <div className="mb-6 rounded-3xl overflow-hidden shadow-2xl animate-fade-in-up stagger-1">
+              <DetailPanel
+                day={selectedDay}
+                slot={selectedSlot}
+                onAskAI={(query) => {
+                  setForecast(null);
+                  sendMessage(query);
+                }}
+              />
+            </div>
+          )}
+
+          <div className="p-8 rounded-3xl bg-white border border-gray-100 shadow-sm overflow-hidden mb-6 animate-fade-in-up stagger-2">
+            <HeatmapGrid
+              forecast={forecast.forecast}
+              onSlotClick={(day, slot) => {
+                setSelectedDay(day);
+                setSelectedSlot(slot);
               }}
+              selectedSlot={selectedSlot && selectedDay ? { dayStr: selectedDay.date, slotLabel: selectedSlot.label } : null}
             />
           </div>
-        )}
-
-        <div className="p-8 rounded-3xl bg-white border border-gray-100 shadow-sm overflow-hidden mb-6 animate-fade-in-up stagger-2">
-          <HeatmapGrid
-            forecast={forecast.forecast}
-            onSlotClick={(day, slot) => {
-              setSelectedDay(day);
-              setSelectedSlot(slot);
-            }}
-            selectedSlot={selectedSlot && selectedDay ? { dayStr: selectedDay.date, slotLabel: selectedSlot.label } : null}
-          />
         </div>
       </div>
     );
@@ -652,9 +660,18 @@ export default function Home() {
   const renderCompetitiveReport = () => {
     if (!competitiveReport) return null;
     return (
-      <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
+      <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in relative" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
+        <BlobBackground className="opacity-15 fixed" />
+        <div className="relative z-10">
         <header className="flex justify-between items-center mb-8 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
           <h1 className="text-2xl font-bold text-orange-600 flex items-center gap-3"><Swords size={28} /> Competitive Market Strategy</h1>
+          <button
+            onClick={() => setCompetitiveReport(null)}
+            className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors shadow-sm"
+            title="Close Report"
+          >
+            <X size={20} />
+          </button>
         </header>
 
         <div className="p-6 rounded-2xl bg-orange-50 border border-orange-200 mb-8 animate-fade-in-up stagger-1">
@@ -712,6 +729,7 @@ export default function Home() {
             </ul>
           </div>
         )}
+        </div>
       </div>
     );
   };
@@ -864,7 +882,7 @@ export default function Home() {
             )}
 
             {/* Full-panel loading overlay — only during active chat typing (not discovery, which shows the map) */}
-            {isTyping && !isDiscovering && !report && !forecast && !seoReport && !competitiveReport && (
+            {isTyping && !isDiscovering && (
               <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-12 gap-8">
                 <BlobBackground className="opacity-20" />
                 <div className="relative z-10 flex flex-col items-center gap-6 max-w-xl text-center">
@@ -916,8 +934,20 @@ export default function Home() {
             ) : competitiveReport ? (
               renderCompetitiveReport()
             ) : seoReport ? (
-              <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in" style={{ backgroundColor: '#ffffff' }}>
-                <ResultsDashboard report={seoReport} groundingChunks={(seoReport as any).groundingChunks || []} />
+              <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in relative" style={{ backgroundColor: '#ffffff' }}>
+                <BlobBackground className="opacity-15 fixed" />
+                <div className="relative z-10">
+                  <div className="flex justify-end mb-4">
+                    <button
+                      onClick={() => setSeoReport(null)}
+                      className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors shadow-sm"
+                      title="Close SEO Report"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <ResultsDashboard report={seoReport} groundingChunks={(seoReport as any).groundingChunks || []} />
+                </div>
               </div>
             ) : locatedBusiness && locatedBusiness.coordinates ? (
               <>

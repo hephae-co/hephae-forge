@@ -63,29 +63,33 @@ Look at playwright.socialAnchors and playwright.deliveryPlatforms. Also check pl
 Note which platforms already have URLs.
 
 **STEP 2 — Search for MISSING platforms:**
-For any platform NOT found in crawl data, execute these searches. Try MULTIPLE search variations:
+For any platform NOT found in crawl data, execute a google_search call for EACH missing platform.
+You MUST make separate search calls — do not try to find all platforms in one query.
 
-For Instagram:
-  - "[business name] [city] instagram"
-  - "[business name] instagram.com"
-For Facebook:
-  - "[business name] [city] facebook"
-  - "[business name] facebook.com"
-For Yelp:
-  - "[business name] [city] yelp"
-For TikTok:
-  - "[business name] [city] tiktok"
+For Instagram: search "[business name] [city] instagram site:instagram.com"
+For Facebook: search "[business name] [city] facebook site:facebook.com"
+For Yelp: search "[business name] [city] site:yelp.com"
+For TikTok: search "[business name] [city] site:tiktok.com"
 
 CRITICAL: Execute ALL missing platform searches. Many small restaurants have social pages
 that don't link from their website. Search broadly.
 
+**READING SEARCH RESULTS:**
+The google_search tool returns TWO fields:
+- "result": a text summary
+- "sources": an array of objects with "url" and "title" — these are VERIFIED source URLs from Google
+
+ALWAYS check the "sources" array for platform URLs. For example, if searching for Instagram,
+look in sources for any URL containing "instagram.com/". These are real, verified URLs.
+
 **STEP 3 — Delivery platforms (if not in crawl data):**
-  - "[business name] [city] grubhub"
-  - "[business name] [city] doordash"
-  - "[business name] [city] ubereats"
+  - search "[business name] [city] grubhub"
+  - search "[business name] [city] doordash"
+  - search "[business name] [city] ubereats"
 
 **RULES:**
-- Only include URLs you actually found in search results — do NOT invent or guess URLs.
+- Only include URLs you actually found in crawl data or search results — do NOT invent or guess URLs.
+- Prefer URLs from the "sources" array (grounding-verified) over URLs mentioned in text summaries.
 - DoorDash URLs must be /store/ paths, NOT /business/ (those are marketing links).
 - Verify URLs look legitimate: instagram.com/username, facebook.com/pagename, yelp.com/biz/slug
 

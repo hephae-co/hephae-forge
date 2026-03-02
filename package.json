@@ -11,7 +11,12 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:py": "pytest backend/tests/"
+    "test:py": "pytest backend/tests/",
+    "test:integration": "./scripts/test-integration.sh",
+    "test:integration:fast": "./scripts/test-integration.sh --level 1 --level 2",
+    "test:integration:report": "./scripts/test-integration.sh --report",
+    "test:cloud": "./scripts/trigger-cloud-tests.sh",
+    "test:cloud:status": "./scripts/trigger-cloud-tests.sh --status"
   },
   "dependencies": {
     "clsx": "^2.1.1",

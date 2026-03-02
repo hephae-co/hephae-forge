@@ -34,6 +34,7 @@ class GroundTruth:
     expect_phone: bool = True
     expect_menu: bool = False
     is_restaurant: bool = True
+    expect_yelp: bool = True  # most businesses have Yelp pages
 
 
 BUSINESSES: list[GroundTruth] = [

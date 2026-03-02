@@ -34,12 +34,13 @@ class AgentVersions:
     can be distinguished from runs under a different schema.
     """
 
-    # Discovery pipeline (v2: parallel fan-out architecture)
-    DISCOVERY_PIPELINE = "2.0.0"
-    SITE_CRAWLER = "1.0.0"
+    # Discovery pipeline (v3: 3-stage with social profiler)
+    DISCOVERY_PIPELINE = "3.0.0"
+    SITE_CRAWLER = "1.1.0"
     CONTACT_DISCOVERY = "1.0.0"
-    MENU_DISCOVERY = "2.0.0"
+    MENU_DISCOVERY = "2.1.0"
     SOCIAL_DISCOVERY = "2.0.0"
+    SOCIAL_PROFILER = "1.0.0"
     MAPS_DISCOVERY = "2.0.0"
     COMPETITOR_DISCOVERY = "2.0.0"
     THEME_DISCOVERY = "2.0.0"

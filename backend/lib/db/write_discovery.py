@@ -78,6 +78,7 @@ async def write_discovery(
             "persona": profile.get("persona"),
             "menuUrl": profile.get("menuUrl"),
             "competitors": profile.get("competitors", []),
+            "socialProfileMetrics": profile.get("socialProfileMetrics"),
         }
 
         doc_data: dict[str, Any] = {

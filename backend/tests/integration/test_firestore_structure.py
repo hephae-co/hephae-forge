@@ -194,3 +194,77 @@ class TestFirestoreDocStructure:
                 assert isinstance(social, dict), (
                     f"socialLinks should be dict, got {type(social).__name__}: {social}"
                 )
+
+    @pytest.mark.timeout(30)
+    async def test_social_profile_metrics_stored_as_dict(self, firestore_db, written_docs):
+        """socialProfileMetrics field is stored as a dict (not a JSON string)."""
+        if not written_docs:
+            pytest.skip("No docs written")
+
+        from backend.lib.report_storage import generate_slug
+
+        for biz, test_name in written_docs:
+            slug = generate_slug(test_name)
+            doc = firestore_db.document(f"businesses/{slug}").get()
+            if not doc.exists:
+                continue
+
+            data = doc.to_dict()
+            metrics = data.get("socialProfileMetrics")
+            if metrics is not None:
+                assert isinstance(metrics, dict), (
+                    f"socialProfileMetrics should be dict, got {type(metrics).__name__}"
+                )
+                # Should not be a JSON string stored as a string field
+                assert not isinstance(metrics, str), (
+                    f"socialProfileMetrics was stored as a string, not a dict: {metrics[:100]}"
+                )
+
+    @pytest.mark.timeout(30)
+    async def test_social_profile_metrics_nested_structure(self, firestore_db, written_docs):
+        """socialProfileMetrics preserves nested platform objects in Firestore."""
+        if not written_docs:
+            pytest.skip("No docs written")
+
+        from backend.lib.report_storage import generate_slug
+
+        valid_platform_keys = {"instagram", "facebook", "twitter", "tiktok", "yelp", "summary"}
+
+        for biz, test_name in written_docs:
+            slug = generate_slug(test_name)
+            doc = firestore_db.document(f"businesses/{slug}").get()
+            if not doc.exists:
+                continue
+
+            data = doc.to_dict()
+            metrics = data.get("socialProfileMetrics")
+            if not isinstance(metrics, dict):
+                continue
+
+            # Check platform sub-objects are preserved as dicts
+            for key, value in metrics.items():
+                if key in valid_platform_keys and value is not None:
+                    assert isinstance(value, dict), (
+                        f"socialProfileMetrics.{key} should be a dict, "
+                        f"got {type(value).__name__}: {value}"
+                    )
+
+            # If summary exists, validate its structure
+            summary = metrics.get("summary")
+            if isinstance(summary, dict):
+                # These fields should be present when summary exists
+                expected_summary_fields = [
+                    "totalFollowers", "overallPresenceScore",
+                ]
+                for field in expected_summary_fields:
+                    assert field in summary, (
+                        f"summary missing '{field}' for {biz.id}. "
+                        f"Summary keys: {list(summary.keys())}"
+                    )
+
+                # overallPresenceScore should be 0-100
+                score = summary.get("overallPresenceScore")
+                if score is not None:
+                    assert 0 <= score <= 100, (
+                        f"overallPresenceScore {score} out of range [0,100]"
+                    )

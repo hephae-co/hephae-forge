@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-import { BaseIdentity, EnrichedProfile } from '@/types/api';
+import { BaseIdentity, EnrichedProfile, SocialPlatformMetrics } from '@/types/api';
 import DiscoveryProgress from './DiscoveryProgress';
 
 interface MapVisualizerProps {
@@ -54,7 +54,8 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
     const hasSocial = isDiscovering || !!(
         profile?.socialLinks?.instagram || profile?.socialLinks?.facebook ||
         profile?.socialLinks?.twitter || profile?.socialLinks?.yelp ||
-        profile?.socialLinks?.tiktok || profile?.googleMapsUrl
+        profile?.socialLinks?.tiktok || profile?.googleMapsUrl ||
+        profile?.socialProfileMetrics?.summary
     );
     const hasMenu = isDiscovering || !!(
         profile?.menuUrl ||
@@ -327,7 +328,66 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                                                     </a>
                                                 )}
                                             </div>
-                                            {!profile.socialLinks?.instagram && !profile.socialLinks?.facebook && !profile.socialLinks?.twitter && !profile.socialLinks?.yelp && !profile.socialLinks?.tiktok && !profile.googleMapsUrl && (
+                                            {/* SOCIAL METRICS — shown when socialProfileMetrics is available */}
+                                            {profile.socialProfileMetrics?.summary && (
+                                                <div className="space-y-2 mt-1">
+                                                    {/* Presence score bar */}
+                                                    <div className="bg-black/20 p-3 rounded-xl border border-white/5">
+                                                        <div className="flex items-center justify-between mb-1.5">
+                                                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Social Presence</span>
+                                                            <span className="text-xs font-bold text-white">{profile.socialProfileMetrics.summary.overallPresenceScore}<span className="text-slate-500 font-normal">/100</span></span>
+                                                        </div>
+                                                        <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full rounded-full transition-all duration-500"
+                                                                style={{
+                                                                    width: `${Math.min(100, profile.socialProfileMetrics.summary.overallPresenceScore)}%`,
+                                                                    backgroundColor: profile.socialProfileMetrics.summary.overallPresenceScore >= 60 ? '#22c55e' : profile.socialProfileMetrics.summary.overallPresenceScore >= 30 ? '#eab308' : '#ef4444',
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-center justify-between mt-1.5">
+                                                            <span className="text-[10px] text-slate-500">{profile.socialProfileMetrics.summary.totalFollowers?.toLocaleString()} followers</span>
+                                                            <span className="text-[10px] text-slate-500 capitalize">{profile.socialProfileMetrics.summary.postingFrequency} posts</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Per-platform mini-cards */}
+                                                    <div className="grid grid-cols-2 gap-1.5">
+                                                        {(['instagram', 'facebook', 'tiktok', 'yelp'] as const).map(platform => {
+                                                            const data = profile.socialProfileMetrics?.[platform] as SocialPlatformMetrics | null | undefined;
+                                                            if (!data || data.error) return null;
+                                                            const engagement = data.engagementIndicator;
+                                                            const dotColor = engagement === 'high' ? 'bg-emerald-400' : engagement === 'moderate' ? 'bg-yellow-400' : engagement === 'low' ? 'bg-red-400' : 'bg-slate-500';
+                                                            return (
+                                                                <div key={platform} className="bg-black/20 p-2 rounded-lg border border-white/5">
+                                                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                                                        <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">{platform}</span>
+                                                                    </div>
+                                                                    <p className="text-xs text-white font-semibold">
+                                                                        {platform === 'yelp' && data.rating
+                                                                            ? `${data.rating}/5 (${data.reviewCount ?? 0} reviews)`
+                                                                            : `${(data.followerCount ?? 0).toLocaleString()} followers`}
+                                                                    </p>
+                                                                    {data.lastPostRecency && (
+                                                                        <p className="text-[10px] text-slate-500 mt-0.5">{data.lastPostRecency}</p>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {/* Recommendation */}
+                                                    {profile.socialProfileMetrics.summary.recommendation && (
+                                                        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-2.5">
+                                                            <p className="text-[11px] text-indigo-300 leading-snug">{profile.socialProfileMetrics.summary.recommendation}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {!profile.socialLinks?.instagram && !profile.socialLinks?.facebook && !profile.socialLinks?.twitter && !profile.socialLinks?.yelp && !profile.socialLinks?.tiktok && !profile.googleMapsUrl && !profile.socialProfileMetrics?.summary && (
                                                 <div className="w-full p-4 rounded-xl bg-slate-800/50 border border-slate-700 text-slate-400 text-sm text-center">
                                                     No social profiles found.
                                                 </div>

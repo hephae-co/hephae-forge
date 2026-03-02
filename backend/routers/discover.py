@@ -18,9 +18,10 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from backend.agents.discovery import discovery_pipeline
+from backend.config import AgentVersions
 from backend.lib.report_storage import generate_slug, upload_report
 from backend.lib.report_templates import build_profile_report
-from backend.lib.db import write_discovery
+from backend.lib.db import write_discovery, write_agent_result
 from backend.lib.adk_helpers import user_msg
 
 logger = logging.getLogger(__name__)
@@ -108,6 +109,7 @@ async def discover(request: Request):
         contact_data = _safe_parse(state.get("contactData"))
         social_data = _safe_parse(state.get("socialData"))
         menu_data = _safe_parse(state.get("menuData"))
+        social_profile_metrics = _safe_parse(state.get("socialProfileMetrics"))
         maps_url = state.get("mapsData", "")
         if isinstance(maps_url, str):
             maps_url = re.sub(r'```json\n?|\n?```', "", maps_url).replace('"', "").strip()
@@ -163,6 +165,7 @@ async def discover(request: Request):
             "primaryColor": th.get("primaryColor") or None,
             "secondaryColor": th.get("secondaryColor") or None,
             "persona": th.get("persona") or None,
+            "socialProfileMetrics": social_profile_metrics or None,
         }
 
         # Upload HTML report to GCS
@@ -181,6 +184,22 @@ async def discover(request: Request):
                 triggered_by="user",
             )
         )
+
+        # Write social profiler metrics as agent result (fire-and-forget)
+        if social_profile_metrics:
+            summary_data = social_profile_metrics.get("summary", {})
+            asyncio.create_task(
+                write_agent_result(
+                    business_slug=slug,
+                    business_name=name,
+                    agent_name="social_profiler",
+                    agent_version=AgentVersions.SOCIAL_PROFILER,
+                    triggered_by="user",
+                    raw_data=social_profile_metrics,
+                    score=summary_data.get("overallPresenceScore"),
+                    summary=summary_data.get("recommendation", ""),
+                )
+            )
 
         result = {**enriched_profile}
         if report_url:

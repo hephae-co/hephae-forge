@@ -170,6 +170,7 @@ def build_enriched_profile(identity: dict, state: dict) -> dict:
         maps_url = re.sub(r'```json\n?|\n?```', "", maps_url).replace('"', "").strip()
 
     parsed_competitors = _safe_parse_array(state.get("competitorData"))
+    social_profile_metrics = _safe_parse(state.get("socialProfileMetrics"))
 
     return {
         **identity,
@@ -196,4 +197,5 @@ def build_enriched_profile(identity: dict, state: dict) -> dict:
         "primaryColor": th.get("primaryColor") or None,
         "secondaryColor": th.get("secondaryColor") or None,
         "persona": th.get("persona") or None,
+        "socialProfileMetrics": social_profile_metrics or None,
     }

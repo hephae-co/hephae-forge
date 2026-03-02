@@ -47,7 +47,49 @@ export interface EnrichedProfile extends BaseIdentity {
         url: string;
         reason?: string;
     }[];
+    socialProfileMetrics?: SocialProfileMetrics;
     _debugError?: string;
+}
+
+// --- Social Profile Metrics types ---
+
+export interface SocialPlatformMetrics {
+    url?: string;
+    username?: string;
+    pageName?: string;
+    followerCount?: number;
+    followingCount?: number;
+    postCount?: number;
+    videoCount?: number;
+    likeCount?: number;
+    rating?: number;
+    reviewCount?: number;
+    priceRange?: string;
+    categories?: string[];
+    bio?: string;
+    isVerified?: boolean;
+    claimedByOwner?: boolean;
+    lastPostRecency?: string;
+    engagementIndicator?: 'high' | 'moderate' | 'low' | 'unknown';
+    error?: string | null;
+}
+
+export interface SocialProfileSummary {
+    totalFollowers: number;
+    strongestPlatform: string;
+    weakestPlatform: string;
+    overallPresenceScore: number;
+    postingFrequency: string;
+    recommendation: string;
+}
+
+export interface SocialProfileMetrics {
+    instagram?: SocialPlatformMetrics | null;
+    facebook?: SocialPlatformMetrics | null;
+    twitter?: SocialPlatformMetrics | null;
+    tiktok?: SocialPlatformMetrics | null;
+    yelp?: SocialPlatformMetrics | null;
+    summary?: SocialProfileSummary;
 }
 
 // --- Report types (from src/lib/types.ts) ---

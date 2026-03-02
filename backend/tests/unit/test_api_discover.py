@@ -42,16 +42,23 @@ async def client():
     mock_runner = MagicMock()
     mock_runner.run_async = MagicMock(side_effect=_empty_stream)
 
+    mock_write_agent_result = AsyncMock(return_value=None)
+
     with (
         patch("backend.routers.discover.InMemorySessionService", return_value=mock_session_svc),
         patch("backend.routers.discover.Runner", return_value=mock_runner),
         patch("backend.routers.discover.upload_report", new_callable=AsyncMock, return_value="https://storage.googleapis.com/test/profile.html"),
         patch("backend.routers.discover.build_profile_report", return_value="<html>profile</html>"),
         patch("backend.routers.discover.generate_slug", side_effect=lambda n: n.lower().replace(" ", "-")),
-        patch("backend.routers.discover.write_discovery", new_callable=AsyncMock, return_value=None),
+        patch("backend.routers.discover.write_discovery", new_callable=AsyncMock, return_value=None) as mock_write_discovery,
+        patch("backend.routers.discover.write_agent_result", mock_write_agent_result),
     ):
         # Store mocks for state manipulation
-        client_ctx = {"session_svc": mock_session_svc}
+        client_ctx = {
+            "session_svc": mock_session_svc,
+            "write_agent_result": mock_write_agent_result,
+            "write_discovery": mock_write_discovery,
+        }
 
         from backend.main import app
         transport = ASGITransport(app=app)
@@ -287,3 +294,144 @@ class TestResponseShape:
         res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
         data = res.json()
         assert data["reportUrl"] == "https://storage.googleapis.com/test/profile.html"
+
+
+# ---------------------------------------------------------------------------
+# Social Profile Metrics parsing
+# ---------------------------------------------------------------------------
+
+SAMPLE_METRICS = {
+    "instagram": {
+        "url": "https://instagram.com/bosphorus_nj",
+        "username": "bosphorus_nj",
+        "followerCount": 2450,
+        "postCount": 187,
+        "bio": "Authentic Turkish cuisine",
+        "isVerified": False,
+        "lastPostRecency": "3 days ago",
+        "engagementIndicator": "moderate",
+        "error": None,
+    },
+    "facebook": {
+        "url": "https://facebook.com/BosphorusNutley",
+        "pageName": "Bosphorus Restaurant",
+        "followerCount": 1200,
+        "likeCount": 1150,
+        "rating": 4.6,
+        "reviewCount": 89,
+        "lastPostRecency": "1 week ago",
+        "engagementIndicator": "low",
+        "error": None,
+    },
+    "twitter": None,
+    "tiktok": None,
+    "yelp": {
+        "url": "https://yelp.com/biz/bosphorus-nutley",
+        "rating": 4.5,
+        "reviewCount": 234,
+        "priceRange": "$$",
+        "categories": ["Turkish", "Mediterranean"],
+        "claimedByOwner": True,
+        "error": None,
+    },
+    "summary": {
+        "totalFollowers": 3650,
+        "strongestPlatform": "instagram",
+        "weakestPlatform": "facebook",
+        "overallPresenceScore": 62,
+        "postingFrequency": "weekly",
+        "recommendation": "Instagram is strongest. Consider increasing posting frequency.",
+    },
+}
+
+
+class TestSocialProfileMetricsParsing:
+    @pytest.mark.asyncio
+    async def test_parses_metrics_from_json_string(self, client):
+        _set_state(client, {"socialProfileMetrics": json.dumps(SAMPLE_METRICS)})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert data["socialProfileMetrics"]["instagram"]["followerCount"] == 2450
+        assert data["socialProfileMetrics"]["summary"]["totalFollowers"] == 3650
+
+    @pytest.mark.asyncio
+    async def test_parses_metrics_from_dict(self, client):
+        _set_state(client, {"socialProfileMetrics": SAMPLE_METRICS})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert data["socialProfileMetrics"]["yelp"]["rating"] == 4.5
+
+    @pytest.mark.asyncio
+    async def test_strips_markdown_fences_from_metrics(self, client):
+        raw = f"```json\n{json.dumps(SAMPLE_METRICS)}\n```"
+        _set_state(client, {"socialProfileMetrics": raw})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert data["socialProfileMetrics"]["summary"]["overallPresenceScore"] == 62
+
+    @pytest.mark.asyncio
+    async def test_null_when_metrics_missing(self, client):
+        _set_state(client, {})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert data.get("socialProfileMetrics") is None
+
+    @pytest.mark.asyncio
+    async def test_null_when_metrics_malformed(self, client):
+        _set_state(client, {"socialProfileMetrics": "not valid json {"})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        assert res.status_code == 200
+        data = res.json()
+        assert data.get("socialProfileMetrics") is None
+
+    @pytest.mark.asyncio
+    async def test_metrics_nested_structure_preserved(self, client):
+        _set_state(client, {"socialProfileMetrics": SAMPLE_METRICS})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        metrics = data["socialProfileMetrics"]
+        assert metrics["facebook"]["rating"] == 4.6
+        assert metrics["facebook"]["reviewCount"] == 89
+        assert metrics["yelp"]["categories"] == ["Turkish", "Mediterranean"]
+        assert metrics["twitter"] is None
+        assert metrics["tiktok"] is None
+
+
+class TestSocialProfilerWriteAgentResult:
+    @pytest.mark.asyncio
+    async def test_write_called_when_metrics_present(self, client):
+        mock_war = client._test_ctx["write_agent_result"]
+        mock_war.reset_mock()
+        _set_state(client, {"socialProfileMetrics": SAMPLE_METRICS})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        assert res.status_code == 200
+        # Give fire-and-forget task a chance to be created
+        import asyncio
+        await asyncio.sleep(0.05)
+        mock_war.assert_called_once()
+        call_kwargs = mock_war.call_args.kwargs
+        assert call_kwargs["agent_name"] == "social_profiler"
+        assert call_kwargs["raw_data"] == SAMPLE_METRICS
+        assert call_kwargs["score"] == 62
+
+    @pytest.mark.asyncio
+    async def test_write_not_called_when_metrics_empty(self, client):
+        mock_war = client._test_ctx["write_agent_result"]
+        mock_war.reset_mock()
+        _set_state(client, {})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        assert res.status_code == 200
+        import asyncio
+        await asyncio.sleep(0.05)
+        mock_war.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_score_from_summary(self, client):
+        mock_war = client._test_ctx["write_agent_result"]
+        mock_war.reset_mock()
+        metrics = {**SAMPLE_METRICS, "summary": {**SAMPLE_METRICS["summary"], "overallPresenceScore": 85}}
+        _set_state(client, {"socialProfileMetrics": metrics})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        import asyncio
+        await asyncio.sleep(0.05)
+        assert mock_war.call_args.kwargs["score"] == 85

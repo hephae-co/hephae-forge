@@ -32,6 +32,7 @@ EXPECTED_STATE_KEYS = [
     "menuData",
     "mapsData",
     "competitorData",
+    "socialProfileMetrics",
 ]
 
 VALID_PERSONAS = [
@@ -203,3 +204,75 @@ async def test_competitor_data_has_entries(biz, discovery_cache, runner_factory)
 
     for comp in competitors:
         assert comp.get("name"), f"Competitor missing 'name' for {biz.name}: {comp}"
+
+
+# ------------------------------------------------------------------
+# Social profile metrics validation
+# ------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("biz", BUSINESSES, ids=lambda b: b.id)
+@pytest.mark.timeout(180)
+async def test_social_profile_metrics_in_state(biz, discovery_cache, runner_factory):
+    """Pipeline populates socialProfileMetrics state key."""
+    state = await _ensure_pipeline_run(biz, discovery_cache, runner_factory)
+    assert "socialProfileMetrics" in state, (
+        f"socialProfileMetrics missing from state for {biz.name}"
+    )
+
+
+@pytest.mark.parametrize(
+    "biz",
+    [b for b in BUSINESSES if b.expected_social_platforms],
+    ids=lambda b: b.id,
+)
+@pytest.mark.timeout(180)
+async def test_social_profile_metrics_has_summary(biz, discovery_cache, runner_factory):
+    """socialProfileMetrics has a summary with totalFollowers and overallPresenceScore."""
+    import json
+    state = await _ensure_pipeline_run(biz, discovery_cache, runner_factory)
+
+    raw = state.get("socialProfileMetrics", {})
+    metrics = raw if isinstance(raw, dict) else {}
+    if isinstance(raw, str):
+        try:
+            metrics = json.loads(re.sub(r"```json\n?|\n?```", "", raw).strip())
+        except (json.JSONDecodeError, ValueError):
+            metrics = {}
+
+    summary = metrics.get("summary", {})
+    assert isinstance(summary, dict), f"summary should be a dict for {biz.name}"
+    assert "totalFollowers" in summary, f"Missing totalFollowers in summary for {biz.name}"
+    assert "overallPresenceScore" in summary, f"Missing overallPresenceScore for {biz.name}"
+
+
+@pytest.mark.parametrize(
+    "biz",
+    [b for b in BUSINESSES if "instagram" in b.expected_social_platforms],
+    ids=lambda b: b.id,
+)
+@pytest.mark.timeout(180)
+async def test_social_profile_metrics_per_platform(biz, discovery_cache, runner_factory):
+    """For businesses with known Instagram, at least one platform has follower data."""
+    import json
+    state = await _ensure_pipeline_run(biz, discovery_cache, runner_factory)
+
+    raw = state.get("socialProfileMetrics", {})
+    metrics = raw if isinstance(raw, dict) else {}
+    if isinstance(raw, str):
+        try:
+            metrics = json.loads(re.sub(r"```json\n?|\n?```", "", raw).strip())
+        except (json.JSONDecodeError, ValueError):
+            metrics = {}
+
+    platforms_with_data = []
+    for platform in ["instagram", "facebook", "twitter", "tiktok", "yelp"]:
+        p_data = metrics.get(platform)
+        if isinstance(p_data, dict) and not p_data.get("error"):
+            # Has some actual metric data
+            if p_data.get("followerCount") or p_data.get("rating") or p_data.get("reviewCount"):
+                platforms_with_data.append(platform)
+
+    assert platforms_with_data, (
+        f"{biz.name} expected platform metrics but none found. Got: {list(metrics.keys())}"
+    )

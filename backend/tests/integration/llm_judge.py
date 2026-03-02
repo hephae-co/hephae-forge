@@ -42,6 +42,7 @@ Score EACH of the following fields on a 1-5 scale:
 - primaryColor (does it look like a real brand color, not random?)
 - persona (does the persona match the business type?)
 - competitors (are these real competing businesses in the area?)
+- socialProfileMetrics (are the social media metrics plausible?)
 
 Scoring guide:
   1 = clearly hallucinated or fabricated (wrong business, made-up URL)
@@ -49,6 +50,15 @@ Scoring guide:
   3 = plausible but cannot verify (generic/reasonable but unconfirmed)
   4 = likely correct (matches known facts closely)
   5 = verified correct (exact match with ground truth)
+
+For socialProfileMetrics specifically:
+  - Score 1 if follower counts are absurdly high (>10M for a local business) or negative
+  - Score 2 if platform URLs in metrics don't match the socialLinks URLs
+  - Score 3 if metrics exist and are within plausible ranges
+  - Score 4-5 if metrics match known social presence patterns for this business type
+  - If socialProfileMetrics is null/missing but business has known social platforms, score 2
+  - If Yelp rating exists, it must be between 1.0 and 5.0
+  - If overallPresenceScore exists, it must be between 0 and 100
 
 Return ONLY a JSON object with this structure:
 {
@@ -60,7 +70,8 @@ Return ONLY a JSON object with this structure:
     "socialLinks": <1-5>,
     "primaryColor": <1-5>,
     "persona": <1-5>,
-    "competitors": <1-5>
+    "competitors": <1-5>,
+    "socialProfileMetrics": <1-5>
   },
   "overall": <float, average of all scores>,
   "flags": ["<field>: <reason>", ...]

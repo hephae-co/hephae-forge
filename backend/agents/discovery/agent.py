@@ -1,7 +1,8 @@
 """
-DiscoveryPipeline — two-stage discovery:
+DiscoveryPipeline — three-stage discovery:
   Stage 1: SiteCrawlerAgent crawls the business URL once -> rawSiteData
   Stage 2: DiscoveryFanOut fans out to 6 specialized agents reading rawSiteData
+  Stage 3: SocialProfilerAgent crawls social profiles found in Stage 2 -> socialProfileMetrics
 
 Port of src/agents/discovery/pipeline.ts.
 Uses Google ADK Python SDK (LlmAgent, ParallelAgent, SequentialAgent).
@@ -18,6 +19,8 @@ from backend.agents.shared_tools import (
     google_search_tool,
     playwright_tool,
     crawl4ai_tool,
+    crawl4ai_advanced_tool,
+    crawl4ai_deep_tool,
 )
 from backend.agents.discovery.prompts import (
     SITE_CRAWLER_INSTRUCTION,
@@ -27,6 +30,7 @@ from backend.agents.discovery.prompts import (
     MENU_AGENT_INSTRUCTION,
     MAPS_AGENT_INSTRUCTION,
     COMPETITOR_AGENT_INSTRUCTION,
+    SOCIAL_PROFILER_INSTRUCTION,
 )
 
 
@@ -48,6 +52,21 @@ def _with_raw_data(base_instruction: str):
 
 
 # ---------------------------------------------------------------------------
+# Helper: inject socialData URLs from session state into instruction
+# ---------------------------------------------------------------------------
+
+def _with_social_urls(base_instruction: str):
+    """Build dynamic instruction that injects socialData URLs from session state."""
+
+    def build_instruction(context) -> str:
+        social = getattr(context, "state", {}).get("socialData", {})
+        social_str = social if isinstance(social, str) else json.dumps(social or {})
+        return f"{base_instruction}\n\n--- SOCIAL PROFILE URLS ---\n{social_str}"
+
+    return build_instruction
+
+
+# ---------------------------------------------------------------------------
 # Stage 1: SiteCrawlerAgent
 # ---------------------------------------------------------------------------
 
@@ -55,7 +74,7 @@ site_crawler_agent = LlmAgent(
     name="SiteCrawlerAgent",
     model=AgentModels.DEFAULT_FAST_MODEL,
     instruction=SITE_CRAWLER_INSTRUCTION,
-    tools=[playwright_tool, crawl4ai_tool],
+    tools=[playwright_tool, crawl4ai_tool, crawl4ai_advanced_tool, crawl4ai_deep_tool],
     output_key="rawSiteData",
 )
 
@@ -91,7 +110,7 @@ menu_agent = LlmAgent(
     name="MenuAgent",
     model=AgentModels.DEFAULT_FAST_MODEL,
     instruction=_with_raw_data(MENU_AGENT_INSTRUCTION),
-    tools=[playwright_tool],
+    tools=[playwright_tool, crawl4ai_advanced_tool, crawl4ai_deep_tool],
     output_key="menuData",
 )
 
@@ -107,7 +126,7 @@ competitor_agent = LlmAgent(
     name="CompetitorAgent",
     model=AgentModels.DEEP_ANALYST_MODEL,
     instruction=_with_raw_data(COMPETITOR_AGENT_INSTRUCTION),
-    tools=[google_search_tool, crawl4ai_tool],
+    tools=[google_search_tool, crawl4ai_tool, crawl4ai_advanced_tool],
     output_key="competitorData",
 )
 
@@ -122,11 +141,23 @@ discovery_fan_out = ParallelAgent(
 )
 
 # ---------------------------------------------------------------------------
+# Stage 3: SocialProfilerAgent — crawls social URLs for metrics
+# ---------------------------------------------------------------------------
+
+social_profiler_agent = LlmAgent(
+    name="SocialProfilerAgent",
+    model=AgentModels.DEFAULT_FAST_MODEL,
+    instruction=_with_social_urls(SOCIAL_PROFILER_INSTRUCTION),
+    tools=[crawl4ai_advanced_tool],
+    output_key="socialProfileMetrics",
+)
+
+# ---------------------------------------------------------------------------
 # DiscoveryPipeline — exported orchestrator
 # ---------------------------------------------------------------------------
 
 discovery_pipeline = SequentialAgent(
     name="DiscoveryPipeline",
-    description="Two-stage discovery: crawl once, then fan out to 6 specialized agents.",
-    sub_agents=[site_crawler_agent, discovery_fan_out],
+    description="Three-stage discovery: crawl site, fan out to 6 agents, then profile social accounts.",
+    sub_agents=[site_crawler_agent, discovery_fan_out, social_profiler_agent],
 )

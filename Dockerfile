@@ -3,11 +3,11 @@
 # Uses supervisord to run both processes in a single container.
 # ───────────────────────────────────────────────────────────
 
-# --- Stage 1: Node.js dependencies ---
+# --- Stage 1: Node.js dependencies (all deps needed for build) ---
 FROM node:20-bookworm-slim AS node-deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 # --- Stage 2: Next.js build ---
 FROM node:20-bookworm-slim AS nextjs-builder

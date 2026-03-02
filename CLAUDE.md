@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to any LLM (including Claude 3.5 Sonnet) working on this project as a reference for the latest MarginSurgeon architecture.
+This file provides guidance to any LLM (including Claude 3.5 Sonnet) working on this project as a reference for the latest Hephae Forge architecture.
 
 ## Model Strategy (Gemini-First)
 

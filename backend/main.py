@@ -17,7 +17,7 @@ load_dotenv(".env.local")
 load_dotenv()  # also load .env if it exists
 
 app = FastAPI(
-    title="MarginSurgeon API",
+    title="Hephae Forge API",
     version="0.1.0",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",

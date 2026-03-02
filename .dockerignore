@@ -5,6 +5,7 @@ npm-debug.log
 README.md
 .next
 .git
+mcp-servers
 
 # Secrets (User explicitly requested to include .env.local)
 # .env*.local

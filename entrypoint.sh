@@ -7,6 +7,12 @@ set -e
 
 export PYTHONUNBUFFERED=1
 
+# Diagnostics — print once on cold start
+echo "[entrypoint] PATH=$PATH"
+echo "[entrypoint] python3=$(which python3 2>&1)"
+echo "[entrypoint] uvicorn=$(which uvicorn 2>&1)"
+python3 -c "import uvicorn; print(f'[entrypoint] uvicorn {uvicorn.__version__} at {uvicorn.__file__}')" 2>&1
+
 cleanup() {
     echo "[entrypoint] Shutting down..."
     kill "$FASTAPI_PID" "$NEXTJS_PID" 2>/dev/null || true
@@ -15,9 +21,9 @@ cleanup() {
 }
 trap cleanup SIGTERM SIGINT
 
-# 1) Start FastAPI (merge stderr into stdout for Cloud Run logging)
+# 1) Start FastAPI (use python3 -m to avoid PATH issues with console scripts)
 echo "[entrypoint] Starting FastAPI on :8000..."
-uvicorn backend.main:app --host 0.0.0.0 --port 8000 --log-level info 2>&1 &
+python3 -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --log-level info 2>&1 &
 FASTAPI_PID=$!
 
 # 2) Start Next.js

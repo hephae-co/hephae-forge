@@ -1,6 +1,6 @@
 # ───────────────────────────────────────────────────────────
 # Multi-stage Dockerfile: Next.js (port 3000) + FastAPI (port 8000)
-# Uses entrypoint.sh to run both processes in a single container.
+# Supervisord runs both processes in a single container.
 # ───────────────────────────────────────────────────────────
 
 # --- Stage 1: Node.js dependencies ---
@@ -23,15 +23,14 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PYTHONUNBUFFERED=1
 
-# Install Node.js 20
+# Install Node.js 20 + supervisord
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl && \
+    apt-get install -y --no-install-recommends curl supervisor && \
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps system-wide (--break-system-packages for PEP 668)
-# This creates proper console scripts (uvicorn, pytest, etc.) in PATH
+# Install Python deps system-wide (creates proper console scripts in PATH)
 COPY pyproject.toml ./
 RUN pip install --no-cache-dir --break-system-packages ".[dev]"
 
@@ -44,13 +43,14 @@ COPY --from=nextjs-builder /app/.next/static ./.next/static
 # Copy Python backend
 COPY backend/ ./backend/
 
-# Copy entrypoint
-COPY entrypoint.sh ./
-RUN chmod +x entrypoint.sh
+# Copy supervisord config
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Copy .env.local if it exists
 COPY .env.local* ./
 
 EXPOSE 3000
 EXPOSE 8000
 ENV PORT=3000
 
-CMD ["./entrypoint.sh"]
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

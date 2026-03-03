@@ -97,22 +97,30 @@ echo "  API:      ${API_SERVICE} → ${API_IMAGE}"
 echo ""
 
 echo "── Building Next.js image..."
+cat > /tmp/cloudbuild-web.yaml <<YAML
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${WEB_IMAGE}', '-f', 'Dockerfile.nextjs', '.']
+images: ['${WEB_IMAGE}']
+YAML
 gcloud builds submit \
-  --tag "$WEB_IMAGE" \
+  --config /tmp/cloudbuild-web.yaml \
   --project "$PROJECT_ID" \
   --region "$REGION" \
-  --timeout=600 \
-  --gcs-log-dir="gs://run-sources-${PROJECT_ID}-${REGION}/logs" \
-  --dockerfile=Dockerfile.nextjs .
+  --timeout=600 .
 
 echo "── Building FastAPI image..."
+cat > /tmp/cloudbuild-api.yaml <<YAML
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${API_IMAGE}', '-f', 'Dockerfile.fastapi', '.']
+images: ['${API_IMAGE}']
+YAML
 gcloud builds submit \
-  --tag "$API_IMAGE" \
+  --config /tmp/cloudbuild-api.yaml \
   --project "$PROJECT_ID" \
   --region "$REGION" \
-  --timeout=900 \
-  --gcs-log-dir="gs://run-sources-${PROJECT_ID}-${REGION}/logs" \
-  --dockerfile=Dockerfile.fastapi .
+  --timeout=900 .
 
 # ─────────────────────────────────────────────────────────────
 # 2. Deploy API service (backend — internal only, no public access)

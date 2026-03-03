@@ -1,9 +1,9 @@
 # ───────────────────────────────────────────────────────────
 # Multi-stage Dockerfile: Next.js (port 3000) + FastAPI (port 8000)
-# Uses supervisord to run both processes in a single container.
+# Uses entrypoint.sh to run both processes in a single container.
 # ───────────────────────────────────────────────────────────
 
-# --- Stage 1: Node.js dependencies (all deps needed for build) ---
+# --- Stage 1: Node.js dependencies ---
 FROM node:20-bookworm-slim AS node-deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
@@ -16,58 +16,49 @@ COPY --from=node-deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# --- Stage 3: Python dependencies ---
-FROM python:3.12-slim-bookworm AS python-deps
-WORKDIR /app
+# --- Stage 3: Python dependencies (venv on same base image for ABI compat) ---
+FROM mcr.microsoft.com/playwright/python:v1.49.1-noble AS python-deps
+WORKDIR /build
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir --target=/pylibs ".[dev]"
+RUN pip install --no-cache-dir ".[dev]"
 
 # --- Stage 4: Combined runner (Playwright base for browser support) ---
 FROM mcr.microsoft.com/playwright/python:v1.49.1-noble AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PYTHONPATH=/app:/pylibs
-ENV PATH="/pylibs/bin:$PATH"
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Install Node.js 20 + supervisord
+# Install Node.js 20
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl supervisor && \
+    apt-get install -y --no-install-recommends curl && \
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create app user (use high GID/UID to avoid conflicts with base image)
-RUN addgroup --system --gid 1099 appuser && \
-    adduser --system --uid 1099 --ingroup appuser appuser
-
-# Copy Python libraries
-COPY --from=python-deps /pylibs /pylibs
+# Copy Python venv (includes uvicorn binary + all deps)
+COPY --from=python-deps /opt/venv /opt/venv
 
 # Copy Next.js standalone build
 COPY --from=nextjs-builder /app/public ./public
-RUN mkdir -p .next && chown appuser:appuser .next
-COPY --from=nextjs-builder --chown=appuser:appuser /app/.next/standalone ./
-COPY --from=nextjs-builder --chown=appuser:appuser /app/.next/static ./.next/static
+RUN mkdir -p .next
+COPY --from=nextjs-builder /app/.next/standalone ./
+COPY --from=nextjs-builder /app/.next/static ./.next/static
 
 # Copy Python backend
-COPY --chown=appuser:appuser backend/ ./backend/
+COPY backend/ ./backend/
 
-# Copy supervisord config
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# Copy test runner scripts and pytest config
-COPY --chown=appuser:appuser scripts/ ./scripts/
-COPY --chown=appuser:appuser pyproject.toml ./
-
-# Copy .env.local if it exists (non-fatal if missing)
-COPY --chown=appuser:appuser .env.local* ./
-
-USER appuser
+# Copy entrypoint and supporting files
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
+COPY pyproject.toml ./
+COPY .env.local* ./
 
 # Cloud Run sends traffic to PORT (default 3000)
 EXPOSE 3000
 EXPOSE 8000
 ENV PORT=3000
 
-CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["./entrypoint.sh"]

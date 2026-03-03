@@ -5,9 +5,7 @@ set -euo pipefail
 # deploy.sh — Build & deploy Hephae Forge to Cloud Run
 #
 # Usage:
-#   ./deploy.sh               # Full build + deploy
-#   ./deploy.sh --build-only  # Just build the image, don't deploy
-#   ./deploy.sh --deploy-only # Just deploy (image must already exist)
+#   ./deploy.sh               # Build + deploy (source-based)
 #   ./deploy.sh --skip-checks # Skip prerequisite verification
 #
 # Prerequisites: run ./setup.sh first (or ./setup.sh --check-only to verify)
@@ -16,10 +14,6 @@ set -euo pipefail
 PROJECT_ID="hephae-co-dev"
 REGION="us-east1"
 SERVICE_NAME="hephae-forge"
-REPO="hephae-docker"
-IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${SERVICE_NAME}"
-TAG="${IMAGE}:$(git rev-parse --short HEAD)"
-LATEST="${IMAGE}:latest"
 SERVICE_ACCOUNT="hephae-forge@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # Cloud Run service config
@@ -33,14 +27,10 @@ PORT="3000"
 # ─────────────────────────────────────────────────────────────
 # Parse flags
 # ─────────────────────────────────────────────────────────────
-BUILD=true
-DEPLOY=true
 SKIP_CHECKS=false
 
 for arg in "$@"; do
   case $arg in
-    --build-only)   DEPLOY=false ;;
-    --deploy-only)  BUILD=false ;;
     --skip-checks)  SKIP_CHECKS=true ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
@@ -100,15 +90,6 @@ if ! $SKIP_CHECKS; then
     fi
   done
 
-  # Artifact Registry repo exists
-  if gcloud artifacts repositories describe "$REPO" \
-      --location="$REGION" --project="$PROJECT_ID" &>/dev/null; then
-    echo "  ✓ Artifact Registry: ${REPO}"
-  else
-    echo "  ✗ Artifact Registry repo missing: ${REPO}"
-    PREFLIGHT_FAIL=$((PREFLIGHT_FAIL + 1))
-  fi
-
   # Required APIs
   ENABLED_APIS=$(gcloud services list --enabled --format="value(config.name)" --project="$PROJECT_ID" 2>/dev/null)
   for api in "run.googleapis.com" "cloudbuild.googleapis.com" "artifactregistry.googleapis.com" "secretmanager.googleapis.com"; do
@@ -134,62 +115,36 @@ if ! $SKIP_CHECKS; then
 fi
 
 # ─────────────────────────────────────────────────────────────
-# Deploy banner
+# Deploy (source-based: build + deploy in one step)
 # ─────────────────────────────────────────────────────────────
 echo "──── Hephae Forge Deploy ─────────────────────"
 echo "  Project:  ${PROJECT_ID}"
 echo "  Region:   ${REGION}"
 echo "  Service:  ${SERVICE_NAME}"
-echo "  Image:    ${TAG}"
+echo "  Method:   source-based (gcloud run deploy --source .)"
 echo ""
 
-# ─────────────────────────────────────────────────────────────
-# 1. Build with Cloud Build
-# ─────────────────────────────────────────────────────────────
-if $BUILD; then
-  echo "── Building image via Cloud Build..."
-  gcloud builds submit \
-    --tag "$TAG" \
-    --project "$PROJECT_ID" \
-    --region "$REGION" \
-    --timeout=1200
+gcloud run deploy "$SERVICE_NAME" \
+  --source . \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --platform managed \
+  --port "$PORT" \
+  --memory "$MEMORY" \
+  --cpu "$CPU" \
+  --timeout "$TIMEOUT" \
+  --min-instances "$MIN_INSTANCES" \
+  --max-instances "$MAX_INSTANCES" \
+  --service-account "$SERVICE_ACCOUNT" \
+  --set-env-vars "NODE_ENV=production" \
+  --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,BLS_API_KEY=BLS_API_KEY:latest,FRED_API_KEY=FRED_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest" \
+  --allow-unauthenticated
 
-  # Also tag as :latest
-  echo "── Tagging as :latest..."
-  gcloud artifacts docker tags add "$TAG" "$LATEST" 2>/dev/null || true
-  echo "   ✓ Image built: ${TAG}"
-  echo ""
-fi
-
-# ─────────────────────────────────────────────────────────────
-# 2. Deploy to Cloud Run
-# ─────────────────────────────────────────────────────────────
-if $DEPLOY; then
-  echo "── Deploying to Cloud Run..."
-  gcloud run deploy "$SERVICE_NAME" \
-    --image "$LATEST" \
-    --project "$PROJECT_ID" \
-    --region "$REGION" \
-    --platform managed \
-    --port "$PORT" \
-    --memory "$MEMORY" \
-    --cpu "$CPU" \
-    --timeout "$TIMEOUT" \
-    --min-instances "$MIN_INSTANCES" \
-    --max-instances "$MAX_INSTANCES" \
-    --service-account "$SERVICE_ACCOUNT" \
-    --set-env-vars "NODE_ENV=production,CRAWL4AI_URL=http://localhost:11235,PYTHONPATH=/app:/pylibs" \
-    --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,BLS_API_KEY=BLS_API_KEY:latest,FRED_API_KEY=FRED_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest" \
-    --allow-unauthenticated
-
-  # Print the service URL
-  URL=$(gcloud run services describe "$SERVICE_NAME" \
-    --region "$REGION" --project "$PROJECT_ID" \
-    --format="value(status.url)")
-  echo ""
-  echo "══════════════════════════════════════════════"
-  echo "  ✓ Deployed: ${URL}"
-  echo "══════════════════════════════════════════════"
-  echo ""
-  echo "Next: update ADMIN_APP_API.md base URL with this URL."
-fi
+# Print the service URL
+URL=$(gcloud run services describe "$SERVICE_NAME" \
+  --region "$REGION" --project "$PROJECT_ID" \
+  --format="value(status.url)")
+echo ""
+echo "══════════════════════════════════════════════"
+echo "  ✓ Deployed: ${URL}"
+echo "══════════════════════════════════════════════"

@@ -2,36 +2,39 @@
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────
-# deploy.sh — Build & deploy Hephae Forge to Cloud Run
+# deploy.sh — Build & deploy Hephae Forge (2 Cloud Run services)
 #
 # Usage:
-#   ./deploy.sh               # Build + deploy (source-based)
+#   ./deploy.sh               # Build + deploy both services
 #   ./deploy.sh --skip-checks # Skip prerequisite verification
-#
-# Prerequisites: run ./setup.sh first (or ./setup.sh --check-only to verify)
 # ─────────────────────────────────────────────────────────────
 
 PROJECT_ID="hephae-co-dev"
 REGION="us-east1"
-SERVICE_NAME="hephae-forge"
+REPO="cloud-run-source-deploy"
+TAG=$(git rev-parse --short HEAD)
 SERVICE_ACCOUNT="hephae-forge@${PROJECT_ID}.iam.gserviceaccount.com"
 
-# Cloud Run service config
-MEMORY="2Gi"
-CPU="2"
+# Service names
+WEB_SERVICE="hephae-forge-web"
+API_SERVICE="hephae-forge-api"
+
+# Image names
+WEB_IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${WEB_SERVICE}:${TAG}"
+API_IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${API_SERVICE}:${TAG}"
+
+# Cloud Run config
+TIMEOUT="300"
 MAX_INSTANCES="5"
 MIN_INSTANCES="0"
-TIMEOUT="300"                                  # 5 min — agents can be slow
-PORT="3000"
 
 # ─────────────────────────────────────────────────────────────
 # Parse flags
 # ─────────────────────────────────────────────────────────────
 SKIP_CHECKS=false
-
 for arg in "$@"; do
   case $arg in
-    --skip-checks)  SKIP_CHECKS=true ;;
+    --skip-checks) SKIP_CHECKS=true ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
 done
@@ -43,29 +46,22 @@ if ! $SKIP_CHECKS; then
   echo "── Checking prerequisites... ──────────────────"
   PREFLIGHT_FAIL=0
 
-  # gcloud installed
   if ! command -v gcloud &>/dev/null; then
-    echo "  ✗ gcloud CLI not found. Install: https://cloud.google.com/sdk/docs/install"
-    exit 1
+    echo "  ✗ gcloud CLI not found"; exit 1
   fi
 
-  # Authenticated
   ACCOUNT=$(gcloud config get-value account 2>/dev/null)
   if [ -z "$ACCOUNT" ]; then
-    echo "  ✗ Not authenticated. Run: gcloud auth login"
-    exit 1
+    echo "  ✗ Not authenticated. Run: gcloud auth login"; exit 1
   fi
   echo "  ✓ Authenticated as: ${ACCOUNT}"
 
-  # Correct project
   CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null)
   if [ "$CURRENT_PROJECT" != "$PROJECT_ID" ]; then
-    echo "  ⚠ Switching project to ${PROJECT_ID}..."
     gcloud config set project "$PROJECT_ID" --quiet
   fi
   echo "  ✓ Project: ${PROJECT_ID}"
 
-  # Service account exists
   if gcloud iam service-accounts describe "$SERVICE_ACCOUNT" --project="$PROJECT_ID" &>/dev/null; then
     echo "  ✓ Service account: ${SERVICE_ACCOUNT}"
   else
@@ -73,41 +69,17 @@ if ! $SKIP_CHECKS; then
     PREFLIGHT_FAIL=$((PREFLIGHT_FAIL + 1))
   fi
 
-  # Required secrets exist with active versions
   for secret in "GEMINI_API_KEY" "BLS_API_KEY" "FRED_API_KEY" "GOOGLE_MAPS_API_KEY"; do
     if gcloud secrets describe "$secret" --project="$PROJECT_ID" &>/dev/null; then
-      VERSION_COUNT=$(gcloud secrets versions list "$secret" --project="$PROJECT_ID" \
-        --format="value(name)" --filter="state=ENABLED" 2>/dev/null | wc -l | tr -d ' ')
-      if [ "$VERSION_COUNT" -gt 0 ]; then
-        echo "  ✓ Secret: ${secret}"
-      else
-        echo "  ✗ Secret ${secret} exists but has no enabled versions"
-        PREFLIGHT_FAIL=$((PREFLIGHT_FAIL + 1))
-      fi
+      echo "  ✓ Secret: ${secret}"
     else
       echo "  ✗ Secret missing: ${secret}"
       PREFLIGHT_FAIL=$((PREFLIGHT_FAIL + 1))
     fi
   done
 
-  # Required APIs
-  ENABLED_APIS=$(gcloud services list --enabled --format="value(config.name)" --project="$PROJECT_ID" 2>/dev/null)
-  for api in "run.googleapis.com" "cloudbuild.googleapis.com" "artifactregistry.googleapis.com" "secretmanager.googleapis.com"; do
-    if echo "$ENABLED_APIS" | grep -q "^${api}$"; then
-      echo "  ✓ API: ${api}"
-    else
-      echo "  ✗ API not enabled: ${api}"
-      PREFLIGHT_FAIL=$((PREFLIGHT_FAIL + 1))
-    fi
-  done
-
-  echo ""
-
   if [ $PREFLIGHT_FAIL -gt 0 ]; then
-    echo "══════════════════════════════════════════════"
     echo "  ✗ ${PREFLIGHT_FAIL} prerequisite(s) missing."
-    echo "  Run ./setup.sh to fix, or --skip-checks to bypass."
-    echo "══════════════════════════════════════════════"
     exit 1
   fi
   echo "  All prerequisites met."
@@ -115,36 +87,91 @@ if ! $SKIP_CHECKS; then
 fi
 
 # ─────────────────────────────────────────────────────────────
-# Deploy (source-based: build + deploy in one step)
+# 1. Build both images
 # ─────────────────────────────────────────────────────────────
-echo "──── Hephae Forge Deploy ─────────────────────"
+echo "──── Hephae Forge Deploy (2-service) ────────────"
 echo "  Project:  ${PROJECT_ID}"
 echo "  Region:   ${REGION}"
-echo "  Service:  ${SERVICE_NAME}"
-echo "  Method:   source-based (gcloud run deploy --source .)"
+echo "  Web:      ${WEB_SERVICE} → ${WEB_IMAGE}"
+echo "  API:      ${API_SERVICE} → ${API_IMAGE}"
 echo ""
 
-gcloud run deploy "$SERVICE_NAME" \
-  --source . \
+echo "── Building Next.js image..."
+gcloud builds submit \
+  --tag "$WEB_IMAGE" \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --timeout=600 \
+  --gcs-log-dir="gs://run-sources-${PROJECT_ID}-${REGION}/logs" \
+  --dockerfile=Dockerfile.nextjs .
+
+echo "── Building FastAPI image..."
+gcloud builds submit \
+  --tag "$API_IMAGE" \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --timeout=900 \
+  --gcs-log-dir="gs://run-sources-${PROJECT_ID}-${REGION}/logs" \
+  --dockerfile=Dockerfile.fastapi .
+
+# ─────────────────────────────────────────────────────────────
+# 2. Deploy API service (backend — internal only, no public access)
+# ─────────────────────────────────────────────────────────────
+echo "── Deploying API service (${API_SERVICE})..."
+gcloud run deploy "$API_SERVICE" \
+  --image "$API_IMAGE" \
   --project "$PROJECT_ID" \
   --region "$REGION" \
   --platform managed \
-  --port "$PORT" \
-  --memory "$MEMORY" \
-  --cpu "$CPU" \
+  --port 8000 \
+  --memory 2Gi \
+  --cpu 2 \
   --timeout "$TIMEOUT" \
   --min-instances "$MIN_INSTANCES" \
   --max-instances "$MAX_INSTANCES" \
   --service-account "$SERVICE_ACCOUNT" \
-  --set-env-vars "NODE_ENV=production" \
+  --set-env-vars "PYTHONUNBUFFERED=1" \
   --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,BLS_API_KEY=BLS_API_KEY:latest,FRED_API_KEY=FRED_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest" \
-  --allow-unauthenticated
+  --no-allow-unauthenticated
 
-# Print the service URL
-URL=$(gcloud run services describe "$SERVICE_NAME" \
+# Get the API service URL for the frontend to use
+API_URL=$(gcloud run services describe "$API_SERVICE" \
   --region "$REGION" --project "$PROJECT_ID" \
   --format="value(status.url)")
+echo "   ✓ API deployed: ${API_URL}"
+
+# Grant the web service's SA permission to call the API service
+gcloud run services add-iam-policy-binding "$API_SERVICE" \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role="roles/run.invoker" 2>/dev/null || true
+
+# ─────────────────────────────────────────────────────────────
+# 3. Deploy Web service (frontend — public)
+# ─────────────────────────────────────────────────────────────
+echo "── Deploying Web service (${WEB_SERVICE})..."
+gcloud run deploy "$WEB_SERVICE" \
+  --image "$WEB_IMAGE" \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --platform managed \
+  --port 3000 \
+  --memory 512Mi \
+  --cpu 1 \
+  --timeout "$TIMEOUT" \
+  --min-instances "$MIN_INSTANCES" \
+  --max-instances "$MAX_INSTANCES" \
+  --service-account "$SERVICE_ACCOUNT" \
+  --set-env-vars "NODE_ENV=production,BACKEND_URL=${API_URL}" \
+  --allow-unauthenticated
+
+WEB_URL=$(gcloud run services describe "$WEB_SERVICE" \
+  --region "$REGION" --project "$PROJECT_ID" \
+  --format="value(status.url)")
+
 echo ""
 echo "══════════════════════════════════════════════"
-echo "  ✓ Deployed: ${URL}"
+echo "  ✓ Web:  ${WEB_URL}"
+echo "  ✓ API:  ${API_URL} (internal)"
 echo "══════════════════════════════════════════════"

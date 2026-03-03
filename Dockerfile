@@ -16,23 +16,24 @@ COPY --from=node-deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# --- Stage 3: Runner ---
-FROM python:3.12-slim-bookworm AS runner
+# --- Stage 3: Combined runner (Playwright base for browser + gRPC compat) ---
+FROM mcr.microsoft.com/playwright/python:v1.49.1-noble AS runner
 WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PYTHONUNBUFFERED=1
 
 # Install Node.js 20
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl gnupg && \
+    apt-get install -y --no-install-recommends curl && \
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps (standard pip — creates proper console scripts)
+# Install Python deps system-wide (--break-system-packages for PEP 668)
+# This creates proper console scripts (uvicorn, pytest, etc.) in PATH
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir ".[dev]"
-
-# Install Playwright Chromium + system deps (needed by 4 backend code paths)
-RUN playwright install --with-deps chromium
+RUN pip install --no-cache-dir --break-system-packages ".[dev]"
 
 # Copy Next.js standalone build
 COPY --from=nextjs-builder /app/public ./public
@@ -43,12 +44,11 @@ COPY --from=nextjs-builder /app/.next/static ./.next/static
 # Copy Python backend
 COPY backend/ ./backend/
 
-# Copy entrypoint and supporting files
+# Copy entrypoint
 COPY entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 COPY .env.local* ./
 
-ENV NODE_ENV=production
 EXPOSE 3000
 EXPOSE 8000
 ENV PORT=3000

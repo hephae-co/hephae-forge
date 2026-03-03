@@ -6,6 +6,10 @@ README.md
 .next
 .git
 mcp-servers
+.venv
+__pycache__
+.claude
+.pytest_cache
 
 # Secrets (User explicitly requested to include .env.local)
 # .env*.local

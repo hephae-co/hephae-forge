@@ -2,6 +2,11 @@
 .git
 .next
 node_modules
+.venv
+__pycache__
+mcp-servers
+.claude
+.pytest_cache
 
 # Allow specific env file
 !.env.local

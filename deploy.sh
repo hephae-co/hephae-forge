@@ -84,7 +84,7 @@ if ! $SKIP_CHECKS; then
   fi
 
   # Required secrets exist with active versions
-  for secret in "GEMINI_API_KEY" "BLS_API_KEY" "FRED_API_KEY"; do
+  for secret in "GEMINI_API_KEY" "BLS_API_KEY" "FRED_API_KEY" "GOOGLE_MAPS_API_KEY"; do
     if gcloud secrets describe "$secret" --project="$PROJECT_ID" &>/dev/null; then
       VERSION_COUNT=$(gcloud secrets versions list "$secret" --project="$PROJECT_ID" \
         --format="value(name)" --filter="state=ENABLED" 2>/dev/null | wc -l | tr -d ' ')
@@ -179,7 +179,7 @@ if $DEPLOY; then
     --max-instances "$MAX_INSTANCES" \
     --service-account "$SERVICE_ACCOUNT" \
     --set-env-vars "NODE_ENV=production,CRAWL4AI_URL=http://localhost:11235,PYTHONPATH=/app:/pylibs" \
-    --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,BLS_API_KEY=BLS_API_KEY:latest,FRED_API_KEY=FRED_API_KEY:latest" \
+    --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,BLS_API_KEY=BLS_API_KEY:latest,FRED_API_KEY=FRED_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest" \
     --allow-unauthenticated
 
   # Print the service URL

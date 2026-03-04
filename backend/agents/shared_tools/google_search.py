@@ -14,6 +14,7 @@ from google import genai
 from google.genai import types
 
 from backend.config import AgentModels
+from backend.lib.model_fallback import generate_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,9 @@ async def google_search(query: str) -> dict:
     try:
         logger.info(f"[GoogleSearchTool] Executing grounded query: {query}")
         client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
-        response = await client.aio.models.generate_content(
-            model=AgentModels.DEFAULT_FAST_MODEL,
+        response = await generate_with_fallback(
+            client,
+            model=AgentModels.PRIMARY_MODEL,
             contents=(
                 f"Search for: {query}\n\n"
                 "List ALL relevant URLs found in the search results with their full URLs. "

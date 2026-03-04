@@ -10,13 +10,14 @@ from fastapi.responses import JSONResponse
 
 from backend.agents.traffic_forecaster import ForecasterAgent
 from backend.agents.marketing_swarm import generate_and_draft_marketing_content
+from backend.types import ForecastResponse, V1Response
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-@router.post("/v1/traffic")
+@router.post("/v1/traffic", response_model=V1Response[ForecastResponse])
 async def v1_traffic(request: Request):
     try:
         body = await request.json()

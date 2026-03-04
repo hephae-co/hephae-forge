@@ -1,26 +1,21 @@
 """
-PlaywrightCrawlTool — comprehensive single-page scraper.
+Playwright shared tools — page scraping and screenshot capture.
 
-Launches one Playwright browser, navigates to the URL, scrolls to bottom,
-and extracts everything a discovery sub-agent could need:
-  - All links with text/aria-label
-  - Meta tags (og:image, theme-color, description)
-  - JSON-LD structured data
-  - Favicon chain
-  - Logo candidates
-  - Computed header/body background colors
-  - tel:/mailto: links
-  - Social link detection
-  - Delivery platform link detection
-  - Body text sample (first 5000 chars for persona detection)
-  - Menu page URL detection (if find_menu_link=True)
+crawl_web_page:
+  Comprehensive single-page scraper. Extracts links, meta tags, JSON-LD,
+  favicon, logo, colors, social links, delivery platforms, contact info,
+  and body text. Returns structured JSON — never binary/base64.
 
-Returns structured JSON — never binary/base64.
+screenshot_page:
+  Full-page JPEG screenshot + raw HTML capture. Returns base64-encoded
+  screenshot and HTML string.
+
 Port of src/agents/tools/playwrightTool.ts.
 """
 
 from __future__ import annotations
 
+import base64
 import logging
 from typing import Any
 from urllib.parse import urlparse
@@ -351,6 +346,65 @@ async def crawl_web_page(
             "bodyTextSample": "",
             "menuUrl": None,
         }
+    finally:
+        if browser:
+            await browser.close()
+
+
+# ---------------------------------------------------------------------------
+# Screenshot tool
+# ---------------------------------------------------------------------------
+
+_DEFAULT_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+)
+
+
+async def screenshot_page(
+    url: str,
+    quality: int = 55,
+    wait_seconds: float = 2.0,
+) -> dict[str, Any]:
+    """Take a full-page JPEG screenshot and capture raw HTML from a URL.
+
+    Args:
+        url: The page URL to screenshot.
+        quality: JPEG quality 1-100 (default 55 — good for GCS uploads).
+        wait_seconds: Extra seconds to wait after networkidle (default 2.0).
+
+    Returns:
+        dict with keys:
+          screenshot_base64: base64-encoded JPEG string (empty on failure).
+          html: raw HTML string (empty on failure).
+          error: error message string or None.
+    """
+    browser = None
+    try:
+        from playwright.async_api import async_playwright
+
+        logger.info(f"[ScreenshotTool] Capturing {url} (q={quality})...")
+        pw = await async_playwright().__aenter__()
+        browser = await pw.chromium.launch()
+        context = await browser.new_context(
+            ignore_https_errors=True,
+            user_agent=_DEFAULT_UA,
+        )
+        page = await context.new_page()
+        await page.goto(url, wait_until="networkidle", timeout=15000)
+        await page.wait_for_timeout(int(wait_seconds * 1000))
+
+        buf = await page.screenshot(full_page=True, type="jpeg", quality=quality)
+        html = await page.content()
+
+        b64 = base64.b64encode(buf).decode()
+        logger.info(f"[ScreenshotTool] Done: {len(buf) // 1024}KB screenshot, {len(html)} chars HTML")
+
+        return {"screenshot_base64": b64, "html": html, "error": None}
+
+    except Exception as exc:
+        logger.warning(f"[ScreenshotTool] Failed for {url}: {exc}")
+        return {"screenshot_base64": "", "html": "", "error": str(exc)}
     finally:
         if browser:
             await browser.close()

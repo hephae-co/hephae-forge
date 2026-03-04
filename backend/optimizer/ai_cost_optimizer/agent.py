@@ -8,6 +8,7 @@ from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.tools import FunctionTool
 
 from backend.config import AgentModels
+from backend.lib.model_fallback import fallback_on_error
 from backend.optimizer.ai_cost_optimizer.prompts import (
     MODEL_USAGE_ANALYZER_INSTRUCTION,
     TOKEN_ANALYZER_INSTRUCTION,
@@ -44,26 +45,29 @@ def _with_prior_data(base_instruction: str, *keys: str):
 
 model_usage_analyzer = LlmAgent(
     name="ModelUsageAnalyzer",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=MODEL_USAGE_ANALYZER_INSTRUCTION,
     tools=[scan_agent_configs_tool],
     output_key="modelUsageReport",
+    on_model_error_callback=fallback_on_error,
 )
 
 token_analyzer = LlmAgent(
     name="TokenAnalyzer",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=_with_prior_data(TOKEN_ANALYZER_INSTRUCTION, "modelUsageReport"),
     tools=[estimate_token_usage_tool],
     output_key="tokenAnalysis",
+    on_model_error_callback=fallback_on_error,
 )
 
 cost_recommender = LlmAgent(
     name="CostRecommender",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=_with_prior_data(COST_RECOMMENDER_INSTRUCTION, "modelUsageReport", "tokenAnalysis"),
     tools=[calculate_cost_savings_tool],
     output_key="aiCostRecommendations",
+    on_model_error_callback=fallback_on_error,
 )
 
 ai_cost_optimization_pipeline = SequentialAgent(

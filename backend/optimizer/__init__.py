@@ -1,11 +1,13 @@
 """
-Optimizer module — meta-agents that analyze the codebase for optimization opportunities.
+DEPRECATED — This module is superseded by the standalone `hephae-optimizer` MCP server.
 
-Four optimizer pipelines:
-  1. Prompt Optimizer — improves agent prompts via Vertex AI Prompt Optimizer
-  2. AI Cost Optimizer — recommends cheaper models and token reduction
-  3. Cloud Cost Optimizer — analyzes GCS/Firestore/BQ usage patterns
-  4. Performance Optimizer — identifies pipeline bottlenecks and concurrency improvements
+Use `hephae-optimizer` instead:
+  - Location: /Users/sarthak/Desktop/hephae/hephae-optimizer/
+  - Install: pip install -e /Users/sarthak/Desktop/hephae/hephae-optimizer/
+  - MCP config: .mcp.json at project root
+  - Works on any Python project (AST-based scanning, no importlib)
+
+This module is kept for backward compatibility but will be removed in a future release.
 """
 
 from backend.optimizer.orchestrator import run_optimizer

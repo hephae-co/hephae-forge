@@ -29,6 +29,7 @@ from backend.lib.report_templates import build_margin_report
 from backend.lib.db import write_agent_result, enrich_identity
 from backend.config import AgentVersions
 from backend.lib.adk_helpers import user_msg, user_msg_with_image
+from backend.types import SurgicalReport as SurgicalReportModel
 
 logger = logging.getLogger(__name__)
 
@@ -41,36 +42,13 @@ def _clean_json(text: str) -> str:
 
 async def _scrape_menu_screenshot(official_url: str) -> str | None:
     """Scrape a full-page JPEG screenshot of the menu page."""
-    try:
-        from playwright.async_api import async_playwright
+    from backend.agents.shared_tools import screenshot_page
 
-        logger.info(f"[scrapeMenuScreenshot] Crawling {official_url}...")
-        async with async_playwright() as pw:
-            browser = await pw.chromium.launch()
-            context = await browser.new_context(
-                ignore_https_errors=True,
-                user_agent=(
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                ),
-            )
-            page = await context.new_page()
-            await page.goto(official_url, wait_until="networkidle", timeout=15000)
-            await page.wait_for_timeout(2500)
-            buf = await page.screenshot(full_page=True, type="jpeg", quality=55)
-            await browser.close()
-
-        import base64
-
-        b64 = base64.b64encode(buf).decode()
-        logger.info(f"[scrapeMenuScreenshot] Screenshot captured ({len(buf) // 1024}KB)")
-        return b64
-    except Exception as exc:
-        logger.error(f"[scrapeMenuScreenshot] Failed: {exc}")
-        return None
+    result = await screenshot_page(official_url)
+    return result.get("screenshot_base64") or None
 
 
-@router.post("/analyze")
+@router.post("/analyze", response_model=SurgicalReportModel)
 async def analyze(request: Request):
     try:
         body = await request.json()

@@ -73,10 +73,16 @@ Always parse and store `zipCode` as an explicit top-level field — never derive
 The `businesses/{slug}` top-level document must never contain arrays that grow over time (no `reports[]`, no `analyses[]`). All historical data lives in BigQuery. Firestore stores only current state via `latestOutputs.{agentName}` map keys.
 
 ### Keep `ADMIN_APP_API.md` in sync
-`ADMIN_APP_API.md` is the external contract for the Hephae Admin App. When you change any of the following, you MUST update `ADMIN_APP_API.md` in the same commit:
-- API request/response shapes (any route under `src/app/api/`)
+`ADMIN_APP_API.md` is the external contract for the Hephae Admin App.
+
+**Automated enforcement:**
+- All API routes have `response_model=` in their FastAPI decorators, making `/api/openapi.json` the programmatic source of truth.
+- `backend/tests/unit/test_api_doc_sync.py` verifies every POST route has a response schema and all key models appear in OpenAPI.
+- Run `python scripts/sync-api-doc.py` to auto-update the API Endpoints and Core TypeScript Interfaces sections from the OpenAPI spec.
+- Run `python scripts/sync-api-doc.py --check` in CI to detect staleness.
+
+**Manual sections** (update in the same commit when changed):
 - Firestore document schema (`businesses/{slug}`, `hub_searches/{id}`)
 - BigQuery table columns (`analyses`, `discoveries`, `interactions`)
-- TypeScript interfaces in `src/agents/types.ts` or `src/lib/types.ts`
-- Agent registry entries or version keys in `src/agents/config.ts`
-- GCS path conventions in `src/lib/reportStorage.ts`
+- Agent registry entries or version keys in `backend/config.py`
+- GCS path conventions in `backend/lib/report_storage.py`

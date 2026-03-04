@@ -79,7 +79,7 @@ class TestScanAgentConfigs:
     @pytest.mark.asyncio
     async def test_has_model_distribution(self):
         result = await scan_agent_configs()
-        assert "gemini-2.5-flash" in result["model_distribution"]
+        assert "gemini-3.1-flash-lite-preview" in result["model_distribution"]
 
     @pytest.mark.asyncio
     async def test_agent_entry_shape(self):
@@ -113,7 +113,7 @@ class TestCalculateCostSavings:
     @pytest.mark.asyncio
     async def test_flash_to_lite_savings(self):
         result = await calculate_cost_savings(
-            "gemini-2.5-flash", "gemini-2.5-flash-lite",
+            "gemini-2.5-flash", "gemini-2.5-flash-lite",  # fallback models still in pricing
             100, 1000, 500,
         )
         assert result["savings_usd"] > 0
@@ -121,12 +121,12 @@ class TestCalculateCostSavings:
         assert result["proposed_cost_usd"] < result["current_cost_usd"]
 
     @pytest.mark.asyncio
-    async def test_pro_to_flash_savings(self):
+    async def test_enhanced_to_primary_savings(self):
         result = await calculate_cost_savings(
-            "gemini-2.5-pro", "gemini-2.5-flash",
+            "gemini-3.0-flash-preview", "gemini-3.1-flash-lite-preview",
             50, 5000, 2000,
         )
-        assert result["savings_pct"] > 50  # Pro is much more expensive
+        assert result["savings_pct"] > 50  # Enhanced is more expensive than primary
 
     @pytest.mark.asyncio
     async def test_zero_calls_zero_cost(self):

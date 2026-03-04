@@ -20,13 +20,14 @@ from backend.agents.competitive_analysis import (
 )
 from backend.agents.marketing_swarm import generate_and_draft_marketing_content
 from backend.lib.adk_helpers import user_msg
+from backend.types import CompetitiveReport, V1Response
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-@router.post("/v1/competitive")
+@router.post("/v1/competitive", response_model=V1Response[CompetitiveReport])
 async def v1_competitive(request: Request):
     try:
         body = await request.json()

@@ -4,9 +4,11 @@ Pydantic v2 models — mirrors src/agents/types.ts + src/lib/types.ts.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel, Field
+
+T = TypeVar("T")
 
 
 # ---------------------------------------------------------------------------
@@ -47,6 +49,66 @@ class Competitor(BaseModel):
     reason: Optional[str] = None
 
 
+class NewsItem(BaseModel):
+    title: str
+    url: str
+    source: str
+    date: Optional[str] = None
+    snippet: Optional[str] = None
+
+
+class ValidationReport(BaseModel):
+    total_urls_checked: int = Field(alias="totalUrlsChecked", default=0)
+    valid: int = 0
+    invalid: int = 0
+    corrected: int = 0
+
+    model_config = {"populate_by_name": True}
+
+
+class SocialPlatformMetrics(BaseModel):
+    url: Optional[str] = None
+    username: Optional[str] = None
+    page_name: Optional[str] = Field(None, alias="pageName")
+    follower_count: Optional[int] = Field(None, alias="followerCount")
+    following_count: Optional[int] = Field(None, alias="followingCount")
+    post_count: Optional[int] = Field(None, alias="postCount")
+    video_count: Optional[int] = Field(None, alias="videoCount")
+    like_count: Optional[int] = Field(None, alias="likeCount")
+    rating: Optional[float] = None
+    review_count: Optional[int] = Field(None, alias="reviewCount")
+    price_range: Optional[str] = Field(None, alias="priceRange")
+    categories: Optional[list[str]] = None
+    bio: Optional[str] = None
+    is_verified: Optional[bool] = Field(None, alias="isVerified")
+    claimed_by_owner: Optional[bool] = Field(None, alias="claimedByOwner")
+    last_post_recency: Optional[str] = Field(None, alias="lastPostRecency")
+    engagement_indicator: Optional[str] = Field(None, alias="engagementIndicator")
+    error: Optional[str] = None
+
+    model_config = {"populate_by_name": True}
+
+
+class SocialProfileSummary(BaseModel):
+    total_followers: int = Field(alias="totalFollowers", default=0)
+    strongest_platform: str = Field(alias="strongestPlatform", default="")
+    weakest_platform: str = Field(alias="weakestPlatform", default="")
+    overall_presence_score: float = Field(alias="overallPresenceScore", default=0)
+    posting_frequency: str = Field(alias="postingFrequency", default="unknown")
+    recommendation: str = ""
+
+    model_config = {"populate_by_name": True}
+
+
+class SocialProfileMetrics(BaseModel):
+    instagram: Optional[SocialPlatformMetrics] = None
+    facebook: Optional[SocialPlatformMetrics] = None
+    twitter: Optional[SocialPlatformMetrics] = None
+    tiktok: Optional[SocialPlatformMetrics] = None
+    yelp: Optional[SocialPlatformMetrics] = None
+    summary: Optional[SocialProfileSummary] = None
+
+
 class EnrichedProfile(BaseIdentity):
     primary_color: Optional[str] = Field(None, alias="primaryColor")
     secondary_color: Optional[str] = Field(None, alias="secondaryColor")
@@ -55,12 +117,18 @@ class EnrichedProfile(BaseIdentity):
     persona: Optional[str] = None
     menu_url: Optional[str] = Field(None, alias="menuUrl")
     menu_screenshot_base64: Optional[str] = Field(None, alias="menuScreenshotBase64")
+    menu_screenshot_url: Optional[str] = Field(None, alias="menuScreenshotUrl")
+    menu_html_url: Optional[str] = Field(None, alias="menuHtmlUrl")
     social_links: Optional[SocialLinks] = Field(None, alias="socialLinks")
     phone: Optional[str] = None
     email: Optional[str] = None
     hours: Optional[str] = None
     google_maps_url: Optional[str] = Field(None, alias="googleMapsUrl")
     competitors: Optional[list[Competitor]] = None
+    news: Optional[list[NewsItem]] = None
+    social_profile_metrics: Optional[SocialProfileMetrics] = Field(None, alias="socialProfileMetrics")
+    validation_report: Optional[ValidationReport] = Field(None, alias="validationReport")
+    report_url: Optional[str] = Field(None, alias="reportUrl")
     debug_error: Optional[str] = Field(None, alias="_debugError")
 
 
@@ -121,6 +189,9 @@ class SurgicalReport(BaseModel):
     strategic_advice: list[str]
     overall_score: float
     generated_at: str
+    report_url: Optional[str] = Field(None, alias="reportUrl")
+
+    model_config = {"populate_by_name": True}
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +232,7 @@ class SeoReport(BaseModel):
     summary: str = ""
     url: str = ""
     sections: list[AuditSection] = Field(default_factory=list)
+    report_url: Optional[str] = Field(None, alias="reportUrl")
 
     model_config = {"populate_by_name": True}
 
@@ -198,5 +270,56 @@ class ForecastResponse(BaseModel):
     business_name: str = Field(alias="businessName", default="")
     forecast: list[ForecastDay] = Field(default_factory=list)
     summary: Optional[str] = None
+    report_url: Optional[str] = Field(None, alias="reportUrl")
 
     model_config = {"populate_by_name": True}
+
+
+# ---------------------------------------------------------------------------
+# Chat types
+# ---------------------------------------------------------------------------
+
+
+class ChatResponse(BaseModel):
+    role: str = "model"
+    text: str = ""
+    trigger_capability_handoff: Optional[bool] = Field(None, alias="triggerCapabilityHandoff")
+    located_business: Optional[BaseIdentity] = Field(None, alias="locatedBusiness")
+
+    model_config = {"populate_by_name": True}
+
+
+# ---------------------------------------------------------------------------
+# Competitive Analysis types
+# ---------------------------------------------------------------------------
+
+
+class CompetitiveReport(BaseModel):
+    market_summary: str = Field(alias="market_summary", default="")
+    competitors: list[dict] = Field(default_factory=list)
+    recommendations: list[dict] = Field(default_factory=list)
+    report_url: Optional[str] = Field(None, alias="reportUrl")
+
+    model_config = {"populate_by_name": True}
+
+
+# ---------------------------------------------------------------------------
+# Marketing Swarm types
+# ---------------------------------------------------------------------------
+
+
+class MarketingReport(BaseModel):
+    summary: str = ""
+    report_url: Optional[str] = Field(None, alias="reportUrl")
+
+    model_config = {"populate_by_name": True, "extra": "allow"}
+
+
+# ---------------------------------------------------------------------------
+# V1 API envelope
+# ---------------------------------------------------------------------------
+
+
+class V1Response(BaseModel, Generic[T]):
+    success: bool = True
+    data: T

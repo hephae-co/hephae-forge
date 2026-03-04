@@ -17,6 +17,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
 from backend.config import AgentModels
+from backend.lib.model_fallback import fallback_on_error
 from backend.agents.marketing_swarm.prompts import (
     CREATIVE_DIRECTOR_INSTRUCTION,
     PLATFORM_ROUTER_INSTRUCTION,
@@ -33,30 +34,34 @@ logger = logging.getLogger(__name__)
 
 creative_director_agent = LlmAgent(
     name="CreativeDirectorAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=CREATIVE_DIRECTOR_INSTRUCTION,
     output_key="creativeDirection",
+    on_model_error_callback=fallback_on_error,
 )
 
 platform_router_agent = LlmAgent(
     name="PlatformRouterAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=PLATFORM_ROUTER_INSTRUCTION,
     output_key="platformDecision",
+    on_model_error_callback=fallback_on_error,
 )
 
 instagram_copywriter_agent = LlmAgent(
     name="InstagramCopywriterAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=INSTAGRAM_COPYWRITER_INSTRUCTION,
     output_key="instagramDraft",
+    on_model_error_callback=fallback_on_error,
 )
 
 blog_copywriter_agent = LlmAgent(
     name="BlogCopywriterAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=BLOG_COPYWRITER_INSTRUCTION,
     output_key="blogDraft",
+    on_model_error_callback=fallback_on_error,
 )
 
 

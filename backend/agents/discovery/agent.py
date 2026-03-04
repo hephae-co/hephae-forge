@@ -15,7 +15,8 @@ import json
 
 from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 
-from backend.config import AgentModels
+from backend.config import AgentModels, ThinkingPresets
+from backend.lib.model_fallback import fallback_on_error
 from backend.agents.shared_tools import (
     google_search_tool,
     playwright_tool,
@@ -76,10 +77,11 @@ def _with_social_urls(base_instruction: str):
 
 site_crawler_agent = LlmAgent(
     name="SiteCrawlerAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=SITE_CRAWLER_INSTRUCTION,
     tools=[playwright_tool, crawl4ai_tool, crawl4ai_advanced_tool, crawl4ai_deep_tool],
     output_key="rawSiteData",
+    on_model_error_callback=fallback_on_error,
 )
 
 # ---------------------------------------------------------------------------
@@ -88,58 +90,66 @@ site_crawler_agent = LlmAgent(
 
 theme_agent = LlmAgent(
     name="ThemeAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(THEME_AGENT_INSTRUCTION),
     tools=[google_search_tool],
     output_key="themeData",
+    on_model_error_callback=fallback_on_error,
 )
 
 contact_agent = LlmAgent(
     name="ContactAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(CONTACT_AGENT_INSTRUCTION),
     tools=[google_search_tool],
     output_key="contactData",
+    on_model_error_callback=fallback_on_error,
 )
 
 social_media_agent = LlmAgent(
     name="SocialMediaAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(SOCIAL_MEDIA_AGENT_INSTRUCTION),
     tools=[google_search_tool],
     output_key="socialData",
+    on_model_error_callback=fallback_on_error,
 )
 
 menu_agent = LlmAgent(
     name="MenuAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(MENU_AGENT_INSTRUCTION),
     tools=[playwright_tool, crawl4ai_advanced_tool, crawl4ai_deep_tool],
     output_key="menuData",
+    on_model_error_callback=fallback_on_error,
 )
 
 maps_agent = LlmAgent(
     name="MapsAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(MAPS_AGENT_INSTRUCTION),
     tools=[google_search_tool],
     output_key="mapsData",
+    on_model_error_callback=fallback_on_error,
 )
 
 competitor_agent = LlmAgent(
     name="CompetitorAgent",
-    model=AgentModels.DEEP_ANALYST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
+    generate_content_config=ThinkingPresets.HIGH,
     instruction=_with_raw_data(COMPETITOR_AGENT_INSTRUCTION),
     tools=[google_search_tool, crawl4ai_tool, crawl4ai_advanced_tool],
     output_key="competitorData",
+    on_model_error_callback=fallback_on_error,
 )
 
 news_agent = LlmAgent(
     name="NewsAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(NEWS_AGENT_INSTRUCTION),
     tools=[google_search_tool],
     output_key="newsData",
+    on_model_error_callback=fallback_on_error,
 )
 
 # ---------------------------------------------------------------------------
@@ -158,10 +168,11 @@ discovery_fan_out = ParallelAgent(
 
 social_profiler_agent = LlmAgent(
     name="SocialProfilerAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=_with_social_urls(SOCIAL_PROFILER_INSTRUCTION),
     tools=[crawl4ai_advanced_tool],
     output_key="socialProfileMetrics",
+    on_model_error_callback=fallback_on_error,
 )
 
 
@@ -201,10 +212,11 @@ def _with_all_discovery_data(base_instruction: str):
 
 discovery_reviewer_agent = LlmAgent(
     name="DiscoveryReviewerAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=_with_all_discovery_data(DISCOVERY_REVIEWER_INSTRUCTION),
     tools=[validate_url_tool, google_search_tool],
     output_key="reviewerData",
+    on_model_error_callback=fallback_on_error,
 )
 
 

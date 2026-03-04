@@ -1,8 +1,8 @@
 
 import { ChartPie, Search, Zap, LayoutTemplate, FileText } from 'lucide-react';
 
-export const GEMINI_FLASH_MODEL = 'gemini-3-flash-preview';
-export const GEMINI_PRO_MODEL = 'gemini-3-pro-preview';
+export const GEMINI_FLASH_MODEL = 'gemini-3.1-flash-lite-preview';
+export const GEMINI_PRO_MODEL = 'gemini-3.0-flash-preview';
 
 export const SCAN_CATEGORIES = [
   { id: 'technical', title: 'Technical SEO' },
@@ -71,8 +71,8 @@ export const LOADING_THOUGHTS: Record<string, string[]> = {
     "Checking internal linking structure..."
   ],
   general: [
-    "Initializing Gemini 3 Pro model...",
-    "Allocating 10k token thinking budget...",
+    "Initializing Gemini 3.1 Flash Lite model...",
+    "Configuring thinking level...",
     "Connecting to Google Search grounding...",
     "Synthesizing audit findings...",
     "Generating actionable recommendations...",

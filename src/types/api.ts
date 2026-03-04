@@ -18,6 +18,21 @@ export interface BaseIdentity {
     officialUrl: string;
 }
 
+export interface NewsItem {
+    title: string;
+    url: string;
+    source: string;
+    date?: string;
+    snippet?: string;
+}
+
+export interface ValidationReport {
+    totalUrlsChecked: number;
+    valid: number;
+    invalid: number;
+    corrected: number;
+}
+
 export interface EnrichedProfile extends BaseIdentity {
     primaryColor?: string;
     secondaryColor?: string;
@@ -26,6 +41,8 @@ export interface EnrichedProfile extends BaseIdentity {
     persona?: string;
     menuUrl?: string;
     menuScreenshotBase64?: string;
+    menuScreenshotUrl?: string;
+    menuHtmlUrl?: string;
     socialLinks?: {
         instagram?: string;
         facebook?: string;
@@ -47,7 +64,10 @@ export interface EnrichedProfile extends BaseIdentity {
         url: string;
         reason?: string;
     }[];
+    news?: NewsItem[];
     socialProfileMetrics?: SocialProfileMetrics;
+    validationReport?: ValidationReport;
+    reportUrl?: string;
     _debugError?: string;
 }
 

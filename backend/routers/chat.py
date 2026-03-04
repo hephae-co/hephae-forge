@@ -12,13 +12,15 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from backend.agents.discovery import LocatorAgent
+from backend.config import AgentModels
+from backend.types import ChatResponse as ChatResponseModel
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-@router.post("/chat")
+@router.post("/chat", response_model=ChatResponseModel)
 async def chat(request: Request):
     try:
         body = await request.json()
@@ -91,7 +93,7 @@ async def chat(request: Request):
             history.pop(0)
 
         chat_session = client.chats.create(
-            model="gemini-2.5-flash",
+            model=AgentModels.PRIMARY_MODEL,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 tools=[locate_tool],

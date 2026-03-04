@@ -42,7 +42,7 @@ class TestPromptOptimizerAgentConfig:
         assert prompt_optimizer_agent.name == "PromptOptimizerAgent"
 
     def test_agent_model(self):
-        assert prompt_optimizer_agent.model == AgentModels.DEEP_ANALYST_MODEL
+        assert prompt_optimizer_agent.model == AgentModels.PRIMARY_MODEL
 
     def test_agent_output_key(self):
         assert prompt_optimizer_agent.output_key == "promptOptimizationResults"

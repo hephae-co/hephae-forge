@@ -19,6 +19,7 @@ from google.genai import types
 import httpx
 
 from backend.config import AgentModels
+from backend.lib.model_fallback import generate_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +89,9 @@ Return ONLY a valid JSON object with the following keys:
 - "lng": numerical longitude
 Do not include any markdown, explanations, or quotes outside the JSON."""
 
-        result = await client.aio.models.generate_content(
-            model=AgentModels.DEFAULT_FAST_MODEL,
+        result = await generate_with_fallback(
+            client,
+            model=AgentModels.PRIMARY_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
                 tools=[types.Tool(google_search=types.GoogleSearch())],

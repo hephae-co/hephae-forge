@@ -7,7 +7,7 @@
 #   ./scripts/trigger-cloud-tests.sh --status   # check last execution
 #
 # Prerequisites:
-#   1. Deploy the app:        ./deploy.sh
+#   1. Deploy the app:        ./infra/deploy.sh
 #   2. Create the test job:   ./scripts/deploy-test-job.sh
 # ──────────────────────────────────────────────────────────────
 set -euo pipefail

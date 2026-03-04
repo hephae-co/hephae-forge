@@ -8,6 +8,7 @@ from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 from google.adk.tools import FunctionTool
 
 from backend.config import AgentModels
+from backend.lib.model_fallback import fallback_on_error
 from backend.optimizer.cloud_cost_optimizer.prompts import (
     STORAGE_ANALYZER_INSTRUCTION,
     FIRESTORE_ANALYZER_INSTRUCTION,
@@ -47,26 +48,29 @@ def _with_all_cloud_data(base_instruction: str):
 
 storage_analyzer = LlmAgent(
     name="StorageAnalyzer",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=STORAGE_ANALYZER_INSTRUCTION,
     tools=[analyze_gcs_usage_tool],
     output_key="gcsAnalysis",
+    on_model_error_callback=fallback_on_error,
 )
 
 firestore_analyzer = LlmAgent(
     name="FirestoreAnalyzer",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=FIRESTORE_ANALYZER_INSTRUCTION,
     tools=[analyze_firestore_patterns_tool],
     output_key="firestoreAnalysis",
+    on_model_error_callback=fallback_on_error,
 )
 
 bq_analyzer = LlmAgent(
     name="BigQueryAnalyzer",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=BQ_ANALYZER_INSTRUCTION,
     tools=[analyze_bq_usage_tool],
     output_key="bqAnalysis",
+    on_model_error_callback=fallback_on_error,
 )
 
 cloud_analysis_fan_out = ParallelAgent(
@@ -77,10 +81,11 @@ cloud_analysis_fan_out = ParallelAgent(
 
 cloud_recommender = LlmAgent(
     name="CloudCostRecommender",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=_with_all_cloud_data(CLOUD_RECOMMENDER_INSTRUCTION),
     tools=[estimate_cloud_costs_tool],
     output_key="cloudCostRecommendations",
+    on_model_error_callback=fallback_on_error,
 )
 
 cloud_cost_optimization_pipeline = SequentialAgent(

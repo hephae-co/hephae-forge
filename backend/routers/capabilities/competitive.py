@@ -24,13 +24,14 @@ from backend.lib.report_templates import build_competitive_report
 from backend.lib.db import write_agent_result, enrich_identity
 from backend.config import AgentVersions
 from backend.lib.adk_helpers import user_msg
+from backend.types import CompetitiveReport as CompetitiveReportModel
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-@router.post("/capabilities/competitive")
+@router.post("/capabilities/competitive", response_model=CompetitiveReportModel)
 async def capabilities_competitive(request: Request):
     try:
         body = await request.json()

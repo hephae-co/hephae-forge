@@ -20,6 +20,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
 from backend.config import AgentModels
+from backend.lib.model_fallback import fallback_on_error, generate_with_fallback
 from backend.agents.shared_tools import google_search_tool
 from backend.agents.traffic_forecaster.prompts import (
     POI_GATHERER_INSTRUCTION,
@@ -34,26 +35,29 @@ logger = logging.getLogger(__name__)
 # Sub-agents
 poi_gatherer = LlmAgent(
     name="PoiGatherer",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=POI_GATHERER_INSTRUCTION,
     tools=[google_search_tool],
     output_key="poiDetails",
+    on_model_error_callback=fallback_on_error,
 )
 
 weather_gatherer = LlmAgent(
     name="WeatherGatherer",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=WEATHER_GATHERER_INSTRUCTION,
     tools=[weather_tool, google_search_tool],
     output_key="weatherData",
+    on_model_error_callback=fallback_on_error,
 )
 
 events_gatherer = LlmAgent(
     name="EventsGatherer",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=EVENTS_GATHERER_INSTRUCTION,
     tools=[google_search_tool],
     output_key="eventsData",
+    on_model_error_callback=fallback_on_error,
 )
 
 context_gathering_pipeline = ParallelAgent(
@@ -174,8 +178,9 @@ class ForecasterAgent:
       }}
     """
 
-        response = await synthesis_client.aio.models.generate_content(
-            model=AgentModels.DEFAULT_FAST_MODEL,
+        response = await generate_with_fallback(
+            synthesis_client,
+            model=AgentModels.PRIMARY_MODEL,
             contents=analyst_prompt,
             config=genai_types.GenerateContentConfig(
                 system_instruction="You are an expert Local Foot Traffic Forecaster generating strict JSON based on Intelligence Data.",

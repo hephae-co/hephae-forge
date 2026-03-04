@@ -183,7 +183,7 @@ async def compare_prompt_quality(
 
         client = genai.Client(api_key=api_key)
         response = await client.aio.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.1-flash-lite-preview",
             contents=(
                 f"Compare these two agent prompts and assess the optimization quality.\n\n"
                 f"ORIGINAL PROMPT ({prompt_name}):\n{original[:3000]}\n\n"

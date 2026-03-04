@@ -8,11 +8,15 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Gemini pricing per 1M tokens (as of 2025)
+# Gemini pricing per 1M tokens (as of March 2026)
 MODEL_PRICING: dict[str, dict[str, float]] = {
-    "gemini-2.5-flash": {"input": 0.075, "output": 0.30},
-    "gemini-2.5-pro": {"input": 1.25, "output": 5.00},
+    # Active models
+    "gemini-3.1-flash-lite-preview": {"input": 0.01, "output": 0.04},
+    "gemini-3.0-flash-preview": {"input": 0.05, "output": 0.20},
+    # Fallback models
     "gemini-2.5-flash-lite": {"input": 0.01875, "output": 0.075},
+    "gemini-2.5-flash": {"input": 0.075, "output": 0.30},
+    # Vision
     "gemini-3-pro-image-preview": {"input": 1.25, "output": 5.00},
 }
 

@@ -15,13 +15,14 @@ from fastapi.responses import JSONResponse
 from backend.agents.discovery import LocatorAgent, discovery_pipeline
 from backend.lib.firebase import db
 from backend.lib.adk_helpers import user_msg
+from backend.types import EnrichedProfile, V1Response
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-@router.post("/v1/discover")
+@router.post("/v1/discover", response_model=V1Response[EnrichedProfile])
 async def v1_discover(request: Request):
     try:
         body = await request.json()

@@ -9,8 +9,8 @@ set -euo pipefail
 # verify that all prerequisites are in place.
 #
 # Usage:
-#   ./setup.sh                    # Interactive — prompts for secret values
-#   ./setup.sh --check-only       # Just verify prerequisites, don't create anything
+#   ./infra/setup.sh                    # Interactive — prompts for secret values
+#   ./infra/setup.sh --check-only       # Just verify prerequisites, don't create anything
 # ─────────────────────────────────────────────────────────────
 
 PROJECT_ID="hephae-co-dev"
@@ -316,12 +316,12 @@ if [ $FAIL -eq 0 ]; then
   echo "  ✓ All prerequisites met! (${PASS} checks passed, ${CREATED} resources created)"
   echo ""
   echo "  Ready to deploy:"
-  echo "    ./deploy.sh"
+  echo "    ./infra/deploy.sh"
 else
   echo "  ${PASS} passed, ${FAIL} failed, ${CREATED} created"
   echo ""
   echo "  Fix the failures above, then re-run:"
-  echo "    ./setup.sh"
+  echo "    ./infra/setup.sh"
 fi
 echo "══════════════════════════════════════════════"
 echo ""

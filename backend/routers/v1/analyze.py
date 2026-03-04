@@ -24,6 +24,7 @@ from backend.agents.margin_analyzer import (
 )
 from backend.agents.marketing_swarm import generate_and_draft_marketing_content
 from backend.lib.adk_helpers import user_msg
+from backend.types import SurgicalReport, V1Response
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def _clean(text: str) -> str:
     return re.sub(r"```json\s*|\s*```", "", text).strip()
 
 
-@router.post("/v1/analyze")
+@router.post("/v1/analyze", response_model=V1Response[SurgicalReport])
 async def v1_analyze(request: Request):
     try:
         body = await request.json()

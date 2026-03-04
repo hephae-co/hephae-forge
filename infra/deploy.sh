@@ -5,8 +5,8 @@ set -euo pipefail
 # deploy.sh — Build & deploy Hephae Forge (2 Cloud Run services)
 #
 # Usage:
-#   ./deploy.sh               # Build + deploy both services
-#   ./deploy.sh --skip-checks # Skip prerequisite verification
+#   ./infra/deploy.sh               # Build + deploy both services
+#   ./infra/deploy.sh --skip-checks # Skip prerequisite verification
 # ─────────────────────────────────────────────────────────────
 
 PROJECT_ID="hephae-co-dev"
@@ -100,7 +100,7 @@ echo "── Building Next.js image..."
 cat > /tmp/cloudbuild-web.yaml <<YAML
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${WEB_IMAGE}', '-f', 'Dockerfile.nextjs', '.']
+    args: ['build', '-t', '${WEB_IMAGE}', '-f', 'infra/Dockerfile.nextjs', '.']
 images: ['${WEB_IMAGE}']
 YAML
 gcloud builds submit \
@@ -113,7 +113,7 @@ echo "── Building FastAPI image..."
 cat > /tmp/cloudbuild-api.yaml <<YAML
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${API_IMAGE}', '-f', 'Dockerfile.fastapi', '.']
+    args: ['build', '-t', '${API_IMAGE}', '-f', 'infra/Dockerfile.fastapi', '.']
 images: ['${API_IMAGE}']
 YAML
 gcloud builds submit \

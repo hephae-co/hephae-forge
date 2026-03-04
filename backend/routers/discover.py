@@ -18,11 +18,12 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from backend.agents.discovery import discovery_pipeline
-from backend.config import AgentVersions
+from backend.config import AgentModels, AgentVersions
 from backend.lib.report_storage import generate_slug, upload_report, upload_menu_screenshot, upload_menu_html
 from backend.lib.report_templates import build_profile_report
 from backend.lib.db import write_discovery, write_agent_result
 from backend.lib.adk_helpers import user_msg
+from backend.types import EnrichedProfile as EnrichedProfileModel
 
 logger = logging.getLogger(__name__)
 
@@ -59,46 +60,19 @@ async def _capture_menu(menu_url: str, slug: str) -> tuple[str, str]:
 
     Returns (screenshot_url, html_url).  Either may be empty on failure.
     """
+    from backend.agents.shared_tools import screenshot_page
+
+    result = await screenshot_page(menu_url)
     screenshot_url = ""
     html_url = ""
-    try:
-        import base64
-        from playwright.async_api import async_playwright
-
-        logger.info(f"[Discover] Capturing menu from {menu_url}...")
-        async with async_playwright() as pw:
-            browser = await pw.chromium.launch()
-            ctx = await browser.new_context(
-                ignore_https_errors=True,
-                user_agent=(
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                    "AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
-                ),
-            )
-            page = await ctx.new_page()
-            await page.goto(menu_url, wait_until="networkidle", timeout=15000)
-            await page.wait_for_timeout(2000)
-
-            # Screenshot
-            buf = await page.screenshot(full_page=True, type="jpeg", quality=55)
-            b64 = base64.b64encode(buf).decode()
-            screenshot_url = await upload_menu_screenshot(slug, b64)
-
-            # Raw HTML
-            html = await page.content()
-            html_url = await upload_menu_html(slug, html)
-
-            await browser.close()
-
-        logger.info(
-            f"[Discover] Menu captured: screenshot={bool(screenshot_url)}, html={bool(html_url)}"
-        )
-    except Exception as e:
-        logger.warning(f"[Discover] Menu capture failed for {menu_url}: {e}")
+    if result.get("screenshot_base64"):
+        screenshot_url = await upload_menu_screenshot(slug, result["screenshot_base64"])
+    if result.get("html"):
+        html_url = await upload_menu_html(slug, result["html"])
     return screenshot_url, html_url
 
 
-@router.post("/discover")
+@router.post("/discover", response_model=EnrichedProfileModel)
 async def discover(request: Request):
     try:
         body = await request.json()
@@ -166,7 +140,7 @@ async def discover(request: Request):
                 if api_key:
                     client = genai.Client(api_key=api_key)
                     res = await client.aio.models.generate_content(
-                        model="gemini-2.5-flash",
+                        model=AgentModels.PRIMARY_MODEL,
                         contents=(
                             f'Extract exactly 3 restaurant competitors from the following text into a JSON array '
                             f'with keys: "name", "url", "reason". TEXT: {state["competitorData"]}'

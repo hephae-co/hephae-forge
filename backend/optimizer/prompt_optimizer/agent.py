@@ -7,7 +7,8 @@ import json
 from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.tools import FunctionTool
 
-from backend.config import AgentModels
+from backend.config import AgentModels, ThinkingPresets
+from backend.lib.model_fallback import fallback_on_error
 from backend.optimizer.prompt_optimizer.prompts import (
     PROMPT_SCANNER_INSTRUCTION,
     PROMPT_OPTIMIZER_INSTRUCTION,
@@ -41,18 +42,21 @@ def _with_scan_results(base_instruction: str):
 
 prompt_scanner_agent = LlmAgent(
     name="PromptScannerAgent",
-    model=AgentModels.DEFAULT_FAST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
     instruction=PROMPT_SCANNER_INSTRUCTION,
     tools=[list_all_prompts_tool],
     output_key="promptScanResults",
+    on_model_error_callback=fallback_on_error,
 )
 
 prompt_optimizer_agent = LlmAgent(
     name="PromptOptimizerAgent",
-    model=AgentModels.DEEP_ANALYST_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
+    generate_content_config=ThinkingPresets.MEDIUM,
     instruction=_with_scan_results(PROMPT_OPTIMIZER_INSTRUCTION),
     tools=[optimize_prompt_vertex_tool, compare_prompt_quality_tool],
     output_key="promptOptimizationResults",
+    on_model_error_callback=fallback_on_error,
 )
 
 prompt_optimization_pipeline = SequentialAgent(

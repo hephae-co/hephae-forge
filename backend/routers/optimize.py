@@ -1,4 +1,8 @@
-"""POST /api/optimize — Run optimizer agents."""
+"""POST /api/optimize — Run optimizer agents.
+
+DEPRECATED: This router is superseded by the hephae-optimizer MCP server.
+Use the MCP tools (scan_prompts, analyze_all, etc.) via Claude Code instead.
+"""
 
 from __future__ import annotations
 

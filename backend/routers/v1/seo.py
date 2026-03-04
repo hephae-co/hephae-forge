@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 from backend.agents.seo_auditor import seo_auditor_agent
 from backend.agents.marketing_swarm import generate_and_draft_marketing_content
 from backend.lib.adk_helpers import user_msg
+from backend.types import SeoReport, V1Response
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ def _is_final_response(event) -> bool:
     return True
 
 
-@router.post("/v1/seo")
+@router.post("/v1/seo", response_model=V1Response[SeoReport])
 async def v1_seo(request: Request):
     try:
         body = await request.json()

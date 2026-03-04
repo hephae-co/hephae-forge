@@ -24,7 +24,9 @@ from backend.lib.report_storage import generate_slug, upload_report
 from backend.lib.report_templates import build_seo_report
 from backend.lib.db import write_agent_result, enrich_identity
 from backend.config import AgentModels, AgentVersions
+from backend.lib.model_fallback import fallback_on_error
 from backend.lib.adk_helpers import user_msg
+from backend.types import SeoReport as SeoReportModel
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +127,7 @@ async def _run_seo_agent(agent, identity: dict) -> dict:
     )
 
 
-@router.post("/capabilities/seo")
+@router.post("/capabilities/seo", response_model=SeoReportModel)
 async def capabilities_seo(request: Request):
     try:
         body = await request.json()
@@ -136,7 +138,7 @@ async def capabilities_seo(request: Request):
 
         logger.info(f"[SEO API] Launching SeoAuditorAgent for {identity['officialUrl']}...")
 
-        # Primary run with gemini-2.5-pro
+        # Primary run with ENHANCED_MODEL (gemini-3.0-flash)
         report_data = await _run_seo_agent(seo_auditor_agent, identity)
 
         # Fallback: if primary model returned empty/useless sections, retry with lite model
@@ -147,10 +149,11 @@ async def capabilities_seo(request: Request):
             )
             fallback_agent = LlmAgent(
                 name="seoAuditorFallback",
-                description="SEO Auditor (fallback lite model)",
+                description="SEO Auditor (fallback model)",
                 instruction=SEO_AUDITOR_INSTRUCTION,
-                model=AgentModels.FALLBACK_LITE_MODEL,
+                model=AgentModels.ENHANCED_FALLBACK,
                 tools=[google_search_tool, pagespeed_tool],
+                on_model_error_callback=fallback_on_error,
             )
             fallback_data = await _run_seo_agent(fallback_agent, identity)
             if _has_valid_sections(fallback_data):

@@ -14,13 +14,14 @@ from backend.lib.report_storage import generate_slug, upload_report
 from backend.lib.report_templates import build_traffic_report
 from backend.lib.db import write_agent_result, enrich_identity
 from backend.config import AgentVersions
+from backend.types import ForecastResponse as ForecastResponseModel
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-@router.post("/capabilities/traffic")
+@router.post("/capabilities/traffic", response_model=ForecastResponseModel)
 async def capabilities_traffic(request: Request):
     try:
         body = await request.json()

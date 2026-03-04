@@ -10,6 +10,7 @@ Results are cached in session-scoped discovery_cache for Levels 4 and 5.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 
@@ -44,47 +45,63 @@ VALID_PERSONAS = [
 ]
 
 
+_batch_started = False
+
+
+async def _run_single_pipeline(biz: GroundTruth, discovery_cache, runner_factory):
+    """Run discovery pipeline for one business, caching results."""
+    try:
+        if biz.id not in discovery_cache.locator_results:
+            identity = await LocatorAgent.resolve(biz.query)
+            discovery_cache.locator_results[biz.id] = identity
+
+        identity = discovery_cache.locator_results[biz.id]
+        runner, session_service, user_id, session_id = await runner_factory()
+
+        prompt = (
+            f"Please discover everything about this business:\n"
+            f"Name: {identity.get('name', biz.name)}\n"
+            f"Address: {identity.get('address', '')}\n"
+            f"URL: {identity.get('officialUrl', '')}"
+        )
+
+        async for _ in runner.run_async(
+            user_id=user_id,
+            session_id=session_id,
+            new_message=user_msg(prompt),
+        ):
+            pass
+
+        final_session = await session_service.get_session(
+            app_name="integration-test", user_id=user_id, session_id=session_id
+        )
+        state = final_session.state if final_session else {}
+
+        logger.info(f"[Pipeline/{biz.id}] Done — state keys: {list(state.keys())}")
+        discovery_cache.pipeline_states[biz.id] = state
+        discovery_cache.enriched_profiles[biz.id] = build_enriched_profile(identity, state)
+    except Exception as e:
+        logger.warning(f"[Pipeline/{biz.id}] Failed: {e}")
+        discovery_cache.pipeline_states[biz.id] = {}
+
+
 async def _ensure_pipeline_run(biz: GroundTruth, discovery_cache, runner_factory):
-    """Run the pipeline for a business if not already cached."""
+    """Run all pipelines concurrently on first call, then return from cache."""
+    global _batch_started
+
     if biz.id in discovery_cache.pipeline_states:
         return discovery_cache.pipeline_states[biz.id]
 
-    # Ensure we have locator results
-    if biz.id not in discovery_cache.locator_results:
-        identity = await LocatorAgent.resolve(biz.query)
-        discovery_cache.locator_results[biz.id] = identity
+    if not _batch_started:
+        _batch_started = True
+        logger.info("[Pipeline] Batch-running all %d businesses concurrently...", len(BUSINESSES))
+        await asyncio.gather(*[
+            _run_single_pipeline(b, discovery_cache, runner_factory)
+            for b in BUSINESSES
+        ])
+        logger.info("[Pipeline] All batch pipelines complete.")
 
-    identity = discovery_cache.locator_results[biz.id]
-
-    runner, session_service, user_id, session_id = await runner_factory()
-
-    prompt = (
-        f"Please discover everything about this business:\n"
-        f"Name: {identity.get('name', biz.name)}\n"
-        f"Address: {identity.get('address', '')}\n"
-        f"URL: {identity.get('officialUrl', '')}"
-    )
-
-    async for _ in runner.run_async(
-        user_id=user_id,
-        session_id=session_id,
-        new_message=user_msg(prompt),
-    ):
-        pass
-
-    final_session = await session_service.get_session(
-        app_name="integration-test", user_id=user_id, session_id=session_id
-    )
-    state = final_session.state if final_session else {}
-
-    logger.info(f"[Pipeline/{biz.id}] State keys: {list(state.keys())}")
-    discovery_cache.pipeline_states[biz.id] = state
-
-    # Build and cache enriched profile
-    enriched = build_enriched_profile(identity, state)
-    discovery_cache.enriched_profiles[biz.id] = enriched
-
-    return state
+    return discovery_cache.pipeline_states.get(biz.id, {})
 
 
 # ------------------------------------------------------------------
@@ -93,9 +110,13 @@ async def _ensure_pipeline_run(biz: GroundTruth, discovery_cache, runner_factory
 
 
 @pytest.mark.parametrize("biz", BUSINESSES, ids=lambda b: b.id)
-@pytest.mark.timeout(180)
+@pytest.mark.timeout(600)
 async def test_pipeline_populates_all_state_keys(biz, discovery_cache, runner_factory):
-    """Pipeline produces all 7 expected state keys."""
+    """Pipeline produces all 7 expected state keys.
+
+    First call triggers concurrent batch of all 5 businesses (~180s parallel).
+    Timeout set to 600s to accommodate cold starts + concurrent execution.
+    """
     state = await _ensure_pipeline_run(biz, discovery_cache, runner_factory)
 
     missing = [k for k in EXPECTED_STATE_KEYS if k not in state]

@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────
-# deploy.sh — Build & deploy Hephae Forge (2 Cloud Run services)
+# deploy.sh — Build & deploy Hephae Forge (3 Cloud Run services)
 #
 # Usage:
-#   ./infra/deploy.sh               # Build + deploy both services
+#   ./infra/deploy.sh               # Build + deploy all services
 #   ./infra/deploy.sh --skip-checks # Skip prerequisite verification
 # ─────────────────────────────────────────────────────────────
 
@@ -18,10 +18,12 @@ SERVICE_ACCOUNT="hephae-forge@${PROJECT_ID}.iam.gserviceaccount.com"
 # Service names
 WEB_SERVICE="hephae-forge-web"
 API_SERVICE="hephae-forge-api"
+CRAWL4AI_SERVICE="hephae-crawl4ai"
 
 # Image names
 WEB_IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${WEB_SERVICE}:${TAG}"
 API_IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${API_SERVICE}:${TAG}"
+CRAWL4AI_IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${CRAWL4AI_SERVICE}:latest"
 
 # Cloud Run config
 TIMEOUT="300"
@@ -87,13 +89,14 @@ if ! $SKIP_CHECKS; then
 fi
 
 # ─────────────────────────────────────────────────────────────
-# 1. Build both images
+# 1. Build images
 # ─────────────────────────────────────────────────────────────
-echo "──── Hephae Forge Deploy (2-service) ────────────"
-echo "  Project:  ${PROJECT_ID}"
-echo "  Region:   ${REGION}"
-echo "  Web:      ${WEB_SERVICE} → ${WEB_IMAGE}"
-echo "  API:      ${API_SERVICE} → ${API_IMAGE}"
+echo "──── Hephae Forge Deploy (3-service) ────────────"
+echo "  Project:   ${PROJECT_ID}"
+echo "  Region:    ${REGION}"
+echo "  Web:       ${WEB_SERVICE} → ${WEB_IMAGE}"
+echo "  API:       ${API_SERVICE} → ${API_IMAGE}"
+echo "  crawl4ai:  ${CRAWL4AI_SERVICE} → ${CRAWL4AI_IMAGE}"
 echo ""
 
 echo "── Building Next.js image..."
@@ -122,8 +125,47 @@ gcloud builds submit \
   --region "$REGION" \
   --timeout=900 .
 
+echo "── Mirroring crawl4ai image to Artifact Registry..."
+cat > /tmp/cloudbuild-crawl4ai.yaml <<YAML
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['pull', 'unclecode/crawl4ai:latest']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['tag', 'unclecode/crawl4ai:latest', '${CRAWL4AI_IMAGE}']
+images: ['${CRAWL4AI_IMAGE}']
+YAML
+gcloud builds submit \
+  --config /tmp/cloudbuild-crawl4ai.yaml \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --no-source \
+  --timeout=300
+
 # ─────────────────────────────────────────────────────────────
-# 2. Deploy API service (backend — internal only, no public access)
+# 2. Deploy crawl4ai service (web scraper — unauthenticated)
+# ─────────────────────────────────────────────────────────────
+echo "── Deploying crawl4ai service (${CRAWL4AI_SERVICE})..."
+gcloud run deploy "$CRAWL4AI_SERVICE" \
+  --image "$CRAWL4AI_IMAGE" \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --platform managed \
+  --port 11235 \
+  --memory 2Gi \
+  --cpu 2 \
+  --timeout "$TIMEOUT" \
+  --min-instances 0 \
+  --max-instances 3 \
+  --service-account "$SERVICE_ACCOUNT" \
+  --allow-unauthenticated
+
+CRAWL4AI_URL=$(gcloud run services describe "$CRAWL4AI_SERVICE" \
+  --region "$REGION" --project "$PROJECT_ID" \
+  --format="value(status.url)")
+echo "   ✓ crawl4ai deployed: ${CRAWL4AI_URL}"
+
+# ─────────────────────────────────────────────────────────────
+# 3. Deploy API service (backend — internal only, no public access)
 # ─────────────────────────────────────────────────────────────
 echo "── Deploying API service (${API_SERVICE})..."
 gcloud run deploy "$API_SERVICE" \
@@ -138,7 +180,7 @@ gcloud run deploy "$API_SERVICE" \
   --min-instances "$MIN_INSTANCES" \
   --max-instances "$MAX_INSTANCES" \
   --service-account "$SERVICE_ACCOUNT" \
-  --set-env-vars "PYTHONUNBUFFERED=1" \
+  --set-env-vars "PYTHONUNBUFFERED=1,CRAWL4AI_URL=${CRAWL4AI_URL}" \
   --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,BLS_API_KEY=BLS_API_KEY:latest,FRED_API_KEY=FRED_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest" \
   --no-allow-unauthenticated
 
@@ -156,7 +198,7 @@ gcloud run services add-iam-policy-binding "$API_SERVICE" \
   --role="roles/run.invoker" 2>/dev/null || true
 
 # ─────────────────────────────────────────────────────────────
-# 3. Deploy Web service (frontend — public)
+# 4. Deploy Web service (frontend — public)
 # ─────────────────────────────────────────────────────────────
 echo "── Deploying Web service (${WEB_SERVICE})..."
 gcloud run deploy "$WEB_SERVICE" \
@@ -180,6 +222,7 @@ WEB_URL=$(gcloud run services describe "$WEB_SERVICE" \
 
 echo ""
 echo "══════════════════════════════════════════════"
-echo "  ✓ Web:  ${WEB_URL}"
-echo "  ✓ API:  ${API_URL} (internal)"
+echo "  ✓ Web:      ${WEB_URL}"
+echo "  ✓ API:      ${API_URL} (internal)"
+echo "  ✓ crawl4ai: ${CRAWL4AI_URL}"
 echo "══════════════════════════════════════════════"

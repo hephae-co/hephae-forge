@@ -21,6 +21,16 @@ TAG=$(git rev-parse --short HEAD)
 IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/hephae-forge-api:${TAG}"
 SERVICE_ACCOUNT="hephae-forge@${PROJECT_ID}.iam.gserviceaccount.com"
 
+# Resolve crawl4ai service URL (deployed by infra/deploy.sh)
+CRAWL4AI_URL=$(gcloud run services describe "hephae-crawl4ai" \
+    --region "$REGION" --project "$PROJECT_ID" \
+    --format="value(status.url)" 2>/dev/null || echo "")
+
+if [[ -z "$CRAWL4AI_URL" ]]; then
+    echo "  ⚠ crawl4ai service not found — tests needing it will degrade gracefully"
+    echo "  Deploy it first: ./infra/deploy.sh"
+fi
+
 # Job resource limits
 MEMORY="2Gi"
 CPU="2"
@@ -63,11 +73,12 @@ fi
 # Preflight
 # ──────────────────────────────────────────────────────────────
 echo "── Cloud Run Job: ${JOB_NAME} ──────────────────"
-echo "   Image:   ${IMAGE}"
-echo "   Region:  ${REGION}"
-echo "   Account: ${SERVICE_ACCOUNT}"
-echo "   Memory:  ${MEMORY} / ${CPU} CPU"
-echo "   Timeout: ${TASK_TIMEOUT}s"
+echo "   Image:    ${IMAGE}"
+echo "   Region:   ${REGION}"
+echo "   Account:  ${SERVICE_ACCOUNT}"
+echo "   Memory:   ${MEMORY} / ${CPU} CPU"
+echo "   Timeout:  ${TASK_TIMEOUT}s"
+echo "   crawl4ai: ${CRAWL4AI_URL:-not deployed}"
 echo ""
 
 # Common flags for create and update
@@ -80,7 +91,7 @@ JOB_FLAGS=(
     --cpu "$CPU"
     --max-retries 0
     --task-timeout "$TASK_TIMEOUT"
-    --set-env-vars "PYTHONPATH=/app:/pylibs,NODE_ENV=test"
+    --set-env-vars "PYTHONPATH=/app:/pylibs,NODE_ENV=test,CRAWL4AI_URL=${CRAWL4AI_URL}"
     --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest"
     --command "/bin/bash"
     --args "scripts/test-integration.sh,--report"

@@ -266,15 +266,15 @@ fi
 # ──────────────────────────────────────────────────────────────
 # crawl4ai lifecycle (optional -- pipeline degrades gracefully)
 # ──────────────────────────────────────────────────────────────
-if $needs_browser && ! $IS_CLOUD_RUN; then
-    header "crawl4ai sidecar (optional)"
+if $needs_browser; then
+    header "crawl4ai availability check"
 
     CRAWL4AI_URL="${CRAWL4AI_URL:-http://localhost:11235}"
 
     if curl -sf "${CRAWL4AI_URL}/health" &>/dev/null; then
-        ok "crawl4ai already running at $CRAWL4AI_URL"
+        ok "crawl4ai reachable at $CRAWL4AI_URL"
         export CRAWL4AI_URL
-    elif command -v docker &>/dev/null; then
+    elif ! $IS_CLOUD_RUN && command -v docker &>/dev/null; then
         info "Starting crawl4ai container..."
         if docker run -d \
             --name crawl4ai-integ-test \
@@ -301,7 +301,7 @@ if $needs_browser && ! $IS_CLOUD_RUN; then
             warn "Failed to start crawl4ai container -- continuing without it"
         fi
     else
-        warn "Docker not available -- skipping crawl4ai (pipeline degrades gracefully)"
+        warn "crawl4ai not available at $CRAWL4AI_URL -- pipeline degrades gracefully"
     fi
 fi
 

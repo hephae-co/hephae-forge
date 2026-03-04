@@ -271,10 +271,22 @@ if $needs_browser; then
 
     CRAWL4AI_URL="${CRAWL4AI_URL:-http://localhost:11235}"
 
-    if curl -sf "${CRAWL4AI_URL}/health" &>/dev/null; then
-        ok "crawl4ai reachable at $CRAWL4AI_URL"
-        export CRAWL4AI_URL
-    elif ! $IS_CLOUD_RUN && command -v docker &>/dev/null; then
+    # Allow time for Cloud Run cold start (crawl4ai image is ~2GB)
+    CRAWL4AI_READY=false
+    for i in $(seq 1 45); do
+        if curl -sf --max-time 5 "${CRAWL4AI_URL}/health" &>/dev/null; then
+            ok "crawl4ai reachable at $CRAWL4AI_URL (took ${i}s)"
+            export CRAWL4AI_URL
+            CRAWL4AI_READY=true
+            break
+        fi
+        if [[ $i -eq 1 ]]; then
+            info "Waiting for crawl4ai at $CRAWL4AI_URL..."
+        fi
+        sleep 1
+    done
+
+    if ! $CRAWL4AI_READY && ! $IS_CLOUD_RUN && command -v docker &>/dev/null; then
         info "Starting crawl4ai container..."
         if docker run -d \
             --name crawl4ai-integ-test \
@@ -300,7 +312,7 @@ if $needs_browser; then
         else
             warn "Failed to start crawl4ai container -- continuing without it"
         fi
-    else
+    elif ! $CRAWL4AI_READY; then
         warn "crawl4ai not available at $CRAWL4AI_URL -- pipeline degrades gracefully"
     fi
 fi

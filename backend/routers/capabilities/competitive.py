@@ -21,7 +21,7 @@ from backend.agents.competitive_analysis import (
 from backend.agents.marketing_swarm import generate_and_draft_marketing_content
 from backend.lib.report_storage import generate_slug, upload_report
 from backend.lib.report_templates import build_competitive_report
-from backend.lib.db import write_agent_result
+from backend.lib.db import write_agent_result, enrich_identity
 from backend.config import AgentVersions
 from backend.lib.adk_helpers import user_msg
 
@@ -34,7 +34,7 @@ router = APIRouter()
 async def capabilities_competitive(request: Request):
     try:
         body = await request.json()
-        identity = body.get("identity", {})
+        identity = enrich_identity(body.get("identity", {}))
 
         if not identity or not identity.get("competitors") or len(identity["competitors"]) == 0:
             return JSONResponse(

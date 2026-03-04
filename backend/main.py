@@ -40,8 +40,8 @@ app.add_middleware(
 
 
 def _register_routers() -> None:
-    from backend.routers import discover, analyze, chat, track, send_report_email, social_card, places
-    from backend.routers.capabilities import seo, competitive, traffic
+    from backend.routers import discover, analyze, chat, track, send_report_email, social_card, places, optimize
+    from backend.routers.capabilities import seo, competitive, traffic, marketing
     from backend.routers.v1 import (
         discover as v1_discover,
         analyze as v1_analyze,
@@ -60,6 +60,8 @@ def _register_routers() -> None:
     app.include_router(seo.router, prefix="/api")
     app.include_router(competitive.router, prefix="/api")
     app.include_router(traffic.router, prefix="/api")
+    app.include_router(marketing.router, prefix="/api")
+    app.include_router(optimize.router, prefix="/api")
     app.include_router(v1_discover.router, prefix="/api")
     app.include_router(v1_analyze.router, prefix="/api")
     app.include_router(v1_seo.router, prefix="/api")

@@ -12,7 +12,7 @@ from backend.agents.traffic_forecaster import ForecasterAgent
 from backend.agents.marketing_swarm import generate_and_draft_marketing_content
 from backend.lib.report_storage import generate_slug, upload_report
 from backend.lib.report_templates import build_traffic_report
-from backend.lib.db import write_agent_result
+from backend.lib.db import write_agent_result, enrich_identity
 from backend.config import AgentVersions
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ router = APIRouter()
 async def capabilities_traffic(request: Request):
     try:
         body = await request.json()
-        identity = body.get("identity", {})
+        identity = enrich_identity(body.get("identity", {}))
 
         if not identity or not identity.get("name"):
             return JSONResponse(

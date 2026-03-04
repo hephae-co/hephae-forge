@@ -62,6 +62,7 @@ export default function Home() {
   const [trafficReportUrl, setTrafficReportUrl] = useState<string | null>(null);
   const [seoReportUrl, setSeoReportUrl] = useState<string | null>(null);
   const [competitiveReportUrl, setCompetitiveReportUrl] = useState<string | null>(null);
+  const [marketingReportUrl, setMarketingReportUrl] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState(false);
 
   // Detail Panel State for Traffic Forecast Phase 14
@@ -129,6 +130,8 @@ export default function Home() {
     "Run an SEO audit next": "seo",
     "Let's check the menu margins": "surgery",
     "Will rain hurt their traffic?": "traffic",
+    "Analyze their social media": "marketing",
+    "What's their social media like?": "marketing",
   };
 
   const sendMessage = async (text: string) => {
@@ -201,6 +204,7 @@ export default function Home() {
         setTrafficReportUrl(null);
         setSeoReportUrl(null);
         setCompetitiveReportUrl(null);
+        setMarketingReportUrl(null);
 
         // Spawn Background Discovery
         triggerDiscoveryOrchestrator(data.locatedBusiness);
@@ -243,10 +247,11 @@ export default function Home() {
     } finally {
       // Always unlock capabilities — even if discovery failed, users can still run analyses
       setCapabilities([
-        { id: 'surgery', label: 'Analyze Menu Margins' },
-        { id: 'traffic', label: 'Forecast Foot Traffic' },
-        { id: 'seo', label: 'Run SEO Deep Audit' },
-        { id: 'competitive', label: 'Run Competitive Analysis' }
+        { id: 'surgery', label: 'Margin Surgery' },
+        { id: 'traffic', label: 'Foot Traffic Forecast' },
+        { id: 'seo', label: 'SEO Deep Audit' },
+        { id: 'competitive', label: 'Competitive Analysis' },
+        { id: 'marketing', label: 'Social Media Insights' },
       ]);
       setIsDiscovering(false);
     }
@@ -289,6 +294,7 @@ export default function Home() {
     setTrafficReportUrl(null);
     setSeoReportUrl(null);
     setCompetitiveReportUrl(null);
+    setMarketingReportUrl(null);
 
     // Trigger background discovery
     triggerDiscoveryOrchestrator(identity);
@@ -445,15 +451,47 @@ export default function Home() {
         }
 
       } catch (e: any) {
-        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute SEO Audit: ${e.message}` }]);
+        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute SEO Deep Audit: ${e.message}` }]);
       } finally {
         setIsTyping(false);
       }
     } else if (capId === 'marketing') {
-      setMessages(prev => [...prev, {
-        id: nextMsgId(), role: 'model',
-        text: `Social Media Strategy for **${locatedBusiness.name}** is coming soon! This module will auto-generate platform-specific posts, campaign ideas, and content calendars based on your business profile and local market data.`
-      }]);
+      const msgId = nextMsgId();
+      setMessages(prev => [...prev, { id: msgId, role: 'model', text: "Deploying Social Media Insights agent to analyze your social presence and craft content strategy... ⏱️" }]);
+      setCapabilities([]);
+      setIsTyping(true);
+
+      try {
+        const res = await fetch('/api/capabilities/marketing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identity: identityForApi }),
+        });
+
+        if (!res.ok) {
+          let errMsg = "Strategy Generation Failed";
+          try { const err = await res.json(); errMsg = err.error || errMsg; } catch { errMsg = `Server error (${res.status})`; }
+          throw new Error(errMsg);
+        }
+
+        const data = await res.json();
+        if (data.reportUrl) {
+          setMarketingReportUrl(data.reportUrl);
+          sendReportEmailAsync('marketing', data.reportUrl, locatedBusiness!.name, data.summary || 'Your social media strategy report is ready.');
+        }
+
+        const platform = data.platform || 'Social Media';
+        const draftPreview = typeof data.draft === 'string' ? data.draft.slice(0, 300) : '';
+        setMessages(prev => [...prev, {
+          id: nextMsgId(), role: 'model',
+          text: `**Social Media Insights** for **${locatedBusiness.name}** is ready!\n\n${data.summary || ''}\n\n${draftPreview ? `**Draft Preview:**\n${draftPreview}${data.draft?.length > 300 ? '...' : ''}` : ''}${data.reportUrl ? `\n\n[View Full Report](${data.reportUrl})` : ''}`
+        }]);
+
+      } catch (e: any) {
+        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute Social Media Insights: ${e.message}` }]);
+      } finally {
+        setIsTyping(false);
+      }
     } else if (capId === 'competitive') {
       const msgId = nextMsgId();
       setMessages(prev => [...prev, { id: msgId, role: 'model', text: "Deploying Competitive Analyzer to compare your business against exactly 3 local rivals... ⏱️" }]);
@@ -496,7 +534,7 @@ export default function Home() {
     });
   };
 
-  const activeReportUrl = marginReportUrl || trafficReportUrl || seoReportUrl || competitiveReportUrl || profileReportUrl;
+  const activeReportUrl = marginReportUrl || trafficReportUrl || seoReportUrl || competitiveReportUrl || marketingReportUrl || profileReportUrl;
 
   const downloadSocialCard = async () => {
     if (!report) return;
@@ -765,16 +803,16 @@ export default function Home() {
       // After competitive analysis
       chips.push("Who's their biggest threat?");
       if (!report) chips.push("Let's check the menu margins");
-      if (!seoReport) chips.push("Run an SEO audit next");
+      if (!marketingReportUrl) chips.push("Analyze their social media");
     } else if (capabilities.length > 0) {
       // Discovery complete, no analyses run yet
       chips.push(`What did you find about ${name}?`);
       chips.push("Where is their money leaking?");
-      chips.push("How visible are they online?");
+      chips.push("What's their social media like?");
     }
 
     return chips.slice(0, 3);
-  }, [isCentered, isDiscovering, isTyping, locatedBusiness, report, seoReport, forecast, competitiveReport, capabilities]);
+  }, [isCentered, isDiscovering, isTyping, locatedBusiness, report, seoReport, forecast, competitiveReport, marketingReportUrl, capabilities]);
 
   return (
     <main className={`flex h-screen w-screen overflow-hidden relative transition-colors duration-700 ${isCentered ? 'bg-white' : 'bg-gray-50'}`}>
@@ -804,35 +842,35 @@ export default function Home() {
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 animate-fade-in-up pointer-events-auto bg-white/90 backdrop-blur-md p-1.5 rounded-full shadow-2xl border border-gray-200/80">
               <button onClick={() => handleSelectCapability("surgery")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/80 transition-all group">
                 <BarChart3 className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
-                Margin Analysis
+                Margin Surgery
               </button>
 
               <div className="w-px h-4 bg-gray-200 mx-1"></div>
 
               <button onClick={() => handleSelectCapability("traffic")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-emerald-600 hover:bg-emerald-50/80 transition-all group">
                 <Users className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-110 transition-transform" />
-                Traffic Forecast
+                Foot Traffic Forecast
               </button>
 
               <div className="w-px h-4 bg-gray-200 mx-1"></div>
 
               <button onClick={() => handleSelectCapability("seo")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-purple-600 hover:bg-purple-50/80 transition-all group">
                 <SearchIcon className="w-3.5 h-3.5 text-purple-500 group-hover:scale-110 transition-transform" />
-                SEO Audit
+                SEO Deep Audit
               </button>
 
               <div className="w-px h-4 bg-gray-200 mx-1"></div>
 
               <button onClick={() => handleSelectCapability("competitive")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 transition-all group">
                 <Swords className="w-3.5 h-3.5 text-orange-500 group-hover:scale-110 transition-transform" />
-                Competitive Intel
+                Competitive Analysis
               </button>
 
               <div className="w-px h-4 bg-gray-200 mx-1"></div>
 
               <button onClick={() => handleSelectCapability("marketing")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-pink-600 hover:bg-pink-50/80 transition-all group">
                 <Share2 className="w-3.5 h-3.5 text-pink-500 group-hover:scale-110 transition-transform" />
-                Social Media
+                Social Media Insights
               </button>
 
               {activeReportUrl && (
@@ -1041,6 +1079,7 @@ export default function Home() {
             setTrafficReportUrl(null);
             setSeoReportUrl(null);
             setCompetitiveReportUrl(null);
+            setMarketingReportUrl(null);
           }}
           capabilities={capabilities}
           onSelectCapability={handleSelectCapability}

@@ -1,1 +1,1 @@
-from backend.agents.marketing_swarm.agent import generate_and_draft_marketing_content
+from backend.agents.marketing_swarm.agent import generate_and_draft_marketing_content, run_marketing_pipeline

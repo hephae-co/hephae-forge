@@ -77,8 +77,12 @@ async def write_discovery(
             "secondaryColor": profile.get("secondaryColor"),
             "persona": profile.get("persona"),
             "menuUrl": profile.get("menuUrl"),
+            "menuScreenshotUrl": profile.get("menuScreenshotUrl"),
+            "menuHtmlUrl": profile.get("menuHtmlUrl"),
             "competitors": profile.get("competitors", []),
             "socialProfileMetrics": profile.get("socialProfileMetrics"),
+            "news": profile.get("news"),
+            "validationReport": profile.get("validationReport"),
         }
 
         doc_data: dict[str, Any] = {

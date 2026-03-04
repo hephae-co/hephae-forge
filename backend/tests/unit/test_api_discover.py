@@ -435,3 +435,203 @@ class TestSocialProfilerWriteAgentResult:
         import asyncio
         await asyncio.sleep(0.05)
         assert mock_war.call_args.kwargs["score"] == 85
+
+
+# ---------------------------------------------------------------------------
+# News data parsing
+# ---------------------------------------------------------------------------
+
+SAMPLE_NEWS = [
+    {"title": "Local Gem Review", "url": "https://nj.com/bosphorus", "source": "NJ.com", "date": "2025-12-01", "snippet": "Great food"},
+    {"title": "Best Turkish Food", "url": "https://eater.com/bosphorus", "source": "Eater", "date": "2025-11-15", "snippet": "Top pick"},
+]
+
+
+class TestNewsDataParsing:
+    @pytest.mark.asyncio
+    async def test_parses_news_from_json_string(self, client):
+        _set_state(client, {"newsData": json.dumps(SAMPLE_NEWS)})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert data["news"] is not None
+        assert len(data["news"]) == 2
+        assert data["news"][0]["title"] == "Local Gem Review"
+
+    @pytest.mark.asyncio
+    async def test_news_none_when_missing(self, client):
+        _set_state(client, {})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert data.get("news") is None
+
+    @pytest.mark.asyncio
+    async def test_news_none_when_empty_array(self, client):
+        _set_state(client, {"newsData": "[]"})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert data.get("news") is None
+
+
+# ---------------------------------------------------------------------------
+# Reviewer data parsing
+# ---------------------------------------------------------------------------
+
+SAMPLE_REVIEWER_DATA = {
+    "validatedSocialData": {
+        "instagram": "https://instagram.com/bosphorus_nj",
+        "facebook": "https://facebook.com/BosphorusNutley",
+        "twitter": None,
+        "yelp": "https://yelp.com/biz/bosphorus-nutley",
+    },
+    "validatedMenuUrl": "https://bosphorusnutley.com/menu",
+    "validatedCompetitors": [
+        {"name": "Turkish Kitchen", "url": "https://turkishkitchen.com", "reason": "Same cuisine"},
+    ],
+    "validatedNews": [
+        {"title": "Reviewed Article", "url": "https://nj.com/bosphorus", "source": "NJ.com"},
+    ],
+    "validatedMapsUrl": "https://google.com/maps/place/Bosphorus",
+    "validationReport": {
+        "totalUrlsChecked": 12,
+        "valid": 8,
+        "invalid": 2,
+        "unverifiable": 1,
+        "corrected": 1,
+        "flags": ["socialData.tiktok: invalid, no replacement found"],
+    },
+}
+
+
+class TestReviewerDataParsing:
+    @pytest.mark.asyncio
+    async def test_validated_social_wins_over_raw(self, client):
+        """When reviewer data exists, validated social links take priority."""
+        _set_state(client, {
+            "socialData": json.dumps({"instagram": "https://instagram.com/wrong_account"}),
+            "reviewerData": json.dumps(SAMPLE_REVIEWER_DATA),
+        })
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert data["socialLinks"]["instagram"] == "https://instagram.com/bosphorus_nj"
+
+    @pytest.mark.asyncio
+    async def test_validated_menu_wins_over_raw(self, client):
+        _set_state(client, {
+            "menuData": json.dumps({"menuUrl": "https://old-menu.com"}),
+            "reviewerData": json.dumps(SAMPLE_REVIEWER_DATA),
+        })
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert data["menuUrl"] == "https://bosphorusnutley.com/menu"
+
+    @pytest.mark.asyncio
+    async def test_validated_competitors_used(self, client):
+        _set_state(client, {
+            "competitorData": json.dumps([{"name": "Old Rival", "url": "https://old.com", "reason": "test"}]),
+            "reviewerData": json.dumps(SAMPLE_REVIEWER_DATA),
+        })
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert len(data["competitors"]) == 1
+        assert data["competitors"][0]["name"] == "Turkish Kitchen"
+
+    @pytest.mark.asyncio
+    async def test_validated_news_used(self, client):
+        _set_state(client, {
+            "newsData": json.dumps(SAMPLE_NEWS),
+            "reviewerData": json.dumps(SAMPLE_REVIEWER_DATA),
+        })
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert len(data["news"]) == 1
+        assert data["news"][0]["title"] == "Reviewed Article"
+
+    @pytest.mark.asyncio
+    async def test_validated_maps_url_used(self, client):
+        _set_state(client, {
+            "mapsData": "https://google.com/maps/place/OldPlace",
+            "reviewerData": json.dumps(SAMPLE_REVIEWER_DATA),
+        })
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert data["googleMapsUrl"] == "https://google.com/maps/place/Bosphorus"
+
+    @pytest.mark.asyncio
+    async def test_validation_report_present(self, client):
+        _set_state(client, {"reviewerData": json.dumps(SAMPLE_REVIEWER_DATA)})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert data["validationReport"] is not None
+        assert data["validationReport"]["totalUrlsChecked"] == 12
+        assert data["validationReport"]["valid"] == 8
+
+    @pytest.mark.asyncio
+    async def test_fallback_when_no_reviewer(self, client):
+        """When no reviewer data, raw agent data is used."""
+        _set_state(client, {
+            "socialData": json.dumps({"instagram": "https://instagram.com/raw_account"}),
+            "newsData": json.dumps(SAMPLE_NEWS),
+        })
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        data = res.json()
+        assert data["socialLinks"]["instagram"] == "https://instagram.com/raw_account"
+        assert len(data["news"]) == 2
+        assert data.get("validationReport") is None
+
+    @pytest.mark.asyncio
+    async def test_no_crash_on_malformed_reviewer(self, client):
+        _set_state(client, {"reviewerData": "not valid json"})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        assert res.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Reviewer + News agent result writes
+# ---------------------------------------------------------------------------
+
+class TestReviewerAgentResultWrites:
+    @pytest.mark.asyncio
+    async def test_reviewer_write_called(self, client):
+        mock_war = client._test_ctx["write_agent_result"]
+        mock_war.reset_mock()
+        _set_state(client, {"reviewerData": json.dumps(SAMPLE_REVIEWER_DATA)})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        assert res.status_code == 200
+        import asyncio
+        await asyncio.sleep(0.05)
+
+        calls = mock_war.call_args_list
+        reviewer_calls = [c for c in calls if c.kwargs.get("agent_name") == "discovery_reviewer"]
+        assert len(reviewer_calls) == 1
+        assert "12" in reviewer_calls[0].kwargs["summary"] or "totalUrlsChecked" in str(reviewer_calls[0].kwargs)
+
+    @pytest.mark.asyncio
+    async def test_news_write_called(self, client):
+        mock_war = client._test_ctx["write_agent_result"]
+        mock_war.reset_mock()
+        _set_state(client, {"newsData": json.dumps(SAMPLE_NEWS)})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        assert res.status_code == 200
+        import asyncio
+        await asyncio.sleep(0.05)
+
+        calls = mock_war.call_args_list
+        news_calls = [c for c in calls if c.kwargs.get("agent_name") == "news_discovery"]
+        assert len(news_calls) == 1
+        assert "2 news" in news_calls[0].kwargs["summary"]
+
+    @pytest.mark.asyncio
+    async def test_no_reviewer_write_when_no_validation_report(self, client):
+        """If reviewerData exists but has no validationReport, no reviewer write."""
+        mock_war = client._test_ctx["write_agent_result"]
+        mock_war.reset_mock()
+        partial_reviewer = {"validatedSocialData": {"instagram": "https://instagram.com/test"}}
+        _set_state(client, {"reviewerData": json.dumps(partial_reviewer)})
+        res = await client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        assert res.status_code == 200
+        import asyncio
+        await asyncio.sleep(0.05)
+
+        calls = mock_war.call_args_list
+        reviewer_calls = [c for c in calls if c.kwargs.get("agent_name") == "discovery_reviewer"]
+        assert len(reviewer_calls) == 0

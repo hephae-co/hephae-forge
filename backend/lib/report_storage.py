@@ -63,6 +63,30 @@ async def upload_menu_screenshot(slug: str, base64_data: str) -> str:
         return ""
 
 
+async def upload_menu_html(slug: str, html_content: str) -> str:
+    """Upload raw menu-page HTML to GCS and return the public URL."""
+    ts = int(time.time() * 1000)
+    object_path = f"{slug}/menu-{ts}.html"
+    public_url = f"{StorageConfig.BASE_URL}/{object_path}"
+
+    try:
+        from backend.lib.firebase import gcs_bucket
+
+        blob = gcs_bucket.blob(object_path)
+        blob.upload_from_string(
+            html_content,
+            content_type="text/html; charset=utf-8",
+        )
+        blob.cache_control = "public, max-age=604800"  # 1 week — menus change infrequently
+        blob.patch()
+
+        logger.info(f"[ReportStorage] Uploaded menu HTML -> {public_url}")
+        return public_url
+    except Exception as err:
+        logger.warning(f"[ReportStorage] Failed to upload menu HTML for {slug}: {err}")
+        return ""
+
+
 async def upload_report(
     slug: str,
     report_type: ReportType,

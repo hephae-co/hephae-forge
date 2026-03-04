@@ -16,9 +16,11 @@ from backend.agents.shared_tools.crawl4ai import (
     crawl_with_options,
     crawl_multiple_pages,
 )
+from backend.agents.shared_tools.validate_url import validate_url
 
 google_search_tool = FunctionTool(func=google_search)
 playwright_tool = FunctionTool(func=crawl_web_page)
 crawl4ai_tool = FunctionTool(func=crawl_for_content)
 crawl4ai_advanced_tool = FunctionTool(func=crawl_with_options)
 crawl4ai_deep_tool = FunctionTool(func=crawl_multiple_pages)
+validate_url_tool = FunctionTool(func=validate_url)

@@ -1,8 +1,9 @@
 """
-DiscoveryPipeline — three-stage discovery:
+DiscoveryPipeline — four-stage discovery:
   Stage 1: SiteCrawlerAgent crawls the business URL once -> rawSiteData
-  Stage 2: DiscoveryFanOut fans out to 6 specialized agents reading rawSiteData
+  Stage 2: DiscoveryFanOut fans out to 7 specialized agents reading rawSiteData
   Stage 3: SocialProfilerAgent crawls social profiles found in Stage 2 -> socialProfileMetrics
+  Stage 4: DiscoveryReviewerAgent validates all URLs and corrects invalid ones -> reviewerData
 
 Port of src/agents/discovery/pipeline.ts.
 Uses Google ADK Python SDK (LlmAgent, ParallelAgent, SequentialAgent).
@@ -21,6 +22,7 @@ from backend.agents.shared_tools import (
     crawl4ai_tool,
     crawl4ai_advanced_tool,
     crawl4ai_deep_tool,
+    validate_url_tool,
 )
 from backend.agents.discovery.prompts import (
     SITE_CRAWLER_INSTRUCTION,
@@ -31,6 +33,8 @@ from backend.agents.discovery.prompts import (
     MAPS_AGENT_INSTRUCTION,
     COMPETITOR_AGENT_INSTRUCTION,
     SOCIAL_PROFILER_INSTRUCTION,
+    NEWS_AGENT_INSTRUCTION,
+    DISCOVERY_REVIEWER_INSTRUCTION,
 )
 
 
@@ -130,14 +134,22 @@ competitor_agent = LlmAgent(
     output_key="competitorData",
 )
 
+news_agent = LlmAgent(
+    name="NewsAgent",
+    model=AgentModels.DEFAULT_FAST_MODEL,
+    instruction=_with_raw_data(NEWS_AGENT_INSTRUCTION),
+    tools=[google_search_tool],
+    output_key="newsData",
+)
+
 # ---------------------------------------------------------------------------
 # Stage 2: ParallelAgent fan-out
 # ---------------------------------------------------------------------------
 
 discovery_fan_out = ParallelAgent(
     name="DiscoveryFanOut",
-    description="Runs 6 specialized discovery sub-agents concurrently, each processing raw crawl data.",
-    sub_agents=[theme_agent, contact_agent, social_media_agent, menu_agent, maps_agent, competitor_agent],
+    description="Runs 7 specialized discovery sub-agents concurrently, each processing raw crawl data.",
+    sub_agents=[theme_agent, contact_agent, social_media_agent, menu_agent, maps_agent, competitor_agent, news_agent],
 )
 
 # ---------------------------------------------------------------------------
@@ -152,12 +164,56 @@ social_profiler_agent = LlmAgent(
     output_key="socialProfileMetrics",
 )
 
+
+# ---------------------------------------------------------------------------
+# Helper: inject all discovery data from session state into instruction
+# ---------------------------------------------------------------------------
+
+def _with_all_discovery_data(base_instruction: str):
+    """Build dynamic instruction that injects ALL prior stage data from session state."""
+
+    def build_instruction(context) -> str:
+        state = getattr(context, "state", {})
+        data_keys = [
+            "themeData", "contactData", "socialData", "menuData",
+            "mapsData", "competitorData", "newsData", "socialProfileMetrics",
+        ]
+        all_data = {}
+        for key in data_keys:
+            val = state.get(key)
+            if val is not None:
+                if isinstance(val, str):
+                    all_data[key] = val[:10000]
+                else:
+                    serialized = json.dumps(val)
+                    all_data[key] = serialized[:10000]
+        data_str = json.dumps(all_data, indent=2)
+        if len(data_str) > 40000:
+            data_str = data_str[:40000] + "\n...[truncated]"
+        return f"{base_instruction}\n\n--- ALL DISCOVERY DATA ---\n{data_str}"
+
+    return build_instruction
+
+
+# ---------------------------------------------------------------------------
+# Stage 4: DiscoveryReviewerAgent — validates all URLs and cross-references
+# ---------------------------------------------------------------------------
+
+discovery_reviewer_agent = LlmAgent(
+    name="DiscoveryReviewerAgent",
+    model=AgentModels.DEFAULT_FAST_MODEL,
+    instruction=_with_all_discovery_data(DISCOVERY_REVIEWER_INSTRUCTION),
+    tools=[validate_url_tool, google_search_tool],
+    output_key="reviewerData",
+)
+
+
 # ---------------------------------------------------------------------------
 # DiscoveryPipeline — exported orchestrator
 # ---------------------------------------------------------------------------
 
 discovery_pipeline = SequentialAgent(
     name="DiscoveryPipeline",
-    description="Three-stage discovery: crawl site, fan out to 6 agents, then profile social accounts.",
-    sub_agents=[site_crawler_agent, discovery_fan_out, social_profiler_agent],
+    description="Four-stage discovery: crawl site, fan out to 7 agents, profile social accounts, then validate all data.",
+    sub_agents=[site_crawler_agent, discovery_fan_out, social_profiler_agent, discovery_reviewer_agent],
 )

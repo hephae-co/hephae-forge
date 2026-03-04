@@ -13,6 +13,9 @@ class AgentModels:
     # Deep Analytical Model: complex data parsing, deep SEO logic
     DEEP_ANALYST_MODEL = "gemini-2.5-pro"
 
+    # Fallback model for when DEEP_ANALYST_MODEL times out or rate-limits
+    FALLBACK_LITE_MODEL = "gemini-2.5-flash-lite"
+
     # Visual Creative Model: explicitly tuned for generating image and infographic prompts
     CREATIVE_VISION_MODEL = "gemini-3-pro-image-preview"
 
@@ -34,8 +37,8 @@ class AgentVersions:
     can be distinguished from runs under a different schema.
     """
 
-    # Discovery pipeline (v3: 3-stage with social profiler)
-    DISCOVERY_PIPELINE = "3.0.0"
+    # Discovery pipeline (v4: 4-stage with reviewer + news)
+    DISCOVERY_PIPELINE = "4.0.0"
     SITE_CRAWLER = "1.1.0"
     CONTACT_DISCOVERY = "1.0.0"
     MENU_DISCOVERY = "2.1.0"
@@ -53,3 +56,16 @@ class AgentVersions:
 
     # Marketing
     MARKETING_SWARM = "1.0.0"
+
+    # Discovery Stage 4 additions
+    NEWS_DISCOVERY = "1.0.0"
+    DISCOVERY_REVIEWER = "1.0.0"
+
+
+class OptimizerVersions:
+    """Optimizer agent version registry."""
+
+    PROMPT_OPTIMIZER = "1.0.0"
+    AI_COST_OPTIMIZER = "1.0.0"
+    CLOUD_COST_OPTIMIZER = "1.0.0"
+    PERFORMANCE_OPTIMIZER = "1.0.0"

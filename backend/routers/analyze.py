@@ -26,7 +26,7 @@ from backend.agents.business_profiler import ProfilerAgent
 from backend.agents.marketing_swarm import generate_and_draft_marketing_content
 from backend.lib.report_storage import generate_slug, upload_report
 from backend.lib.report_templates import build_margin_report
-from backend.lib.db import write_agent_result
+from backend.lib.db import write_agent_result, enrich_identity
 from backend.config import AgentVersions
 from backend.lib.adk_helpers import user_msg, user_msg_with_image
 
@@ -81,7 +81,7 @@ async def analyze(request: Request):
         # FAST PATH: We already ran the Parallel Discovery Subagents
         if enriched_profile and enriched_profile.get("officialUrl"):
             logger.info(f"[API/Analyze] Fast Path: Bypassing Profiler for {enriched_profile.get('name')}")
-            identity = {**enriched_profile}
+            identity = enrich_identity({**enriched_profile})
 
             # Screenshot the menu page (or main site as fallback)
             if not identity.get("menuScreenshotBase64"):

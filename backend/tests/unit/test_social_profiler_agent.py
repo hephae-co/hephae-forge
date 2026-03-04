@@ -41,15 +41,16 @@ class TestSocialProfilerAgentConfig:
 
 
 class TestPipelineStructure:
-    def test_pipeline_is_three_stage(self):
+    def test_pipeline_is_four_stage(self):
         subs = discovery_pipeline.sub_agents
-        assert len(subs) == 3, f"Expected 3 stages, got {len(subs)}"
+        assert len(subs) == 4, f"Expected 4 stages, got {len(subs)}"
         assert subs[0].name == "SiteCrawlerAgent"
         assert subs[1].name == "DiscoveryFanOut"
         assert subs[2].name == "SocialProfilerAgent"
+        assert subs[3].name == "DiscoveryReviewerAgent"
 
-    def test_fan_out_has_six_agents(self):
-        assert len(discovery_fan_out.sub_agents) == 6
+    def test_fan_out_has_seven_agents(self):
+        assert len(discovery_fan_out.sub_agents) == 7
 
 
 class TestWithSocialUrlsHelper:

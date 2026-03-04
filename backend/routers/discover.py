@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse
 
 from backend.agents.discovery import discovery_pipeline
 from backend.config import AgentVersions
-from backend.lib.report_storage import generate_slug, upload_report
+from backend.lib.report_storage import generate_slug, upload_report, upload_menu_screenshot, upload_menu_html
 from backend.lib.report_templates import build_profile_report
 from backend.lib.db import write_discovery, write_agent_result
 from backend.lib.adk_helpers import user_msg
@@ -52,6 +52,50 @@ def _safe_parse_array(value) -> list:
         return parsed if isinstance(parsed, list) else []
     except (json.JSONDecodeError, ValueError):
         return []
+
+
+async def _capture_menu(menu_url: str, slug: str) -> tuple[str, str]:
+    """Capture menu page as screenshot + HTML, upload both to GCS.
+
+    Returns (screenshot_url, html_url).  Either may be empty on failure.
+    """
+    screenshot_url = ""
+    html_url = ""
+    try:
+        import base64
+        from playwright.async_api import async_playwright
+
+        logger.info(f"[Discover] Capturing menu from {menu_url}...")
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch()
+            ctx = await browser.new_context(
+                ignore_https_errors=True,
+                user_agent=(
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+                ),
+            )
+            page = await ctx.new_page()
+            await page.goto(menu_url, wait_until="networkidle", timeout=15000)
+            await page.wait_for_timeout(2000)
+
+            # Screenshot
+            buf = await page.screenshot(full_page=True, type="jpeg", quality=55)
+            b64 = base64.b64encode(buf).decode()
+            screenshot_url = await upload_menu_screenshot(slug, b64)
+
+            # Raw HTML
+            html = await page.content()
+            html_url = await upload_menu_html(slug, html)
+
+            await browser.close()
+
+        logger.info(
+            f"[Discover] Menu captured: screenshot={bool(screenshot_url)}, html={bool(html_url)}"
+        )
+    except Exception as e:
+        logger.warning(f"[Discover] Menu capture failed for {menu_url}: {e}")
+    return screenshot_url, html_url
 
 
 @router.post("/discover")
@@ -138,35 +182,61 @@ async def discover(request: Request):
         md = menu_data
         cd = contact_data
 
+        # Parse reviewer output (Stage 4) and news data (Stage 2)
+        reviewer_data = _safe_parse(state.get("reviewerData"))
+        news_data = _safe_parse_array(state.get("newsData"))
+        validation_report = None
+
+        # If reviewer ran, use validated data as authoritative
+        vs = reviewer_data.get("validatedSocialData", {}) if reviewer_data else {}
+        validated_menu = reviewer_data.get("validatedMenuUrl") if reviewer_data else None
+        validated_competitors = reviewer_data.get("validatedCompetitors", []) if reviewer_data else []
+        validated_news = reviewer_data.get("validatedNews", []) if reviewer_data else []
+        validated_maps = reviewer_data.get("validatedMapsUrl") if reviewer_data else None
+        if reviewer_data:
+            validation_report = reviewer_data.get("validationReport")
+            logger.info(f"[API/Discover] Reviewer report: {validation_report}")
+
         slug = generate_slug(name)
 
         enriched_profile = {
             **identity,
-            "menuUrl": md.get("menuUrl") or None,
+            "menuUrl": (validated_menu if validated_menu is not None else md.get("menuUrl")) or None,
             "socialLinks": {
-                "instagram": sd.get("instagram") or None,
-                "facebook": sd.get("facebook") or None,
-                "twitter": sd.get("twitter") or None,
-                "yelp": sd.get("yelp") or None,
-                "tiktok": sd.get("tiktok") or None,
-                "grubhub": md.get("grubhub") or sd.get("grubhub") or None,
-                "doordash": md.get("doordash") or sd.get("doordash") or None,
-                "ubereats": md.get("ubereats") or sd.get("ubereats") or None,
-                "seamless": md.get("seamless") or sd.get("seamless") or None,
-                "toasttab": md.get("toasttab") or sd.get("toasttab") or None,
+                "instagram": vs.get("instagram") or sd.get("instagram") or None,
+                "facebook": vs.get("facebook") or sd.get("facebook") or None,
+                "twitter": vs.get("twitter") or sd.get("twitter") or None,
+                "yelp": vs.get("yelp") or sd.get("yelp") or None,
+                "tiktok": vs.get("tiktok") or sd.get("tiktok") or None,
+                "grubhub": vs.get("grubhub") or md.get("grubhub") or sd.get("grubhub") or None,
+                "doordash": vs.get("doordash") or md.get("doordash") or sd.get("doordash") or None,
+                "ubereats": vs.get("ubereats") or md.get("ubereats") or sd.get("ubereats") or None,
+                "seamless": vs.get("seamless") or md.get("seamless") or sd.get("seamless") or None,
+                "toasttab": vs.get("toasttab") or md.get("toasttab") or sd.get("toasttab") or None,
             },
             "phone": cd.get("phone") or sd.get("phone") or None,
             "email": cd.get("email") or sd.get("email") or None,
             "hours": cd.get("hours") or sd.get("hours") or None,
-            "googleMapsUrl": maps_url or None,
-            "competitors": parsed_competitors if parsed_competitors else None,
+            "googleMapsUrl": validated_maps or maps_url or None,
+            "competitors": validated_competitors if validated_competitors else (parsed_competitors if parsed_competitors else None),
+            "news": validated_news if validated_news else (news_data if news_data else None),
             "favicon": th.get("favicon") or None,
             "logoUrl": th.get("logoUrl") or None,
             "primaryColor": th.get("primaryColor") or None,
             "secondaryColor": th.get("secondaryColor") or None,
             "persona": th.get("persona") or None,
             "socialProfileMetrics": social_profile_metrics or None,
+            "validationReport": validation_report,
         }
+
+        # Capture menu screenshot + HTML and upload to GCS
+        menu_url = enriched_profile.get("menuUrl")
+        if menu_url:
+            screenshot_url, html_url = await _capture_menu(menu_url, slug)
+            if screenshot_url:
+                enriched_profile["menuScreenshotUrl"] = screenshot_url
+            if html_url:
+                enriched_profile["menuHtmlUrl"] = html_url
 
         # Upload HTML report to GCS
         report_url = await upload_report(
@@ -198,6 +268,40 @@ async def discover(request: Request):
                     raw_data=social_profile_metrics,
                     score=summary_data.get("overallPresenceScore"),
                     summary=summary_data.get("recommendation", ""),
+                )
+            )
+
+        # Write reviewer validation results (fire-and-forget)
+        if validation_report:
+            asyncio.create_task(
+                write_agent_result(
+                    business_slug=slug,
+                    business_name=name,
+                    agent_name="discovery_reviewer",
+                    agent_version=AgentVersions.DISCOVERY_REVIEWER,
+                    triggered_by="user",
+                    raw_data=reviewer_data,
+                    summary=(
+                        f"Checked {validation_report.get('totalUrlsChecked', 0)} URLs: "
+                        f"{validation_report.get('valid', 0)} valid, "
+                        f"{validation_report.get('invalid', 0)} invalid, "
+                        f"{validation_report.get('corrected', 0)} corrected"
+                    ),
+                )
+            )
+
+        # Write news discovery results (fire-and-forget)
+        news_to_store = validated_news if validated_news else news_data
+        if news_to_store:
+            asyncio.create_task(
+                write_agent_result(
+                    business_slug=slug,
+                    business_name=name,
+                    agent_name="news_discovery",
+                    agent_version=AgentVersions.NEWS_DISCOVERY,
+                    triggered_by="user",
+                    raw_data=news_to_store,
+                    summary=f"Found {len(news_to_store)} news mentions",
                 )
             )
 

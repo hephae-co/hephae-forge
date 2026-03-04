@@ -10,6 +10,7 @@ Optional: GOOGLE_APPLICATION_CREDENTIALS for Firestore tests.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -22,6 +23,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
 from backend.agents.discovery import discovery_pipeline
+from backend.agents.discovery.locator import LocatorAgent
 from backend.lib.adk_helpers import user_msg
 from backend.tests.integration.businesses import BUSINESSES, GroundTruth
 
@@ -32,8 +34,8 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------
 
 def _is_cloud_run() -> bool:
-    """Detect Cloud Run environment (K_SERVICE is set by Cloud Run)."""
-    return bool(os.environ.get("K_SERVICE"))
+    """Detect Cloud Run environment (K_SERVICE for services, CLOUD_RUN_JOB for jobs)."""
+    return bool(os.environ.get("K_SERVICE") or os.environ.get("CLOUD_RUN_JOB"))
 
 
 def pytest_configure(config):
@@ -157,6 +159,54 @@ def _safe_parse_array(value) -> list:
         return parsed if isinstance(parsed, list) else []
     except (json.JSONDecodeError, ValueError):
         return []
+
+
+# ------------------------------------------------------------------
+# Pre-warm all 5 pipelines concurrently (biggest speed win)
+# ------------------------------------------------------------------
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def _prewarm_pipelines(discovery_cache, runner_factory):
+    """Run all 5 discovery pipelines in parallel at session start.
+
+    This cuts total test time from ~900s (sequential) to ~180s (parallel).
+    Each pipeline result is cached so individual tests hit the cache.
+    """
+    if not os.environ.get("GEMINI_API_KEY"):
+        return
+
+    async def _run_one(biz: GroundTruth):
+        try:
+            logger.info(f"[Prewarm/{biz.id}] Starting locator + pipeline...")
+            identity = await LocatorAgent.resolve(biz.query)
+            discovery_cache.locator_results[biz.id] = identity
+
+            runner, session_service, user_id, session_id = await runner_factory()
+            prompt = (
+                f"Please discover everything about this business:\n"
+                f"Name: {identity.get('name', biz.name)}\n"
+                f"Address: {identity.get('address', '')}\n"
+                f"URL: {identity.get('officialUrl', '')}"
+            )
+
+            async for _ in runner.run_async(
+                user_id=user_id,
+                session_id=session_id,
+                new_message=user_msg(prompt),
+            ):
+                pass
+
+            final_session = await session_service.get_session(
+                app_name="integration-test", user_id=user_id, session_id=session_id
+            )
+            state = final_session.state if final_session else {}
+            discovery_cache.pipeline_states[biz.id] = state
+            discovery_cache.enriched_profiles[biz.id] = build_enriched_profile(identity, state)
+            logger.info(f"[Prewarm/{biz.id}] Done — state keys: {list(state.keys())}")
+        except Exception as e:
+            logger.warning(f"[Prewarm/{biz.id}] Failed: {e}")
+
+    await asyncio.gather(*[_run_one(biz) for biz in BUSINESSES])
 
 
 def build_enriched_profile(identity: dict, state: dict) -> dict:

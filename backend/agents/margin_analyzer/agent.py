@@ -4,7 +4,7 @@ Margin analyzer agents — 5 LlmAgents + SequentialAgent orchestrator.
 Pipeline: VisionIntake → Benchmarker → CommodityWatchdog → Surgeon → Advisor
 """
 
-from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 
 from backend.config import AgentModels
 from backend.lib.model_fallback import fallback_on_error
@@ -71,16 +71,26 @@ advisor_agent = LlmAgent(
 
 
 # ---------------------------------------------------------------------------
+# Parallel fan-out: Benchmarker + CommodityWatchdog (both read parsedMenuItems)
+# ---------------------------------------------------------------------------
+
+benchmark_and_commodity = ParallelAgent(
+    name="BenchmarkAndCommodity",
+    description="Run Benchmarker and CommodityWatchdog in parallel — both read parsedMenuItems, write to independent keys.",
+    sub_agents=[benchmarker_agent, commodity_watchdog_agent],
+)
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
 margin_surgery_orchestrator = SequentialAgent(
     name="MarginSurgeryOrchestrator",
-    description="Executes the full margin surgeon pipeline sequentially, taking the output of each agent and passing it to the next.",
+    description="Executes the full margin surgeon pipeline: VisionIntake → (Benchmarker || CommodityWatchdog) → Surgeon → Advisor.",
     sub_agents=[
         vision_intake_agent,
-        benchmarker_agent,
-        commodity_watchdog_agent,
+        benchmark_and_commodity,
         surgeon_agent,
         advisor_agent,
     ],

@@ -34,7 +34,7 @@ fi
 # Job resource limits
 MEMORY="2Gi"
 CPU="2"
-TASK_TIMEOUT="900"  # 15 min — full suite can take a while
+TASK_TIMEOUT="1200"  # 20 min — parallelized pipelines ~5 min, buffer for cold starts
 
 # ──────────────────────────────────────────────────────────────
 # Parse flags

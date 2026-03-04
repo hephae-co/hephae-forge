@@ -134,48 +134,48 @@ async def analyze(request: Request):
         commodity_prompt = "[]"
 
         if advanced_mode:
-            # 2. Benchmarker
-            logger.info("[API/Analyze] Step 2: Benchmarker (Advanced Mode)...")
-            benchmark_runner = Runner(app_name="hephae-hub", agent=benchmarker_agent, session_service=session_service)
+            # 2 & 3. Benchmarker + Commodity Watchdog (parallel — both read parsedMenuItems)
+            logger.info("[API/Analyze] Steps 2+3: Benchmarker || CommodityWatchdog (Advanced Mode)...")
 
-            async for raw_event in benchmark_runner.run_async(
-                user_id=user_id,
-                session_id=session_id,
-                new_message=user_msg(
-                    f"Here are the parsed menu items for {identity.get('name')} "
-                    f"in {identity.get('address', 'their local area')}:\n{menu_items_prompt}"
-                ),
-            ):
-                event = raw_event
-                actions = getattr(event, "actions", None)
-                if actions:
-                    delta = getattr(actions, "state_delta", None) or (actions if isinstance(actions, dict) else {})
-                    if isinstance(delta, dict) and delta.get("competitorBenchmarks"):
-                        val = delta["competitorBenchmarks"]
-                        benchmark_prompt = val if isinstance(val, str) else json.dumps(val)
+            async def _run_benchmarker():
+                result = "[]"
+                br = Runner(app_name="hephae-hub", agent=benchmarker_agent, session_service=session_service)
+                async for raw_event in br.run_async(
+                    user_id=user_id,
+                    session_id=session_id,
+                    new_message=user_msg(
+                        f"Here are the parsed menu items for {identity.get('name')} "
+                        f"in {identity.get('address', 'their local area')}:\n{menu_items_prompt}"
+                    ),
+                ):
+                    actions = getattr(raw_event, "actions", None)
+                    if actions:
+                        delta = getattr(actions, "state_delta", None) or (actions if isinstance(actions, dict) else {})
+                        if isinstance(delta, dict) and delta.get("competitorBenchmarks"):
+                            val = delta["competitorBenchmarks"]
+                            result = val if isinstance(val, str) else json.dumps(val)
+                return _clean_json(result)
 
-            benchmark_prompt = _clean_json(benchmark_prompt)
+            async def _run_commodity_watchdog():
+                result = "[]"
+                cr = Runner(app_name="hephae-hub", agent=commodity_watchdog_agent, session_service=session_service)
+                async for raw_event in cr.run_async(
+                    user_id=user_id,
+                    session_id=session_id,
+                    new_message=user_msg(f"Here are the parsed menu items:\n{menu_items_prompt}"),
+                ):
+                    actions = getattr(raw_event, "actions", None)
+                    if actions:
+                        delta = getattr(actions, "state_delta", None) or (actions if isinstance(actions, dict) else {})
+                        if isinstance(delta, dict) and delta.get("commodityTrends"):
+                            val = delta["commodityTrends"]
+                            result = val if isinstance(val, str) else json.dumps(val)
+                return _clean_json(result)
 
-            # 3. Commodity Watchdog
-            logger.info("[API/Analyze] Step 3: Commodity Watchdog (Advanced Mode)...")
-            commodity_runner = Runner(
-                app_name="hephae-hub", agent=commodity_watchdog_agent, session_service=session_service
+            benchmark_prompt, commodity_prompt = await asyncio.gather(
+                _run_benchmarker(),
+                _run_commodity_watchdog(),
             )
-
-            async for raw_event in commodity_runner.run_async(
-                user_id=user_id,
-                session_id=session_id,
-                new_message=user_msg(f"Here are the parsed menu items:\n{menu_items_prompt}"),
-            ):
-                event = raw_event
-                actions = getattr(event, "actions", None)
-                if actions:
-                    delta = getattr(actions, "state_delta", None) or (actions if isinstance(actions, dict) else {})
-                    if isinstance(delta, dict) and delta.get("commodityTrends"):
-                        val = delta["commodityTrends"]
-                        commodity_prompt = val if isinstance(val, str) else json.dumps(val)
-
-            commodity_prompt = _clean_json(commodity_prompt)
 
         else:
             logger.info("[API/Analyze] Fast Mode: Bypassing Benchmarker and Watchdog LLMs.")

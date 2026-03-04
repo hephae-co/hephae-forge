@@ -14,8 +14,9 @@ RUN pip install --no-cache-dir ".[dev]"
 # Install Playwright Chromium + system deps (needed for screenshots, social cards)
 RUN playwright install --with-deps chromium
 
-# Copy backend code
+# Copy backend code + test scripts
 COPY backend/ ./backend/
+COPY scripts/ ./scripts/
 
 # Copy .env.local if present
 COPY .env.local* ./

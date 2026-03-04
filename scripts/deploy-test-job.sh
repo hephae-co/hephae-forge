@@ -17,7 +17,8 @@ set -euo pipefail
 PROJECT_ID="hephae-co-dev"
 REGION="us-east1"
 JOB_NAME="integration-tests"
-IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/hephae-docker/hephae-forge:latest"
+TAG=$(git rev-parse --short HEAD)
+IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/hephae-forge-api:${TAG}"
 SERVICE_ACCOUNT="hephae-forge@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # Job resource limits

@@ -90,14 +90,15 @@ fi
 # ──────────────────────────────────────────────────────────────
 # Update image to latest (pick up newly deployed code)
 # ──────────────────────────────────────────────────────────────
-IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/hephae-docker/hephae-forge:latest"
-info "Updating job image to latest..."
+TAG=$(git rev-parse --short HEAD)
+IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/hephae-forge-api:${TAG}"
+info "Updating job image to ${TAG}..."
 gcloud run jobs update "$JOB_NAME" \
     --image "$IMAGE" \
     --region "$REGION" \
     --project "$PROJECT_ID" \
     --quiet 2>/dev/null
-ok "Job updated to latest image"
+ok "Job updated to image tag: ${TAG}"
 
 # ──────────────────────────────────────────────────────────────
 # Execute

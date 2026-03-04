@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 # Skip entire module if no API key
 # ------------------------------------------------------------------
 
-def _is_cloud_run() -> bool:
-    """Detect Cloud Run environment (K_SERVICE for services, CLOUD_RUN_JOB for jobs)."""
-    return bool(os.environ.get("K_SERVICE") or os.environ.get("CLOUD_RUN_JOB"))
+def _is_cloud_run_service() -> bool:
+    """Detect Cloud Run Service (K_SERVICE). Jobs have Playwright, services don't."""
+    return bool(os.environ.get("K_SERVICE"))
 
 
 def pytest_configure(config):
@@ -48,9 +48,9 @@ def pytest_collection_modifyitems(config, items):
             if "integration" in item.keywords:
                 item.add_marker(skip)
 
-    if _is_cloud_run():
+    if _is_cloud_run_service():
         skip_browser = pytest.mark.skip(
-            reason="Cloud Run: no Playwright browser binary or crawl4ai sidecar available"
+            reason="Cloud Run Service: no Playwright browser — use Cloud Run Job instead"
         )
         for item in items:
             if "needs_browser" in item.keywords:

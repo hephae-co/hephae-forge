@@ -2,7 +2,7 @@
  * Loading experience configuration — pipeline stages, quotes, and bubble game settings.
  */
 
-export type CapabilityId = "surgery" | "traffic" | "seo" | "competitive" | "marketing";
+export type CapabilityId = "discovery" | "surgery" | "traffic" | "seo" | "competitive" | "marketing";
 
 export interface PipelineStage {
   id: string;
@@ -21,6 +21,29 @@ export interface CapabilityConfig {
 }
 
 // ─── Pipeline stage definitions per capability ──────────────────────────────
+
+const DISCOVERY_CONFIG: CapabilityConfig = {
+  id: "discovery",
+  label: "Deep Discovery",
+  accentHex: "#0052CC",
+  estimatedDurationMs: 45_000,
+  stages: [
+    { id: "crawl", label: "Crawling business website", icon: "Globe", durationPercent: 25 },
+    { id: "agents", label: "Running 7 research agents", icon: "Users", durationPercent: 30 },
+    { id: "social", label: "Profiling social media", icon: "Camera", durationPercent: 25 },
+    { id: "validate", label: "Validating & cross-referencing", icon: "CheckCircle", durationPercent: 20 },
+  ],
+  quotes: [
+    "We crawl deeper than a Yelp reviewer on a mission.",
+    "7 AI agents researching your business simultaneously \u2014 like a team of interns, but faster.",
+    "Finding every detail about your business across the web.",
+    "Good discovery is the foundation of great strategy.",
+    "Scanning menus, reviews, social profiles, and more\u2026",
+    "Our bots are checking your Instagram so you don\u2019t have to.",
+    "Building your digital twin \u2014 one data point at a time.",
+    "The more we know, the sharper our recommendations.",
+  ],
+};
 
 const SURGERY_CONFIG: CapabilityConfig = {
   id: "surgery",
@@ -139,6 +162,7 @@ const MARKETING_CONFIG: CapabilityConfig = {
 };
 
 export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
+  discovery: DISCOVERY_CONFIG,
   surgery: SURGERY_CONFIG,
   traffic: TRAFFIC_CONFIG,
   seo: SEO_CONFIG,

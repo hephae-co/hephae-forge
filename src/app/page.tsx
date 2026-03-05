@@ -16,7 +16,7 @@ import { NeuralBackground } from '@/components/Chatbot/NeuralBackground';
 import BlobBackground from '@/components/BlobBackground';
 import { EmailWall } from '@/components/Chatbot/EmailWall';
 import ResultsDashboard from '@/components/Chatbot/seo/ResultsDashboard';
-import DiscoveryProgress, { ALL_DISCOVERY_MESSAGES, useRotatingMessage } from '@/components/Chatbot/DiscoveryProgress';
+// DiscoveryProgress import kept for ChatInterface/MapVisualizer; useRotatingMessage now used inside LoadingOverlay
 import { SeoReport } from '@/types/api';
 import LoadingOverlay from '@/components/Chatbot/LoadingExperience';
 
@@ -76,7 +76,7 @@ export default function Home() {
   }, []);
 
   // Rotating messages for the discovery overlay
-  const { message: discoveryMsg, visible: discoveryMsgVisible } = useRotatingMessage(ALL_DISCOVERY_MESSAGES, 3500, isDiscovering);
+  // Discovery messages now handled inside LoadingOverlay
 
   const handleEmailSubmit = async (email: string) => {
     if (!searchDocId) return;
@@ -203,12 +203,36 @@ export default function Home() {
 
   const triggerDiscoveryOrchestrator = async (identity: BaseIdentity) => {
     setIsDiscovering(true);
+    setActiveCapability("discovery");
+    setCapabilityStartTime(Date.now());
+
+    // Simulated progress updates that appear in chat while discovery runs
+    const progressMessages = [
+      { delay: 6000, text: `Crawling **${identity.name}**'s website for menus, hours, and contact info...` },
+      { delay: 14000, text: `Dispatching research agents \u2014 analyzing theme, social links, competitors, and news coverage...` },
+      { delay: 24000, text: `Profiling social media presence across Instagram, Facebook, and more...` },
+      { delay: 34000, text: `Cross-referencing and validating all discovered URLs...` },
+    ];
+    const progressTimers: ReturnType<typeof setTimeout>[] = [];
+    let discoveryDone = false;
+
+    for (const pm of progressMessages) {
+      progressTimers.push(setTimeout(() => {
+        if (!discoveryDone) {
+          setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: pm.text }]);
+        }
+      }, pm.delay));
+    }
+
     try {
       const res = await fetch('/api/discover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identity })
       });
+      discoveryDone = true;
+      progressTimers.forEach(clearTimeout);
+
       if (res.ok) {
         const enrichedProfile = await res.json();
         if (enrichedProfile.reportUrl) {
@@ -226,6 +250,8 @@ export default function Home() {
         console.error("Discovery returned", res.status);
       }
     } catch (e) {
+      discoveryDone = true;
+      progressTimers.forEach(clearTimeout);
       console.error("Discovery failed", e);
     } finally {
       // Always unlock capabilities — even if discovery failed, users can still run analyses
@@ -237,6 +263,8 @@ export default function Home() {
         { id: 'marketing', label: 'Social Media Insights' },
       ]);
       setIsDiscovering(false);
+      setActiveCapability(null);
+      setCapabilityStartTime(null);
     }
   };
 
@@ -863,6 +891,13 @@ export default function Home() {
         </>
       )}
 
+      {/* Global Hephae logo — visible during panel transition so it never vanishes */}
+      {!isCentered && !report && !forecast && !seoReport && !competitiveReport && !isDiscovering && !isTyping && (
+        <div className="fixed top-4 left-4 z-[100] animate-fade-in pointer-events-none">
+          <HephaeLogo size="sm" variant="color" />
+        </div>
+      )}
+
       {/* LEFT VISUALIZER PANEL - Hidden when centered, fills remaining space when active */}
       <div className={`relative z-10 transition-all duration-700 ease-in-out flex flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden' : 'flex-1 opacity-100'}`}>
         {!isCentered && (
@@ -924,7 +959,7 @@ export default function Home() {
             </div>
 
             {/* Hephae logo badge — persistent branding on left panel when no report is displayed */}
-            {!report && !forecast && !seoReport && !competitiveReport && (
+            {!report && !forecast && !seoReport && !competitiveReport && !isDiscovering && !isTyping && (
               <div className="absolute top-4 right-4 z-50 animate-fade-in">
                 <HephaeLogo size="sm" variant="color" />
               </div>
@@ -1014,52 +1049,14 @@ export default function Home() {
               <>
                 <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} />
 
-                {/* Discovery overlay — faded map peeks through, progress text overlaid */}
-                {isDiscovering && !isTyping && (
-                  <div className="absolute inset-0 z-20 bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center animate-fade-in">
-                    <div className="absolute inset-0 opacity-15 pointer-events-none">
-                      <NeuralBackground />
-                    </div>
-                    <div className="relative z-10 flex flex-col items-center gap-6 max-w-md text-center px-8">
-                      {/* Animated logo ring */}
-                      <div className="relative flex items-center justify-center w-24 h-24">
-                        <div className="absolute inset-0 rounded-full border-4 border-[#0052CC]/10 animate-pulse" />
-                        <div className="absolute inset-1 rounded-full border-2 border-[#00C2FF]/30 animate-spin" style={{ animationDuration: '3s' }} />
-                        {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
-                          <img
-                            src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon}
-                            className="w-12 h-12 rounded-full object-cover"
-                            alt=""
-                          />
-                        ) : (
-                          <HephaeLogo size="md" variant="color" showWordmark={false} />
-                        )}
-                      </div>
-
-                      <div>
-                        <div className="text-lg font-bold text-gray-900 mb-1">
-                          {locatedBusiness.name}
-                        </div>
-                        <div className="text-sm text-indigo-600 font-semibold tracking-wide">
-                          Running deep discovery...
-                        </div>
-                      </div>
-
-                      {/* Large rotating message */}
-                      <div
-                        className="text-base font-medium text-gray-600 leading-relaxed italic transition-opacity duration-500"
-                        style={{ opacity: discoveryMsgVisible ? 1 : 0 }}
-                      >
-                        &ldquo;{discoveryMsg}&rdquo;
-                      </div>
-
-                      <div className="flex gap-2">
-                        <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" />
-                        <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
-                        <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
-                      </div>
-                    </div>
-                  </div>
+                {/* Discovery overlay — interactive loading experience */}
+                {isDiscovering && (
+                  <LoadingOverlay
+                    capabilityId="discovery"
+                    startTime={capabilityStartTime}
+                    businessName={locatedBusiness.name}
+                    businessLogo={(locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon}
+                  />
                 )}
               </>
             ) : (

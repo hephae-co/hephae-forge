@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Check, ScanEye, Scale, TrendingUp, Scissors, Lightbulb, CloudSun, Calendar, BarChart3, MapPin, Globe, Gauge, FileText, Award, Building2, Search, Shield, Target, Share2, PenTool, Heart, FileEdit } from "lucide-react";
+import { Check, ScanEye, Scale, TrendingUp, Scissors, Lightbulb, CloudSun, Calendar, BarChart3, MapPin, Globe, Gauge, FileText, Award, Building2, Search, Shield, Target, Share2, PenTool, Heart, FileEdit, Compass, Wifi, Users, Camera, CheckCircle } from "lucide-react";
 import type { PipelineStage } from "./loadingConfig";
 
 // Map icon name strings to actual components
@@ -11,6 +11,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Globe, Gauge, FileText, Award,
   Building2, Search, Shield, Target,
   Share2, PenTool, Heart, FileEdit,
+  Compass, Wifi, Users, Camera, CheckCircle,
 };
 
 function useActiveStage(

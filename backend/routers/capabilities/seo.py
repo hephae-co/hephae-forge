@@ -72,7 +72,7 @@ def _has_valid_sections(report_data: dict) -> bool:
     sections = report_data.get("sections")
     if not isinstance(sections, list) or len(sections) == 0:
         return False
-    return any(s.get("score", 0) > 0 for s in sections)
+    return any(isinstance(s, dict) and s.get("score", 0) > 0 for s in sections)
 
 
 async def _run_seo_agent(agent, identity: dict) -> dict:
@@ -170,6 +170,8 @@ async def capabilities_seo(request: Request):
         # Mark sections as analyzed
         if isinstance(report_data.get("sections"), list):
             for section in report_data["sections"]:
+                if not isinstance(section, dict):
+                    continue
                 section["isAnalyzed"] = True
                 if not isinstance(section.get("recommendations"), list):
                     section["recommendations"] = []
@@ -177,7 +179,7 @@ async def capabilities_seo(request: Request):
         final_report = {
             **report_data,
             "url": identity["officialUrl"],
-            "sections": report_data.get("sections") if isinstance(report_data.get("sections"), list) else [],
+            "sections": [s for s in report_data.get("sections", []) if isinstance(s, dict)] if isinstance(report_data.get("sections"), list) else [],
         }
 
         # Fire and forget marketing generation

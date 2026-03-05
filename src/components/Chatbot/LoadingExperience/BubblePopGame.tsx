@@ -15,12 +15,15 @@ interface Bubble {
   popping: boolean;
   popProgress: number;
   age: number; // frames since spawn — used for entrance bounce
+  points: number; // 1 = normal, 2 = silver, 3 = gold, 5 = diamond
+  tier: "normal" | "silver" | "gold" | "diamond";
 }
 
 interface FloatingScore {
   id: number;
   x: number;
   y: number;
+  points: number;
   opacity: number;
   created: number;
 }
@@ -45,19 +48,43 @@ export default function BubblePopGame({ active, accentColor = "#0052CC", classNa
   const spawnBubble = useCallback((width: number, height: number, startY?: number) => {
     if (bubblesRef.current.length >= BUBBLE_CONFIG.maxBubbles) return;
     const cfg = BUBBLE_CONFIG;
-    const radius = cfg.minRadius + Math.random() * (cfg.maxRadius - cfg.minRadius);
+
+    // Tier roll: 60% normal, 22% silver (2pts), 13% gold (3pts), 5% diamond (5pts)
+    const roll = Math.random();
+    let tier: Bubble["tier"] = "normal";
+    let points = 1;
+    let color: string;
+    if (roll > 0.95) {
+      tier = "diamond"; points = 5;
+      color = "#06b6d4"; // cyan shimmer
+    } else if (roll > 0.82) {
+      tier = "gold"; points = 3;
+      color = "#f59e0b"; // amber/gold
+    } else if (roll > 0.60) {
+      tier = "silver"; points = 2;
+      color = "#94a3b8"; // slate/silver
+    } else {
+      color = cfg.colors[Math.floor(Math.random() * cfg.colors.length)];
+    }
+
+    const baseRadius = cfg.minRadius + Math.random() * (cfg.maxRadius - cfg.minRadius);
+    // Special bubbles are slightly larger
+    const radius = tier === "diamond" ? baseRadius * 1.3 : tier === "gold" ? baseRadius * 1.15 : baseRadius;
+
     bubblesRef.current.push({
       id: ++nextBubbleId,
       x: radius + Math.random() * (width - radius * 2),
       y: startY ?? height + radius,
       radius,
-      color: cfg.colors[Math.floor(Math.random() * cfg.colors.length)],
+      color,
       symbol: cfg.symbols[Math.floor(Math.random() * cfg.symbols.length)],
       vy: cfg.riseSpeed.min + Math.random() * (cfg.riseSpeed.max - cfg.riseSpeed.min),
       phase: Math.random() * Math.PI * 2,
       popping: false,
       popProgress: 0,
       age: 0,
+      points,
+      tier,
     });
   }, []);
 
@@ -165,11 +192,23 @@ export default function BubblePopGame({ active, accentColor = "#0052CC", classNa
         ctx.fillStyle = gradient;
         ctx.fill();
 
-        // Prominent border
+        // Special bubble glow for gold/diamond
+        if (b.tier === "gold" || b.tier === "diamond") {
+          ctx.save();
+          ctx.shadowColor = b.tier === "diamond" ? "#06b6d4" : "#f59e0b";
+          ctx.shadowBlur = 12 + Math.sin(b.age * 0.08) * 4;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, drawRadius, 0, Math.PI * 2);
+          ctx.fillStyle = "transparent";
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Prominent border — thicker for special bubbles
         ctx.beginPath();
         ctx.arc(b.x, b.y, drawRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = b.color + "DD";
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = b.tier !== "normal" ? b.color + "FF" : b.color + "DD";
+        ctx.lineWidth = b.tier === "diamond" ? 3 : b.tier === "gold" ? 2.5 : 2;
         ctx.stroke();
 
         // Glass shine highlight
@@ -183,6 +222,22 @@ export default function BubblePopGame({ active, accentColor = "#0052CC", classNa
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(b.symbol, b.x + 1, b.y + 2);
+
+        // Points badge for special bubbles
+        if (b.tier !== "normal") {
+          const badgeX = b.x + drawRadius * 0.55;
+          const badgeY = b.y - drawRadius * 0.55;
+          const badgeR = 9;
+          ctx.beginPath();
+          ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI * 2);
+          ctx.fillStyle = b.tier === "diamond" ? "#06b6d4" : b.tier === "gold" ? "#f59e0b" : "#64748b";
+          ctx.fill();
+          ctx.font = "bold 10px sans-serif";
+          ctx.fillStyle = "#fff";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(`${b.points}x`, badgeX, badgeY);
+        }
       }
 
       animFrameRef.current = requestAnimationFrame(animate);
@@ -224,11 +279,11 @@ export default function BubblePopGame({ active, accentColor = "#0052CC", classNa
       if (dx * dx + dy * dy <= b.radius * b.radius * 1.2) {
         b.popping = true;
         b.popProgress = 0;
-        setScore((s) => s + 1);
+        setScore((s) => s + b.points);
         if (!hasPopped) setHasPopped(true);
         setFloatingScores((prev) => [
           ...prev,
-          { id: b.id, x: b.x, y: b.y, opacity: 1, created: Date.now() },
+          { id: b.id, x: b.x, y: b.y, points: b.points, opacity: 1, created: Date.now() },
         ]);
         break;
       }
@@ -280,7 +335,7 @@ export default function BubblePopGame({ active, accentColor = "#0052CC", classNa
               textShadow: "0 1px 3px rgba(0,0,0,0.15)",
             }}
           >
-            +1
+            +{fs.points}{fs.points >= 3 && " \u2B50"}
           </div>
         );
       })}

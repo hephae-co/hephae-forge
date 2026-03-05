@@ -316,6 +316,21 @@ class MarketingReport(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Social Post Generator types
+# ---------------------------------------------------------------------------
+
+
+class SocialPostContent(BaseModel):
+    caption: Optional[str] = None  # Instagram
+    post: Optional[str] = None  # Facebook
+
+
+class SocialPostsResponse(BaseModel):
+    instagram: SocialPostContent = Field(default_factory=SocialPostContent)
+    facebook: SocialPostContent = Field(default_factory=SocialPostContent)
+
+
+# ---------------------------------------------------------------------------
 # V1 API envelope
 # ---------------------------------------------------------------------------
 

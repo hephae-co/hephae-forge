@@ -51,6 +51,7 @@ import ResultsDashboard from '@/components/Chatbot/seo/ResultsDashboard';
 // DiscoveryProgress import kept for ChatInterface/MapVisualizer; useRotatingMessage now used inside LoadingOverlay
 import { SeoReport } from '@/types/api';
 import LoadingOverlay from '@/components/Chatbot/LoadingExperience';
+import SocialSharePanel from '@/components/Chatbot/SocialSharePanel';
 
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -76,6 +77,7 @@ export default function Home() {
   const [competitiveReportUrl, setCompetitiveReportUrl] = useState<string | null>(null);
   const [marketingReportUrl, setMarketingReportUrl] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState(false);
+  const [showSharePanel, setShowSharePanel] = useState(false);
 
   // Detail Panel State for Traffic Forecast Phase 14
   const [selectedDay, setSelectedDay] = useState<DailyForecast | null>(null);
@@ -602,6 +604,26 @@ export default function Home() {
 
   const activeReportUrl = marginReportUrl || trafficReportUrl || seoReportUrl || competitiveReportUrl || marketingReportUrl || profileReportUrl;
 
+  const getActiveReportType = (): string => {
+    if (marginReportUrl) return 'margin';
+    if (trafficReportUrl) return 'traffic';
+    if (seoReportUrl) return 'seo';
+    if (competitiveReportUrl) return 'competitive';
+    if (marketingReportUrl) return 'marketing';
+    return 'profile';
+  };
+
+  const getActiveSummary = (): string => {
+    if (report) {
+      const totalLeakage = report.menu_items?.reduce((s, i) => s + i.price_leakage, 0) || 0;
+      return `$${totalLeakage.toFixed(2)} total profit leakage detected across ${report.menu_items?.length || 0} menu items. Overall score: ${report.overall_score}/100.`;
+    }
+    if (forecast) return forecast.summary || `3-day foot traffic forecast for ${forecast.business?.name || 'your business'}`;
+    if (seoReport) return `SEO score: ${seoReport.overallScore}/100. ${seoReport.summary || ''}`;
+    if (competitiveReport) return competitiveReport.market_summary || 'Competitive analysis complete.';
+    return `Business analysis for ${locatedBusiness?.name || 'your business'}`;
+  };
+
   const downloadSocialCard = async () => {
     if (!report) return;
     const topLeak = report.menu_items.sort((a, b) => b.price_leakage - a.price_leakage)[0];
@@ -1122,7 +1144,7 @@ export default function Home() {
                   <>
                     <div className="w-px h-4 bg-gray-200 mx-1"></div>
                     <button
-                      onClick={() => copyReportUrl(activeReportUrl)}
+                      onClick={() => setShowSharePanel(true)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all group border border-indigo-200"
                     >
                       <Share2 className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
@@ -1276,6 +1298,21 @@ export default function Home() {
       </div>
 
       <EmailWall isOpen={showEmailWall} onSubmit={handleEmailSubmit} />
+
+      {/* Social Share Panel */}
+      {showSharePanel && activeReportUrl && (
+        <SocialSharePanel
+          reportUrl={activeReportUrl}
+          reportType={getActiveReportType()}
+          businessName={locatedBusiness?.name || ''}
+          summary={getActiveSummary()}
+          socialHandles={{
+            instagram: (locatedBusiness as any)?.socialLinks?.instagram,
+            facebook: (locatedBusiness as any)?.socialLinks?.facebook,
+          }}
+          onClose={() => setShowSharePanel(false)}
+        />
+      )}
     </main>
   );
 }

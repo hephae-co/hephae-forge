@@ -18,27 +18,7 @@ import { EmailWall } from '@/components/Chatbot/EmailWall';
 import ResultsDashboard from '@/components/Chatbot/seo/ResultsDashboard';
 import DiscoveryProgress, { ALL_DISCOVERY_MESSAGES, useRotatingMessage } from '@/components/Chatbot/DiscoveryProgress';
 import { SeoReport } from '@/types/api';
-
-const LOADING_QUOTES = [
-  // Data-driven
-  "A 1% drop in food costs has 3× the profit impact of a 1% revenue increase.",
-  "The top 20% of menu items typically drive 70% of a restaurant's revenue.",
-  "Food-away-from-home inflation has outpaced grocery prices for 18 straight months.",
-  "Egg prices surged 60%+ in two years — we track that live against your menu.",
-  "73% of diners check a restaurant online before walking in.",
-  "Restaurants that price-optimize see 10–15% margin improvement on average.",
-  "Heavy rain can drop foot traffic by up to 40% — we factor weather into forecasts.",
-  // Humorous / engaging
-  "Crunching numbers harder than a Friday night kitchen rush...",
-  "Our AI doesn't eat, but it has very strong opinions about your pricing.",
-  "Running more calculations than a waiter splitting a 12-top check.",
-  "If this analysis were a dish, it would be the chef's tasting menu — thorough.",
-  "Scanning the web faster than a foodie doom-scrolling Yelp reviews.",
-  "Hold tight — genius takes a minute. Mediocrity is instant.",
-  "Doing the math your accountant wishes they could do this fast.",
-  "No menus were harmed in the making of this report.",
-  "Teaching our AI to appreciate the fine art of menu engineering...",
-];
+import LoadingOverlay from '@/components/Chatbot/LoadingExperience';
 
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -69,6 +49,10 @@ export default function Home() {
   const [selectedDay, setSelectedDay] = useState<DailyForecast | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
 
+  // Active capability tracking for loading experience
+  const [activeCapability, setActiveCapability] = useState<string | null>(null);
+  const [capabilityStartTime, setCapabilityStartTime] = useState<number | null>(null);
+
   // Unique message ID generator
   const msgIdCounter = useRef(0);
   const nextMsgId = () => `msg-${Date.now()}-${++msgIdCounter.current}`;
@@ -91,8 +75,7 @@ export default function Home() {
     }
   }, []);
 
-  // Rotating messages for the loading overlay
-  const { message: loadingQuote, visible: loadingQuoteVisible } = useRotatingMessage(LOADING_QUOTES, 4000, isTyping && !isDiscovering);
+  // Rotating messages for the discovery overlay
   const { message: discoveryMsg, visible: discoveryMsgVisible } = useRotatingMessage(ALL_DISCOVERY_MESSAGES, 3500, isDiscovering);
 
   const handleEmailSubmit = async (email: string) => {
@@ -334,6 +317,10 @@ export default function Home() {
     setSelectedDay(null);
     setSelectedSlot(null);
 
+    // Track which capability is running for the loading experience
+    setActiveCapability(capId);
+    setCapabilityStartTime(Date.now());
+
     // Strip large binary fields before sending to capability APIs.
     // menuScreenshotBase64 can be 2-5 MB as base64, which exceeds Next.js's
     // default request body size limit and causes a 422 response.
@@ -377,6 +364,8 @@ export default function Home() {
         setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute Margin Surgery: ${e.message}` }]);
       } finally {
         setIsTyping(false);
+        setActiveCapability(null);
+        setCapabilityStartTime(null);
       }
     } else if (capId === 'traffic') {
       const msgId = nextMsgId();
@@ -416,6 +405,8 @@ export default function Home() {
         setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute Foot Traffic Forecast: ${e.message}` }]);
       } finally {
         setIsTyping(false);
+        setActiveCapability(null);
+        setCapabilityStartTime(null);
       }
     } else if (capId === 'seo') {
       const msgId = nextMsgId();
@@ -463,6 +454,8 @@ export default function Home() {
         setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute SEO Deep Audit: ${e.message}` }]);
       } finally {
         setIsTyping(false);
+        setActiveCapability(null);
+        setCapabilityStartTime(null);
       }
     } else if (capId === 'marketing') {
       const msgId = nextMsgId();
@@ -500,6 +493,8 @@ export default function Home() {
         setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute Social Media Insights: ${e.message}` }]);
       } finally {
         setIsTyping(false);
+        setActiveCapability(null);
+        setCapabilityStartTime(null);
       }
     } else if (capId === 'competitive') {
       const msgId = nextMsgId();
@@ -532,6 +527,8 @@ export default function Home() {
         setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute Competitive Analysis: ${e.message}` }]);
       } finally {
         setIsTyping(false);
+        setActiveCapability(null);
+        setCapabilityStartTime(null);
       }
     }
   };
@@ -965,50 +962,14 @@ export default function Home() {
               </div>
             )}
 
-            {/* Full-panel loading overlay — only during active chat typing (not discovery, which shows the map) */}
+            {/* Full-panel loading overlay — interactive experience with agent timeline + bubble game */}
             {isTyping && !isDiscovering && (
-              <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-12 gap-8">
-                <BlobBackground className="opacity-20" />
-                <div className="relative z-10 flex flex-col items-center gap-6 max-w-xl text-center">
-                  {/* Animated logo ring */}
-                  <div className="relative flex items-center justify-center w-28 h-28">
-                    <div className="absolute inset-0 rounded-full border-4 border-[#0052CC]/10 animate-pulse" />
-                    <div className="absolute inset-1 rounded-full border-2 border-[#00C2FF]/30 animate-spin" style={{ animationDuration: '3s' }} />
-                    {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
-                      <img
-                        src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon}
-                        className="w-14 h-14 rounded-full object-cover"
-                        alt=""
-                      />
-                    ) : (
-                      <HephaeLogo size="md" variant="color" showWordmark={false} />
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="text-xl font-bold text-gray-900 mb-1">
-                      {locatedBusiness?.name || 'Analyzing...'}
-                    </div>
-                    <div className="text-sm text-indigo-600 font-semibold tracking-wide">
-                      {isDiscovering ? 'Deep-diving into the business...' : 'Deep analysis in progress...'}
-                    </div>
-                  </div>
-
-                  {/* Large rotating message — discovery-specific or general quotes */}
-                  <div
-                    className="text-lg font-medium text-gray-600 leading-relaxed italic transition-opacity duration-500 px-4"
-                    style={{ opacity: isDiscovering ? (discoveryMsgVisible ? 1 : 0) : (loadingQuoteVisible ? 1 : 0) }}
-                  >
-                    "{isDiscovering ? discoveryMsg : loadingQuote}"
-                  </div>
-
-                  <div className="flex gap-2">
-                    <span className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-bounce" />
-                    <span className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
-                    <span className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
-                  </div>
-                </div>
-              </div>
+              <LoadingOverlay
+                capabilityId={activeCapability}
+                startTime={capabilityStartTime}
+                businessName={locatedBusiness?.name}
+                businessLogo={(locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon}
+              />
             )}
 
             {report ? (

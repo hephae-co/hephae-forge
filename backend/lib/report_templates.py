@@ -771,8 +771,12 @@ def build_seo_report(report: dict[str, Any], identity: Optional[dict[str, Any]] 
 
     sections_html = ""
     for section in (report.get("sections") or []):
+        if not isinstance(section, dict):
+            continue
         rec_items = ""
         for rec in (section.get("recommendations") or []):
+            if not isinstance(rec, dict):
+                continue
             color = severity_color.get(rec.get("severity", ""), "#94a3b8")
             rec_items += f"""<div style="padding:12px 16px;border-left:3px solid {color};background:#f8fafc;border-radius:0 8px 8px 0;margin-bottom:8px">
               <div style="font-size:.72rem;font-weight:700;color:{color};margin-bottom:4px">{_esc(rec.get("severity"))}: {_esc(rec.get("title"))}</div>

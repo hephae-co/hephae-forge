@@ -105,14 +105,21 @@ async def v1_seo(request: Request):
 
         if isinstance(report_data.get("sections"), list):
             for section in report_data["sections"]:
+                if not isinstance(section, dict):
+                    continue
                 section["isAnalyzed"] = True
                 if not isinstance(section.get("recommendations"), list):
                     section["recommendations"] = []
+                else:
+                    # Filter out non-dict recommendations (LLM may return plain strings)
+                    section["recommendations"] = [
+                        r for r in section["recommendations"] if isinstance(r, dict)
+                    ]
 
         final_report = {
             **report_data,
             "url": identity["officialUrl"],
-            "sections": report_data.get("sections") if isinstance(report_data.get("sections"), list) else [],
+            "sections": [s for s in report_data.get("sections", []) if isinstance(s, dict)] if isinstance(report_data.get("sections"), list) else [],
         }
 
         # Fire and forget marketing

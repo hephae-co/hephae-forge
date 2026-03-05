@@ -899,7 +899,7 @@ export default function Home() {
       )}
 
       {/* LEFT VISUALIZER PANEL - Hidden when centered, fills remaining space when active */}
-      <div className={`relative z-10 transition-all duration-700 ease-in-out flex flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden' : 'flex-1 opacity-100'}`}>
+      <div className={`relative z-10 transition-all duration-700 ease-in-out flex flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden' : 'flex-1 max-w-[calc(100vw-560px)] opacity-100'}`}>
         {!isCentered && (
           <>
             {(isTyping || isDiscovering) && <BlobBackground className="z-0 opacity-30" />}
@@ -1060,15 +1060,24 @@ export default function Home() {
                 )}
               </>
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-transparent gap-4 p-8">
-                {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) && (
+              <div className="relative w-full h-full flex flex-col items-center justify-center bg-transparent gap-4 p-8">
+                {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) && !isDiscovering && (
                   <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 shadow-sm" alt="" />
                 )}
-                {locatedBusiness && (
+                {locatedBusiness && !isDiscovering && (
                   <div className="text-center">
                     <div className="text-lg font-bold text-gray-700">{locatedBusiness.name}</div>
                     <div className="text-sm text-gray-400 mt-1">Gathering location data...</div>
                   </div>
+                )}
+                {/* Discovery overlay — no coordinates fallback */}
+                {isDiscovering && locatedBusiness && (
+                  <LoadingOverlay
+                    capabilityId="discovery"
+                    startTime={capabilityStartTime}
+                    businessName={locatedBusiness.name}
+                    businessLogo={(locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon}
+                  />
                 )}
               </div>
             )}
@@ -1078,7 +1087,7 @@ export default function Home() {
 
       {/* RIGHT CHATBOT PANEL - Full screen when centered, narrow sidebar when active */}
       {/* When centered: pointer-events-none on wrapper so neural background is interactive; children re-enable pointer-events-auto on inputs/buttons */}
-      <div className={`relative z-20 flex-shrink-0 transition-all duration-700 ease-in-out h-full ${isCentered ? 'w-full max-w-none pointer-events-none' : 'w-[480px]'}`}>
+      <div className={`relative z-20 flex-shrink-0 transition-all duration-700 ease-in-out h-full ${isCentered ? 'w-full max-w-none pointer-events-none' : 'w-[560px]'}`}>
         <ChatInterface
           messages={messages}
           onSendMessage={sendMessage}

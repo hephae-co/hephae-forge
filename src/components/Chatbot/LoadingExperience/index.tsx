@@ -4,7 +4,7 @@ import React from "react";
 import HephaeLogo from "@/components/HephaeLogo";
 import { useRotatingMessage } from "@/components/Chatbot/DiscoveryProgress";
 import AgentTimeline from "./AgentTimeline";
-import BubblePopGame from "./BubblePopGame";
+import DataStreamGame from "./DataStreamGame";
 import { CAPABILITY_CONFIGS, GENERIC_QUOTES } from "./loadingConfig";
 
 interface LoadingOverlayProps {
@@ -26,9 +26,9 @@ export default function LoadingOverlay({
 
   return (
     <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-sm flex flex-col overflow-hidden">
-      {/* Bubble game fills entire background */}
+      {/* Data stream game fills entire background */}
       <div className="absolute inset-0">
-        <BubblePopGame active={true} accentColor={config?.accentHex || "#0052CC"} />
+        <DataStreamGame active={true} accentColor={config?.accentHex || "#0052CC"} />
       </div>
 
       {/* Content overlay — compact top bar + bottom quote */}

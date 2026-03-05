@@ -175,6 +175,11 @@ async def capabilities_seo(request: Request):
                 section["isAnalyzed"] = True
                 if not isinstance(section.get("recommendations"), list):
                     section["recommendations"] = []
+                else:
+                    # Filter out non-dict recommendations (LLM may return plain strings)
+                    section["recommendations"] = [
+                        r for r in section["recommendations"] if isinstance(r, dict)
+                    ]
 
         final_report = {
             **report_data,

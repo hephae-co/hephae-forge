@@ -48,6 +48,21 @@ async def _scrape_menu_screenshot(official_url: str) -> str | None:
     return result.get("screenshot_base64") or None
 
 
+async def _download_screenshot_as_base64(url: str) -> str | None:
+    """Download a JPEG from GCS URL and return as base64 string."""
+    import httpx
+    import base64
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.get(url)
+            if res.status_code == 200 and len(res.content) > 1000:
+                return base64.b64encode(res.content).decode()
+    except Exception as e:
+        logger.warning(f"[API/Analyze] Failed to download screenshot from {url}: {e}")
+    return None
+
+
 @router.post("/analyze", response_model=SurgicalReportModel)
 async def analyze(request: Request):
     try:
@@ -61,8 +76,18 @@ async def analyze(request: Request):
             logger.info(f"[API/Analyze] Fast Path: Bypassing Profiler for {enriched_profile.get('name')}")
             identity = enrich_identity({**enriched_profile})
 
-            # Screenshot the menu page (or main site as fallback)
+            # Get menu screenshot: GCS URL (from discovery) → Playwright fallback
             if not identity.get("menuScreenshotBase64"):
+                # Try downloading the already-captured screenshot from GCS
+                gcs_url = identity.get("menuScreenshotUrl")
+                if gcs_url:
+                    logger.info(f"[API/Analyze] Fast Path: Downloading existing screenshot from GCS")
+                    screenshot = await _download_screenshot_as_base64(gcs_url)
+                    if screenshot:
+                        identity["menuScreenshotBase64"] = screenshot
+
+            if not identity.get("menuScreenshotBase64"):
+                # Fallback: take a fresh screenshot with Playwright
                 target_url = identity.get("menuUrl") or identity["officialUrl"]
                 logger.info(f"[API/Analyze] Fast Path: Screenshotting {target_url}")
                 screenshot = await _scrape_menu_screenshot(target_url)

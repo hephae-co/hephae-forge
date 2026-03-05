@@ -20,7 +20,7 @@ from backend.config import MODEL_FALLBACK_MAP
 
 logger = logging.getLogger(__name__)
 
-_RETRIABLE_CODES = {429, 503, 529}
+_RETRIABLE_CODES = {404, 429, 503, 529}
 
 
 def _is_retriable(exc: Exception) -> bool:

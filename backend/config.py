@@ -13,7 +13,7 @@ class AgentModels:
     PRIMARY_MODEL = "gemini-3.1-flash-lite-preview"
 
     # Enhanced: complex structured output (SEO auditor, SQL generation)
-    ENHANCED_MODEL = "gemini-3.0-flash-preview"
+    ENHANCED_MODEL = "gemini-2.5-flash"
 
     # Fallbacks for 429 / model-unavailable errors
     PRIMARY_FALLBACK = "gemini-2.5-flash-lite"

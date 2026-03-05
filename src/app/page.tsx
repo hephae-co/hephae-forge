@@ -325,6 +325,15 @@ export default function Home() {
   const executeCapability = async (capId: string) => {
     if (!locatedBusiness) return;
 
+    // Clear all previous reports so the loading overlay shows cleanly
+    // and the new report renders correctly (no ternary priority conflict).
+    setReport(null);
+    setForecast(null);
+    setSeoReport(null);
+    setCompetitiveReport(null);
+    setSelectedDay(null);
+    setSelectedSlot(null);
+
     // Strip large binary fields before sending to capability APIs.
     // menuScreenshotBase64 can be 2-5 MB as base64, which exceeds Next.js's
     // default request body size limit and causes a 422 response.
@@ -571,10 +580,16 @@ export default function Home() {
         <BlobBackground className="opacity-15 fixed" />
         <header className="relative z-10 flex justify-between items-center mb-8 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
           <div className="flex items-center gap-4">
-            {identity.logoUrl && <img src={identity.logoUrl} className="h-12 w-12 rounded-full object-cover" alt="Logo" />}
+            {identity.logoUrl ? (
+              <img src={identity.logoUrl} className="h-11 w-11 rounded-full object-cover border border-gray-200" alt="Logo" />
+            ) : (
+              <div className="h-11 w-11 rounded-full bg-indigo-100 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-indigo-600" />
+              </div>
+            )}
             <div>
-              <h1 className="text-2xl font-bold text-gray-900" style={{ color: identity.primaryColor }}>{identity.name}</h1>
-              <p className="text-sm text-gray-500">{identity.persona}</p>
+              <h1 className="text-xl font-bold text-gray-900" style={{ color: identity.primaryColor }}>{identity.name}</h1>
+              <p className="text-sm text-gray-500">Margin Surgery Report</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -582,9 +597,10 @@ export default function Home() {
               <div className="text-sm text-gray-500">Surgical Score</div>
               <div className={clsx("text-4xl font-black", overall_score > 80 ? "text-green-600" : "text-yellow-600")}>{overall_score}/100</div>
             </div>
+            <HephaeLogo size="sm" variant="color" />
             <button
               onClick={() => setReport(null)}
-              className="ml-4 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors"
+              className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors"
               title="Close Report"
             >
               <X size={20} />
@@ -652,18 +668,28 @@ export default function Home() {
         <BlobBackground className="opacity-15 fixed" />
         <header className="relative z-10 flex justify-between items-center mb-6 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
           <div className="flex items-center gap-4">
+            {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
+              <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-11 w-11 rounded-full object-cover border border-gray-200" alt="Logo" />
+            ) : (
+              <div className="h-11 w-11 rounded-full bg-emerald-100 flex items-center justify-center">
+                <Users className="w-5 h-5 text-emerald-600" />
+              </div>
+            )}
             <div>
-              <h1 className="text-2xl font-bold text-green-700">{forecast.business.name}</h1>
-              <p className="text-sm text-gray-500">Hephae Traffic Forecast</p>
+              <h1 className="text-xl font-bold text-gray-900" style={{ color: (locatedBusiness as any)?.primaryColor || '#1e293b' }}>{forecast.business.name}</h1>
+              <p className="text-sm text-gray-500">Foot Traffic Forecast</p>
             </div>
           </div>
-          <button
-            onClick={() => setForecast(null)}
-            className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors shadow-sm"
-            title="Close Forecast"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-3">
+            <HephaeLogo size="sm" variant="color" />
+            <button
+              onClick={() => setForecast(null)}
+              className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors shadow-sm"
+              title="Close Forecast"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </header>
 
         <div className="relative z-10">
@@ -702,18 +728,33 @@ export default function Home() {
         <BlobBackground className="opacity-15 fixed" />
         <div className="relative z-10">
         <header className="flex justify-between items-center mb-8 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
-          <h1 className="text-2xl font-bold text-orange-600 flex items-center gap-3"><Swords size={28} /> Competitive Market Strategy</h1>
-          <button
-            onClick={() => setCompetitiveReport(null)}
-            className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors shadow-sm"
-            title="Close Report"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-4">
+            {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
+              <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-11 w-11 rounded-full object-cover border border-gray-200" alt="Logo" />
+            ) : (
+              <div className="h-11 w-11 rounded-full bg-orange-100 flex items-center justify-center">
+                <Swords className="w-5 h-5 text-orange-600" />
+              </div>
+            )}
+            <div>
+              <h1 className="text-xl font-bold text-gray-900" style={{ color: (locatedBusiness as any)?.primaryColor || '#1e293b' }}>{locatedBusiness?.name || 'Business'}</h1>
+              <p className="text-sm text-gray-500">Competitive Market Strategy</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <HephaeLogo size="sm" variant="color" />
+            <button
+              onClick={() => setCompetitiveReport(null)}
+              className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors shadow-sm"
+              title="Close Report"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </header>
 
         <div className="p-6 rounded-2xl bg-orange-50 border border-orange-200 mb-8 animate-fade-in-up stagger-1">
-          <h3 className="text-orange-700 font-bold mb-2">Executive Summary</h3>
+          <h3 className="text-orange-700 font-bold mb-3 flex items-center gap-2"><Target size={18} /> Executive Summary</h3>
           <p className="text-gray-800 text-sm leading-relaxed">{competitiveReport.market_summary}</p>
         </div>
 
@@ -746,10 +787,8 @@ export default function Home() {
           <ul className="space-y-3">
             {competitiveReport.strategic_advantages.map((adv: string, i: number) => (
               <li key={i} className="flex gap-4 text-sm text-gray-700 bg-white border border-indigo-100 p-4 rounded-xl leading-relaxed items-start animate-fade-in-right" style={{ animationDelay: `${0.24 + i * 0.05}s` }}>
-                <div className="mt-0.5 p-1 bg-indigo-100 rounded-lg text-indigo-600 border border-indigo-200">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                </div>
-                {adv}
+                <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center border border-indigo-200">{i + 1}</span>
+                <span>{adv}</span>
               </li>
             ))}
           </ul>
@@ -975,15 +1014,31 @@ export default function Home() {
               <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in relative" style={{ backgroundColor: '#ffffff' }}>
                 <BlobBackground className="opacity-15 fixed" />
                 <div className="relative z-10">
-                  <div className="flex justify-end mb-4">
-                    <button
-                      onClick={() => setSeoReport(null)}
-                      className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors shadow-sm"
-                      title="Close SEO Report"
-                    >
-                      <X size={20} />
-                    </button>
-                  </div>
+                  <header className="flex justify-between items-center mb-8 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
+                    <div className="flex items-center gap-4">
+                      {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
+                        <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-11 w-11 rounded-full object-cover border border-gray-200" alt="Logo" />
+                      ) : (
+                        <div className="h-11 w-11 rounded-full bg-purple-100 flex items-center justify-center">
+                          <SearchIcon className="w-5 h-5 text-purple-600" />
+                        </div>
+                      )}
+                      <div>
+                        <h1 className="text-xl font-bold text-gray-900" style={{ color: (locatedBusiness as any)?.primaryColor || '#1e293b' }}>{locatedBusiness?.name || 'Business'}</h1>
+                        <p className="text-sm text-gray-500">SEO Deep Audit</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <HephaeLogo size="sm" variant="color" />
+                      <button
+                        onClick={() => setSeoReport(null)}
+                        className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors shadow-sm"
+                        title="Close SEO Report"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                  </header>
                   <ResultsDashboard report={seoReport} groundingChunks={(seoReport as any).groundingChunks || []} />
                 </div>
               </div>

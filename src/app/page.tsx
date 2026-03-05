@@ -1048,7 +1048,7 @@ export default function Home() {
 
       {/* Search animation — methodology steps while locating business */}
       {isCentered && isTyping && (
-        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-[15] pointer-events-none animate-fade-in">
+        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-[25] pointer-events-none animate-fade-in">
           <div className="bg-white/85 backdrop-blur-md rounded-2xl px-6 py-5 shadow-xl border border-gray-200/60 max-w-sm">
             <p className="text-sm font-bold text-gray-800 mb-3">Locating your business...</p>
             <div className="space-y-2">
@@ -1076,8 +1076,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Global Hephae logo — visible during panel transition so it never vanishes */}
-      {!isCentered && !report && !forecast && !seoReport && !competitiveReport && !isDiscovering && !isTyping && (
+      {/* Global Hephae logo — visible on home screen and during panel transition */}
+      {(isCentered || (!report && !forecast && !seoReport && !competitiveReport && !isDiscovering && !isTyping)) && (
         <div className="fixed top-4 left-4 z-[100] animate-fade-in pointer-events-none">
           <HephaeLogo size="sm" variant="color" />
         </div>

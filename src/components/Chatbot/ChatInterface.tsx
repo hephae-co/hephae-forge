@@ -325,16 +325,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         <span className="w-px h-4 bg-white/20 block" />
                         <p className="text-[10px] text-white/60 font-semibold tracking-wider uppercase">AI Business Analyst</p>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)] animate-pulse"></div>
-                        <span className="text-[10px] text-white/50 font-medium">Live</span>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)] animate-pulse"></div>
+                            <span className="text-[10px] text-white/50 font-medium">Live</span>
+                        </div>
                         {onToggleCollapse && (
                             <button
                                 onClick={onToggleCollapse}
-                                className="p-1.5 text-white/40 hover:text-white hover:bg-white/15 rounded-lg transition-colors ml-1.5"
-                                title="Collapse Chat"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-all text-[10px] font-semibold tracking-wide uppercase border border-white/10 hover:border-white/20"
+                                title="Hide Chat"
                             >
-                                <PanelRightClose className="w-4 h-4" />
+                                <PanelRightClose className="w-3.5 h-3.5" />
+                                Hide
                             </button>
                         )}
                     </div>

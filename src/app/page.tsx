@@ -1029,8 +1029,8 @@ export default function Home() {
               </div>
             )}
 
-            {/* Full-panel loading overlay — covers entire left panel for both capabilities AND discovery */}
-            {(isTyping || isDiscovering) && (
+            {/* Full-panel loading overlay — covers entire left panel for capabilities AND discovery */}
+            {((isTyping && activeCapability) || isDiscovering) && (
               <LoadingOverlay
                 capabilityId={activeCapability}
                 startTime={capabilityStartTime}

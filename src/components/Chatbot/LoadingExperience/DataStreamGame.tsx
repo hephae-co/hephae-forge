@@ -138,48 +138,61 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
 
     const dpr = window.devicePixelRatio || 1;
 
+    let seeded = false;
+
     const resize = () => {
       const parent = canvas.parentElement;
       if (!parent) return;
       const w = parent.offsetWidth;
       const h = parent.offsetHeight;
+      if (w === 0 || h === 0) return; // Skip during panel transition
       sizeRef.current = { w, h };
       canvas.width = w * dpr;
       canvas.height = h * dpr;
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // Seed dots once we have valid dimensions
+      if (!seeded) {
+        seeded = true;
+        for (let i = 0; i < 6; i++) {
+          const tier = rollTier();
+          const cfg = TIERS[tier];
+          dotsRef.current.push({
+            id: ++nextDotId,
+            x: GRID_SPACING + Math.random() * (w - GRID_SPACING * 2),
+            y: GRID_SPACING + Math.random() * (h - GRID_SPACING * 2),
+            vx: (Math.random() - 0.5) * cfg.speed * 2,
+            vy: (Math.random() - 0.5) * cfg.speed * 2,
+            radius: cfg.radius,
+            color: cfg.color,
+            glowColor: cfg.glow,
+            tier,
+            points: cfg.points,
+            opacity: 1,
+            trail: [],
+            age: 30,
+            alive: true,
+          });
+        }
+      }
     };
 
     resize();
 
-    // Seed a few dots immediately
-    for (let i = 0; i < 6; i++) {
-      const tier = rollTier();
-      const cfg = TIERS[tier];
-      const { w, h } = sizeRef.current;
-      dotsRef.current.push({
-        id: ++nextDotId,
-        x: GRID_SPACING + Math.random() * (w - GRID_SPACING * 2),
-        y: GRID_SPACING + Math.random() * (h - GRID_SPACING * 2),
-        vx: (Math.random() - 0.5) * cfg.speed * 2,
-        vy: (Math.random() - 0.5) * cfg.speed * 2,
-        radius: cfg.radius,
-        color: cfg.color,
-        glowColor: cfg.glow,
-        tier,
-        points: cfg.points,
-        opacity: 1,
-        trail: [],
-        age: 30,
-        alive: true,
-      });
-    }
+    // ResizeObserver catches CSS transitions (panel expanding from w-0)
+    const observer = new ResizeObserver(() => resize());
+    if (canvas.parentElement) observer.observe(canvas.parentElement);
 
     spawnRef.current = setInterval(spawnDot, DOT_SPAWN_INTERVAL);
 
     const animate = () => {
       const { w, h } = sizeRef.current;
+      if (w === 0 || h === 0) {
+        animRef.current = requestAnimationFrame(animate);
+        return;
+      }
       ctx.clearRect(0, 0, w, h);
 
       // Draw subtle grid
@@ -329,6 +342,7 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
     return () => {
       cancelAnimationFrame(animRef.current);
       if (spawnRef.current) clearInterval(spawnRef.current);
+      observer.disconnect();
       window.removeEventListener("resize", resize);
       dotsRef.current = [];
       burstRef.current = [];

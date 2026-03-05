@@ -899,7 +899,7 @@ export default function Home() {
       )}
 
       {/* LEFT VISUALIZER PANEL - Hidden when centered, fills remaining space when active */}
-      <div className={`relative z-10 transition-all duration-700 ease-in-out flex flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden' : 'flex-1 max-w-[calc(100vw-560px)] opacity-100'}`}>
+      <div className={`relative z-10 transition-all duration-700 ease-in-out flex flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden' : 'w-[45%] opacity-100'}`}>
         {!isCentered && (
           <>
             {(isTyping || isDiscovering) && <BlobBackground className="z-0 opacity-30" />}
@@ -910,53 +910,55 @@ export default function Home() {
               </div>
             )}
 
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 animate-fade-in-up pointer-events-auto bg-white/90 backdrop-blur-md p-1.5 rounded-full shadow-2xl border border-gray-200/80">
-              <button onClick={() => handleSelectCapability("surgery")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/80 transition-all group">
-                <BarChart3 className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
-                Margin Surgery
-              </button>
+            {!isDiscovering && !isTyping && (
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 animate-fade-in-up pointer-events-auto bg-white/90 backdrop-blur-md p-1.5 rounded-full shadow-2xl border border-gray-200/80">
+                <button onClick={() => handleSelectCapability("surgery")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/80 transition-all group">
+                  <BarChart3 className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
+                  Margin Surgery
+                </button>
 
-              <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                <div className="w-px h-4 bg-gray-200 mx-1"></div>
 
-              <button onClick={() => handleSelectCapability("traffic")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-emerald-600 hover:bg-emerald-50/80 transition-all group">
-                <Users className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-110 transition-transform" />
-                Foot Traffic Forecast
-              </button>
+                <button onClick={() => handleSelectCapability("traffic")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-emerald-600 hover:bg-emerald-50/80 transition-all group">
+                  <Users className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-110 transition-transform" />
+                  Foot Traffic Forecast
+                </button>
 
-              <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                <div className="w-px h-4 bg-gray-200 mx-1"></div>
 
-              <button onClick={() => handleSelectCapability("seo")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-purple-600 hover:bg-purple-50/80 transition-all group">
-                <SearchIcon className="w-3.5 h-3.5 text-purple-500 group-hover:scale-110 transition-transform" />
-                SEO Deep Audit
-              </button>
+                <button onClick={() => handleSelectCapability("seo")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-purple-600 hover:bg-purple-50/80 transition-all group">
+                  <SearchIcon className="w-3.5 h-3.5 text-purple-500 group-hover:scale-110 transition-transform" />
+                  SEO Deep Audit
+                </button>
 
-              <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                <div className="w-px h-4 bg-gray-200 mx-1"></div>
 
-              <button onClick={() => handleSelectCapability("competitive")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 transition-all group">
-                <Swords className="w-3.5 h-3.5 text-orange-500 group-hover:scale-110 transition-transform" />
-                Competitive Analysis
-              </button>
+                <button onClick={() => handleSelectCapability("competitive")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 transition-all group">
+                  <Swords className="w-3.5 h-3.5 text-orange-500 group-hover:scale-110 transition-transform" />
+                  Competitive Analysis
+                </button>
 
-              <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                <div className="w-px h-4 bg-gray-200 mx-1"></div>
 
-              <button onClick={() => handleSelectCapability("marketing")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-pink-600 hover:bg-pink-50/80 transition-all group">
-                <Share2 className="w-3.5 h-3.5 text-pink-500 group-hover:scale-110 transition-transform" />
-                Social Media Insights
-              </button>
+                <button onClick={() => handleSelectCapability("marketing")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-pink-600 hover:bg-pink-50/80 transition-all group">
+                  <Share2 className="w-3.5 h-3.5 text-pink-500 group-hover:scale-110 transition-transform" />
+                  Social Media Insights
+                </button>
 
-              {activeReportUrl && (
-                <>
-                  <div className="w-px h-4 bg-gray-200 mx-1"></div>
-                  <button
-                    onClick={() => copyReportUrl(activeReportUrl)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all group border border-indigo-200"
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
-                    Share Report
-                  </button>
-                </>
-              )}
-            </div>
+                {activeReportUrl && (
+                  <>
+                    <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                    <button
+                      onClick={() => copyReportUrl(activeReportUrl)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all group border border-indigo-200"
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
+                      Share Report
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Hephae logo badge — persistent branding on left panel when no report is displayed */}
             {!report && !forecast && !seoReport && !competitiveReport && !isDiscovering && !isTyping && (
@@ -1014,10 +1016,13 @@ export default function Home() {
             ) : competitiveReport ? (
               renderCompetitiveReport()
             ) : seoReport ? (
-              <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in relative" style={{ backgroundColor: '#ffffff' }}>
+              <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in relative" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
                 <BlobBackground className="opacity-15 fixed" />
+                <div className="absolute inset-0 pointer-events-none opacity-[0.04]">
+                  <NeuralBackground />
+                </div>
                 <div className="relative z-10">
-                  <header className="flex justify-between items-center mb-8 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
+                  <header className="flex justify-between items-center mb-8 p-6 rounded-2xl bg-white/80 backdrop-blur-sm border-b border-gray-100 shadow-sm animate-fade-in-up">
                     <div className="flex items-center gap-4">
                       {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
                         <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-11 w-11 rounded-full object-cover border border-gray-200" alt="Logo" />
@@ -1042,7 +1047,9 @@ export default function Home() {
                       </button>
                     </div>
                   </header>
-                  <ResultsDashboard report={seoReport} groundingChunks={(seoReport as any).groundingChunks || []} />
+                  <div className="animate-fade-in-up stagger-1">
+                    <ResultsDashboard report={seoReport} groundingChunks={(seoReport as any).groundingChunks || []} />
+                  </div>
                 </div>
               </div>
             ) : locatedBusiness && locatedBusiness.coordinates ? (
@@ -1087,7 +1094,7 @@ export default function Home() {
 
       {/* RIGHT CHATBOT PANEL - Full screen when centered, narrow sidebar when active */}
       {/* When centered: pointer-events-none on wrapper so neural background is interactive; children re-enable pointer-events-auto on inputs/buttons */}
-      <div className={`relative z-20 flex-shrink-0 transition-all duration-700 ease-in-out h-full ${isCentered ? 'w-full max-w-none pointer-events-none' : 'w-[560px]'}`}>
+      <div className={`relative z-20 flex-shrink-0 transition-all duration-700 ease-in-out h-full ${isCentered ? 'w-full max-w-none pointer-events-none' : 'w-[55%]'}`}>
         <ChatInterface
           messages={messages}
           onSendMessage={sendMessage}

@@ -926,6 +926,13 @@ export default function Home() {
               )}
             </div>
 
+            {/* Hephae logo badge — persistent branding on left panel when no report is displayed */}
+            {!report && !forecast && !seoReport && !competitiveReport && (
+              <div className="absolute top-4 right-4 z-50 animate-fade-in">
+                <HephaeLogo size="sm" variant="color" />
+              </div>
+            )}
+
             {/* Business identity pill — only in empty fallback (no map), so it doesn't overlap MapVisualizer */}
             {!report && !forecast && !seoReport && !competitiveReport && !isTyping && locatedBusiness && !locatedBusiness.coordinates && (
               <div className="absolute top-4 left-4 z-50 flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl shadow-lg border border-gray-200/80 max-w-xs">

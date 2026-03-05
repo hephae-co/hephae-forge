@@ -80,8 +80,8 @@ export default function LoadingOverlay({
         </div>
       )}
 
-      {/* Content overlay */}
-      <div className="relative z-10 flex flex-col h-full">
+      {/* Content overlay — pointer-events-none in game mode so clicks reach the canvas */}
+      <div className={`relative z-10 flex flex-col h-full ${activity === "game" ? "pointer-events-none" : ""}`}>
         {/* Top: header + timeline (always visible) */}
         <div className="flex-shrink-0 px-4 pt-4 pb-2">
           <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-100 px-5 py-4 max-w-md mx-auto">
@@ -131,7 +131,7 @@ export default function LoadingOverlay({
 
         {/* Back button (when in an activity) */}
         {activity !== "menu" && (
-          <div className="flex-shrink-0 px-4 pt-2">
+          <div className="flex-shrink-0 px-4 pt-2 pointer-events-auto">
             <button
               onClick={() => setActivity("menu")}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-sm shadow-md border border-gray-200 text-sm font-medium text-gray-600 hover:bg-white transition-colors"
@@ -187,14 +187,14 @@ export default function LoadingOverlay({
 
           {/* ===== GAME: DataStreamGame ===== */}
           {activity === "game" && (
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col pointer-events-none">
               <div className="flex-shrink-0 px-4 pt-2 pb-1">
                 <div className="text-center">
                   <p className="text-sm font-semibold text-gray-600">
-                    Catch the data streams! 👆
+                    Tap the glowing dots! 👆
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Click the glowing dots — purple ones are worth 50 pts
+                    Purple = 50 pts &middot; Green = 25 pts &middot; Blue = 10 pts
                   </p>
                 </div>
               </div>
@@ -220,7 +220,7 @@ export default function LoadingOverlay({
 
         {/* Bottom: rotating quote + bouncing dots (visible on menu and game) */}
         {(activity === "menu" || activity === "game") && (
-          <div className="flex-shrink-0 pb-4 px-4">
+          <div className={`flex-shrink-0 pb-4 px-4 ${activity === "game" ? "pointer-events-none" : ""}`}>
             <div className="bg-white/85 backdrop-blur-sm rounded-xl px-4 py-3 max-w-lg mx-auto text-center shadow-sm border border-gray-100/80">
               <div
                 className="text-sm font-medium text-gray-500 leading-relaxed italic transition-opacity duration-500"

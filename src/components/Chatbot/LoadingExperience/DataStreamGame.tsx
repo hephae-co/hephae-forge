@@ -125,9 +125,9 @@ const PHASES: PhaseConfig[] = [
 ];
 
 const BASE_TIERS = {
-  blue:   { color: "#3b82f6", glow: "rgba(59,130,246,0.4)",  points: 10, speed: 1.6, radius: 9 },
-  green:  { color: "#10b981", glow: "rgba(16,185,129,0.4)",  points: 25, speed: 1.2, radius: 11 },
-  purple: { color: "#8b5cf6", glow: "rgba(139,92,246,0.5)",  points: 50, speed: 0.9, radius: 14 },
+  blue:   { color: "#3b82f6", glow: "rgba(59,130,246,0.4)",  points: 10, speed: 1.4, radius: 16 },
+  green:  { color: "#10b981", glow: "rgba(16,185,129,0.4)",  points: 25, speed: 1.1, radius: 20 },
+  purple: { color: "#8b5cf6", glow: "rgba(139,92,246,0.5)",  points: 50, speed: 0.8, radius: 24 },
 } as const;
 
 let nextDotId = 0;
@@ -532,13 +532,14 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
         </div>
       </div>
 
-      {/* Score — bottom right */}
+      {/* Score — bottom right, prominent */}
       <div className="absolute bottom-3 right-3 z-10 pointer-events-none">
-        <div className="bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-sm border border-gray-200/80">
-          <span className="text-xs font-bold text-gray-700">
-            {score < 50 ? "🎯" : score < 200 ? "🔥" : "⚡"}{" "}
-            {score} pts
-          </span>
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl px-4 py-2.5 shadow-lg border border-gray-200/80">
+          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Score</div>
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{score < 50 ? "🎯" : score < 200 ? "🔥" : score < 500 ? "⚡" : "👑"}</span>
+            <span className="text-2xl font-black text-gray-900 tabular-nums">{score}</span>
+          </div>
         </div>
       </div>
 

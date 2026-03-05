@@ -177,7 +177,7 @@ gcloud run deploy "$API_SERVICE" \
   --memory 2Gi \
   --cpu 2 \
   --timeout "$TIMEOUT" \
-  --min-instances "$MIN_INSTANCES" \
+  --min-instances 1 \
   --max-instances "$MAX_INSTANCES" \
   --service-account "$SERVICE_ACCOUNT" \
   --set-env-vars "PYTHONUNBUFFERED=1,CRAWL4AI_URL=${CRAWL4AI_URL}" \

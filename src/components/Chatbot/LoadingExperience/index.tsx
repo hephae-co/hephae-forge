@@ -206,8 +206,9 @@ export default function LoadingOverlay({
           {activity === "quiz" && (
             <div className="flex-1 px-4 pb-2 min-h-0">
               <iframe
-                src="https://quest.hephae.co/"
+                src="https://quest.hephae.co/?embed=1"
                 className="w-full h-full rounded-2xl border border-gray-200 shadow-sm bg-white"
+                style={{ scrollbarWidth: "none" }}
                 title="AI Readiness Quiz"
                 allow="clipboard-write"
               />

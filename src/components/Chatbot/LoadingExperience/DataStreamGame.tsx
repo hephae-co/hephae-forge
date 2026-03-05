@@ -391,7 +391,7 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
       <canvas
         ref={canvasRef}
         onClick={handleClick}
-        className="absolute inset-0 w-full h-full cursor-crosshair"
+        className="absolute inset-0 w-full h-full cursor-pointer"
         style={{ zIndex: 1 }}
       />
 

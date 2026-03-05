@@ -132,7 +132,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
 
             {/* GLASSMORPHISM DISCOVERY OVERLAY */}
             {business && (
-                <div className="absolute top-8 left-8 z-40 w-96 animate-fade-in-up flex flex-col gap-4" style={{ animationDelay: '0.5s' }}>
+                <div className="absolute top-6 left-6 right-6 z-40 max-w-xl animate-fade-in-up flex flex-col gap-4" style={{ animationDelay: '0.5s' }}>
                     <div className="bg-slate-900/85 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl overflow-hidden">
 
                         {/* HEADER */}

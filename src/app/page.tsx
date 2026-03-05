@@ -19,7 +19,6 @@ import ResultsDashboard from '@/components/Chatbot/seo/ResultsDashboard';
 // DiscoveryProgress import kept for ChatInterface/MapVisualizer; useRotatingMessage now used inside LoadingOverlay
 import { SeoReport } from '@/types/api';
 import LoadingOverlay from '@/components/Chatbot/LoadingExperience';
-import DataStreamGame from '@/components/Chatbot/LoadingExperience/DataStreamGame';
 
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -892,10 +891,29 @@ export default function Home() {
         </>
       )}
 
-      {/* Search animation — engaging overlay while locating business on home page */}
+      {/* Search animation — methodology cards while locating business */}
       {isCentered && isTyping && (
-        <div className="absolute inset-0 z-[15] pointer-events-none animate-fade-in">
-          <DataStreamGame active={true} />
+        <div className="absolute inset-0 z-[15] pointer-events-none flex items-center justify-center animate-fade-in">
+          <div className="grid grid-cols-3 gap-4 max-w-3xl px-8">
+            {[
+              { icon: "🔍", title: "Deep Discovery", desc: "7 AI agents crawl the web simultaneously to map your digital presence", delay: "0s" },
+              { icon: "📊", title: "Margin Surgery", desc: "Live commodity prices + competitor benchmarks reveal hidden profit leaks", delay: "0.15s" },
+              { icon: "🗺️", title: "Traffic Forecast", desc: "Weather, events & historical data predict your next 3 days of foot traffic", delay: "0.3s" },
+              { icon: "🔎", title: "SEO Deep Audit", desc: "PageSpeed + content analysis scores your online visibility across 5 dimensions", delay: "0.45s" },
+              { icon: "⚔️", title: "Competitive Intel", desc: "Threat-level analysis of every rival within your market radius", delay: "0.6s" },
+              { icon: "📱", title: "Social Insights", desc: "Engagement benchmarks + content strategy crafted for your brand", delay: "0.75s" },
+            ].map((card, i) => (
+              <div
+                key={i}
+                className="bg-white/80 backdrop-blur-md rounded-2xl p-4 border border-gray-200/60 shadow-lg animate-fade-in-up"
+                style={{ animationDelay: card.delay }}
+              >
+                <div className="text-2xl mb-2">{card.icon}</div>
+                <div className="text-sm font-bold text-gray-900 mb-1">{card.title}</div>
+                <div className="text-xs text-gray-500 leading-relaxed">{card.desc}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -1025,8 +1043,8 @@ export default function Home() {
               renderCompetitiveReport()
             ) : seoReport ? (
               <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in relative" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
-                <BlobBackground className="opacity-15 fixed" />
-                <div className="absolute inset-0 pointer-events-none opacity-[0.04]">
+                <BlobBackground className="opacity-20 fixed" />
+                <div className="absolute inset-0 pointer-events-none opacity-[0.12]">
                   <NeuralBackground />
                 </div>
                 <div className="relative z-10">
@@ -1061,7 +1079,7 @@ export default function Home() {
                 </div>
               </div>
             ) : locatedBusiness && locatedBusiness.coordinates ? (
-              <>
+              <div className="relative w-full flex-1 min-h-0">
                 <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} />
 
                 {/* Discovery overlay — interactive loading experience */}
@@ -1073,7 +1091,7 @@ export default function Home() {
                     businessLogo={(locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon}
                   />
                 )}
-              </>
+              </div>
             ) : (
               <div className="relative w-full h-full flex flex-col items-center justify-center bg-transparent gap-4 p-8">
                 {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) && !isDiscovering && (

@@ -25,7 +25,7 @@ export default function LoadingOverlay({
   const { message: quote, visible: quoteVisible } = useRotatingMessage(quotes, 4000, true);
 
   return (
-    <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-sm flex flex-col overflow-hidden">
+    <div className="absolute inset-0 z-[60] bg-white/95 backdrop-blur-sm flex flex-col overflow-hidden">
       {/* Data stream game fills entire background */}
       <div className="absolute inset-0">
         <DataStreamGame active={true} accentColor={config?.accentHex || "#0052CC"} />

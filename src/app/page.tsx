@@ -19,6 +19,7 @@ import ResultsDashboard from '@/components/Chatbot/seo/ResultsDashboard';
 // DiscoveryProgress import kept for ChatInterface/MapVisualizer; useRotatingMessage now used inside LoadingOverlay
 import { SeoReport } from '@/types/api';
 import LoadingOverlay from '@/components/Chatbot/LoadingExperience';
+import DataStreamGame from '@/components/Chatbot/LoadingExperience/DataStreamGame';
 
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -891,6 +892,13 @@ export default function Home() {
         </>
       )}
 
+      {/* Search animation — engaging overlay while locating business on home page */}
+      {isCentered && isTyping && (
+        <div className="absolute inset-0 z-[15] pointer-events-none animate-fade-in">
+          <DataStreamGame active={true} />
+        </div>
+      )}
+
       {/* Global Hephae logo — visible during panel transition so it never vanishes */}
       {!isCentered && !report && !forecast && !seoReport && !competitiveReport && !isDiscovering && !isTyping && (
         <div className="fixed top-4 left-4 z-[100] animate-fade-in pointer-events-none">
@@ -899,7 +907,7 @@ export default function Home() {
       )}
 
       {/* LEFT VISUALIZER PANEL - Hidden when centered, fills remaining space when active */}
-      <div className={`relative z-10 transition-all duration-700 ease-in-out flex flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden' : 'w-[45%] opacity-100'}`}>
+      <div className={`relative z-10 transition-all duration-700 ease-in-out flex flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden' : 'w-[55%] opacity-100'}`}>
         {!isCentered && (
           <>
             {(isTyping || isDiscovering) && <BlobBackground className="z-0 opacity-30" />}
@@ -968,7 +976,7 @@ export default function Home() {
             )}
 
             {/* Business identity pill — only in empty fallback (no map), so it doesn't overlap MapVisualizer */}
-            {!report && !forecast && !seoReport && !competitiveReport && !isTyping && locatedBusiness && !locatedBusiness.coordinates && (
+            {!report && !forecast && !seoReport && !competitiveReport && !isTyping && !isDiscovering && locatedBusiness && !locatedBusiness.coordinates && (
               <div className="absolute top-4 left-4 z-50 flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl shadow-lg border border-gray-200/80 max-w-xs">
                 {((locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon) ? (
                   <img
@@ -1094,7 +1102,7 @@ export default function Home() {
 
       {/* RIGHT CHATBOT PANEL - Full screen when centered, narrow sidebar when active */}
       {/* When centered: pointer-events-none on wrapper so neural background is interactive; children re-enable pointer-events-auto on inputs/buttons */}
-      <div className={`relative z-20 flex-shrink-0 transition-all duration-700 ease-in-out h-full ${isCentered ? 'w-full max-w-none pointer-events-none' : 'w-[55%]'}`}>
+      <div className={`relative z-20 flex-shrink-0 transition-all duration-700 ease-in-out h-full ${isCentered ? 'w-full max-w-none pointer-events-none' : 'w-[45%]'}`}>
         <ChatInterface
           messages={messages}
           onSendMessage={sendMessage}

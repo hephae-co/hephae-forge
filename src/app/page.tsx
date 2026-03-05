@@ -641,7 +641,7 @@ export default function Home() {
     return (
       <div className="w-full h-full overflow-y-auto pb-20 animate-fade-in relative" style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #faf5ff 40%, #fff1f2 100%)', color: '#1e293b' }}>
         <BlobBackground className="opacity-20 fixed" />
-        <div className="absolute inset-0 pointer-events-none opacity-[0.08]">
+        <div className="absolute inset-0 pointer-events-none opacity-[0.25]">
           <NeuralBackground />
         </div>
 
@@ -773,7 +773,7 @@ export default function Home() {
     return (
       <div className="w-full h-full overflow-y-auto pb-20 animate-fade-in relative" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 40%, #ecfeff 100%)', color: '#1e293b' }}>
         <BlobBackground className="opacity-20 fixed" />
-        <div className="absolute inset-0 pointer-events-none opacity-[0.06]">
+        <div className="absolute inset-0 pointer-events-none opacity-[0.20]">
           <NeuralBackground />
         </div>
 
@@ -870,7 +870,7 @@ export default function Home() {
     return (
       <div className="w-full h-full overflow-y-auto pb-20 animate-fade-in relative" style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #fef3c7 40%, #fce7f3 100%)', color: '#1e293b' }}>
         <BlobBackground className="opacity-20 fixed" />
-        <div className="absolute inset-0 pointer-events-none opacity-[0.06]">
+        <div className="absolute inset-0 pointer-events-none opacity-[0.20]">
           <NeuralBackground />
         </div>
 
@@ -1191,7 +1191,7 @@ export default function Home() {
             ) : seoReport ? (
               <div className="w-full h-full overflow-y-auto pb-20 animate-fade-in relative" style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 40%, #e0e7ff 100%)', color: '#1e293b' }}>
                 <BlobBackground className="opacity-25 fixed" />
-                <div className="absolute inset-0 pointer-events-none opacity-[0.10]">
+                <div className="absolute inset-0 pointer-events-none opacity-[0.25]">
                   <NeuralBackground />
                 </div>
                 <div className="relative z-10 p-8">

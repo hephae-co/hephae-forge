@@ -7,6 +7,8 @@ import { useRotatingMessage } from "@/components/Chatbot/DiscoveryProgress";
 import AgentTimeline from "./AgentTimeline";
 import DataStreamGame from "./DataStreamGame";
 import HephaeExplainer from "./HephaeExplainer";
+import AIReadinessQuiz from "./AIReadinessQuiz";
+import { NeuralBackground } from "@/components/Chatbot/NeuralBackground";
 import { CAPABILITY_CONFIGS, GENERIC_QUOTES } from "./loadingConfig";
 
 type Activity = "menu" | "game" | "quiz" | "learn";
@@ -71,11 +73,10 @@ export default function LoadingOverlay({
         </div>
       )}
 
-      {/* Subtle animated bg for menu/quiz/learn */}
+      {/* Neural background animation for menu/quiz/learn */}
       {activity !== "game" && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-blue-100/40 to-cyan-100/40 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-gradient-to-br from-indigo-100/40 to-purple-100/40 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "2s" }} />
+        <div className="absolute inset-0 pointer-events-none opacity-[0.20]">
+          <NeuralBackground />
         </div>
       )}
 
@@ -202,16 +203,10 @@ export default function LoadingOverlay({
             </div>
           )}
 
-          {/* ===== QUIZ: iframe ===== */}
+          {/* ===== QUIZ: Native AI Readiness Quiz ===== */}
           {activity === "quiz" && (
-            <div className="flex-1 px-4 pb-2 min-h-0">
-              <iframe
-                src="https://quest.hephae.co/?embed=1"
-                className="w-full h-full rounded-2xl border border-gray-200 shadow-sm bg-white"
-                style={{ scrollbarWidth: "none" }}
-                title="AI Readiness Quiz"
-                allow="clipboard-write"
-              />
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <AIReadinessQuiz />
             </div>
           )}
 

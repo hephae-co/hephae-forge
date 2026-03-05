@@ -2,6 +2,7 @@ export interface ChatMessage {
     id: string;
     role: 'user' | 'model';
     text: string;
+    createdAt?: number;
 }
 
 export enum TrafficLevel {

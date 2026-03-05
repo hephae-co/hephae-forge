@@ -6,7 +6,7 @@ import { BaseIdentity } from '@/types/api';
 import MarkdownRenderer from './MarkdownRenderer';
 import BlobBackground from '@/components/BlobBackground';
 import HephaeLogo from '@/components/HephaeLogo';
-import { Bot, RefreshCcw, Info, BarChart3, Users, Search as SearchIcon, Swords, Share2, Sparkles, MapPin, Loader2, Lock } from 'lucide-react';
+import { Bot, RefreshCcw, Info, BarChart3, Users, Search as SearchIcon, Swords, Share2, Sparkles, MapPin, Loader2, Lock, PanelRightClose, ChevronLeft, ChevronDown, Copy, Check } from 'lucide-react';
 import ExplainerModal from './ExplainerModal';
 import DiscoveryProgress, { ALL_DISCOVERY_MESSAGES, useRotatingMessage } from './DiscoveryProgress';
 import { NeuralBackground } from './NeuralBackground';
@@ -29,6 +29,8 @@ interface ChatInterfaceProps {
     onSelectCapability?: (id: string) => void;
     isCentered?: boolean;
     followUpChips?: string[];
+    isCollapsed?: boolean;
+    onToggleCollapse?: () => void;
 }
 
 // Skip autocomplete for inputs that are clearly chat messages
@@ -108,12 +110,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     onSelectCapability,
     isCentered = false,
     followUpChips = [],
+    isCollapsed = false,
+    onToggleCollapse,
 }) => {
     const [input, setInput] = useState('');
     const [isExplainerOpen, setIsExplainerOpen] = useState(false);
     const [quoteIndex, setQuoteIndex] = useState(0);
     const [quoteVisible, setQuoteVisible] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // Autocomplete state
     const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
@@ -124,12 +129,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     const dropdownRef = useRef<HTMLFormElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
+    // Scroll-to-bottom & copy state
+    const [showScrollBtn, setShowScrollBtn] = useState(false);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        setShowScrollBtn(false);
     };
 
+    const handleScroll = useCallback(() => {
+        const el = scrollContainerRef.current;
+        if (!el) return;
+        const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        setShowScrollBtn(distFromBottom > 120);
+    }, []);
+
     useEffect(() => {
-        scrollToBottom();
+        if (!showScrollBtn) scrollToBottom();
     }, [messages, isTyping, isDiscovering, capabilities]);
 
     // Cycle quotes while loading
@@ -267,6 +284,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     const isInputDisabled = isTyping || isResolving || isDiscovering;
 
+    // Collapsed sliver mode
+    if (isCollapsed && !isCentered) {
+        return (
+            <div className="flex flex-col h-full bg-gradient-to-b from-[#0052CC] to-[#0369a1] items-center justify-center w-full relative z-30 border-l border-white/10">
+                <button
+                    onClick={onToggleCollapse}
+                    className="p-3 text-white/70 hover:text-white hover:bg-white/15 rounded-xl transition-all group"
+                    title="Open Chat"
+                >
+                    <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
+                </button>
+                <div className="mt-4">
+                    <span
+                        className="text-[9px] font-bold text-white/40 uppercase tracking-widest"
+                        style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+                    >
+                        Chat
+                    </span>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className={`flex flex-col h-full relative z-30 transition-all duration-700 w-full ${!isCentered ? 'bg-white border-l border-gray-200 shadow-2xl' : 'bg-transparent justify-center items-center pointer-events-none'}`}>
 
@@ -288,12 +328,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     <div className="flex items-center gap-1.5">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)] animate-pulse"></div>
                         <span className="text-[10px] text-white/50 font-medium">Live</span>
+                        {onToggleCollapse && (
+                            <button
+                                onClick={onToggleCollapse}
+                                className="p-1.5 text-white/40 hover:text-white hover:bg-white/15 rounded-lg transition-colors ml-1.5"
+                                title="Collapse Chat"
+                            >
+                                <PanelRightClose className="w-4 h-4" />
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
 
             {/* Messages Area */}
-            <div className={`relative overflow-y-auto p-4 flex flex-col w-full ${isCentered ? 'items-center max-w-3xl flex-none space-y-6 pointer-events-none' : 'flex-grow bg-gradient-to-b from-slate-50/80 to-white space-y-5 pointer-events-auto'}`}>
+            <div
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                className={`relative overflow-y-auto p-4 flex flex-col w-full ${isCentered ? 'items-center max-w-3xl flex-none space-y-6 pointer-events-none' : 'flex-grow bg-gradient-to-b from-slate-50/80 to-white space-y-5 pointer-events-auto'}`}
+            >
                 {!isCentered && <BlobBackground className="opacity-15" />}
                 {!isCentered && isDiscovering && (
                     <div className="absolute inset-0 opacity-10 pointer-events-none z-0">
@@ -326,19 +379,46 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                 </div>
                             )}
 
-                            <div className={`
-                                p-3.5 rounded-2xl
-                                ${msg.role === 'user'
-                                    ? 'max-w-[82%] bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-br-sm shadow-md shadow-indigo-200/50'
-                                    : 'max-w-[88%] bg-white text-gray-800 border border-gray-100/80 rounded-bl-sm shadow-md shadow-gray-100/80'}
-                                ${isWelcome ? 'text-2xl font-light text-center p-6 !bg-transparent !border-none !shadow-none text-gray-800 max-w-full' : ''}
-                            `}>
-                                {isWelcome ? (
-                                    <TypewriterText text={msg.text} />
-                                ) : msg.role === 'model' ? (
-                                    <MarkdownRenderer content={msg.text} />
-                                ) : (
-                                    <div className="text-sm leading-relaxed">{msg.text}</div>
+                            <div className="flex flex-col">
+                                <div className={`group relative
+                                    p-3.5 rounded-2xl
+                                    ${msg.role === 'user'
+                                        ? 'max-w-[82%] bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-br-sm shadow-md shadow-indigo-200/50 ring-1 ring-white/10'
+                                        : 'max-w-[88%] bg-white text-gray-800 border border-gray-100/80 rounded-bl-sm shadow-[0_2px_12px_-2px_rgba(99,102,241,0.12)]'}
+                                    ${isWelcome ? 'text-2xl font-light text-center p-6 !bg-transparent !border-none !shadow-none !ring-0 text-gray-800 max-w-full' : ''}
+                                `}>
+                                    {isWelcome ? (
+                                        <TypewriterText text={msg.text} />
+                                    ) : msg.role === 'model' ? (
+                                        <MarkdownRenderer content={msg.text} />
+                                    ) : (
+                                        <div className="text-sm leading-relaxed">{msg.text}</div>
+                                    )}
+
+                                    {/* Copy button on bot messages */}
+                                    {!isWelcome && msg.role === 'model' && !isCentered && (
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(msg.text);
+                                                setCopiedId(msg.id);
+                                                setTimeout(() => setCopiedId(null), 2000);
+                                            }}
+                                            className="absolute -bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 text-gray-400 hover:text-gray-600"
+                                            title="Copy message"
+                                        >
+                                            {copiedId === msg.id
+                                                ? <Check className="w-3 h-3 text-emerald-500" />
+                                                : <Copy className="w-3 h-3" />
+                                            }
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Timestamp */}
+                                {!isWelcome && msg.createdAt && !isCentered && (
+                                    <div className={`text-[10px] text-gray-400 mt-1 px-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -437,6 +517,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     )}
                     <div ref={messagesEndRef} />
                 </div>
+
+                {/* Scroll-to-bottom button */}
+                {showScrollBtn && !isCentered && (
+                    <button
+                        onClick={scrollToBottom}
+                        className="absolute bottom-4 right-4 z-20 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-indigo-100/50 transition-all animate-scale-in"
+                        title="Scroll to bottom"
+                    >
+                        <ChevronDown className="w-4 h-4" />
+                    </button>
+                )}
             </div>
 
             {/* Input Area */}

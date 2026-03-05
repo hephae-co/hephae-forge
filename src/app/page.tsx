@@ -55,7 +55,7 @@ import SocialSharePanel from '@/components/Chatbot/SocialSharePanel';
 
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '1', role: 'model', text: 'Hi! I am Hephae.\nSearch for your business to get started.' }
+    { id: '1', role: 'model', text: 'Hi! I am Hephae.\nSearch for your business to get started.', createdAt: Date.now() }
   ]);
   const [isTyping, setIsTyping] = useState(false);
 
@@ -78,6 +78,7 @@ export default function Home() {
   const [marketingReportUrl, setMarketingReportUrl] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState(false);
   const [showSharePanel, setShowSharePanel] = useState(false);
+  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
 
   // Detail Panel State for Traffic Forecast Phase 14
   const [selectedDay, setSelectedDay] = useState<DailyForecast | null>(null);
@@ -90,6 +91,7 @@ export default function Home() {
   // Unique message ID generator
   const msgIdCounter = useRef(0);
   const nextMsgId = () => `msg-${Date.now()}-${++msgIdCounter.current}`;
+  const msg = (role: 'user' | 'model', text: string, id?: string): ChatMessage => ({ id: id || nextMsgId(), role, text, createdAt: Date.now() });
 
   // Email Lead Capture States
   const [searchDocId, setSearchDocId] = useState<string | null>(null);
@@ -108,6 +110,11 @@ export default function Home() {
       }
     }
   }, []);
+
+  // Auto-expand chat when AI is responding or discovering
+  useEffect(() => {
+    if (isTyping || isDiscovering) setIsChatCollapsed(false);
+  }, [isTyping, isDiscovering]);
 
   // Rotating messages for the discovery overlay
   // Discovery messages now handled inside LoadingOverlay
@@ -155,13 +162,13 @@ export default function Home() {
     // Route action chips directly to executeCapability
     const mappedCapability = ACTION_CHIP_MAP[text];
     if (mappedCapability && locatedBusiness) {
-      setMessages(prev => [...prev, { id: nextMsgId(), role: 'user', text }]);
+      setMessages(prev => [...prev, msg('user', text)]);
       handleSelectCapability(mappedCapability);
       return;
     }
 
     // 1. Append user message
-    const newMessages: ChatMessage[] = [...messages, { id: nextMsgId(), role: 'user', text }];
+    const newMessages: ChatMessage[] = [...messages, msg('user', text)];
     setMessages(newMessages);
     setIsTyping(true);
     setCapabilities([]); // Clear capabilities when a new message is sent
@@ -206,7 +213,7 @@ export default function Home() {
       if (!res.ok) throw new Error("Chat request failed");
       const data = await res.json();
 
-      setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: data.text }]);
+      setMessages(prev => [...prev, msg('model', data.text)]);
 
       // Trigger Orchestrator State Change
       if (data.triggerCapabilityHandoff && data.locatedBusiness) {
@@ -229,7 +236,7 @@ export default function Home() {
 
     } catch (e: any) {
       console.error(e);
-      setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: "I encountered an error connecting to my core logic layer." }]);
+      setMessages(prev => [...prev, msg('model', "I encountered an error connecting to my core logic layer.")]);
     } finally {
       setIsTyping(false);
     }
@@ -253,7 +260,7 @@ export default function Home() {
     for (const pm of progressMessages) {
       progressTimers.push(setTimeout(() => {
         if (!discoveryDone) {
-          setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: pm.text }]);
+          setMessages(prev => [...prev, msg('model', pm.text)]);
         }
       }, pm.delay));
     }
@@ -275,11 +282,7 @@ export default function Home() {
         }
         setLocatedBusiness(enrichedProfile); // Update to enriched profile
         // Add a discovery-complete message to chat
-        setMessages(prev => [...prev, {
-          id: nextMsgId(),
-          role: 'model',
-          text: `Discovery complete for **${enrichedProfile.name || identity.name}**! I've mapped out their digital presence, brand identity, social profiles, and competitive landscape. Pick any capability below to dive deeper.`
-        }]);
+        setMessages(prev => [...prev, msg('model', `Discovery complete for **${enrichedProfile.name || identity.name}**! I've mapped out their digital presence, brand identity, social profiles, and competitive landscape. Pick any capability below to dive deeper.`)]);
       } else {
         console.error("Discovery returned", res.status);
       }
@@ -319,12 +322,10 @@ export default function Home() {
     }
 
     // Add chat messages
-    const userMsgId = nextMsgId();
-    const modelMsgId = nextMsgId();
     setMessages(prev => [
       ...prev,
-      { id: userMsgId, role: 'user', text: identity.name },
-      { id: modelMsgId, role: 'model', text: `I found **${identity.name}** at ${identity.address}. What would you like to do next?` }
+      msg('user', identity.name),
+      msg('model', `I found **${identity.name}** at ${identity.address}. What would you like to do next?`),
     ]);
 
     // Reset and set located business
@@ -389,8 +390,7 @@ export default function Home() {
     const { menuScreenshotBase64: _stripped, ...identityForApi } = locatedBusiness as any;
 
     if (capId === 'surgery') {
-      const msgId = nextMsgId();
-      setMessages(prev => [...prev, { id: msgId, role: 'model', text: "Starting Margin Surgery. Deploying ProfilerAgent to crawl the website, this may take a moment to retrieve the menu screenshots and calculate commodity impacts... ⏱️" }]);
+      setMessages(prev => [...prev, msg('model', "Starting Margin Surgery. Deploying ProfilerAgent to crawl the website, this may take a moment to retrieve the menu screenshots and calculate commodity impacts... ⏱️")]);
       setCapabilities([]);
       setIsTyping(true);
 
@@ -420,18 +420,17 @@ export default function Home() {
           const totalLeakage = data.menu_items?.reduce((s: number, i: { price_leakage: number }) => s + i.price_leakage, 0) || 0;
           sendReportEmailAsync('margin', data.reportUrl, locatedBusiness!.name, `$${totalLeakage.toFixed(2)} total profit leakage detected across ${data.menu_items?.length || 0} menu items. Overall score: ${data.overall_score}/100.`);
         }
-        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: "Surgery complete. The surgical dashboard has been rendered." }]);
+        setMessages(prev => [...prev, msg('model', "Surgery complete. The surgical dashboard has been rendered.")]);
 
       } catch (e: any) {
-        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute Margin Surgery: ${e.message}` }]);
+        setMessages(prev => [...prev, msg('model', `Failed to execute Margin Surgery: ${e.message}`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
         setCapabilityStartTime(null);
       }
     } else if (capId === 'traffic') {
-      const msgId = nextMsgId();
-      setMessages(prev => [...prev, { id: msgId, role: 'model', text: "Starting Foot Traffic Forecast. Deploying ForecasterAgent to analyze local events, weather, and compute traffic models... ⏱️" }]);
+      setMessages(prev => [...prev, msg('model', "Starting Foot Traffic Forecast. Deploying ForecasterAgent to analyze local events, weather, and compute traffic models... ⏱️")]);
       setCapabilities([]);
       setIsTyping(true);
 
@@ -461,18 +460,17 @@ export default function Home() {
           setSelectedSlot(firstDay.slots.find((s: any) => s.score > 70) || firstDay.slots[0]);
         }
 
-        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Forecast complete!\n\n**Executive Summary**:\n${data.summary}` }]);
+        setMessages(prev => [...prev, msg('model', `Forecast complete!\n\n**Executive Summary**:\n${data.summary}`)]);
 
       } catch (e: any) {
-        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute Foot Traffic Forecast: ${e.message}` }]);
+        setMessages(prev => [...prev, msg('model', `Failed to execute Foot Traffic Forecast: ${e.message}`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
         setCapabilityStartTime(null);
       }
     } else if (capId === 'seo') {
-      const msgId = nextMsgId();
-      setMessages(prev => [...prev, { id: msgId, role: 'model', text: "Deploying SEO Auditor to analyze indexing, web vitals, and content hierarchy... ⏱️" }]);
+      setMessages(prev => [...prev, msg('model', "Deploying SEO Auditor to analyze indexing, web vitals, and content hierarchy... ⏱️")]);
       setCapabilities([]);
       setIsTyping(true);
 
@@ -495,10 +493,7 @@ export default function Home() {
         if (sectionCount === 0) {
           // Agent returned no sections — don't show a blank dashboard
           const scoreNote = data.overallScore ? ` (estimated score: ${data.overallScore}/100)` : '';
-          setMessages(prev => [...prev, {
-            id: nextMsgId(), role: 'model',
-            text: `The SEO Auditor completed but returned incomplete data${scoreNote}. ${data.summary || 'The model may have hit a rate limit or timed out.'}\n\nYou can try running the audit again from the action bar.`
-          }]);
+          setMessages(prev => [...prev, msg('model', `The SEO Auditor completed but returned incomplete data${scoreNote}. ${data.summary || 'The model may have hit a rate limit or timed out.'}\n\nYou can try running the audit again from the action bar.`)]);
           // Re-enable capabilities so user can retry
           setCapabilities(prev => prev.length > 0 ? prev : [
             { id: 'seo', label: 'Retry SEO Audit', icon: undefined },
@@ -509,19 +504,18 @@ export default function Home() {
             setSeoReportUrl(data.reportUrl);
             sendReportEmailAsync('seo', data.reportUrl, locatedBusiness!.name, `SEO score: ${data.overallScore ?? 'N/A'}/100. ${sectionCount} categories analyzed. ${data.summary || ''}`);
           }
-          setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `SEO Audit complete! Verified ${sectionCount} critical infrastructure categories.` }]);
+          setMessages(prev => [...prev, msg('model', `SEO Audit complete! Verified ${sectionCount} critical infrastructure categories.`)]);
         }
 
       } catch (e: any) {
-        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute SEO Deep Audit: ${e.message}` }]);
+        setMessages(prev => [...prev, msg('model', `Failed to execute SEO Deep Audit: ${e.message}`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
         setCapabilityStartTime(null);
       }
     } else if (capId === 'marketing') {
-      const msgId = nextMsgId();
-      setMessages(prev => [...prev, { id: msgId, role: 'model', text: "Deploying Social Media Insights agent to analyze your social presence and craft content strategy... ⏱️" }]);
+      setMessages(prev => [...prev, msg('model', "Deploying Social Media Insights agent to analyze your social presence and craft content strategy... ⏱️")]);
       setCapabilities([]);
       setIsTyping(true);
 
@@ -546,21 +540,17 @@ export default function Home() {
 
         const platform = data.platform || 'Social Media';
         const draftPreview = typeof data.draft === 'string' ? data.draft.slice(0, 300) : '';
-        setMessages(prev => [...prev, {
-          id: nextMsgId(), role: 'model',
-          text: `**Social Media Insights** for **${locatedBusiness.name}** is ready!\n\n${data.summary || ''}\n\n${draftPreview ? `**Draft Preview:**\n${draftPreview}${data.draft?.length > 300 ? '...' : ''}` : ''}${data.reportUrl ? `\n\n[View Full Report](${data.reportUrl})` : ''}`
-        }]);
+        setMessages(prev => [...prev, msg('model', `**Social Media Insights** for **${locatedBusiness.name}** is ready!\n\n${data.summary || ''}\n\n${draftPreview ? `**Draft Preview:**\n${draftPreview}${data.draft?.length > 300 ? '...' : ''}` : ''}${data.reportUrl ? `\n\n[View Full Report](${data.reportUrl})` : ''}`)]);
 
       } catch (e: any) {
-        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute Social Media Insights: ${e.message}` }]);
+        setMessages(prev => [...prev, msg('model', `Failed to execute Social Media Insights: ${e.message}`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
         setCapabilityStartTime(null);
       }
     } else if (capId === 'competitive') {
-      const msgId = nextMsgId();
-      setMessages(prev => [...prev, { id: msgId, role: 'model', text: "Deploying Competitive Analyzer to compare your business against exactly 3 local rivals... ⏱️" }]);
+      setMessages(prev => [...prev, msg('model', "Deploying Competitive Analyzer to compare your business against exactly 3 local rivals... ⏱️")]);
       setCapabilities([]);
       setIsTyping(true);
 
@@ -583,10 +573,10 @@ export default function Home() {
           setCompetitiveReportUrl(data.reportUrl);
           sendReportEmailAsync('competitive', data.reportUrl, locatedBusiness!.name, data.market_summary || 'Your competitive strategy report is ready.');
         }
-        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Competitive Strategy complete! ${data.market_summary}` }]);
+        setMessages(prev => [...prev, msg('model', `Competitive Strategy complete! ${data.market_summary}`)]);
 
       } catch (e: any) {
-        setMessages(prev => [...prev, { id: nextMsgId(), role: 'model', text: `Failed to execute Competitive Analysis: ${e.message}` }]);
+        setMessages(prev => [...prev, msg('model', `Failed to execute Competitive Analysis: ${e.message}`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
@@ -1094,7 +1084,7 @@ export default function Home() {
       )}
 
       {/* LEFT VISUALIZER PANEL - Hidden when centered, fills remaining space when active */}
-      <div className={`relative z-10 transition-all duration-700 ease-in-out flex flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden' : 'w-[55%] opacity-100'}`}>
+      <div className={`relative z-10 transition-all duration-700 ease-in-out flex flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden' : isChatCollapsed ? 'w-[calc(100%-56px)] opacity-100' : 'w-[55%] opacity-100'}`}>
         {!isCentered && (
           <>
             {(isTyping || isDiscovering) && <BlobBackground className="z-0 opacity-30" />}
@@ -1267,7 +1257,7 @@ export default function Home() {
 
       {/* RIGHT CHATBOT PANEL - Full screen when centered, narrow sidebar when active */}
       {/* When centered: pointer-events-none on wrapper so neural background is interactive; children re-enable pointer-events-auto on inputs/buttons */}
-      <div className={`relative z-20 flex-shrink-0 transition-all duration-700 ease-in-out h-full ${isCentered ? 'w-full max-w-none pointer-events-none' : 'w-[45%]'}`}>
+      <div className={`relative z-20 flex-shrink-0 transition-all duration-700 ease-in-out h-full ${isCentered ? 'w-full max-w-none pointer-events-none' : isChatCollapsed ? 'w-14' : 'w-[45%]'}`}>
         <ChatInterface
           messages={messages}
           onSendMessage={sendMessage}
@@ -1275,7 +1265,7 @@ export default function Home() {
           isTyping={isTyping}
           isDiscovering={isDiscovering}
           onReset={() => {
-            setMessages([{ id: '1', role: 'model', text: 'Hi! I am Hephae.\nSearch for your business to get started.' }]);
+            setMessages([{ id: '1', role: 'model', text: 'Hi! I am Hephae.\nSearch for your business to get started.', createdAt: Date.now() }]);
             setLocatedBusiness(null);
             setReport(null);
             setForecast(null);
@@ -1289,11 +1279,14 @@ export default function Home() {
             setSeoReportUrl(null);
             setCompetitiveReportUrl(null);
             setMarketingReportUrl(null);
+            setIsChatCollapsed(false);
           }}
           capabilities={capabilities}
           onSelectCapability={handleSelectCapability}
           isCentered={isCentered}
           followUpChips={dynamicChips}
+          isCollapsed={isChatCollapsed}
+          onToggleCollapse={() => setIsChatCollapsed(v => !v)}
         />
       </div>
 

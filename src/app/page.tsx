@@ -1,9 +1,41 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2 } from 'lucide-react';
+import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2, Zap, Shield, Eye } from 'lucide-react';
 import { SurgicalReport } from '@/types/api';
 import clsx from 'clsx';
+import dynamic from 'next/dynamic';
+
+const RechartsBarChart = dynamic(() => import('recharts').then(m => {
+  const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } = m;
+  const ChartComponent = ({ data, barKey, nameKey, colors, layout, height }: any) => (
+    <ResponsiveContainer width="100%" height={height || 200}>
+      <BarChart data={data} layout={layout || 'vertical'} margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+        {layout === 'vertical' ? (
+          <>
+            <XAxis type="number" hide />
+            <YAxis type="category" dataKey={nameKey} width={100} tick={{ fontSize: 11, fill: '#64748b' }} />
+          </>
+        ) : (
+          <>
+            <XAxis dataKey={nameKey} tick={{ fontSize: 11, fill: '#64748b' }} />
+            <YAxis hide />
+          </>
+        )}
+        <Tooltip formatter={(v: any) => typeof v === 'number' ? `$${v.toFixed(2)}` : v} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+        <Bar dataKey={barKey} radius={[0, 6, 6, 0]} barSize={18}>
+          {data.map((_: any, i: number) => (
+            <Cell key={i} fill={colors?.[i % colors.length] || '#6366f1'} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+  ChartComponent.displayName = 'ChartComponent';
+  return ChartComponent;
+}), { ssr: false });
+
+const RadialScoreChart = dynamic(() => import('@/components/Chatbot/seo/RadialScore'), { ssr: false });
 import ChatInterface from '@/components/Chatbot/ChatInterface';
 import HephaeLogo from '@/components/HephaeLogo';
 import { DailyForecast, TimeSlot } from '@/components/Chatbot/types';
@@ -600,85 +632,118 @@ export default function Home() {
     const totalLeakage = menu_items.reduce((s, i) => s + i.price_leakage, 0);
     const topLeaks = menu_items.filter(i => i.price_leakage > 0).sort((a, b) => b.price_leakage - a.price_leakage);
 
+    const leakageChartData = topLeaks.slice(0, 8).map(item => ({
+      name: item.item_name.length > 14 ? item.item_name.slice(0, 14) + '…' : item.item_name,
+      leakage: item.price_leakage,
+    }));
+    const leakageColors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#ec4899', '#8b5cf6', '#6366f1', '#3b82f6'];
+
     return (
-      <div className="w-full h-full overflow-y-auto pb-20 p-8 animate-fade-in relative" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
-        <BlobBackground className="opacity-15 fixed" />
-        <header className="relative z-10 flex justify-between items-center mb-8 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
-          <div className="flex items-center gap-4">
-            {identity.logoUrl ? (
-              <img src={identity.logoUrl} className="h-11 w-11 rounded-full object-cover border border-gray-200" alt="Logo" />
-            ) : (
-              <div className="h-11 w-11 rounded-full bg-indigo-100 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-indigo-600" />
+      <div className="w-full h-full overflow-y-auto pb-20 animate-fade-in relative" style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #faf5ff 40%, #fff1f2 100%)', color: '#1e293b' }}>
+        <BlobBackground className="opacity-20 fixed" />
+        <div className="absolute inset-0 pointer-events-none opacity-[0.08]">
+          <NeuralBackground />
+        </div>
+
+        <div className="relative z-10 p-8">
+          {/* Gradient Header */}
+          <header className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 shadow-xl animate-fade-in-up">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                {identity.logoUrl ? (
+                  <img src={identity.logoUrl} className="h-12 w-12 rounded-full object-cover border-2 border-white/30 shadow-lg" alt="Logo" />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <Building2 className="w-6 h-6 text-white" />
+                  </div>
+                )}
+                <div>
+                  <h1 className="text-xl font-bold text-white">{identity.name}</h1>
+                  <p className="text-indigo-100 text-sm">Margin Surgery Report</p>
+                </div>
               </div>
-            )}
-            <div>
-              <h1 className="text-xl font-bold text-gray-900" style={{ color: identity.primaryColor }}>{identity.name}</h1>
-              <p className="text-sm text-gray-500">Margin Surgery Report</p>
+              <div className="flex items-center gap-3">
+                <HephaeLogo size="sm" variant="white" />
+                <button onClick={() => setReport(null)} className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close Report">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-sm text-gray-500">Surgical Score</div>
-              <div className={clsx("text-4xl font-black", overall_score > 80 ? "text-green-600" : "text-yellow-600")}>{overall_score}/100</div>
-            </div>
-            <HephaeLogo size="sm" variant="color" />
-            <button
-              onClick={() => setReport(null)}
-              className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors"
-              title="Close Report"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </header>
+          </header>
 
-        <div className="relative z-10 grid grid-cols-1 gap-8">
-          <div className="p-8 rounded-3xl bg-red-50 border border-red-200 animate-fade-in-up stagger-1">
-            <h3 className="text-red-600 font-medium mb-1 flex items-center gap-2">
-              <AlertTriangle size={18} /> DETECTED PROFIT LEAKAGE
-            </h3>
-            <div className="text-5xl font-bold text-gray-900 tracking-tight">
-              ${totalLeakage.toLocaleString()} <span className="text-xl text-gray-400 font-normal">/ cycle</span>
+          {/* Score + Leakage Hero Row */}
+          <div className="grid grid-cols-2 gap-6 mb-8">
+            <div className="p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-indigo-100 shadow-sm flex flex-col items-center justify-center animate-fade-in-up stagger-1">
+              <RadialScoreChart score={overall_score} size={140} label="Health" color="#6366f1" />
+              <p className="text-xs text-gray-500 mt-2 font-semibold uppercase tracking-wider">Surgical Score</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-red-50 to-orange-50 border border-red-200 shadow-sm flex flex-col justify-center animate-fade-in-up stagger-1">
+              <h3 className="text-red-600 font-semibold mb-1 flex items-center gap-2 text-sm">
+                <AlertTriangle size={16} /> PROFIT LEAKAGE DETECTED
+              </h3>
+              <div className="text-4xl font-black text-red-600 tracking-tight">
+                ${totalLeakage.toLocaleString()}
+              </div>
+              <p className="text-sm text-red-400 mt-1">per cycle</p>
+              <div className="mt-3 flex items-center gap-2">
+                <div className="h-2 flex-1 bg-red-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full animate-pulse" style={{ width: `${Math.min(100, (totalLeakage / 500) * 100)}%` }} />
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden animate-fade-in-up stagger-2">
-            <div className="p-6 border-b border-gray-100"><h3 className="font-bold text-lg text-gray-900">Surgical Breakdown</h3></div>
+          {/* Leakage Bar Chart */}
+          <div className="mb-8 p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm animate-fade-in-up stagger-2">
+            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-indigo-500" /> Leakage by Item</h3>
+            <RechartsBarChart data={leakageChartData} barKey="leakage" nameKey="name" colors={leakageColors} layout="vertical" height={Math.max(180, leakageChartData.length * 35)} />
+          </div>
+
+          {/* Surgical Breakdown Table */}
+          <div className="rounded-2xl border border-indigo-100 bg-white/80 backdrop-blur-sm shadow-sm overflow-hidden mb-8 animate-fade-in-up stagger-2">
+            <div className="p-5 border-b border-indigo-50 bg-gradient-to-r from-indigo-50 to-purple-50">
+              <h3 className="font-bold text-lg text-indigo-900 flex items-center gap-2"><Scale size={18} /> Surgical Breakdown</h3>
+            </div>
             <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+              <thead className="bg-indigo-50/50 text-xs uppercase tracking-wider text-indigo-400">
                 <tr>
                   <th className="p-4">Item</th>
                   <th className="p-4">Benchmark</th>
                   <th className="p-4">Price</th>
-                  <th className="p-4 text-green-600">Rec.</th>
-                  <th className="p-4 text-right">Leakage</th>
+                  <th className="p-4 text-emerald-600">Rec.</th>
+                  <th className="p-4 text-right text-red-500">Leakage</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-indigo-50">
                 {topLeaks.map((item, i) => (
-                  <tr key={i} className="hover:bg-gray-50 animate-fade-in-right" style={{ animationDelay: `${0.18 + i * 0.04}s` }}>
-                    <td className="p-4 text-gray-900">{item.item_name}</td>
+                  <tr key={i} className="hover:bg-indigo-50/40 transition-colors animate-fade-in-right" style={{ animationDelay: `${0.18 + i * 0.04}s` }}>
+                    <td className="p-4 text-gray-900 font-medium">{item.item_name}</td>
                     <td className="p-4 text-gray-500">${item.competitor_benchmark.toFixed(2)}</td>
-                    <td className="p-4 text-gray-500 border-l border-gray-100">${item.current_price.toFixed(2)}</td>
-                    <td className="p-4 font-bold text-green-600 border-l border-gray-100">${item.recommended_price.toFixed(2)}</td>
-                    <td className="p-4 text-right font-mono text-red-600">+${item.price_leakage.toFixed(2)}</td>
+                    <td className="p-4 text-gray-500">${item.current_price.toFixed(2)}</td>
+                    <td className="p-4 font-bold text-emerald-600">${item.recommended_price.toFixed(2)}</td>
+                    <td className="p-4 text-right">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-mono text-xs font-bold">+${item.price_leakage.toFixed(2)}</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <div className="p-6 rounded-2xl bg-blue-50 border border-blue-100 animate-fade-in-up stagger-3">
-            <h3 className="text-blue-700 font-bold mb-4 flex items-center gap-2"><TrendingUp size={18} /> STRATEGIC ADVICE</h3>
-            <div className="space-y-4">
+          {/* Strategic Advice */}
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 shadow-sm mb-8 animate-fade-in-up stagger-3">
+            <h3 className="text-indigo-700 font-bold mb-4 flex items-center gap-2"><Zap size={18} /> STRATEGIC ADVICE</h3>
+            <div className="space-y-3">
               {strategic_advice.map((tip, i) => (
-                <div key={i} className="p-4 rounded-xl bg-white border border-blue-100 text-sm text-gray-700 animate-fade-in-up" style={{ animationDelay: `${0.24 + i * 0.06}s` }}>"{tip}"</div>
+                <div key={i} className="p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-indigo-100 text-sm text-gray-700 leading-relaxed animate-fade-in-up flex items-start gap-3" style={{ animationDelay: `${0.24 + i * 0.06}s` }}>
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+                  <span>{tip}</span>
+                </div>
               ))}
             </div>
           </div>
 
-          <button onClick={downloadSocialCard} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all animate-fade-in-up stagger-4">
+          <button onClick={downloadSocialCard} className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-400 font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all animate-fade-in-up stagger-4 hover:shadow-xl hover:scale-[1.01]">
             <Download size={20} /> Download Integrity Report
           </button>
         </div>
@@ -688,56 +753,103 @@ export default function Home() {
 
   const renderTrafficForecast = () => {
     if (!forecast) return null;
+
+    // Compute daily traffic summary for stats
+    const trafficLevelValue = (level: string) => {
+      const l = level?.toUpperCase() || '';
+      if (l === 'VERY_HIGH') return 4;
+      if (l === 'HIGH') return 3;
+      if (l === 'MEDIUM') return 2;
+      if (l === 'LOW') return 1;
+      return 0;
+    };
+    const dailySummary = forecast.forecast.map(day => {
+      const avg = day.slots.reduce((s, sl) => s + trafficLevelValue(sl.level), 0) / Math.max(day.slots.length, 1);
+      return { name: day.dayOfWeek?.slice(0, 3) || day.date?.slice(5) || '?', traffic: +(avg * 25).toFixed(0) };
+    });
+    const totalEvents = forecast.forecast.reduce((s, d) => s + (d.localEvents?.length || 0), 0);
+    const peakDay = dailySummary.reduce((best, d) => d.traffic > best.traffic ? d : best, dailySummary[0]);
+
     return (
-      <div className="w-full h-full overflow-y-auto pb-20 p-8 animate-fade-in relative" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
-        <BlobBackground className="opacity-15 fixed" />
-        <header className="relative z-10 flex justify-between items-center mb-6 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
-          <div className="flex items-center gap-4">
-            {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
-              <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-11 w-11 rounded-full object-cover border border-gray-200" alt="Logo" />
-            ) : (
-              <div className="h-11 w-11 rounded-full bg-emerald-100 flex items-center justify-center">
-                <Users className="w-5 h-5 text-emerald-600" />
+      <div className="w-full h-full overflow-y-auto pb-20 animate-fade-in relative" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 40%, #ecfeff 100%)', color: '#1e293b' }}>
+        <BlobBackground className="opacity-20 fixed" />
+        <div className="absolute inset-0 pointer-events-none opacity-[0.06]">
+          <NeuralBackground />
+        </div>
+
+        <div className="relative z-10 p-8">
+          {/* Gradient Header */}
+          <header className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 shadow-xl animate-fade-in-up">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
+                  <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-12 w-12 rounded-full object-cover border-2 border-white/30 shadow-lg" alt="Logo" />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                )}
+                <div>
+                  <h1 className="text-xl font-bold text-white">{forecast.business.name}</h1>
+                  <p className="text-emerald-100 text-sm">Foot Traffic Forecast</p>
+                </div>
               </div>
-            )}
-            <div>
-              <h1 className="text-xl font-bold text-gray-900" style={{ color: (locatedBusiness as any)?.primaryColor || '#1e293b' }}>{forecast.business.name}</h1>
-              <p className="text-sm text-gray-500">Foot Traffic Forecast</p>
+              <div className="flex items-center gap-3">
+                <HephaeLogo size="sm" variant="white" />
+                <button onClick={() => setForecast(null)} className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close Forecast">
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* Quick Stats Row */}
+          <div className="grid grid-cols-3 gap-4 mb-8 animate-fade-in-up stagger-1">
+            <div className="p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-emerald-100 shadow-sm text-center">
+              <div className="text-2xl font-black text-emerald-600">{forecast.forecast.length}</div>
+              <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Days Forecast</div>
+            </div>
+            <div className="p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-teal-100 shadow-sm text-center">
+              <div className="text-2xl font-black text-teal-600">{peakDay?.name || '—'}</div>
+              <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Peak Day</div>
+            </div>
+            <div className="p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-cyan-100 shadow-sm text-center">
+              <div className="text-2xl font-black text-cyan-600">{totalEvents}</div>
+              <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Local Events</div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <HephaeLogo size="sm" variant="color" />
-            <button
-              onClick={() => setForecast(null)}
-              className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors shadow-sm"
-              title="Close Forecast"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </header>
 
-        <div className="relative z-10">
-          {selectedSlot && selectedDay && (
-            <div className="mb-6 rounded-3xl overflow-hidden shadow-2xl animate-fade-in-up stagger-1">
-              <DetailPanel
-                day={selectedDay}
-                slot={selectedSlot}
-                onAskAI={(query) => {
-                  setForecast(null);
-                  sendMessage(query);
-                }}
+          {/* Daily Traffic Bar Chart */}
+          {dailySummary.length > 0 && (
+            <div className="mb-8 p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-emerald-100 shadow-sm animate-fade-in-up stagger-2">
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><Activity size={18} className="text-emerald-500" /> Daily Traffic Index</h3>
+              <RechartsBarChart
+                data={dailySummary}
+                barKey="traffic"
+                nameKey="name"
+                colors={['#10b981', '#14b8a6', '#06b6d4', '#0891b2', '#059669', '#0d9488', '#0e7490']}
+                layout="horizontal"
+                height={160}
               />
             </div>
           )}
 
-          <div className="p-8 rounded-3xl bg-white border border-gray-100 shadow-sm overflow-hidden mb-6 animate-fade-in-up stagger-2">
+          {/* Detail Panel */}
+          {selectedSlot && selectedDay && (
+            <div className="mb-6 rounded-2xl overflow-hidden shadow-xl border border-emerald-100 animate-fade-in-up stagger-1">
+              <DetailPanel
+                day={selectedDay}
+                slot={selectedSlot}
+                onAskAI={(query) => { setForecast(null); sendMessage(query); }}
+              />
+            </div>
+          )}
+
+          {/* Heatmap */}
+          <div className="p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-emerald-100 shadow-sm overflow-hidden mb-6 animate-fade-in-up stagger-3">
             <HeatmapGrid
               forecast={forecast.forecast}
-              onSlotClick={(day, slot) => {
-                setSelectedDay(day);
-                setSelectedSlot(slot);
-              }}
+              onSlotClick={(day, slot) => { setSelectedDay(day); setSelectedSlot(slot); }}
               selectedSlot={selectedSlot && selectedDay ? { dayStr: selectedDay.date, slotLabel: selectedSlot.label } : null}
             />
           </div>
@@ -748,89 +860,120 @@ export default function Home() {
 
   const renderCompetitiveReport = () => {
     if (!competitiveReport) return null;
+
+    const threatData = (competitiveReport.competitor_analysis || []).map((comp: any) => ({
+      name: (comp.name || '').length > 14 ? comp.name.slice(0, 14) + '…' : comp.name,
+      threat: comp.threat_level || 0,
+    }));
+    const threatColors = ['#f97316', '#ef4444', '#f59e0b', '#ec4899', '#8b5cf6'];
+
     return (
-      <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in relative" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
-        <BlobBackground className="opacity-15 fixed" />
-        <div className="relative z-10">
-        <header className="flex justify-between items-center mb-8 p-6 rounded-2xl bg-white border-b border-gray-100 shadow-sm animate-fade-in-up">
-          <div className="flex items-center gap-4">
-            {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
-              <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-11 w-11 rounded-full object-cover border border-gray-200" alt="Logo" />
-            ) : (
-              <div className="h-11 w-11 rounded-full bg-orange-100 flex items-center justify-center">
-                <Swords className="w-5 h-5 text-orange-600" />
+      <div className="w-full h-full overflow-y-auto pb-20 animate-fade-in relative" style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #fef3c7 40%, #fce7f3 100%)', color: '#1e293b' }}>
+        <BlobBackground className="opacity-20 fixed" />
+        <div className="absolute inset-0 pointer-events-none opacity-[0.06]">
+          <NeuralBackground />
+        </div>
+
+        <div className="relative z-10 p-8">
+          {/* Gradient Header */}
+          <header className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 shadow-xl animate-fade-in-up">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
+                  <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-12 w-12 rounded-full object-cover border-2 border-white/30 shadow-lg" alt="Logo" />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <Swords className="w-6 h-6 text-white" />
+                  </div>
+                )}
+                <div>
+                  <h1 className="text-xl font-bold text-white">{locatedBusiness?.name || 'Business'}</h1>
+                  <p className="text-orange-100 text-sm">Competitive Market Strategy</p>
+                </div>
               </div>
-            )}
-            <div>
-              <h1 className="text-xl font-bold text-gray-900" style={{ color: (locatedBusiness as any)?.primaryColor || '#1e293b' }}>{locatedBusiness?.name || 'Business'}</h1>
-              <p className="text-sm text-gray-500">Competitive Market Strategy</p>
+              <div className="flex items-center gap-3">
+                <HephaeLogo size="sm" variant="white" />
+                <button onClick={() => setCompetitiveReport(null)} className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close Report">
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* Executive Summary */}
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 shadow-sm mb-8 animate-fade-in-up stagger-1">
+            <h3 className="text-orange-700 font-bold mb-3 flex items-center gap-2"><Target size={18} /> Executive Summary</h3>
+            <p className="text-gray-800 text-sm leading-relaxed">{competitiveReport.market_summary}</p>
+          </div>
+
+          {/* Threat Level Chart */}
+          {threatData.length > 0 && (
+            <div className="mb-8 p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-orange-100 shadow-sm animate-fade-in-up stagger-2">
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><Eye size={18} className="text-orange-500" /> Threat Level Comparison</h3>
+              <RechartsBarChart data={threatData} barKey="threat" nameKey="name" colors={threatColors} layout="vertical" height={Math.max(120, threatData.length * 45)} />
+            </div>
+          )}
+
+          {/* Rival Positioning Cards */}
+          <div className="space-y-6 mb-8 animate-fade-in-up stagger-2">
+            <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2"><Shield size={18} className="text-orange-500" /> Rival Positioning Radar</h3>
+            <div className="grid grid-cols-1 gap-4">
+              {competitiveReport.competitor_analysis.map((comp: any, i: number) => (
+                <div key={i} className="p-5 rounded-2xl bg-white/80 backdrop-blur-sm border border-orange-100 hover:border-orange-300 shadow-sm transition-all hover:shadow-md animate-fade-in-up" style={{ animationDelay: `${0.18 + i * 0.08}s` }}>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="font-bold text-gray-900 text-lg">{comp.name}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-20 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-1000" style={{
+                          width: `${(comp.threat_level / 10) * 100}%`,
+                          background: comp.threat_level >= 7 ? 'linear-gradient(90deg, #ef4444, #dc2626)' : comp.threat_level >= 4 ? 'linear-gradient(90deg, #f97316, #f59e0b)' : 'linear-gradient(90deg, #22c55e, #16a34a)'
+                        }} />
+                      </div>
+                      <span className={clsx("text-xs font-bold px-2 py-1 rounded-full",
+                        comp.threat_level >= 7 ? "bg-red-100 text-red-700" : comp.threat_level >= 4 ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"
+                      )}>{comp.threat_level}/10</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                      <div className="text-[10px] text-emerald-600 uppercase font-bold tracking-wider mb-1 flex items-center gap-1"><TrendingUp size={10} /> Strength</div>
+                      <div className="text-sm text-gray-700 leading-relaxed">{comp.key_strength}</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-red-50 border border-red-200">
+                      <div className="text-[10px] text-red-600 uppercase font-bold tracking-wider mb-1 flex items-center gap-1"><AlertTriangle size={10} /> Weakness</div>
+                      <div className="text-sm text-gray-700 leading-relaxed">{comp.key_weakness}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <HephaeLogo size="sm" variant="color" />
-            <button
-              onClick={() => setCompetitiveReport(null)}
-              className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors shadow-sm"
-              title="Close Report"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </header>
 
-        <div className="p-6 rounded-2xl bg-orange-50 border border-orange-200 mb-8 animate-fade-in-up stagger-1">
-          <h3 className="text-orange-700 font-bold mb-3 flex items-center gap-2"><Target size={18} /> Executive Summary</h3>
-          <p className="text-gray-800 text-sm leading-relaxed">{competitiveReport.market_summary}</p>
-        </div>
-
-        <div className="space-y-6 mb-8 animate-fade-in-up stagger-2">
-          <h3 className="font-bold text-lg text-gray-900">Rival Positioning Radar</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {competitiveReport.competitor_analysis.map((comp: any, i: number) => (
-              <div key={i} className="p-5 rounded-3xl bg-white border border-gray-100 hover:border-orange-300 shadow-sm transition-colors animate-fade-in-up" style={{ animationDelay: `${0.18 + i * 0.08}s` }}>
-                <div className="flex justify-between items-center mb-4">
-                  <span className="font-bold text-indigo-700 truncate pr-2 text-lg">{comp.name}</span>
-                  <span className="text-xs font-mono px-3 py-1.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200">Threat: {comp.threat_level}/10</span>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1"><TrendingUp size={12} /> KEY STRENGTH</div>
-                    <div className="text-sm text-gray-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3 leading-relaxed">{comp.key_strength}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1"><AlertTriangle size={12} /> EXPLOITABLE WEAKNESS</div>
-                    <div className="text-sm text-gray-700 bg-red-50 border border-red-200 rounded-xl p-3 leading-relaxed">{comp.key_weakness}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="p-6 rounded-2xl bg-indigo-50 border border-indigo-200 shadow-sm animate-fade-in-up stagger-3">
-          <h3 className="text-indigo-700 font-bold mb-5 flex items-center gap-2"><Swords size={18} /> Strategic Advantages to Leverage</h3>
-          <ul className="space-y-3">
-            {competitiveReport.strategic_advantages.map((adv: string, i: number) => (
-              <li key={i} className="flex gap-4 text-sm text-gray-700 bg-white border border-indigo-100 p-4 rounded-xl leading-relaxed items-start animate-fade-in-right" style={{ animationDelay: `${0.24 + i * 0.05}s` }}>
-                <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center border border-indigo-200">{i + 1}</span>
-                <span>{adv}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {competitiveReport.sources?.length > 0 && (
-          <div className="p-6 rounded-2xl bg-gray-50 border border-gray-200 mt-6 animate-fade-in-up stagger-4">
-            <h3 className="text-gray-500 font-bold mb-3 text-sm uppercase tracking-wider">Analysis Sources</h3>
-            <ul className="space-y-1">
-              {competitiveReport.sources.map((s: any, i: number) => (
-                <li key={i}>
-                  <a href={s.url} target="_blank" rel="noreferrer" className="text-indigo-600 text-sm hover:underline">↗ {s.title || s.url}</a>
+          {/* Strategic Advantages */}
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 shadow-sm mb-8 animate-fade-in-up stagger-3">
+            <h3 className="text-indigo-700 font-bold mb-5 flex items-center gap-2"><Zap size={18} /> Strategic Advantages to Leverage</h3>
+            <ul className="space-y-3">
+              {competitiveReport.strategic_advantages.map((adv: string, i: number) => (
+                <li key={i} className="flex gap-4 text-sm text-gray-700 bg-white/80 backdrop-blur-sm border border-indigo-100 p-4 rounded-xl leading-relaxed items-start animate-fade-in-right" style={{ animationDelay: `${0.24 + i * 0.05}s` }}>
+                  <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold text-xs flex items-center justify-center shadow-sm">{i + 1}</span>
+                  <span>{adv}</span>
                 </li>
               ))}
             </ul>
           </div>
-        )}
+
+          {competitiveReport.sources?.length > 0 && (
+            <div className="p-5 rounded-2xl bg-white/60 backdrop-blur-sm border border-gray-200 animate-fade-in-up stagger-4">
+              <h3 className="text-gray-500 font-bold mb-3 text-xs uppercase tracking-wider">Analysis Sources</h3>
+              <ul className="space-y-1">
+                {competitiveReport.sources.map((s: any, i: number) => (
+                  <li key={i}>
+                    <a href={s.url} target="_blank" rel="noreferrer" className="text-indigo-600 text-sm hover:underline">↗ {s.title || s.url}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1046,35 +1189,34 @@ export default function Home() {
             ) : competitiveReport ? (
               renderCompetitiveReport()
             ) : seoReport ? (
-              <div className="w-full h-full overflow-y-auto pb-20 p-8 pt-12 animate-fade-in relative" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
-                <BlobBackground className="opacity-20 fixed" />
-                <div className="absolute inset-0 pointer-events-none opacity-[0.12]">
+              <div className="w-full h-full overflow-y-auto pb-20 animate-fade-in relative" style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 40%, #e0e7ff 100%)', color: '#1e293b' }}>
+                <BlobBackground className="opacity-25 fixed" />
+                <div className="absolute inset-0 pointer-events-none opacity-[0.10]">
                   <NeuralBackground />
                 </div>
-                <div className="relative z-10">
-                  <header className="flex justify-between items-center mb-8 p-6 rounded-2xl bg-white/80 backdrop-blur-sm border-b border-gray-100 shadow-sm animate-fade-in-up">
-                    <div className="flex items-center gap-4">
-                      {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
-                        <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-11 w-11 rounded-full object-cover border border-gray-200" alt="Logo" />
-                      ) : (
-                        <div className="h-11 w-11 rounded-full bg-purple-100 flex items-center justify-center">
-                          <SearchIcon className="w-5 h-5 text-purple-600" />
+                <div className="relative z-10 p-8">
+                  {/* Gradient Header */}
+                  <header className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-500 to-indigo-500 shadow-xl animate-fade-in-up">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-4">
+                        {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
+                          <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-12 w-12 rounded-full object-cover border-2 border-white/30 shadow-lg" alt="Logo" />
+                        ) : (
+                          <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                            <SearchIcon className="w-6 h-6 text-white" />
+                          </div>
+                        )}
+                        <div>
+                          <h1 className="text-xl font-bold text-white">{locatedBusiness?.name || 'Business'}</h1>
+                          <p className="text-purple-100 text-sm">SEO Deep Audit</p>
                         </div>
-                      )}
-                      <div>
-                        <h1 className="text-xl font-bold text-gray-900" style={{ color: (locatedBusiness as any)?.primaryColor || '#1e293b' }}>{locatedBusiness?.name || 'Business'}</h1>
-                        <p className="text-sm text-gray-500">SEO Deep Audit</p>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <HephaeLogo size="sm" variant="color" />
-                      <button
-                        onClick={() => setSeoReport(null)}
-                        className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors shadow-sm"
-                        title="Close SEO Report"
-                      >
-                        <X size={20} />
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <HephaeLogo size="sm" variant="white" />
+                        <button onClick={() => setSeoReport(null)} className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close SEO Report">
+                          <X size={20} />
+                        </button>
+                      </div>
                     </div>
                   </header>
                   <div className="animate-fade-in-up stagger-1">

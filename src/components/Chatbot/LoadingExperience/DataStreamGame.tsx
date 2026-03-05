@@ -3,11 +3,12 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 
 /**
- * DataStreamGame — hephae.co-style data stream grid animation with click-to-collect scoring.
+ * DataStreamGame — Interactive mini-game with 4 rotating phases every 15 seconds.
  *
- * Colored data dots flow along grid lines. Players click dots to collect them.
- * Three tiers: blue (10pts, common), green (25pts, uncommon), purple (50pts, rare).
- * Burst particle + floating score text on collect.
+ * Phase 1: Data Streams — dots flow along grid lines
+ * Phase 2: Meteor Shower — dots rain diagonally, fast, warm colors
+ * Phase 3: Bonus Round — big slow high-value dots, 2x multiplier
+ * Phase 4: Chaos Drift — dots wander randomly, zigzag paths
  */
 
 interface DataDot {
@@ -25,6 +26,7 @@ interface DataDot {
   trail: { x: number; y: number }[];
   age: number;
   alive: boolean;
+  wobblePhase?: number;
 }
 
 interface BurstParticle {
@@ -42,7 +44,7 @@ interface FloatingText {
   id: number;
   x: number;
   y: number;
-  points: number;
+  text: string;
   color: string;
   life: number;
 }
@@ -54,14 +56,78 @@ interface DataStreamGameProps {
 }
 
 const GRID_SPACING = 60;
-const DOT_SPAWN_INTERVAL = 600;
-const MAX_DOTS = 18;
-const TRAIL_LENGTH = 8;
+const MAX_DOTS = 20;
+const TRAIL_LENGTH = 10;
+const PHASE_DURATION_MS = 15_000;
 
-const TIERS = {
-  blue: { color: "#3b82f6", glow: "rgba(59,130,246,0.4)", points: 10, speed: 1.8, radius: 5, weight: 0.60 },
-  green: { color: "#10b981", glow: "rgba(16,185,129,0.4)", points: 25, speed: 1.4, radius: 6.5, weight: 0.28 },
-  purple: { color: "#8b5cf6", glow: "rgba(139,92,246,0.5)", points: 50, speed: 1.0, radius: 8, weight: 0.12 },
+interface PhaseConfig {
+  name: string;
+  emoji: string;
+  spawnMs: number;
+  sizeMultiplier: number;
+  speedMultiplier: number;
+  scoreMultiplier: number;
+  tierWeights: { purple: number; green: number };
+  gridVisible: boolean;
+  spawnPattern: "grid" | "rain" | "edges" | "random";
+  wobble: boolean;
+}
+
+const PHASES: PhaseConfig[] = [
+  {
+    name: "Data Streams",
+    emoji: "📡",
+    spawnMs: 500,
+    sizeMultiplier: 1,
+    speedMultiplier: 1,
+    scoreMultiplier: 1,
+    tierWeights: { purple: 0.10, green: 0.25 },
+    gridVisible: true,
+    spawnPattern: "grid",
+    wobble: false,
+  },
+  {
+    name: "Meteor Shower",
+    emoji: "☄️",
+    spawnMs: 300,
+    sizeMultiplier: 0.9,
+    speedMultiplier: 1.8,
+    scoreMultiplier: 1,
+    tierWeights: { purple: 0.08, green: 0.22 },
+    gridVisible: false,
+    spawnPattern: "rain",
+    wobble: false,
+  },
+  {
+    name: "Bonus Round",
+    emoji: "⭐",
+    spawnMs: 700,
+    sizeMultiplier: 1.6,
+    speedMultiplier: 0.6,
+    scoreMultiplier: 2,
+    tierWeights: { purple: 0.25, green: 0.40 },
+    gridVisible: true,
+    spawnPattern: "edges",
+    wobble: false,
+  },
+  {
+    name: "Chaos Drift",
+    emoji: "🌀",
+    spawnMs: 400,
+    sizeMultiplier: 1.1,
+    speedMultiplier: 1.2,
+    scoreMultiplier: 1,
+    tierWeights: { purple: 0.12, green: 0.28 },
+    gridVisible: false,
+    spawnPattern: "random",
+    wobble: true,
+  },
+];
+
+const BASE_TIERS = {
+  blue:   { color: "#3b82f6", glow: "rgba(59,130,246,0.4)",  points: 10, speed: 1.6, radius: 9 },
+  green:  { color: "#10b981", glow: "rgba(16,185,129,0.4)",  points: 25, speed: 1.2, radius: 11 },
+  purple: { color: "#8b5cf6", glow: "rgba(139,92,246,0.5)",  points: 50, speed: 0.9, radius: 14 },
 } as const;
 
 let nextDotId = 0;
@@ -73,61 +139,120 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
   const floatsRef = useRef<FloatingText[]>([]);
   const animRef = useRef<number>(0);
   const spawnRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const phaseRef = useRef(0);
+  const phaseStartRef = useRef(Date.now());
   const [score, setScore] = useState(0);
   const [hasCollected, setHasCollected] = useState(false);
+  const [phaseIndex, setPhaseIndex] = useState(0);
+  const [phaseFlash, setPhaseFlash] = useState(false);
   const sizeRef = useRef({ w: 0, h: 0 });
+  const scoreRef = useRef(0);
+
+  const getPhase = useCallback(() => PHASES[phaseRef.current % PHASES.length], []);
 
   const rollTier = useCallback((): DataDot["tier"] => {
+    const phase = getPhase();
     const r = Math.random();
-    if (r < TIERS.purple.weight) return "purple";
-    if (r < TIERS.purple.weight + TIERS.green.weight) return "green";
+    if (r < phase.tierWeights.purple) return "purple";
+    if (r < phase.tierWeights.purple + phase.tierWeights.green) return "green";
     return "blue";
-  }, []);
+  }, [getPhase]);
 
   const spawnDot = useCallback(() => {
     if (dotsRef.current.length >= MAX_DOTS) return;
     const { w, h } = sizeRef.current;
     if (w === 0 || h === 0) return;
 
+    const phase = getPhase();
     const tier = rollTier();
-    const cfg = TIERS[tier];
+    const base = BASE_TIERS[tier];
+    const radius = base.radius * phase.sizeMultiplier;
+    const speed = base.speed * phase.speedMultiplier;
 
-    // Pick a random grid line to start from an edge
-    const horizontal = Math.random() > 0.5;
     let x: number, y: number, vx: number, vy: number;
 
-    if (horizontal) {
-      // Travel along a horizontal grid line
-      const gridY = Math.floor(Math.random() * Math.floor(h / GRID_SPACING)) * GRID_SPACING + GRID_SPACING / 2;
-      const fromLeft = Math.random() > 0.5;
-      x = fromLeft ? -10 : w + 10;
-      y = gridY;
-      vx = (fromLeft ? 1 : -1) * (cfg.speed + Math.random() * 0.5);
-      vy = 0;
-    } else {
-      // Travel along a vertical grid line
-      const gridX = Math.floor(Math.random() * Math.floor(w / GRID_SPACING)) * GRID_SPACING + GRID_SPACING / 2;
-      const fromTop = Math.random() > 0.5;
-      x = gridX;
-      y = fromTop ? -10 : h + 10;
-      vx = 0;
-      vy = (fromTop ? 1 : -1) * (cfg.speed + Math.random() * 0.5);
+    switch (phase.spawnPattern) {
+      case "grid": {
+        const horizontal = Math.random() > 0.5;
+        if (horizontal) {
+          const gridY = Math.floor(Math.random() * Math.floor(h / GRID_SPACING)) * GRID_SPACING + GRID_SPACING / 2;
+          const fromLeft = Math.random() > 0.5;
+          x = fromLeft ? -15 : w + 15;
+          y = gridY;
+          vx = (fromLeft ? 1 : -1) * (speed + Math.random() * 0.4);
+          vy = 0;
+        } else {
+          const gridX = Math.floor(Math.random() * Math.floor(w / GRID_SPACING)) * GRID_SPACING + GRID_SPACING / 2;
+          const fromTop = Math.random() > 0.5;
+          x = gridX;
+          y = fromTop ? -15 : h + 15;
+          vx = 0;
+          vy = (fromTop ? 1 : -1) * (speed + Math.random() * 0.4);
+        }
+        break;
+      }
+      case "rain": {
+        x = Math.random() * w;
+        y = -15;
+        const angle = (Math.PI / 4) + (Math.random() - 0.5) * 0.6;
+        vx = Math.cos(angle) * speed * 1.5;
+        vy = Math.sin(angle) * speed * 1.5;
+        break;
+      }
+      case "edges": {
+        const edge = Math.floor(Math.random() * 4);
+        if (edge === 0) { x = -15; y = Math.random() * h; vx = speed; vy = (Math.random() - 0.5) * speed * 0.5; }
+        else if (edge === 1) { x = w + 15; y = Math.random() * h; vx = -speed; vy = (Math.random() - 0.5) * speed * 0.5; }
+        else if (edge === 2) { x = Math.random() * w; y = -15; vx = (Math.random() - 0.5) * speed * 0.5; vy = speed; }
+        else { x = Math.random() * w; y = h + 15; vx = (Math.random() - 0.5) * speed * 0.5; vy = -speed; }
+        break;
+      }
+      case "random":
+      default: {
+        const edge2 = Math.floor(Math.random() * 4);
+        if (edge2 === 0) { x = -15; y = Math.random() * h; }
+        else if (edge2 === 1) { x = w + 15; y = Math.random() * h; }
+        else if (edge2 === 2) { x = Math.random() * w; y = -15; }
+        else { x = Math.random() * w; y = h + 15; }
+        const angle = Math.atan2(h / 2 - y, w / 2 - x) + (Math.random() - 0.5) * 1.5;
+        vx = Math.cos(angle) * speed;
+        vy = Math.sin(angle) * speed;
+        break;
+      }
     }
 
     dotsRef.current.push({
       id: ++nextDotId,
       x, y, vx, vy,
-      radius: cfg.radius,
-      color: cfg.color,
-      glowColor: cfg.glow,
+      radius,
+      color: base.color,
+      glowColor: base.glow,
       tier,
-      points: cfg.points,
+      points: base.points * phase.scoreMultiplier,
       opacity: 0,
       trail: [],
       age: 0,
       alive: true,
+      wobblePhase: phase.wobble ? Math.random() * Math.PI * 2 : undefined,
     });
-  }, [rollTier]);
+  }, [rollTier, getPhase]);
+
+  // Phase rotation
+  useEffect(() => {
+    if (!active) return;
+    const interval = setInterval(() => {
+      phaseRef.current = (phaseRef.current + 1) % PHASES.length;
+      phaseStartRef.current = Date.now();
+      setPhaseIndex(phaseRef.current);
+      setPhaseFlash(true);
+      setTimeout(() => setPhaseFlash(false), 2000);
+
+      // Restart spawn interval with new phase's spawn rate
+      if (spawnRef.current) clearInterval(spawnRef.current);
+      spawnRef.current = setInterval(spawnDot, PHASES[phaseRef.current].spawnMs);
+    }, PHASE_DURATION_MS);
+    return () => clearInterval(interval);
+  }, [active, spawnDot]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -137,7 +262,6 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
     if (!ctx) return;
 
     const dpr = window.devicePixelRatio || 1;
-
     let seeded = false;
 
     const resize = () => {
@@ -145,7 +269,7 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
       if (!parent) return;
       const w = parent.offsetWidth;
       const h = parent.offsetHeight;
-      if (w === 0 || h === 0) return; // Skip during panel transition
+      if (w === 0 || h === 0) return;
       sizeRef.current = { w, h };
       canvas.width = w * dpr;
       canvas.height = h * dpr;
@@ -153,23 +277,22 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
       canvas.style.height = `${h}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Seed dots once we have valid dimensions
       if (!seeded) {
         seeded = true;
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 8; i++) {
           const tier = rollTier();
-          const cfg = TIERS[tier];
+          const base = BASE_TIERS[tier];
           dotsRef.current.push({
             id: ++nextDotId,
             x: GRID_SPACING + Math.random() * (w - GRID_SPACING * 2),
             y: GRID_SPACING + Math.random() * (h - GRID_SPACING * 2),
-            vx: (Math.random() - 0.5) * cfg.speed * 2,
-            vy: (Math.random() - 0.5) * cfg.speed * 2,
-            radius: cfg.radius,
-            color: cfg.color,
-            glowColor: cfg.glow,
+            vx: (Math.random() - 0.5) * base.speed * 2,
+            vy: (Math.random() - 0.5) * base.speed * 2,
+            radius: base.radius,
+            color: base.color,
+            glowColor: base.glow,
             tier,
-            points: cfg.points,
+            points: base.points,
             opacity: 1,
             trail: [],
             age: 30,
@@ -180,12 +303,10 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
     };
 
     resize();
-
-    // ResizeObserver catches CSS transitions (panel expanding from w-0)
     const observer = new ResizeObserver(() => resize());
     if (canvas.parentElement) observer.observe(canvas.parentElement);
 
-    spawnRef.current = setInterval(spawnDot, DOT_SPAWN_INTERVAL);
+    spawnRef.current = setInterval(spawnDot, PHASES[0].spawnMs);
 
     const animate = () => {
       const { w, h } = sizeRef.current;
@@ -195,84 +316,83 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
       }
       ctx.clearRect(0, 0, w, h);
 
-      // Draw subtle grid
-      ctx.strokeStyle = "rgba(148, 163, 184, 0.06)";
-      ctx.lineWidth = 1;
-      for (let x = GRID_SPACING / 2; x < w; x += GRID_SPACING) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
-      for (let y = GRID_SPACING / 2; y < h; y += GRID_SPACING) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
+      const phase = getPhase();
 
-      // Draw grid intersection dots
-      ctx.fillStyle = "rgba(148, 163, 184, 0.08)";
-      for (let x = GRID_SPACING / 2; x < w; x += GRID_SPACING) {
-        for (let y = GRID_SPACING / 2; y < h; y += GRID_SPACING) {
+      // Draw grid (only in grid-visible phases)
+      if (phase.gridVisible) {
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.06)";
+        ctx.lineWidth = 1;
+        for (let gx = GRID_SPACING / 2; gx < w; gx += GRID_SPACING) {
           ctx.beginPath();
-          ctx.arc(x, y, 1.5, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.moveTo(gx, 0);
+          ctx.lineTo(gx, h);
+          ctx.stroke();
         }
-      }
-
-      // Update & draw data dots
-      const dots = dotsRef.current;
-      for (let i = dots.length - 1; i >= 0; i--) {
-        const d = dots[i];
-        if (!d.alive) {
-          dots.splice(i, 1);
-          continue;
+        for (let gy = GRID_SPACING / 2; gy < h; gy += GRID_SPACING) {
+          ctx.beginPath();
+          ctx.moveTo(0, gy);
+          ctx.lineTo(w, gy);
+          ctx.stroke();
         }
-
-        d.age++;
-
-        // Fade in
-        if (d.age < 20) d.opacity = Math.min(1, d.opacity + 0.06);
-
-        // Move
-        d.x += d.vx;
-        d.y += d.vy;
-
-        // Trail
-        d.trail.push({ x: d.x, y: d.y });
-        if (d.trail.length > TRAIL_LENGTH) d.trail.shift();
-
-        // Remove if off-screen (with margin)
-        if (d.x < -30 || d.x > w + 30 || d.y < -30 || d.y > h + 30) {
-          dots.splice(i, 1);
-          continue;
-        }
-
-        // Draw trail
-        if (d.trail.length > 1) {
-          for (let t = 0; t < d.trail.length - 1; t++) {
-            const alpha = (t / d.trail.length) * 0.3 * d.opacity;
-            const trailRadius = d.radius * (t / d.trail.length) * 0.6;
+        ctx.fillStyle = "rgba(148, 163, 184, 0.08)";
+        for (let gx = GRID_SPACING / 2; gx < w; gx += GRID_SPACING) {
+          for (let gy = GRID_SPACING / 2; gy < h; gy += GRID_SPACING) {
             ctx.beginPath();
-            ctx.arc(d.trail[t].x, d.trail[t].y, trailRadius, 0, Math.PI * 2);
-            ctx.fillStyle = d.color + Math.round(alpha * 255).toString(16).padStart(2, "0");
+            ctx.arc(gx, gy, 1.5, 0, Math.PI * 2);
             ctx.fill();
           }
         }
+      }
 
-        // Draw glow
-        const glowGrad = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.radius * 3);
-        glowGrad.addColorStop(0, d.glowColor);
-        glowGrad.addColorStop(1, "rgba(0,0,0,0)");
+      // Update & draw dots
+      const dots = dotsRef.current;
+      for (let i = dots.length - 1; i >= 0; i--) {
+        const d = dots[i];
+        if (!d.alive) { dots.splice(i, 1); continue; }
+
+        d.age++;
+        if (d.age < 15) d.opacity = Math.min(1, d.opacity + 0.08);
+
+        // Wobble for chaos phase
+        if (d.wobblePhase !== undefined) {
+          d.wobblePhase += 0.08;
+          d.vx += Math.sin(d.wobblePhase) * 0.15;
+          d.vy += Math.cos(d.wobblePhase * 0.7) * 0.1;
+        }
+
+        d.x += d.vx;
+        d.y += d.vy;
+
+        d.trail.push({ x: d.x, y: d.y });
+        if (d.trail.length > TRAIL_LENGTH) d.trail.shift();
+
+        if (d.x < -40 || d.x > w + 40 || d.y < -40 || d.y > h + 40) {
+          dots.splice(i, 1);
+          continue;
+        }
+
+        // Trail
+        for (let t = 0; t < d.trail.length - 1; t++) {
+          const alpha = (t / d.trail.length) * 0.3 * d.opacity;
+          const tr = d.radius * (t / d.trail.length) * 0.5;
+          ctx.beginPath();
+          ctx.arc(d.trail[t].x, d.trail[t].y, tr, 0, Math.PI * 2);
+          ctx.fillStyle = d.color + Math.round(alpha * 255).toString(16).padStart(2, "0");
+          ctx.fill();
+        }
+
+        // Glow
+        const gg = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.radius * 2.5);
+        gg.addColorStop(0, d.glowColor);
+        gg.addColorStop(1, "rgba(0,0,0,0)");
         ctx.beginPath();
-        ctx.arc(d.x, d.y, d.radius * 3, 0, Math.PI * 2);
-        ctx.fillStyle = glowGrad;
-        ctx.globalAlpha = d.opacity * 0.6;
+        ctx.arc(d.x, d.y, d.radius * 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = gg;
+        ctx.globalAlpha = d.opacity * 0.7;
         ctx.fill();
         ctx.globalAlpha = 1;
 
-        // Draw dot
+        // Dot body
         ctx.beginPath();
         ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
         ctx.fillStyle = d.color;
@@ -280,15 +400,15 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
         ctx.fill();
         ctx.globalAlpha = 1;
 
-        // Inner highlight
+        // Highlight
         ctx.beginPath();
-        ctx.arc(d.x - d.radius * 0.25, d.y - d.radius * 0.25, d.radius * 0.35, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,255,255,${0.5 * d.opacity})`;
+        ctx.arc(d.x - d.radius * 0.2, d.y - d.radius * 0.2, d.radius * 0.3, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${0.55 * d.opacity})`;
         ctx.fill();
 
-        // Point label for green/purple
+        // Point label
         if (d.tier !== "blue" && d.opacity > 0.5) {
-          ctx.font = `bold ${d.radius * 1.1}px system-ui, sans-serif`;
+          ctx.font = `bold ${Math.max(10, d.radius * 0.9)}px system-ui, sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillStyle = `rgba(255,255,255,${d.opacity * 0.9})`;
@@ -296,41 +416,31 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
         }
       }
 
-      // Update & draw burst particles
+      // Burst particles
       const bursts = burstRef.current;
       for (let i = bursts.length - 1; i >= 0; i--) {
         const p = bursts[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.08; // gravity
-        p.life--;
-        if (p.life <= 0) {
-          bursts.splice(i, 1);
-          continue;
-        }
-        const alpha = p.life / p.maxLife;
+        p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life--;
+        if (p.life <= 0) { bursts.splice(i, 1); continue; }
+        const a = p.life / p.maxLife;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius * alpha, 0, Math.PI * 2);
-        ctx.fillStyle = p.color + Math.round(alpha * 255).toString(16).padStart(2, "0");
+        ctx.arc(p.x, p.y, p.radius * a, 0, Math.PI * 2);
+        ctx.fillStyle = p.color + Math.round(a * 255).toString(16).padStart(2, "0");
         ctx.fill();
       }
 
-      // Update & draw floating score texts
+      // Floating texts
       const floats = floatsRef.current;
       for (let i = floats.length - 1; i >= 0; i--) {
         const f = floats[i];
-        f.y -= 1.2;
-        f.life--;
-        if (f.life <= 0) {
-          floats.splice(i, 1);
-          continue;
-        }
-        const alpha = f.life / 60;
-        ctx.font = "bold 16px system-ui, sans-serif";
+        f.y -= 1.2; f.life--;
+        if (f.life <= 0) { floats.splice(i, 1); continue; }
+        const a = f.life / 60;
+        ctx.font = "bold 18px system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillStyle = f.color + Math.round(alpha * 255).toString(16).padStart(2, "0");
-        ctx.fillText(`+${f.points}`, f.x, f.y);
+        ctx.fillStyle = f.color + Math.round(a * 255).toString(16).padStart(2, "0");
+        ctx.fillText(f.text, f.x, f.y);
       }
 
       animRef.current = requestAnimationFrame(animate);
@@ -348,7 +458,7 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
       burstRef.current = [];
       floatsRef.current = [];
     };
-  }, [active, spawnDot, rollTier]);
+  }, [active, spawnDot, rollTier, getPhase]);
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -356,6 +466,7 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
     const rect = canvas.getBoundingClientRect();
     const cx = e.clientX - rect.left;
     const cy = e.clientY - rect.top;
+    const phase = getPhase();
 
     const dots = dotsRef.current;
     for (let i = dots.length - 1; i >= 0; i--) {
@@ -363,42 +474,39 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
       if (!d.alive) continue;
       const dx = cx - d.x;
       const dy = cy - d.y;
-      const hitRadius = Math.max(d.radius * 2.5, 18); // generous hit area
+      const hitRadius = Math.max(d.radius * 2.2, 22);
       if (dx * dx + dy * dy <= hitRadius * hitRadius) {
         d.alive = false;
-        setScore((s) => s + d.points);
+        const pts = d.points;
+        scoreRef.current += pts;
+        setScore(scoreRef.current);
         if (!hasCollected) setHasCollected(true);
 
-        // Spawn burst particles
-        for (let p = 0; p < 10; p++) {
-          const angle = (p / 10) * Math.PI * 2 + Math.random() * 0.3;
-          const speed = 2 + Math.random() * 3;
+        for (let p = 0; p < 12; p++) {
+          const angle = (p / 12) * Math.PI * 2 + Math.random() * 0.3;
+          const speed = 2.5 + Math.random() * 3;
           burstRef.current.push({
-            x: d.x,
-            y: d.y,
+            x: d.x, y: d.y,
             vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed - 1,
-            radius: 2 + Math.random() * 2.5,
+            vy: Math.sin(angle) * speed - 1.5,
+            radius: 2.5 + Math.random() * 2.5,
             color: d.color,
-            life: 25 + Math.random() * 15,
-            maxLife: 40,
+            life: 28 + Math.random() * 15,
+            maxLife: 43,
           });
         }
 
-        // Floating score text
+        const label = phase.scoreMultiplier > 1 ? `+${pts} ×${phase.scoreMultiplier}` : `+${pts}`;
         floatsRef.current.push({
-          id: d.id,
-          x: d.x,
-          y: d.y - 10,
-          points: d.points,
-          color: d.color,
-          life: 60,
+          id: d.id, x: d.x, y: d.y - 12,
+          text: label, color: d.color, life: 60,
         });
-
         break;
       }
     }
-  }, [hasCollected]);
+  }, [hasCollected, getPhase]);
+
+  const currentPhase = PHASES[phaseIndex];
 
   return (
     <div className={`relative w-full h-full ${className}`}>
@@ -409,38 +517,45 @@ export default function DataStreamGame({ active, className = "" }: DataStreamGam
         style={{ zIndex: 1 }}
       />
 
-      {/* Score display */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-        {!hasCollected ? (
-          <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-1.5 shadow-md border border-gray-200/80 flex items-center gap-2 animate-pop-in">
-            <span className="text-lg">&#x1F3AF;</span>
-            <span className="text-sm font-bold text-gray-700">Catch the data streams!</span>
-          </div>
-        ) : (
-          <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-1.5 shadow-md border border-gray-200/80 animate-scale-in">
-            <span className="text-sm font-bold text-gray-700">
-              {score < 50 ? "Keep going!" : score < 150 ? "Nice catch!" : score < 300 ? "Data wizard!" : "Stream master!"}{" "}
-              <span className="text-xs font-medium text-gray-500">{score} pts</span>
+      {/* Score display — removed, now handled by parent LoadingOverlay */}
+
+      {/* Phase indicator — bottom left */}
+      <div className={`absolute bottom-3 left-3 z-10 pointer-events-none transition-all duration-500 ${phaseFlash ? "scale-110" : "scale-100"}`}>
+        <div className={`bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-sm border border-gray-200/80 flex items-center gap-2 ${phaseFlash ? "ring-2 ring-indigo-300" : ""}`}>
+          <span className="text-sm">{currentPhase.emoji}</span>
+          <span className="text-xs font-bold text-gray-700">{currentPhase.name}</span>
+          {currentPhase.scoreMultiplier > 1 && (
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+              {currentPhase.scoreMultiplier}x
             </span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Tier legend — bottom right */}
-      <div className="absolute bottom-3 right-3 z-10 pointer-events-none flex gap-2 opacity-60">
-        <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-full bg-blue-500" />
-          <span className="text-[10px] text-gray-500 font-medium">10</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-          <span className="text-[10px] text-gray-500 font-medium">25</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-purple-500" />
-          <span className="text-[10px] text-gray-500 font-medium">50</span>
+      {/* Score — bottom right */}
+      <div className="absolute bottom-3 right-3 z-10 pointer-events-none">
+        <div className="bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-sm border border-gray-200/80">
+          <span className="text-xs font-bold text-gray-700">
+            {score < 50 ? "🎯" : score < 200 ? "🔥" : "⚡"}{" "}
+            {score} pts
+          </span>
         </div>
       </div>
+
+      {/* Phase transition announcement */}
+      {phaseFlash && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none animate-fade-in">
+          <div className="bg-white/90 backdrop-blur-md rounded-2xl px-8 py-4 shadow-xl border border-gray-200 animate-scale-in">
+            <div className="text-center">
+              <span className="text-3xl">{currentPhase.emoji}</span>
+              <div className="text-lg font-bold text-gray-800 mt-1">{currentPhase.name}</div>
+              {currentPhase.scoreMultiplier > 1 && (
+                <div className="text-sm font-bold text-amber-600 mt-0.5">Points ×{currentPhase.scoreMultiplier}!</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

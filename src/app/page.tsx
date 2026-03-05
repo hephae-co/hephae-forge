@@ -891,28 +891,32 @@ export default function Home() {
         </>
       )}
 
-      {/* Search animation — methodology cards while locating business */}
+      {/* Search animation — methodology steps while locating business */}
       {isCentered && isTyping && (
-        <div className="absolute inset-0 z-[15] pointer-events-none flex items-center justify-center animate-fade-in">
-          <div className="grid grid-cols-3 gap-4 max-w-3xl px-8">
-            {[
-              { icon: "🔍", title: "Deep Discovery", desc: "7 AI agents crawl the web simultaneously to map your digital presence", delay: "0s" },
-              { icon: "📊", title: "Margin Surgery", desc: "Live commodity prices + competitor benchmarks reveal hidden profit leaks", delay: "0.15s" },
-              { icon: "🗺️", title: "Traffic Forecast", desc: "Weather, events & historical data predict your next 3 days of foot traffic", delay: "0.3s" },
-              { icon: "🔎", title: "SEO Deep Audit", desc: "PageSpeed + content analysis scores your online visibility across 5 dimensions", delay: "0.45s" },
-              { icon: "⚔️", title: "Competitive Intel", desc: "Threat-level analysis of every rival within your market radius", delay: "0.6s" },
-              { icon: "📱", title: "Social Insights", desc: "Engagement benchmarks + content strategy crafted for your brand", delay: "0.75s" },
-            ].map((card, i) => (
-              <div
-                key={i}
-                className="bg-white/80 backdrop-blur-md rounded-2xl p-4 border border-gray-200/60 shadow-lg animate-fade-in-up"
-                style={{ animationDelay: card.delay }}
-              >
-                <div className="text-2xl mb-2">{card.icon}</div>
-                <div className="text-sm font-bold text-gray-900 mb-1">{card.title}</div>
-                <div className="text-xs text-gray-500 leading-relaxed">{card.desc}</div>
-              </div>
-            ))}
+        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-[15] pointer-events-none animate-fade-in">
+          <div className="bg-white/85 backdrop-blur-md rounded-2xl px-6 py-5 shadow-xl border border-gray-200/60 max-w-sm">
+            <p className="text-sm font-bold text-gray-800 mb-3">Locating your business...</p>
+            <div className="space-y-2">
+              {[
+                { icon: "🔍", text: "7 AI agents mapping your digital presence" },
+                { icon: "📊", text: "Menu, pricing & competitor benchmarks" },
+                { icon: "🗺️", text: "Foot traffic, SEO & social analysis" },
+              ].map((step, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2.5 animate-fade-in-up"
+                  style={{ animationDelay: `${0.3 + i * 0.25}s` }}
+                >
+                  <span className="text-base">{step.icon}</span>
+                  <span className="text-xs text-gray-600">{step.text}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-1.5 mt-3">
+              <span className="w-1.5 h-1.5 bg-[#0052CC] rounded-full animate-bounce" />
+              <span className="w-1.5 h-1.5 bg-[#0052CC] rounded-full animate-bounce" style={{ animationDelay: "0.15s" }} />
+              <span className="w-1.5 h-1.5 bg-[#0052CC] rounded-full animate-bounce" style={{ animationDelay: "0.3s" }} />
+            </div>
           </div>
         </div>
       )}
@@ -1025,8 +1029,8 @@ export default function Home() {
               </div>
             )}
 
-            {/* Full-panel loading overlay — interactive experience with agent timeline + bubble game */}
-            {isTyping && !isDiscovering && (
+            {/* Full-panel loading overlay — covers entire left panel for both capabilities AND discovery */}
+            {(isTyping || isDiscovering) && (
               <LoadingOverlay
                 capabilityId={activeCapability}
                 startTime={capabilityStartTime}
@@ -1079,38 +1083,17 @@ export default function Home() {
                 </div>
               </div>
             ) : locatedBusiness && locatedBusiness.coordinates ? (
-              <div className="relative w-full flex-1 min-h-0">
-                <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} />
-
-                {/* Discovery overlay — interactive loading experience */}
-                {isDiscovering && (
-                  <LoadingOverlay
-                    capabilityId="discovery"
-                    startTime={capabilityStartTime}
-                    businessName={locatedBusiness.name}
-                    businessLogo={(locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon}
-                  />
-                )}
-              </div>
+              <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} />
             ) : (
-              <div className="relative w-full h-full flex flex-col items-center justify-center bg-transparent gap-4 p-8">
-                {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) && !isDiscovering && (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-transparent gap-4 p-8">
+                {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) && (
                   <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 shadow-sm" alt="" />
                 )}
-                {locatedBusiness && !isDiscovering && (
+                {locatedBusiness && (
                   <div className="text-center">
                     <div className="text-lg font-bold text-gray-700">{locatedBusiness.name}</div>
                     <div className="text-sm text-gray-400 mt-1">Gathering location data...</div>
                   </div>
-                )}
-                {/* Discovery overlay — no coordinates fallback */}
-                {isDiscovering && locatedBusiness && (
-                  <LoadingOverlay
-                    capabilityId="discovery"
-                    startTime={capabilityStartTime}
-                    businessName={locatedBusiness.name}
-                    businessLogo={(locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon}
-                  />
                 )}
               </div>
             )}

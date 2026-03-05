@@ -31,7 +31,7 @@ export default function LoadingOverlay({
         <DataStreamGame active={true} accentColor={config?.accentHex || "#0052CC"} />
       </div>
 
-      {/* Content overlay — compact top bar + bottom quote */}
+      {/* Content overlay — compact top bar + game prompt + bottom quote */}
       <div className="relative z-10 flex flex-col h-full pointer-events-none">
         {/* Top section: header + timeline */}
         <div className="flex-shrink-0 px-4 pt-4 pb-2 pointer-events-auto">
@@ -77,6 +77,18 @@ export default function LoadingOverlay({
                 <p className="text-xs text-gray-500">Processing...</p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Game prompt — explains why there's a game */}
+        <div className="flex-shrink-0 px-4 pt-3">
+          <div className="text-center animate-fade-in" style={{ animationDelay: "1s" }}>
+            <p className="text-sm font-semibold text-gray-600">
+              While you wait, try catching the data streams! 👆
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Click the glowing dots — purple ones are worth 50 pts
+            </p>
           </div>
         </div>
 

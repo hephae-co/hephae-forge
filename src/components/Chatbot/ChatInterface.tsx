@@ -358,8 +358,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 )}
                 <div className={`w-full ${isCentered ? 'space-y-8' : 'space-y-5'}`}>
 
-                    {/* Home screen: Hephae logo + tagline */}
-                    {isCentered && messages.length === 1 && (
+                    {/* Home screen: Hephae logo + tagline — stays visible throughout centered state */}
+                    {isCentered && (
                         <div className="flex flex-col items-center gap-3 pt-8 pb-2 animate-fade-in-up">
                             <HephaeLogo size="lg" variant="color" />
                             <p className="text-gray-400 text-sm font-medium tracking-wide mt-1">Big AI for small businesses</p>
@@ -497,8 +497,32 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         </div>
                     )}
 
-                    {/* Loading indicator with rotating quotes */}
-                    {isTyping && (
+                    {/* Loading indicator — centered card on home, bot bubble in chat */}
+                    {isTyping && isCentered && (
+                        <div className="flex justify-center pointer-events-auto animate-fade-in-up">
+                            <div className="bg-white/90 backdrop-blur-md rounded-2xl px-6 py-5 shadow-xl border border-gray-200/60 max-w-sm">
+                                <p className="text-sm font-bold text-gray-800 mb-3">Locating your business...</p>
+                                <div className="space-y-2">
+                                    {[
+                                        { icon: "🔍", text: "7 AI agents mapping your digital presence" },
+                                        { icon: "📊", text: "Menu, pricing & competitor benchmarks" },
+                                        { icon: "🗺️", text: "Foot traffic, SEO & social analysis" },
+                                    ].map((step, i) => (
+                                        <div key={i} className="flex items-center gap-2.5 animate-fade-in-up" style={{ animationDelay: `${0.3 + i * 0.25}s` }}>
+                                            <span className="text-base">{step.icon}</span>
+                                            <span className="text-xs text-gray-600">{step.text}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex gap-1.5 mt-3">
+                                    <span className="w-1.5 h-1.5 bg-[#0052CC] rounded-full animate-bounce" />
+                                    <span className="w-1.5 h-1.5 bg-[#0052CC] rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
+                                    <span className="w-1.5 h-1.5 bg-[#0052CC] rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {isTyping && !isCentered && (
                         <div className="flex justify-start items-end gap-2">
                             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center flex-shrink-0 mb-0.5 border border-indigo-200/60 shadow-sm">
                                 <Bot className="w-3.5 h-3.5 text-indigo-600" />

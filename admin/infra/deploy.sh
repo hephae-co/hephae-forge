@@ -2,16 +2,18 @@
 set -euo pipefail
 
 # Deploy hephae-admin to Google Cloud Run (2 services)
-# Usage: bash infra/deploy.sh
+# Usage: bash admin/infra/deploy.sh
 
 PROJECT_ID="hephae-co-dev"
 REGION="us-central1"
+BUILD_REGION="us-east1"
 REPO="cloud-run-source-deploy"
 TAG=$(git rev-parse --short HEAD)
 API_SERVICE="hephae-admin-api"
 WEB_SERVICE="hephae-admin-web"
+SERVICE_ACCOUNT="hephae-forge@${PROJECT_ID}.iam.gserviceaccount.com"
 
-# Image names
+# Image names (Artifact Registry is in us-east1)
 API_IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${API_SERVICE}:${TAG}"
 WEB_IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${WEB_SERVICE}:${TAG}"
 
@@ -19,15 +21,15 @@ WEB_IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${WEB_SERVICE}:${TAG}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-echo "=== Deploying hephae-admin (2-service architecture) ==="
+# Web app API URL (admin calls this)
+FORGE_URL="https://hephae-forge-api-1096334123076.us-east1.run.app"
+RESEND_FROM_EMAIL="${RESEND_FROM_EMAIL:-onboarding@resend.dev}"
 
-# Validate required env vars
-for var in FORGE_URL RESEND_API_KEY; do
-    if [ -z "${!var:-}" ]; then
-        echo "ERROR: $var is not set"
-        exit 1
-    fi
-done
+echo "=== Deploying hephae-admin (2-service architecture) ==="
+echo "  Build context: ${REPO_ROOT}"
+echo "  API: ${API_SERVICE} → ${API_IMAGE}"
+echo "  Web: ${WEB_SERVICE} → ${WEB_IMAGE}"
+echo ""
 
 # --- API Service ---
 echo "--- Building API image ---"
@@ -40,7 +42,7 @@ YAML
 gcloud builds submit \
     --config /tmp/cloudbuild-admin-api.yaml \
     --project "$PROJECT_ID" \
-    --region "$REGION" \
+    --region "$BUILD_REGION" \
     --timeout=600 "$REPO_ROOT"
 
 echo "--- Deploying API service ---"
@@ -55,11 +57,9 @@ gcloud run deploy "${API_SERVICE}" \
     --concurrency 80 \
     --min-instances 0 \
     --max-instances 3 \
-    --set-env-vars "FORGE_URL=${FORGE_URL}" \
-    --set-env-vars "RESEND_API_KEY=${RESEND_API_KEY}" \
-    --set-env-vars "RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-onboarding@resend.dev}" \
-    --set-env-vars "CRON_SECRET=${CRON_SECRET:-}" \
-    --set-secrets "GEMINI_API_KEY=GOOGLE_GENAI_API_KEY:latest,FORGE_API_SECRET=FORGE_API_SECRET:latest,FORGE_V1_API_KEY=FORGE_V1_API_KEY:latest"
+    --service-account "$SERVICE_ACCOUNT" \
+    --set-env-vars "FORGE_URL=${FORGE_URL},RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL}" \
+    --set-secrets "GEMINI_API_KEY=GOOGLE_GENAI_API_KEY:latest,FORGE_API_SECRET=FORGE_API_SECRET:latest,FORGE_V1_API_KEY=FORGE_V1_API_KEY:latest,RESEND_API_KEY=RESEND_API_KEY:latest,CRON_SECRET=CRON_SECRET:latest"
 
 # Get API URL
 API_URL=$(gcloud run services describe "${API_SERVICE}" \
@@ -81,7 +81,7 @@ YAML
 gcloud builds submit \
     --config /tmp/cloudbuild-admin-web.yaml \
     --project "$PROJECT_ID" \
-    --region "$REGION" \
+    --region "$BUILD_REGION" \
     --timeout=600 "$REPO_ROOT"
 
 echo "--- Deploying Web service ---"
@@ -96,6 +96,7 @@ gcloud run deploy "${WEB_SERVICE}" \
     --concurrency 100 \
     --min-instances 0 \
     --max-instances 3 \
+    --service-account "$SERVICE_ACCOUNT" \
     --set-env-vars "BACKEND_URL=${API_URL}"
 
 WEB_URL=$(gcloud run services describe "${WEB_SERVICE}" \

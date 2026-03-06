@@ -106,31 +106,35 @@ else
 fi
 echo ""
 
+# Resolve repo root (build context must be monorepo root)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 echo "── Building Next.js image..."
 cat > /tmp/cloudbuild-web.yaml <<YAML
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${WEB_IMAGE}', '-f', 'infra/Dockerfile.nextjs', '.']
+    args: ['build', '-t', '${WEB_IMAGE}', '-f', 'web/infra/Dockerfile.nextjs', '.']
 images: ['${WEB_IMAGE}']
 YAML
 gcloud builds submit \
   --config /tmp/cloudbuild-web.yaml \
   --project "$PROJECT_ID" \
   --region "$REGION" \
-  --timeout=600 .
+  --timeout=600 "$REPO_ROOT"
 
 echo "── Building FastAPI image..."
 cat > /tmp/cloudbuild-api.yaml <<YAML
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${API_IMAGE}', '-f', 'infra/Dockerfile.fastapi', '.']
+    args: ['build', '-t', '${API_IMAGE}', '-f', 'web/infra/Dockerfile.fastapi', '.']
 images: ['${API_IMAGE}']
 YAML
 gcloud builds submit \
   --config /tmp/cloudbuild-api.yaml \
   --project "$PROJECT_ID" \
   --region "$REGION" \
-  --timeout=900 .
+  --timeout=900 "$REPO_ROOT"
 
 if $WITH_CRAWL4AI; then
   echo "── Mirroring crawl4ai image to Artifact Registry..."

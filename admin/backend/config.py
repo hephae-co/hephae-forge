@@ -1,8 +1,20 @@
-"""Central configuration for models, thinking presets, and fallback maps."""
+"""
+Admin app configuration.
+
+Model tiers, thinking presets, and fallback maps are imported from hephae_common.
+This file adds admin-specific config: Settings, social credentials, etc.
+"""
 
 import os
 from pydantic_settings import BaseSettings
-from google.genai.types import GenerateContentConfig, ThinkingConfig
+
+# Re-export shared config so existing imports don't break
+from hephae_common.model_config import (  # noqa: F401
+    AgentModels,
+    ThinkingPresets,
+    MODEL_FALLBACK_MAP,
+    StorageConfig,
+)
 
 
 class Settings(BaseSettings):
@@ -42,36 +54,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
-
-class AgentModels:
-    """Model tier definitions for agent selection."""
-    # Primary: cheapest, fastest — default for all agents
-    PRIMARY_MODEL = "gemini-3.1-flash-lite-preview"
-
-    # Enhanced: complex structured output (evaluators, industry analysis)
-    ENHANCED_MODEL = "gemini-2.5-flash"
-
-    # Fallbacks for 429 / model-unavailable errors
-    PRIMARY_FALLBACK = "gemini-2.5-flash-lite"
-    ENHANCED_FALLBACK = "gemini-2.5-flash"
-
-
-class ThinkingPresets:
-    """Pre-built GenerateContentConfig with thinking levels.
-
-    Use: LlmAgent(generate_content_config=ThinkingPresets.HIGH)
-    """
-    MEDIUM = GenerateContentConfig(
-        thinking_config=ThinkingConfig(thinking_level="MEDIUM")
-    )
-    HIGH = GenerateContentConfig(
-        thinking_config=ThinkingConfig(thinking_level="HIGH")
-    )
-
-
-# Model fallback map: primary -> fallback on 429/quota errors
-MODEL_FALLBACK_MAP: dict[str, str] = {
-    AgentModels.PRIMARY_MODEL: AgentModels.PRIMARY_FALLBACK,
-    AgentModels.ENHANCED_MODEL: AgentModels.ENHANCED_FALLBACK,
-}

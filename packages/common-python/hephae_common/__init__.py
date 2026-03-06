@@ -1,13 +1,67 @@
-# Shared Python code for hephae-forge monorepo
-# This package is installed as a local path dependency by both web/ and admin/.
-#
-# Usage in each app's pyproject.toml:
-#   dependencies = ["hephae-common @ file:///../packages/common-python"]
-#
-# Modules to extract here (TODO):
-#   - firebase.py    (Firebase Admin SDK init)
-#   - auth.py        (HMAC verification, GCP identity tokens)
-#   - models.py      (Shared Pydantic models: EnrichedProfile, BaseIdentity, etc.)
-#   - model_config.py (Model tiers, fallback maps, agent versions)
-#   - gcs.py         (GCS upload helpers, slug generation)
-#   - bigquery.py    (BQ insert helpers)
+"""Shared Python code for hephae-forge monorepo."""
+
+from hephae_common.model_config import (
+    AgentModels,
+    ThinkingPresets,
+    MODEL_FALLBACK_MAP,
+    StorageConfig,
+)
+from hephae_common.models import (
+    BaseIdentity,
+    Coordinates,
+    SocialLinks,
+    EnrichedProfile,
+    BusinessIdentity,
+    Competitor,
+    NewsItem,
+    ValidationReport,
+    SocialPlatformMetrics,
+    SocialProfileSummary,
+    SocialProfileMetrics,
+    AIOverview,
+    MenuItem,
+    MenuAnalysisItem,
+    SurgicalReport,
+    Recommendation,
+    Methodology,
+    AuditSection,
+    SeoReport,
+    ForecastSlot,
+    ForecastDay,
+    ForecastResponse,
+    CompetitiveReport,
+    V1Response,
+)
+
+__all__ = [
+    # Config
+    "AgentModels",
+    "ThinkingPresets",
+    "MODEL_FALLBACK_MAP",
+    "StorageConfig",
+    # Models
+    "BaseIdentity",
+    "Coordinates",
+    "SocialLinks",
+    "EnrichedProfile",
+    "BusinessIdentity",
+    "Competitor",
+    "NewsItem",
+    "ValidationReport",
+    "SocialPlatformMetrics",
+    "SocialProfileSummary",
+    "SocialProfileMetrics",
+    "AIOverview",
+    "MenuItem",
+    "MenuAnalysisItem",
+    "SurgicalReport",
+    "Recommendation",
+    "Methodology",
+    "AuditSection",
+    "SeoReport",
+    "ForecastSlot",
+    "ForecastDay",
+    "ForecastResponse",
+    "CompetitiveReport",
+    "V1Response",
+]

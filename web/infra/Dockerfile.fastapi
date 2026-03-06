@@ -1,5 +1,6 @@
 # ───────────────────────────────────────────────────────────
 # Dockerfile.fastapi — FastAPI backend (port 8000)
+# Build context: repo root (hephae-forge/)
 # ───────────────────────────────────────────────────────────
 
 FROM python:3.12-slim-bookworm
@@ -7,19 +8,24 @@ WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
 
-# Install Python deps (standard pip install — creates uvicorn binary in PATH)
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir ".[dev]"
+# Install shared Python package first (changes less often)
+COPY packages/common-python/ ./packages/common-python/
+RUN pip install --no-cache-dir ./packages/common-python
+
+# Install web app Python deps
+COPY web/pyproject.toml ./web/
+RUN pip install --no-cache-dir "./web[dev]"
 
 # Install Playwright Chromium + system deps (needed for screenshots, social cards)
 RUN playwright install --with-deps chromium
 
 # Copy backend code + test scripts
-COPY backend/ ./backend/
-COPY scripts/ ./scripts/
+COPY web/backend/ ./web/backend/
+COPY web/scripts/ ./web/scripts/
 
 # Copy .env.local if present
-COPY .env.local* ./
+COPY web/.env.local* ./web/
 
+WORKDIR /app/web
 EXPOSE 8000
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]

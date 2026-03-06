@@ -1,12 +1,29 @@
-// Shared TypeScript code for hephae-forge monorepo
-// This package is resolved via npm workspaces by both web/ and admin/.
-//
-// Usage in each app's package.json:
-//   "@hephae/common": "workspace:*"
-//
-// Types to extract here (TODO):
-//   - API types (EnrichedProfile, SurgicalReport, SeoReport, etc.)
-//   - Capability display info
-//   - Firebase client helpers
-
-export {};
+export type {
+    // Core Identity
+    Coordinates,
+    BaseIdentity,
+    NewsItem,
+    ValidationReport,
+    EnrichedProfile,
+    SocialPlatformMetrics,
+    SocialProfileSummary,
+    SocialProfileMetrics,
+    AIOverview,
+    // Reports
+    BusinessIdentity,
+    MenuItem,
+    CompetitorPrice,
+    CommodityTrend,
+    MenuAnalysisItem,
+    SurgicalReport,
+    Recommendation,
+    Methodology,
+    AuditSection,
+    SeoReport,
+    QuickScanResult,
+    ForecastSlot,
+    ForecastDay,
+    ForecastResponse,
+    CompetitiveReport,
+    V1Response,
+} from './types';

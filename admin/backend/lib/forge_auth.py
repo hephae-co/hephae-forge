@@ -1,41 +1,19 @@
-"""Auth helpers for calling hephae-forge API endpoints."""
+"""
+Auth helpers for calling hephae-forge API endpoints — re-exports from hephae_common.
 
-import hashlib
-import hmac
-import time
+Existing code does:
+  from backend.lib.forge_auth import forge_hmac_headers, forge_api_key_headers
+"""
 
 from backend.config import settings
+from hephae_common.auth import generate_hmac_headers, generate_api_key_headers
 
 
 def forge_hmac_headers() -> dict[str, str]:
-    """Generate HMAC auth headers for forge capability/discover/analyze routes.
-
-    Returns empty dict if FORGE_API_SECRET is not configured (dev mode).
-    """
-    secret = settings.FORGE_API_SECRET
-    if not secret:
-        return {}
-
-    timestamp = str(int(time.time()))
-    signature = hmac.new(
-        secret.encode(),
-        timestamp.encode(),
-        hashlib.sha256,
-    ).hexdigest()
-
-    return {
-        "x-forge-timestamp": timestamp,
-        "x-forge-signature": signature,
-    }
+    """Generate HMAC auth headers using the app's configured secret."""
+    return generate_hmac_headers(settings.FORGE_API_SECRET)
 
 
 def forge_api_key_headers() -> dict[str, str]:
-    """Generate API key header for forge v1 headless routes.
-
-    Returns empty dict if FORGE_V1_API_KEY is not configured (dev mode).
-    """
-    key = settings.FORGE_V1_API_KEY
-    if not key:
-        return {}
-
-    return {"x-api-key": key}
+    """Generate API key header using the app's configured key."""
+    return generate_api_key_headers(settings.FORGE_V1_API_KEY)

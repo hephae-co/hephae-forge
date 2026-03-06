@@ -266,6 +266,141 @@ CRM event log. Written by `writeInteraction()`.
 All endpoints accept `POST` with `Content-Type: application/json`.
 
 <!-- BEGIN:AUTO:ENDPOINTS -->
+
+### Core Endpoints
+
+#### `POST /api/analyze`
+
+Analyze
+
+**Response model:** `SurgicalReport`
+
+#### `POST /api/blog/generate`
+
+Blog Generate
+
+**Response model:** `BlogPostResponse`
+
+#### `POST /api/chat`
+
+Chat
+
+**Response model:** `ChatResponse`
+
+#### `POST /api/discover`
+
+Discover
+
+**Response model:** `EnrichedProfile`
+
+#### `GET /api/health`
+
+Health
+
+#### `POST /api/optimize`
+
+Optimize
+
+#### `POST /api/optimize/ai-cost`
+
+Optimize Ai Cost
+
+#### `POST /api/optimize/cloud-cost`
+
+Optimize Cloud Cost
+
+#### `POST /api/optimize/performance`
+
+Optimize Performance
+
+#### `POST /api/optimize/prompt`
+
+Optimize Prompt
+
+#### `GET /api/places/autocomplete`
+
+Places Autocomplete
+
+#### `GET /api/places/details`
+
+Places Details
+
+#### `POST /api/send-report-email`
+
+Send Email Route
+
+#### `POST /api/social-card`
+
+Social Card
+
+#### `POST /api/social-posts/generate`
+
+Generate Instagram + Facebook + X posts from report data
+
+**Response model:** `SocialPostsResponse`
+
+#### `POST /api/track`
+
+Track
+
+### Capability Endpoints
+
+#### `POST /api/capabilities/competitive`
+
+Capabilities Competitive
+
+**Response model:** `CompetitiveReport`
+
+#### `POST /api/capabilities/marketing`
+
+Capabilities Marketing
+
+**Response model:** `MarketingReport`
+
+#### `POST /api/capabilities/seo`
+
+Capabilities Seo
+
+**Response model:** `SeoReport`
+
+#### `POST /api/capabilities/traffic`
+
+Capabilities Traffic
+
+**Response model:** `ForecastResponse`
+
+### V1 (Headless) Endpoints
+
+#### `POST /api/v1/analyze`
+
+V1 Analyze
+
+**Response model:** `V1Response_SurgicalReport_`
+
+#### `POST /api/v1/competitive`
+
+V1 Competitive
+
+**Response model:** `V1Response_CompetitiveReport_`
+
+#### `POST /api/v1/discover`
+
+V1 Discover
+
+**Response model:** `V1Response_EnrichedProfile_`
+
+#### `POST /api/v1/seo`
+
+V1 Seo
+
+**Response model:** `V1Response_SeoReport_`
+
+#### `POST /api/v1/traffic`
+
+V1 Traffic
+
+**Response model:** `V1Response_ForecastResponse_`
+
 <!-- END:AUTO:ENDPOINTS -->
 
 ### Discovery & Chat
@@ -475,6 +610,391 @@ These are designed for batch/admin use — they run the full pipeline end-to-end
 Defined in `src/types/api.ts` (single source of truth for frontend types).
 
 <!-- BEGIN:AUTO:TYPES -->
+
+#### `AuditSection`
+
+```typescript
+interface AuditSection {
+  id: string;
+  title: string;
+  score: number;
+  description?: string | null;
+  recommendations?: Recommendation[];
+  methodology?: Methodology | null;
+  isAnalyzed?: boolean | null;
+}
+```
+
+#### `BaseIdentity`
+
+```typescript
+interface BaseIdentity {
+  name: string;
+  address?: string | null;
+  coordinates?: Coordinates | null;
+  officialUrl?: string;
+}
+```
+
+#### `BlogPostResponse`
+
+```typescript
+interface BlogPostResponse {
+  title?: string;
+  htmlContent?: string;
+  reportUrl?: string | null;
+  heroImageUrl?: string | null;
+  wordCount?: number;
+  dataSources?: string[];
+}
+```
+
+#### `BusinessIdentity`
+
+```typescript
+interface BusinessIdentity {
+  primaryColor?: string;
+  secondaryColor?: string;
+  logoUrl?: string | null;
+  persona?: string;
+  name?: string;
+  menuScreenshotBase64?: string | null;
+}
+```
+
+#### `ChatResponse`
+
+```typescript
+interface ChatResponse {
+  role?: string;
+  text?: string;
+  triggerCapabilityHandoff?: boolean | null;
+  locatedBusiness?: BaseIdentity | null;
+}
+```
+
+#### `CompetitiveReport`
+
+```typescript
+interface CompetitiveReport {
+  market_summary?: string;
+  competitors?: Record<string, any>[];
+  recommendations?: Record<string, any>[];
+  reportUrl?: string | null;
+}
+```
+
+#### `Competitor`
+
+```typescript
+interface Competitor {
+  name: string;
+  url: string;
+  reason?: string | null;
+}
+```
+
+#### `Coordinates`
+
+```typescript
+interface Coordinates {
+  lat: number;
+  lng: number;
+}
+```
+
+#### `EnrichedProfile`
+
+```typescript
+interface EnrichedProfile {
+  name: string;
+  address?: string | null;
+  coordinates?: Coordinates | null;
+  officialUrl?: string;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+  logoUrl?: string | null;
+  favicon?: string | null;
+  persona?: string | null;
+  menuUrl?: string | null;
+  menuScreenshotBase64?: string | null;
+  menuScreenshotUrl?: string | null;
+  menuHtmlUrl?: string | null;
+  socialLinks?: SocialLinks | null;
+  phone?: string | null;
+  email?: string | null;
+  hours?: string | null;
+  googleMapsUrl?: string | null;
+  competitors?: Competitor[] | null;
+  news?: NewsItem[] | null;
+  socialProfileMetrics?: SocialProfileMetrics | null;
+  validationReport?: ValidationReport | null;
+  reportUrl?: string | null;
+  _debugError?: string | null;
+}
+```
+
+#### `ForecastDay`
+
+```typescript
+interface ForecastDay {
+  date: string;
+  dayOfWeek?: string;
+  slots?: ForecastSlot[];
+}
+```
+
+#### `ForecastResponse`
+
+```typescript
+interface ForecastResponse {
+  businessName?: string;
+  forecast?: ForecastDay[];
+  summary?: string | null;
+  reportUrl?: string | null;
+}
+```
+
+#### `ForecastSlot`
+
+```typescript
+interface ForecastSlot {
+  time: string;
+  score: number;
+  label?: string | null;
+  weather?: string | null;
+}
+```
+
+#### `MarketingReport`
+
+```typescript
+interface MarketingReport {
+  summary?: string;
+  reportUrl?: string | null;
+}
+```
+
+#### `MenuAnalysisItem`
+
+```typescript
+interface MenuAnalysisItem {
+  item_name: string;
+  current_price: number;
+  category: string;
+  description?: string | null;
+  competitor_benchmark: number;
+  commodity_factor: number;
+  recommended_price: number;
+  price_leakage: number;
+  confidence_score: number;
+  rationale: string;
+}
+```
+
+#### `Methodology`
+
+```typescript
+interface Methodology {
+  reasoningSteps?: string[];
+  toolsUsed?: string[];
+  searchQueries?: string[] | null;
+  sourcesUsed?: Record<string, any>[] | null;
+}
+```
+
+#### `NewsItem`
+
+```typescript
+interface NewsItem {
+  title: string;
+  url: string;
+  source: string;
+  date?: string | null;
+  snippet?: string | null;
+}
+```
+
+#### `Recommendation`
+
+```typescript
+interface Recommendation {
+  severity: string;
+  title: string;
+  description: string;
+  action: string;
+}
+```
+
+#### `SeoReport`
+
+```typescript
+interface SeoReport {
+  overallScore?: number;
+  summary?: string;
+  url?: string;
+  sections?: AuditSection[];
+  reportUrl?: string | null;
+}
+```
+
+#### `SocialLinks`
+
+```typescript
+interface SocialLinks {
+  instagram?: string | null;
+  facebook?: string | null;
+  twitter?: string | null;
+  yelp?: string | null;
+  tiktok?: string | null;
+  grubhub?: string | null;
+  doordash?: string | null;
+  ubereats?: string | null;
+  seamless?: string | null;
+  toasttab?: string | null;
+}
+```
+
+#### `SocialPlatformMetrics`
+
+```typescript
+interface SocialPlatformMetrics {
+  url?: string | null;
+  username?: string | null;
+  pageName?: string | null;
+  followerCount?: number | null;
+  followingCount?: number | null;
+  postCount?: number | null;
+  videoCount?: number | null;
+  likeCount?: number | null;
+  rating?: number | null;
+  reviewCount?: number | null;
+  priceRange?: string | null;
+  categories?: string[] | null;
+  bio?: string | null;
+  isVerified?: boolean | null;
+  claimedByOwner?: boolean | null;
+  lastPostRecency?: string | null;
+  engagementIndicator?: string | null;
+  error?: string | null;
+}
+```
+
+#### `SocialPostContent`
+
+```typescript
+interface SocialPostContent {
+  caption?: string | null;
+  post?: string | null;
+  tweet?: string | null;
+}
+```
+
+#### `SocialPostsResponse`
+
+```typescript
+interface SocialPostsResponse {
+  instagram?: SocialPostContent;
+  facebook?: SocialPostContent;
+  twitter?: SocialPostContent;
+}
+```
+
+#### `SocialProfileMetrics`
+
+```typescript
+interface SocialProfileMetrics {
+  instagram?: SocialPlatformMetrics | null;
+  facebook?: SocialPlatformMetrics | null;
+  twitter?: SocialPlatformMetrics | null;
+  tiktok?: SocialPlatformMetrics | null;
+  yelp?: SocialPlatformMetrics | null;
+  summary?: SocialProfileSummary | null;
+}
+```
+
+#### `SocialProfileSummary`
+
+```typescript
+interface SocialProfileSummary {
+  totalFollowers?: number;
+  strongestPlatform?: string;
+  weakestPlatform?: string;
+  overallPresenceScore?: number;
+  postingFrequency?: string;
+  recommendation?: string;
+}
+```
+
+#### `SurgicalReport`
+
+```typescript
+interface SurgicalReport {
+  identity: BusinessIdentity;
+  menu_items: MenuAnalysisItem[];
+  strategic_advice: string[];
+  overall_score: number;
+  generated_at: string;
+  reportUrl?: string | null;
+}
+```
+
+#### `V1Response_CompetitiveReport_`
+
+```typescript
+interface V1Response_CompetitiveReport_ {
+  success?: boolean;
+  data: CompetitiveReport;
+}
+```
+
+#### `V1Response_EnrichedProfile_`
+
+```typescript
+interface V1Response_EnrichedProfile_ {
+  success?: boolean;
+  data: EnrichedProfile;
+}
+```
+
+#### `V1Response_ForecastResponse_`
+
+```typescript
+interface V1Response_ForecastResponse_ {
+  success?: boolean;
+  data: ForecastResponse;
+}
+```
+
+#### `V1Response_SeoReport_`
+
+```typescript
+interface V1Response_SeoReport_ {
+  success?: boolean;
+  data: SeoReport;
+}
+```
+
+#### `V1Response_SurgicalReport_`
+
+```typescript
+interface V1Response_SurgicalReport_ {
+  success?: boolean;
+  data: SurgicalReport;
+}
+```
+
+#### `ValidationReport`
+
+```typescript
+interface ValidationReport {
+  totalUrlsChecked?: number;
+  valid?: number;
+  invalid?: number;
+  corrected?: number;
+}
+```
+
 <!-- END:AUTO:TYPES -->
 
 ### `BaseIdentity`

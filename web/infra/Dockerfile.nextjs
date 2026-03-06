@@ -29,12 +29,12 @@ FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-# Next.js standalone with workspaces nests output under the monorepo path
+# In Docker (WORKDIR=/app), standalone nests under web/ (not hephae-forge/web/)
 COPY --from=builder /app/web/.next/standalone ./
-COPY --from=builder /app/web/public ./hephae-forge/web/public
-COPY --from=builder /app/web/.next/static ./hephae-forge/web/.next/static
+COPY --from=builder /app/web/public ./web/public
+COPY --from=builder /app/web/.next/static ./web/.next/static
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-CMD ["node", "hephae-forge/web/server.js"]
+CMD ["node", "web/server.js"]

@@ -1,5 +1,5 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '$_IMAGE', '-f', 'infra/Dockerfile.nextjs', '.']
+    args: ['build', '-t', '$_IMAGE', '-f', 'admin/infra/Dockerfile.nextjs', '.']
 images:
   - '$_IMAGE'

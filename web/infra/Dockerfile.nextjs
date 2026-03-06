@@ -8,26 +8,27 @@ WORKDIR /app
 # Copy workspace root config + lockfile
 COPY package.json package-lock.json ./
 # Copy shared TS package
-COPY packages/common-ts/package.json ./packages/common-ts/
-COPY packages/common-ts/src/ ./packages/common-ts/src/
-COPY packages/common-ts/tsconfig.json ./packages/common-ts/
+COPY packages/common-ts/ ./packages/common-ts/
 # Copy web app package.json for workspace resolution
 COPY web/package.json ./web/
+# Copy admin package.json (needed for workspace resolution, no install)
+COPY admin/package.json ./admin/
 # Install all workspace deps from root
 RUN npm ci
 
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages ./packages
-COPY --from=deps /app/web/node_modules ./web/node_modules
-COPY --from=deps /app/package.json ./
+# Copy entire deps output (hoisted node_modules + workspace links)
+COPY --from=deps /app ./
+# Copy web app source
 COPY web/ ./web/
-RUN cd web && npm run build
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build -w web
 
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=builder /app/web/public ./public
 RUN mkdir -p .next
 COPY --from=builder /app/web/.next/standalone ./

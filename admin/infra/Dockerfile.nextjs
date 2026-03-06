@@ -8,24 +8,23 @@ WORKDIR /app
 # Copy workspace root config + lockfile
 COPY package.json package-lock.json ./
 # Copy shared TS package
-COPY packages/common-ts/package.json ./packages/common-ts/
-COPY packages/common-ts/src/ ./packages/common-ts/src/
-COPY packages/common-ts/tsconfig.json ./packages/common-ts/
+COPY packages/common-ts/ ./packages/common-ts/
 # Copy admin package.json for workspace resolution
 COPY admin/package.json ./admin/
+# Copy web package.json (needed for workspace resolution, no install)
+COPY web/package.json ./web/
 # Install all workspace deps from root
 RUN npm ci
 
 FROM node:20-slim AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages ./packages
-COPY --from=deps /app/admin/node_modules ./admin/node_modules
-COPY --from=deps /app/package.json ./
+# Copy entire deps output (hoisted node_modules + workspace links)
+COPY --from=deps /app ./
+# Copy admin app source (exclude backend — Python-only)
 COPY admin/ ./admin/
 RUN rm -rf admin/backend/
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN cd admin && npm run build
+RUN npm run build -w admin
 
 FROM node:20-slim AS runner
 WORKDIR /app

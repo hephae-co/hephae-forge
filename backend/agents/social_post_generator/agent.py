@@ -1,7 +1,7 @@
 """
-Social post generator agents — Instagram + Facebook posts from report data.
+Social post generator agents — Instagram + Facebook + X/Twitter posts from report data.
 
-Runs two agents in parallel to generate platform-specific social posts
+Runs three agents in parallel to generate platform-specific social posts
 highlighting key findings from business reports.
 """
 
@@ -24,6 +24,7 @@ from backend.lib.adk_helpers import user_msg
 from backend.agents.social_post_generator.prompts import (
     INSTAGRAM_POST_INSTRUCTION,
     FACEBOOK_POST_INSTRUCTION,
+    TWITTER_POST_INSTRUCTION,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,14 @@ facebook_post_agent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     instruction=FACEBOOK_POST_INSTRUCTION,
     output_key="facebookPost",
+    on_model_error_callback=fallback_on_error,
+)
+
+twitter_post_agent = LlmAgent(
+    name="TwitterPostAgent",
+    model=AgentModels.PRIMARY_MODEL,
+    instruction=TWITTER_POST_INSTRUCTION,
+    output_key="twitterPost",
     on_model_error_callback=fallback_on_error,
 )
 
@@ -80,7 +89,7 @@ def _build_context(
     report_url: str,
     social_handles: dict[str, str] | None = None,
 ) -> str:
-    """Build context string for the agents."""
+    """Build context string for the agents (legacy mode — single summary)."""
     label = REPORT_TYPE_LABELS.get(report_type, report_type.replace("_", " ").title())
     parts = [
         f"Business: {business_name}",
@@ -94,6 +103,104 @@ def _build_context(
             parts.append(f"Instagram Handle: {social_handles['instagram']}")
         if social_handles.get("facebook"):
             parts.append(f"Facebook Page: {social_handles['facebook']}")
+        if social_handles.get("twitter"):
+            parts.append(f"Twitter/X Handle: {social_handles['twitter']}")
+    return "\n".join(parts)
+
+
+def _build_rich_context(
+    business_name: str,
+    latest_outputs: dict[str, Any],
+    report_type: str = "",
+    social_handles: dict[str, str] | None = None,
+) -> str:
+    """Build rich context from stored Firestore latestOutputs for the agents."""
+    parts = [
+        f"Business: {business_name}",
+        f"Hephae Website: https://hephae.co",
+    ]
+
+    if social_handles:
+        if social_handles.get("instagram"):
+            parts.append(f"Instagram Handle: {social_handles['instagram']}")
+        if social_handles.get("facebook"):
+            parts.append(f"Facebook Page: {social_handles['facebook']}")
+        if social_handles.get("twitter"):
+            parts.append(f"Twitter/X Handle: {social_handles['twitter']}")
+
+    # --- Per-agent data sections ---
+
+    m = latest_outputs.get("margin_surgeon")
+    if m and isinstance(m, dict):
+        parts.append("\n## Margin Surgery Results")
+        if m.get("score") is not None:
+            parts.append(f"Score: {m['score']}/100")
+        if m.get("totalLeakage") is not None:
+            try:
+                parts.append(f"Total Profit Leakage: ${float(m['totalLeakage']):,.0f}/mo")
+            except (ValueError, TypeError):
+                parts.append(f"Total Profit Leakage: {m['totalLeakage']}")
+        if m.get("menu_item_count"):
+            parts.append(f"Menu Items Analyzed: {m['menu_item_count']}")
+        if m.get("summary"):
+            parts.append(f"Summary: {m['summary']}")
+        if m.get("reportUrl"):
+            parts.append(f"Full Report: {m['reportUrl']}")
+
+    s = latest_outputs.get("seo_auditor")
+    if s and isinstance(s, dict):
+        parts.append("\n## SEO Audit Results")
+        if s.get("score") is not None:
+            parts.append(f"Overall Score: {s['score']}/100")
+        for key, label in [
+            ("seo_technical_score", "Technical"),
+            ("seo_content_score", "Content"),
+            ("seo_ux_score", "UX"),
+            ("seo_performance_score", "Performance"),
+            ("seo_authority_score", "Authority"),
+        ]:
+            if s.get(key) is not None:
+                parts.append(f"  - {label}: {s[key]}/100")
+        if s.get("summary"):
+            parts.append(f"Summary: {s['summary']}")
+        if s.get("reportUrl"):
+            parts.append(f"Full Report: {s['reportUrl']}")
+
+    t = latest_outputs.get("traffic_forecaster")
+    if t and isinstance(t, dict):
+        parts.append("\n## Traffic Forecast Results")
+        if t.get("peak_slot_score") is not None:
+            parts.append(f"Peak Traffic Score: {t['peak_slot_score']}")
+        if t.get("summary"):
+            parts.append(f"Summary: {t['summary']}")
+        if t.get("reportUrl"):
+            parts.append(f"Full Report: {t['reportUrl']}")
+
+    c = latest_outputs.get("competitive_analyzer")
+    if c and isinstance(c, dict):
+        parts.append("\n## Competitive Analysis Results")
+        if c.get("competitor_count") is not None:
+            parts.append(f"Competitors Analyzed: {c['competitor_count']}")
+        if c.get("avg_threat_level") is not None:
+            parts.append(f"Avg Threat Level: {c['avg_threat_level']}/10")
+        if c.get("summary"):
+            parts.append(f"Summary: {c['summary']}")
+        if c.get("reportUrl"):
+            parts.append(f"Full Report: {c['reportUrl']}")
+
+    mk = latest_outputs.get("marketing_swarm")
+    if mk and isinstance(mk, dict):
+        parts.append("\n## Marketing Insights")
+        if mk.get("summary"):
+            parts.append(f"Summary: {mk['summary']}")
+        if mk.get("reportUrl"):
+            parts.append(f"Full Report: {mk['reportUrl']}")
+
+    # Focus instruction
+    if report_type:
+        label = REPORT_TYPE_LABELS.get(report_type, report_type.replace("_", " ").title())
+        parts.append(f"\nFOCUS: This post should primarily highlight the {label} findings.")
+
     return "\n".join(parts)
 
 
@@ -105,6 +212,7 @@ def _fallback_posts(
 ) -> dict[str, Any]:
     """Template-based fallback if agent generation fails."""
     label = REPORT_TYPE_LABELS.get(report_type, report_type.title())
+    short_summary = summary[:100] + "..." if len(summary) > 100 else summary
     return {
         "instagram": {
             "caption": (
@@ -116,11 +224,18 @@ def _fallback_posts(
         },
         "facebook": {
             "post": (
-                f"Hephae Forge just completed a {label} for {business_name}.\n\n"
+                f"Hephae just completed a {label} for {business_name}.\n\n"
                 f"{summary}\n\n"
                 f"Read the full report: {report_url}\n\n"
                 f"Get your own analysis at hephae.co"
             )
+        },
+        "twitter": {
+            "tweet": (
+                f"{business_name}: {short_summary} "
+                f"See the full {label} breakdown. "
+                f"#Hephae"
+            )[:280]
         },
     }
 
@@ -150,46 +265,61 @@ async def _run_agent(agent: LlmAgent, output_key: str, prompt: str) -> str:
 
 async def generate_social_posts(
     business_name: str,
-    report_type: str,
-    summary: str,
-    report_url: str,
+    report_type: str = "",
+    summary: str = "",
+    report_url: str = "",
     social_handles: dict[str, str] | None = None,
+    latest_outputs: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Generate Instagram + Facebook posts in parallel.
+    """Generate Instagram + Facebook + X/Twitter posts in parallel.
+
+    Args:
+        latest_outputs: When provided, builds rich context from stored Firestore
+            data instead of using the single summary string (data-enriched mode).
 
     Returns:
         {
             "instagram": {"caption": "..."},
             "facebook": {"post": "..."},
+            "twitter": {"tweet": "..."},
         }
     """
-    context = _build_context(business_name, report_type, summary, report_url, social_handles)
+    if latest_outputs:
+        context = _build_rich_context(business_name, latest_outputs, report_type, social_handles)
+    else:
+        context = _build_context(business_name, report_type, summary, report_url, social_handles)
     logger.info(f"[SocialPostGen] Generating posts for {business_name} ({report_type})")
 
     try:
-        ig_raw, fb_raw = await asyncio.gather(
+        ig_raw, fb_raw, tw_raw = await asyncio.gather(
             _run_agent(instagram_post_agent, "instagramPost", context),
             _run_agent(facebook_post_agent, "facebookPost", context),
+            _run_agent(twitter_post_agent, "twitterPost", context),
         )
 
         ig_data = _parse_json(ig_raw)
         fb_data = _parse_json(fb_raw)
+        tw_data = _parse_json(tw_raw)
 
         result = {
             "instagram": {"caption": ig_data.get("caption", "")},
             "facebook": {"post": fb_data.get("post", "")},
+            "twitter": {"tweet": tw_data.get("tweet", "")},
         }
 
-        # If either is empty, use fallback for that platform
+        # If any platform is empty, use fallback for that platform
         fallback = _fallback_posts(business_name, report_type, summary, report_url)
         if not result["instagram"]["caption"]:
             result["instagram"] = fallback["instagram"]
         if not result["facebook"]["post"]:
             result["facebook"] = fallback["facebook"]
+        if not result["twitter"]["tweet"]:
+            result["twitter"] = fallback["twitter"]
 
         logger.info(
             f"[SocialPostGen] Done: ig={len(result['instagram']['caption'])}c, "
-            f"fb={len(result['facebook']['post'])}c"
+            f"fb={len(result['facebook']['post'])}c, "
+            f"tw={len(result['twitter']['tweet'])}c"
         )
         return result
 

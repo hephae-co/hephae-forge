@@ -21,7 +21,8 @@ from backend.agents.competitive_analysis import (
 from backend.agents.marketing_swarm import generate_and_draft_marketing_content
 from backend.lib.report_storage import generate_slug, upload_report
 from backend.lib.report_templates import build_competitive_report
-from backend.lib.db import write_agent_result, enrich_identity
+from backend.lib.db import write_agent_result
+from backend.lib.business_context import build_business_context
 from backend.config import AgentVersions
 from backend.lib.adk_helpers import user_msg
 from backend.types import CompetitiveReport as CompetitiveReportModel
@@ -35,7 +36,8 @@ router = APIRouter()
 async def capabilities_competitive(request: Request):
     try:
         body = await request.json()
-        identity = enrich_identity(body.get("identity", {}))
+        ctx = await build_business_context(body.get("identity", {}), capabilities=["competitive"])
+        identity = ctx.identity
 
         if not identity or not identity.get("competitors") or len(identity["competitors"]) == 0:
             return JSONResponse(
@@ -58,7 +60,25 @@ async def capabilities_competitive(request: Request):
 
         # Step 1: Profile Competitors
         logger.info("[API/Competitive] Step 1: Profiling Competitors...")
-        profiler_prompt = f"Research these competitors: {json.dumps(identity['competitors'])}"
+
+        # Build context-enriched prompt with admin data
+        profiler_parts = [f"Research these competitors: {json.dumps(identity['competitors'])}"]
+        if ctx.zipcode_research and isinstance(ctx.zipcode_research, dict):
+            sections = ctx.zipcode_research.get("sections", {})
+            if isinstance(sections, dict):
+                if sections.get("demographics"):
+                    profiler_parts.append(f"\n**LOCAL DEMOGRAPHICS (zip {ctx.zip_code}):**\n{json.dumps(sections['demographics'], default=str)[:2000]}")
+                if sections.get("business_landscape"):
+                    profiler_parts.append(f"\n**LOCAL BUSINESS LANDSCAPE:**\n{json.dumps(sections['business_landscape'], default=str)[:2000]}")
+                if sections.get("consumer_market"):
+                    profiler_parts.append(f"\n**CONSUMER MARKET:**\n{json.dumps(sections['consumer_market'], default=str)[:1500]}")
+        if ctx.area_research and isinstance(ctx.area_research, dict):
+            if ctx.area_research.get("competitiveLandscape"):
+                profiler_parts.append(f"\n**AREA COMPETITIVE LANDSCAPE:**\n{json.dumps(ctx.area_research['competitiveLandscape'], default=str)[:1500]}")
+            if ctx.area_research.get("demographicFit"):
+                profiler_parts.append(f"\n**DEMOGRAPHIC FIT:**\n{json.dumps(ctx.area_research['demographicFit'], default=str)[:1000]}")
+
+        profiler_prompt = "\n".join(profiler_parts)
 
         competitor_brief = ""
         async for raw_event in runner.run_async(

@@ -10,6 +10,8 @@ import {
   Link2,
   Loader2,
   RefreshCw,
+  Download,
+  ImageIcon,
 } from "lucide-react";
 
 interface SocialSharePanelProps {
@@ -17,13 +19,26 @@ interface SocialSharePanelProps {
   reportType: string;
   businessName: string;
   summary: string;
-  socialHandles?: { instagram?: string; facebook?: string };
+  socialHandles?: { instagram?: string; facebook?: string; twitter?: string };
+  headline?: string;
+  subtitle?: string;
+  highlight?: string;
   onClose: () => void;
 }
 
 interface SocialPosts {
   instagram: { caption: string };
   facebook: { post: string };
+  twitter: { tweet: string };
+}
+
+// X/Twitter logo SVG (the "𝕏" mark)
+function XLogo({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
 }
 
 export default function SocialSharePanel({
@@ -32,12 +47,17 @@ export default function SocialSharePanel({
   businessName,
   summary,
   socialHandles,
+  headline,
+  subtitle,
+  highlight,
   onClose,
 }: SocialSharePanelProps) {
   const [posts, setPosts] = useState<SocialPosts | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [cardImageUrl, setCardImageUrl] = useState<string | null>(null);
+  const [cardLoading, setCardLoading] = useState(true);
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -64,8 +84,37 @@ export default function SocialSharePanel({
     }
   };
 
+  const fetchCard = async () => {
+    setCardLoading(true);
+    try {
+      const res = await fetch("/api/social-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName,
+          reportType,
+          headline: headline || "",
+          subtitle: subtitle || "",
+          highlight: highlight || "",
+        }),
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        setCardImageUrl(URL.createObjectURL(blob));
+      }
+    } catch {
+      /* ignore — image is optional */
+    } finally {
+      setCardLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
+    fetchCard();
+    return () => {
+      if (cardImageUrl) URL.revokeObjectURL(cardImageUrl);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -76,12 +125,41 @@ export default function SocialSharePanel({
     });
   };
 
+  const downloadCard = () => {
+    if (!cardImageUrl) return;
+    const a = document.createElement("a");
+    a.href = cardImageUrl;
+    a.download = `Hephae-${businessName.replace(/\s+/g, "-")}.png`;
+    a.click();
+  };
+
+  const shareOnInstagram = () => {
+    // Instagram has no web intent — copy caption + download image
+    if (posts?.instagram?.caption) {
+      navigator.clipboard.writeText(posts.instagram.caption);
+    }
+    downloadCard();
+    setCopiedField("instagram-share");
+    setTimeout(() => setCopiedField(null), 3000);
+  };
+
   const shareOnFacebook = () => {
     const text = posts?.facebook?.post
       ? encodeURIComponent(posts.facebook.post)
       : "";
     window.open(
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(reportUrl)}&quote=${text}`,
+      "_blank",
+      "width=600,height=400"
+    );
+  };
+
+  const shareOnTwitter = () => {
+    const text = posts?.twitter?.tweet
+      ? encodeURIComponent(posts.twitter.tweet)
+      : "";
+    window.open(
+      `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(reportUrl)}`,
       "_blank",
       "width=600,height=400"
     );
@@ -105,7 +183,7 @@ export default function SocialSharePanel({
       />
 
       {/* Panel */}
-      <div className="relative w-full max-w-md mx-4 mb-4 sm:mb-0 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-slide-in-up">
+      <div className="relative w-full max-w-lg mx-4 mb-4 sm:mb-0 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-slide-in-up">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50">
           <div>
@@ -125,9 +203,39 @@ export default function SocialSharePanel({
         </div>
 
         {/* Content */}
-        <div className="px-5 py-4 max-h-[60vh] overflow-y-auto space-y-4">
+        <div className="px-5 py-4 max-h-[70vh] overflow-y-auto space-y-5">
+          {/* Social Card Image Preview */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <ImageIcon className="w-4 h-4 text-gray-500" />
+              <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                Share Image
+              </span>
+            </div>
+            {cardLoading ? (
+              <div className="w-full aspect-[1200/630] bg-gray-100 rounded-xl animate-pulse flex items-center justify-center">
+                <Loader2 className="w-5 h-5 text-gray-300 animate-spin" />
+              </div>
+            ) : cardImageUrl ? (
+              <div className="relative group">
+                <img
+                  src={cardImageUrl}
+                  alt="Social card preview"
+                  className="w-full rounded-xl border border-gray-200 shadow-sm"
+                />
+                <button
+                  onClick={downloadCard}
+                  className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-sm text-xs font-semibold text-gray-700 border border-gray-200 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Download size={12} />
+                  Download
+                </button>
+              </div>
+            ) : null}
+          </div>
+
           {loading && (
-            <div className="flex flex-col items-center justify-center py-8 gap-3">
+            <div className="flex flex-col items-center justify-center py-6 gap-3">
               <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
               <p className="text-sm text-gray-500 font-medium">
                 Crafting your social posts...
@@ -136,7 +244,7 @@ export default function SocialSharePanel({
           )}
 
           {error && !loading && (
-            <div className="flex flex-col items-center justify-center py-8 gap-3">
+            <div className="flex flex-col items-center justify-center py-6 gap-3">
               <p className="text-sm text-gray-500">
                 Failed to generate posts.
               </p>
@@ -167,24 +275,89 @@ export default function SocialSharePanel({
                     {posts.instagram.caption}
                   </p>
                 </div>
-                <button
-                  onClick={() =>
-                    copyText(posts.instagram.caption, "instagram")
-                  }
-                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 text-xs font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 transition-all"
-                >
-                  {copiedField === "instagram" ? (
-                    <>
-                      <Check size={12} className="text-green-600" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={12} />
-                      Copy Caption
-                    </>
-                  )}
-                </button>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() =>
+                      copyText(posts.instagram.caption, "instagram")
+                    }
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 text-xs font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 transition-all"
+                  >
+                    {copiedField === "instagram" ? (
+                      <>
+                        <Check size={12} className="text-green-600" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} />
+                        Copy Caption
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={shareOnInstagram}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-xs font-semibold text-white hover:opacity-90 transition-all"
+                  >
+                    {copiedField === "instagram-share" ? (
+                      <>
+                        <Check size={12} />
+                        Caption copied & image downloaded!
+                      </>
+                    ) : (
+                      <>
+                        <Instagram size={12} />
+                        Share on Instagram
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* X / Twitter */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-lg bg-black flex items-center justify-center">
+                    <XLogo size={13} />
+                  </div>
+                  <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                    X / Twitter
+                  </span>
+                </div>
+                <div className="bg-gray-50 rounded-xl border border-gray-100 p-3.5">
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {posts.twitter.tweet}
+                  </p>
+                  <span className="text-[11px] text-gray-400 mt-1.5 block">
+                    {posts.twitter.tweet.length}/280 characters
+                  </span>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() =>
+                      copyText(posts.twitter.tweet, "twitter")
+                    }
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-all"
+                  >
+                    {copiedField === "twitter" ? (
+                      <>
+                        <Check size={12} className="text-green-600" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} />
+                        Copy Tweet
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={shareOnTwitter}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black text-xs font-semibold text-white hover:bg-gray-800 transition-all"
+                  >
+                    <XLogo size={12} />
+                    Share on X
+                  </button>
+                </div>
               </div>
 
               {/* Facebook */}

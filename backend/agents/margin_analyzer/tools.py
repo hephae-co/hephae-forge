@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Benchmarker tool
 # ---------------------------------------------------------------------------
 
-async def fetch_competitor_benchmarks(location: str, items: list[str]) -> dict[str, Any]:
+async def fetch_competitor_benchmarks(location: str, items: list[str], tool_context=None) -> dict[str, Any]:
     """
     Provide a location and an array of item names to fetch local competitor pricing
     and macroeconomic data.
@@ -58,24 +58,41 @@ async def fetch_competitor_benchmarks(location: str, items: list[str]) -> dict[s
         })
 
     macroeconomic_context: dict[str, Any] = {}
+
+    # Try reading pre-fetched market data from session state (BusinessContext)
+    state = {}
+    if tool_context and hasattr(tool_context, "state"):
+        state = tool_context.state or {}
+
+    cached_cpi = state.get("_market_cpi")
+    cached_fred = state.get("_market_fred")
+
     try:
-        loc_lc = location.lower()
-        region = "Northeast"
-        if re.search(r"fl|tx|miami|austin|south|carolina|georgia|alabama", loc_lc):
-            region = "South"
-        elif re.search(r"il|chicago|midwest|ohio|michigan", loc_lc):
-            region = "Midwest"
-        elif re.search(r"ca|yountville|west|california|oregon|washington|nv", loc_lc):
-            region = "West"
+        if cached_cpi and cached_fred:
+            logger.info("[Benchmarker] Using pre-fetched market data from BusinessContext")
+            macroeconomic_context = {
+                "inflation_cpi": cached_cpi,
+                "unemployment_trend": cached_fred,
+                "analysis_hint": "Determine if local consumers can absorb a menu price increase.",
+            }
+        else:
+            loc_lc = location.lower()
+            region = "Northeast"
+            if re.search(r"fl|tx|miami|austin|south|carolina|georgia|alabama", loc_lc):
+                region = "South"
+            elif re.search(r"il|chicago|midwest|ohio|michigan", loc_lc):
+                region = "Midwest"
+            elif re.search(r"ca|yountville|west|california|oregon|washington|nv", loc_lc):
+                region = "West"
 
-        bls_data = await fetch_cpi_data(region)
-        fred_data = await fetch_fred_indicators("UNRATE")
+            bls_data = await fetch_cpi_data(region)
+            fred_data = await fetch_fred_indicators("UNRATE")
 
-        macroeconomic_context = {
-            "inflation_cpi": bls_data,
-            "unemployment_trend": fred_data,
-            "analysis_hint": "Determine if local consumers can absorb a menu price increase.",
-        }
+            macroeconomic_context = {
+                "inflation_cpi": bls_data,
+                "unemployment_trend": fred_data,
+                "analysis_hint": "Determine if local consumers can absorb a menu price increase.",
+            }
     except Exception as e:
         logger.error(f"[Benchmarker] Market data fetch error: {e}")
 
@@ -86,7 +103,7 @@ async def fetch_competitor_benchmarks(location: str, items: list[str]) -> dict[s
 # Commodity watchdog tool
 # ---------------------------------------------------------------------------
 
-async def check_commodity_inflation(terms: list[str]) -> list[dict[str, Any]]:
+async def check_commodity_inflation(terms: list[str], tool_context=None) -> list[dict[str, Any]]:
     """
     Provide an array of menu item names AND category names (pass both) to check
     the latest commodity inflation trends from BLS retail price data.
@@ -118,9 +135,21 @@ async def check_commodity_inflation(terms: list[str]) -> list[dict[str, Any]]:
     if not commodity_set:
         commodity_set.add("beef")
 
+    # Try reading pre-fetched commodity data from session state (BusinessContext)
+    state = {}
+    if tool_context and hasattr(tool_context, "state"):
+        state = tool_context.state or {}
+    cached_prices = state.get("_market_commodity_prices") or {}
+
     for commodity in commodity_set:
         try:
-            data = await fetch_commodity_prices(commodity)
+            # Use pre-fetched data if available, otherwise fetch live
+            data = cached_prices.get(commodity)
+            if data:
+                logger.info(f"[Commodity Watchdog] Using pre-fetched data for {commodity}")
+            else:
+                data = await fetch_commodity_prices(commodity)
+
             if data and data.get("commodity"):
                 trend_str = data.get("trend30Day", "0%")
                 inflation_val = float(re.sub(r"[^0-9.\-]", "", trend_str) or "2.4")

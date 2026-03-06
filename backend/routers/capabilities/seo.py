@@ -22,7 +22,8 @@ from backend.agents.shared_tools import google_search_tool
 from backend.agents.marketing_swarm import generate_and_draft_marketing_content
 from backend.lib.report_storage import generate_slug, upload_report
 from backend.lib.report_templates import build_seo_report
-from backend.lib.db import write_agent_result, enrich_identity
+from backend.lib.db import write_agent_result
+from backend.lib.business_context import build_business_context
 from backend.config import AgentModels, AgentVersions
 from backend.lib.model_fallback import fallback_on_error
 from backend.lib.adk_helpers import user_msg
@@ -131,7 +132,8 @@ async def _run_seo_agent(agent, identity: dict) -> dict:
 async def capabilities_seo(request: Request):
     try:
         body = await request.json()
-        identity = enrich_identity(body.get("identity", {}))
+        ctx = await build_business_context(body.get("identity", {}), capabilities=["seo"])
+        identity = ctx.identity
 
         if not identity.get("officialUrl"):
             return JSONResponse({"error": "No URL available for SEO Audit."}, status_code=400)

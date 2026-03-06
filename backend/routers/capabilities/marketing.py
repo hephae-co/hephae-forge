@@ -11,7 +11,8 @@ from fastapi.responses import JSONResponse
 from backend.agents.marketing_swarm import run_marketing_pipeline
 from backend.lib.report_storage import generate_slug, upload_report
 from backend.lib.report_templates import build_marketing_report
-from backend.lib.db import write_agent_result, enrich_identity
+from backend.lib.db import write_agent_result
+from backend.lib.business_context import build_business_context
 from backend.config import AgentVersions
 from backend.types import MarketingReport as MarketingReportModel
 
@@ -24,7 +25,8 @@ router = APIRouter()
 async def capabilities_marketing(request: Request):
     try:
         body = await request.json()
-        identity = enrich_identity(body.get("identity", {}))
+        ctx = await build_business_context(body.get("identity", {}), capabilities=["marketing"])
+        identity = ctx.identity
 
         if not identity or not identity.get("name"):
             return JSONResponse(
@@ -34,7 +36,7 @@ async def capabilities_marketing(request: Request):
 
         logger.info(f"[Marketing API] Running marketing pipeline for {identity['name']}...")
 
-        result = await run_marketing_pipeline(identity)
+        result = await run_marketing_pipeline(identity, business_context=ctx)
 
         slug = generate_slug(identity["name"])
 

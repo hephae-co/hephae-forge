@@ -440,9 +440,9 @@ def _cta_section(report_type: str) -> str:
     return f"""
     <div class="cta-section card">
       <h3>Unlock more insights for your business</h3>
-      <p>Hephae Forge runs AI-powered analyses across every dimension of your business.</p>
+      <p>Hephae runs AI-powered analyses across every dimension of your business.</p>
       <div class="cta-buttons">
-        <a href="{HEPHAE_APP_URL}" target="_blank" class="cta-btn cta-primary">🚀 Try Hephae Forge</a>
+        <a href="{HEPHAE_APP_URL}" target="_blank" class="cta-btn cta-primary">🚀 Try Hephae</a>
         {action_btns}
       </div>
     </div>"""
@@ -976,4 +976,60 @@ def build_marketing_report(result: dict[str, Any], identity: dict[str, Any]) -> 
         report_type="marketing",
         primary_color=identity.get("primaryColor", ""),
         favicon_url=identity.get("favicon", ""),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 7. Blog Report
+# ---------------------------------------------------------------------------
+
+
+def build_blog_report(
+    article_html: str,
+    business_name: str,
+    title: str = "",
+    hero_image_url: str = "",
+    primary_color: str = "",
+    logo_url: str = "",
+    favicon_url: str = "",
+) -> str:
+    """Build a full blog post HTML page with the Hephae template wrapper.
+
+    Args:
+        article_html: Raw article content HTML (h1, h2, p, blockquote, etc).
+        business_name: Name of the business.
+        title: Blog post title.
+        hero_image_url: URL of the hero/social card image.
+        primary_color: Business brand color.
+        logo_url: Business logo URL.
+        favicon_url: Business favicon URL.
+    """
+    now = datetime.utcnow().isoformat()
+
+    hero_html = ""
+    if hero_image_url:
+        hero_html = f"""
+      <div class="card" style="padding:0;overflow:hidden;border-radius:16px;margin-bottom:20px">
+        <img src="{_esc(hero_image_url)}" alt="{_esc(title)}"
+             style="width:100%;height:auto;display:block" />
+      </div>"""
+
+    body = f"""
+      {hero_html}
+      <div class="card">
+        <article style="font-size:1rem;line-height:1.8;color:#e2e8f0">
+          {article_html}
+        </article>
+      </div>
+    """
+
+    return _page_wrap(
+        title or f"Hephae Blog: {business_name}",
+        business_name,
+        now,
+        body,
+        business_logo_url=logo_url,
+        report_type="profile",
+        primary_color=primary_color,
+        favicon_url=favicon_url,
     )

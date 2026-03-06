@@ -614,6 +614,33 @@ export default function Home() {
     return `Business analysis for ${locatedBusiness?.name || 'your business'}`;
   };
 
+  const getActiveHeadline = (): string => {
+    if (report) {
+      const totalLeakage = report.menu_items?.reduce((s: number, i: any) => s + (i.price_leakage || 0), 0) || 0;
+      return `$${Math.round(totalLeakage).toLocaleString()}/mo`;
+    }
+    if (seoReport) return `${seoReport.overallScore || 0}/100`;
+    if (forecast) return '3-Day Forecast';
+    if (competitiveReport) return `${(competitiveReport as any).competitor_profiles?.length || 0} Competitors`;
+    return '';
+  };
+
+  const getActiveSubtitle = (): string => {
+    if (report) return 'Profit Leakage Detected';
+    if (seoReport) return 'SEO Performance Score';
+    if (forecast) return 'Foot Traffic Prediction';
+    if (competitiveReport) return 'Market Analysis';
+    return 'Business Intelligence';
+  };
+
+  const getActiveHighlight = (): string => {
+    if (report) {
+      const sorted = [...(report.menu_items || [])].sort((a: any, b: any) => (b.price_leakage || 0) - (a.price_leakage || 0));
+      return sorted[0] ? `Top Fix: ${sorted[0].item_name}` : '';
+    }
+    return '';
+  };
+
   const downloadSocialCard = async () => {
     if (!report) return;
     const topLeak = report.menu_items.sort((a, b) => b.price_leakage - a.price_leakage)[0];
@@ -1271,9 +1298,13 @@ export default function Home() {
           reportType={getActiveReportType()}
           businessName={locatedBusiness?.name || ''}
           summary={getActiveSummary()}
+          headline={getActiveHeadline()}
+          subtitle={getActiveSubtitle()}
+          highlight={getActiveHighlight()}
           socialHandles={{
             instagram: (locatedBusiness as any)?.socialLinks?.instagram,
             facebook: (locatedBusiness as any)?.socialLinks?.facebook,
+            twitter: (locatedBusiness as any)?.socialLinks?.twitter,
           }}
           onClose={() => setShowSharePanel(false)}
         />

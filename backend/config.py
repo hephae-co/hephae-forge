@@ -86,6 +86,9 @@ class AgentVersions:
     # Marketing
     MARKETING_SWARM = "1.0.0"
 
+    # Blog
+    BLOG_WRITER = "1.0.0"
+
     # Discovery Stage 4 additions
     NEWS_DISCOVERY = "1.0.0"
     DISCOVERY_REVIEWER = "1.0.0"

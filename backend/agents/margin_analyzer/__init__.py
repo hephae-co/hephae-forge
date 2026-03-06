@@ -6,4 +6,4 @@ from backend.agents.margin_analyzer.agent import (
     surgeon_agent,
     advisor_agent,
 )
-from backend.agents.margin_analyzer.visualizer import generate_social_card
+from backend.lib.social_card import generate_universal_social_card as generate_social_card

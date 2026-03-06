@@ -69,8 +69,12 @@ blog_copywriter_agent = LlmAgent(
 # Core pipeline (returns results)
 # ---------------------------------------------------------------------------
 
-async def run_marketing_pipeline(identity: dict[str, Any]) -> dict[str, Any]:
+async def run_marketing_pipeline(identity: dict[str, Any], business_context: Any = None) -> dict[str, Any]:
     """Run the full marketing content pipeline and return structured results.
+
+    Args:
+        identity: Enriched identity dict.
+        business_context: Optional BusinessContext with admin data for richer content.
 
     Returns dict with keys: platform, creativeDirection, draft, summary.
     """
@@ -96,6 +100,26 @@ async def run_marketing_pipeline(identity: dict[str, Any]) -> dict[str, Any]:
         if summary_data:
             context_parts.append(f"Social Presence Score: {summary_data.get('overallPresenceScore', 'N/A')}/100")
             context_parts.append(f"Strongest Platform: {summary_data.get('strongestPlatform', 'N/A')}")
+
+    # Inject admin context for data-driven marketing
+    if business_context and getattr(business_context, "has_admin_data", False):
+        zr = getattr(business_context, "zipcode_research", None)
+        if zr and isinstance(zr, dict):
+            sections = zr.get("sections", {})
+            if isinstance(sections, dict):
+                if sections.get("consumer_market"):
+                    context_parts.append(f"\n**LOCAL CONSUMER MARKET (zip {getattr(business_context, 'zip_code', '')}):**\n{json.dumps(sections['consumer_market'], default=str)[:2000]}")
+                if sections.get("trending"):
+                    context_parts.append(f"\n**LOCAL TRENDING SEARCHES:**\n{json.dumps(sections['trending'], default=str)[:1500]}")
+                if sections.get("demographics"):
+                    context_parts.append(f"\n**LOCAL DEMOGRAPHICS:**\n{json.dumps(sections['demographics'], default=str)[:1500]}")
+        ar = getattr(business_context, "area_research", None)
+        if ar and isinstance(ar, dict):
+            if ar.get("trendingInsights"):
+                context_parts.append(f"\n**AREA TRENDING INSIGHTS:**\n{json.dumps(ar['trendingInsights'], default=str)[:1500]}")
+            if ar.get("marketOpportunity"):
+                context_parts.append(f"\n**MARKET OPPORTUNITY:**\n{json.dumps(ar['marketOpportunity'], default=str)[:1000]}")
+
     prompt = "\n".join(context_parts)
 
     # Step 1: Creative Director

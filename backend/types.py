@@ -323,11 +323,29 @@ class MarketingReport(BaseModel):
 class SocialPostContent(BaseModel):
     caption: Optional[str] = None  # Instagram
     post: Optional[str] = None  # Facebook
+    tweet: Optional[str] = None  # X/Twitter
 
 
 class SocialPostsResponse(BaseModel):
     instagram: SocialPostContent = Field(default_factory=SocialPostContent)
     facebook: SocialPostContent = Field(default_factory=SocialPostContent)
+    twitter: SocialPostContent = Field(default_factory=SocialPostContent)
+
+
+# ---------------------------------------------------------------------------
+# Blog Writer types
+# ---------------------------------------------------------------------------
+
+
+class BlogPostResponse(BaseModel):
+    title: str = ""
+    html_content: str = Field("", alias="htmlContent")
+    report_url: Optional[str] = Field(None, alias="reportUrl")
+    hero_image_url: Optional[str] = Field(None, alias="heroImageUrl")
+    word_count: int = Field(0, alias="wordCount")
+    data_sources: list[str] = Field(default_factory=list, alias="dataSources")
+
+    model_config = {"populate_by_name": True}
 
 
 # ---------------------------------------------------------------------------

@@ -26,7 +26,8 @@ from backend.agents.business_profiler import ProfilerAgent
 from backend.agents.marketing_swarm import generate_and_draft_marketing_content
 from backend.lib.report_storage import generate_slug, upload_report
 from backend.lib.report_templates import build_margin_report
-from backend.lib.db import write_agent_result, enrich_identity
+from backend.lib.db import write_agent_result
+from backend.lib.business_context import build_business_context
 from backend.config import AgentVersions
 from backend.lib.adk_helpers import user_msg, user_msg_with_image
 from backend.types import SurgicalReport as SurgicalReportModel
@@ -74,7 +75,8 @@ async def analyze(request: Request):
         # FAST PATH: We already ran the Parallel Discovery Subagents
         if enriched_profile and enriched_profile.get("officialUrl"):
             logger.info(f"[API/Analyze] Fast Path: Bypassing Profiler for {enriched_profile.get('name')}")
-            identity = enrich_identity({**enriched_profile})
+            ctx = await build_business_context({**enriched_profile}, capabilities=["margin"])
+            identity = ctx.identity
 
             # Get menu screenshot: GCS URL (from discovery) → Playwright fallback
             if not identity.get("menuScreenshotBase64"):
@@ -104,6 +106,7 @@ async def analyze(request: Request):
             logger.info(f"[API/Analyze] Slow Path: Analyzing identity and crawling menu for: {url}")
             base_identity = await LocatorAgent.resolve(url or "")
             identity = await ProfilerAgent.profile(base_identity)
+            ctx = await build_business_context(identity, capabilities=["margin"])
 
         if not identity.get("menuScreenshotBase64"):
             return JSONResponse(
@@ -116,8 +119,23 @@ async def analyze(request: Request):
         session_id = f"surgery-{int(time.time() * 1000)}"
         user_id = "hub-user"
 
+        # Pre-load market data from BusinessContext into session state
+        initial_state: dict = {}
+        if ctx:
+            cpi = ctx.get_cpi()
+            if cpi:
+                initial_state["_market_cpi"] = cpi
+            fred = ctx.get_fred()
+            if fred:
+                initial_state["_market_fred"] = fred
+            commodity = ctx.get_commodity_data()
+            if commodity:
+                initial_state["_market_commodities"] = commodity
+            if ctx.commodity_prices:
+                initial_state["_market_commodity_prices"] = ctx.commodity_prices
+
         await session_service.create_session(
-            app_name="hephae-hub", user_id=user_id, session_id=session_id, state={}
+            app_name="hephae-hub", user_id=user_id, session_id=session_id, state=initial_state
         )
 
         # 1. Vision Intake

@@ -67,10 +67,44 @@ context_gathering_pipeline = ParallelAgent(
 )
 
 
+def _build_admin_context(business_context: Any) -> str:
+    """Build additional context from admin research data for synthesis."""
+    if not business_context or not getattr(business_context, "has_admin_data", False):
+        return "No additional admin research data available."
+
+    parts = []
+    zr = getattr(business_context, "zipcode_research", None)
+    if zr and isinstance(zr, dict):
+        sections = zr.get("sections", {})
+        if isinstance(sections, dict):
+            if sections.get("demographics"):
+                parts.append(f"**Demographics**: {json.dumps(sections['demographics'], default=str)[:2000]}")
+            if sections.get("events"):
+                parts.append(f"**Local Events (Admin)**: {json.dumps(sections['events'], default=str)[:2000]}")
+            if sections.get("seasonal_weather"):
+                parts.append(f"**Seasonal Weather**: {json.dumps(sections['seasonal_weather'], default=str)[:1500]}")
+            if sections.get("consumer_market"):
+                parts.append(f"**Consumer Market**: {json.dumps(sections['consumer_market'], default=str)[:1500]}")
+
+    ar = getattr(business_context, "area_research", None)
+    if ar and isinstance(ar, dict):
+        if ar.get("marketOpportunity"):
+            parts.append(f"**Market Opportunity**: {json.dumps(ar['marketOpportunity'], default=str)[:1000]}")
+        if ar.get("competitiveLandscape"):
+            parts.append(f"**Competitive Landscape**: {json.dumps(ar['competitiveLandscape'], default=str)[:1000]}")
+
+    return "\n".join(parts) if parts else "No additional admin research data available."
+
+
 class ForecasterAgent:
     @staticmethod
-    async def forecast(identity: dict[str, Any]) -> dict[str, Any]:
-        """Run the full traffic forecasting pipeline."""
+    async def forecast(identity: dict[str, Any], business_context: Any = None) -> dict[str, Any]:
+        """Run the full traffic forecasting pipeline.
+
+        Args:
+            identity: Enriched identity dict.
+            business_context: Optional BusinessContext with admin data for richer synthesis.
+        """
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("Missing GEMINI_API_KEY")
@@ -142,6 +176,9 @@ class ForecasterAgent:
 
       ### 3. EVENT INTELLIGENCE
       {events_data}
+
+      ### 4. ADMIN RESEARCH CONTEXT (if available)
+      {_build_admin_context(business_context)}
 
       **ANALYSIS RULES**:
       1. **HOURS**: If the business is CLOSED, Traffic Level MUST be "Closed".

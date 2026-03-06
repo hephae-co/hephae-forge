@@ -30,6 +30,7 @@ SAMPLE_REQUEST = {
     "socialHandles": {
         "instagram": "@bosphorus_nj",
         "facebook": "BosphorusKitchenNJ",
+        "twitter": "@bosphorus_nj",
     },
 }
 
@@ -51,6 +52,13 @@ SAMPLE_FB_OUTPUT = json.dumps({
         "Read the full report: https://storage.googleapis.com/everything-hephae/"
         "bosphorus-kitchen/margin-1234.html\n\n"
         "Get your own analysis at hephae.co"
+    )
+})
+
+SAMPLE_TW_OUTPUT = json.dumps({
+    "tweet": (
+        "Bosphorus Kitchen is leaking $847/mo across 12 menu items 💀 "
+        "The data doesn't lie. #Hephae #MarginSurgery"
     )
 })
 
@@ -95,18 +103,21 @@ class TestGenerateSocialPosts:
     """Test the generate_social_posts() function directly."""
 
     @pytest.mark.asyncio
-    async def test_returns_both_platforms(self):
-        """Should return instagram and facebook keys."""
+    async def test_returns_all_platforms(self):
+        """Should return instagram, facebook, and twitter keys."""
         with (
             patch("backend.agents.social_post_generator.agent.InMemorySessionService") as mock_svc_cls,
             patch("backend.agents.social_post_generator.agent.Runner") as mock_runner_cls,
         ):
-            # Setup: two sessions (IG + FB), each returning valid JSON
+            # Setup: three sessions (IG + FB + TW), each returning valid JSON
             ig_session = MagicMock()
             ig_session.state = {"instagramPost": SAMPLE_IG_OUTPUT}
             fb_session = MagicMock()
             fb_session.state = {"facebookPost": SAMPLE_FB_OUTPUT}
+            tw_session = MagicMock()
+            tw_session.state = {"twitterPost": SAMPLE_TW_OUTPUT}
 
+            sessions = [ig_session, fb_session, tw_session]
             call_count = {"n": 0}
 
             def _make_svc():
@@ -114,7 +125,7 @@ class TestGenerateSocialPosts:
                 svc.create_session = AsyncMock(return_value=None)
                 idx = call_count["n"]
                 call_count["n"] += 1
-                svc.get_session = AsyncMock(return_value=ig_session if idx == 0 else fb_session)
+                svc.get_session = AsyncMock(return_value=sessions[idx % 3])
                 return svc
 
             mock_svc_cls.side_effect = _make_svc
@@ -133,10 +144,13 @@ class TestGenerateSocialPosts:
 
             assert "instagram" in result
             assert "facebook" in result
+            assert "twitter" in result
             assert "caption" in result["instagram"]
             assert "post" in result["facebook"]
+            assert "tweet" in result["twitter"]
             assert len(result["instagram"]["caption"]) > 0
             assert len(result["facebook"]["post"]) > 0
+            assert len(result["twitter"]["tweet"]) > 0
 
     @pytest.mark.asyncio
     async def test_fallback_on_empty_caption(self):
@@ -168,8 +182,10 @@ class TestGenerateSocialPosts:
             # Should still have content (from fallback)
             assert len(result["instagram"]["caption"]) > 10
             assert len(result["facebook"]["post"]) > 10
+            assert len(result["twitter"]["tweet"]) > 10
             assert "Test Cafe" in result["instagram"]["caption"]
             assert "Test Cafe" in result["facebook"]["post"]
+            assert "Test Cafe" in result["twitter"]["tweet"]
 
     @pytest.mark.asyncio
     async def test_fallback_on_exception(self):
@@ -190,8 +206,10 @@ class TestGenerateSocialPosts:
 
             assert "instagram" in result
             assert "facebook" in result
+            assert "twitter" in result
             assert "Crash Cafe" in result["instagram"]["caption"]
             assert "hephae.co" in result["facebook"]["post"]
+            assert "Crash Cafe" in result["twitter"]["tweet"]
 
     @pytest.mark.asyncio
     async def test_handles_markdown_fenced_json(self):
@@ -205,7 +223,10 @@ class TestGenerateSocialPosts:
             ig_session.state = {"instagramPost": fenced_ig}
             fb_session = MagicMock()
             fb_session.state = {"facebookPost": SAMPLE_FB_OUTPUT}
+            tw_session = MagicMock()
+            tw_session.state = {"twitterPost": SAMPLE_TW_OUTPUT}
 
+            sessions = [ig_session, fb_session, tw_session]
             call_count = {"n": 0}
 
             def _make_svc():
@@ -213,7 +234,7 @@ class TestGenerateSocialPosts:
                 svc.create_session = AsyncMock(return_value=None)
                 idx = call_count["n"]
                 call_count["n"] += 1
-                svc.get_session = AsyncMock(return_value=ig_session if idx == 0 else fb_session)
+                svc.get_session = AsyncMock(return_value=sessions[idx % 3])
                 return svc
 
             mock_svc_cls.side_effect = _make_svc
@@ -235,30 +256,16 @@ class TestGenerateSocialPosts:
     @pytest.mark.asyncio
     async def test_social_handles_passed_to_context(self):
         """Social handles should appear in the context string sent to agents."""
-        with (
-            patch("backend.agents.social_post_generator.agent.InMemorySessionService") as mock_svc_cls,
-            patch("backend.agents.social_post_generator.agent.Runner") as mock_runner_cls,
-        ):
-            session = MagicMock()
-            session.state = {"instagramPost": SAMPLE_IG_OUTPUT, "facebookPost": SAMPLE_FB_OUTPUT}
-            svc = MagicMock()
-            svc.create_session = AsyncMock(return_value=None)
-            svc.get_session = AsyncMock(return_value=session)
-            mock_svc_cls.return_value = svc
+        from backend.agents.social_post_generator.agent import _build_context
+        context = _build_context(
+            "TestBiz", "margin", "summary", "https://example.com",
+            {"instagram": "@testbiz", "facebook": "TestBizPage", "twitter": "@testbiz_x"},
+        )
 
-            runner = MagicMock()
-            runner.run_async = MagicMock(side_effect=_empty_stream)
-            mock_runner_cls.return_value = runner
-
-            from backend.agents.social_post_generator.agent import _build_context
-            context = _build_context(
-                "TestBiz", "margin", "summary", "https://example.com",
-                {"instagram": "@testbiz", "facebook": "TestBizPage"},
-            )
-
-            assert "@testbiz" in context
-            assert "TestBizPage" in context
-            assert "hephae.co" in context
+        assert "@testbiz" in context
+        assert "TestBizPage" in context
+        assert "@testbiz_x" in context
+        assert "hephae.co" in context
 
 
 # ---------------------------------------------------------------------------
@@ -290,10 +297,106 @@ class TestBuildContext:
             ctx = _build_context("X", rtype, "s", "u")
             assert label in ctx, f"Expected '{label}' in context for report type '{rtype}'"
 
+    def test_includes_twitter_handle(self):
+        from backend.agents.social_post_generator.agent import _build_context
+        ctx = _build_context("Biz", "margin", "s", "u", {"twitter": "@biz_tweets"})
+        assert "@biz_tweets" in ctx
+        assert "Twitter/X Handle" in ctx
+
     def test_unknown_report_type_titlecased(self):
         from backend.agents.social_post_generator.agent import _build_context
         ctx = _build_context("X", "custom_thing", "s", "u")
         assert "Custom Thing" in ctx
+
+
+# ---------------------------------------------------------------------------
+# Rich context builder tests (data-enriched mode)
+# ---------------------------------------------------------------------------
+
+SAMPLE_LATEST_OUTPUTS = {
+    "margin_surgeon": {
+        "score": 62,
+        "totalLeakage": 847,
+        "menu_item_count": 12,
+        "summary": "$847/mo profit leakage",
+        "reportUrl": "https://example.com/margin.html",
+    },
+    "seo_auditor": {
+        "score": 75,
+        "seo_technical_score": 85,
+        "seo_content_score": 55,
+        "summary": "Good technical, weak content",
+        "reportUrl": "https://example.com/seo.html",
+    },
+}
+
+
+class TestBuildRichContext:
+    """Test _build_rich_context helper."""
+
+    def test_includes_business_name(self):
+        from backend.agents.social_post_generator.agent import _build_rich_context
+        ctx = _build_rich_context("My Biz", SAMPLE_LATEST_OUTPUTS)
+        assert "My Biz" in ctx
+
+    def test_includes_margin_data(self):
+        from backend.agents.social_post_generator.agent import _build_rich_context
+        ctx = _build_rich_context("Biz", SAMPLE_LATEST_OUTPUTS)
+        assert "$847" in ctx
+        assert "62/100" in ctx
+        assert "Margin Surgery" in ctx
+
+    def test_includes_seo_data(self):
+        from backend.agents.social_post_generator.agent import _build_rich_context
+        ctx = _build_rich_context("Biz", SAMPLE_LATEST_OUTPUTS)
+        assert "75/100" in ctx
+        assert "SEO Audit" in ctx
+        assert "Technical: 85" in ctx
+        assert "Content: 55" in ctx
+
+    def test_includes_focus_instruction(self):
+        from backend.agents.social_post_generator.agent import _build_rich_context
+        ctx = _build_rich_context("Biz", SAMPLE_LATEST_OUTPUTS, report_type="margin")
+        assert "FOCUS" in ctx
+        assert "Margin Surgery" in ctx
+
+    def test_includes_social_handles(self):
+        from backend.agents.social_post_generator.agent import _build_rich_context
+        ctx = _build_rich_context("Biz", SAMPLE_LATEST_OUTPUTS, social_handles={"twitter": "@biz"})
+        assert "@biz" in ctx
+
+    def test_handles_empty_outputs(self):
+        from backend.agents.social_post_generator.agent import _build_rich_context
+        ctx = _build_rich_context("Biz", {})
+        assert "Biz" in ctx
+        assert "hephae.co" in ctx
+
+    def test_handles_partial_outputs(self):
+        from backend.agents.social_post_generator.agent import _build_rich_context
+        partial = {"margin_surgeon": {"score": 50, "summary": "test"}}
+        ctx = _build_rich_context("Biz", partial)
+        assert "50/100" in ctx
+        assert "SEO" not in ctx
+
+    def test_includes_report_urls(self):
+        from backend.agents.social_post_generator.agent import _build_rich_context
+        ctx = _build_rich_context("Biz", SAMPLE_LATEST_OUTPUTS)
+        assert "https://example.com/margin.html" in ctx
+        assert "https://example.com/seo.html" in ctx
+
+    def test_includes_traffic_data(self):
+        from backend.agents.social_post_generator.agent import _build_rich_context
+        outputs = {"traffic_forecaster": {"peak_slot_score": 92, "summary": "Saturday peak"}}
+        ctx = _build_rich_context("Biz", outputs)
+        assert "92" in ctx
+        assert "Traffic Forecast" in ctx
+
+    def test_includes_competitive_data(self):
+        from backend.agents.social_post_generator.agent import _build_rich_context
+        outputs = {"competitive_analyzer": {"competitor_count": 5, "avg_threat_level": 7.2, "summary": "High competition"}}
+        ctx = _build_rich_context("Biz", outputs)
+        assert "5" in ctx
+        assert "7.2/10" in ctx
 
 
 # ---------------------------------------------------------------------------
@@ -324,6 +427,27 @@ class TestFallbackPosts:
         from backend.agents.social_post_generator.agent import _fallback_posts
         fb = _fallback_posts("X", "margin", "Leakage", "https://r.com")
         assert "#" in fb["instagram"]["caption"]
+
+    def test_twitter_key_exists(self):
+        from backend.agents.social_post_generator.agent import _fallback_posts
+        fb = _fallback_posts("Cafe Roma", "margin", "Leakage found", "https://r.com")
+        assert "twitter" in fb
+        assert "tweet" in fb["twitter"]
+
+    def test_twitter_has_business_name(self):
+        from backend.agents.social_post_generator.agent import _fallback_posts
+        fb = _fallback_posts("Cafe Roma", "margin", "Leakage found", "https://r.com")
+        assert "Cafe Roma" in fb["twitter"]["tweet"]
+
+    def test_twitter_has_hephae_hashtag(self):
+        from backend.agents.social_post_generator.agent import _fallback_posts
+        fb = _fallback_posts("X", "seo", "Score 50", "https://r.com")
+        assert "#Hephae" in fb["twitter"]["tweet"]
+
+    def test_twitter_under_280_chars(self):
+        from backend.agents.social_post_generator.agent import _fallback_posts
+        fb = _fallback_posts("X", "margin", "A" * 300, "https://r.com")
+        assert len(fb["twitter"]["tweet"]) <= 280
 
 
 # ---------------------------------------------------------------------------
@@ -371,6 +495,7 @@ async def client():
         return_value={
             "instagram": {"caption": "Test IG caption #Hephae"},
             "facebook": {"post": "Test FB post. hephae.co"},
+            "twitter": {"tweet": "Test tweet #Hephae"},
         },
     ) as mock_gen:
         from backend.main import app
@@ -391,11 +516,16 @@ class TestRouterInputValidation:
         assert res.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_400_missing_summary(self, client):
-        body = {**SAMPLE_REQUEST}
-        del body["summary"]
-        res = await client.post("/api/social-posts/generate", json=body)
-        assert res.status_code == 400
+    async def test_404_missing_summary_no_data(self, client):
+        """No summary + no Firestore data → 404."""
+        with patch(
+            "backend.lib.latest_outputs.fetch_latest_outputs",
+            return_value={"outputs": {}, "socialLinks": {}},
+        ):
+            body = {**SAMPLE_REQUEST}
+            del body["summary"]
+            res = await client.post("/api/social-posts/generate", json=body)
+            assert res.status_code == 404
 
     @pytest.mark.asyncio
     async def test_400_empty_business_name(self, client):
@@ -404,10 +534,15 @@ class TestRouterInputValidation:
         assert res.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_400_empty_summary(self, client):
-        body = {**SAMPLE_REQUEST, "summary": ""}
-        res = await client.post("/api/social-posts/generate", json=body)
-        assert res.status_code == 400
+    async def test_404_empty_summary_no_data(self, client):
+        """Empty summary + no Firestore data → 404."""
+        with patch(
+            "backend.lib.latest_outputs.fetch_latest_outputs",
+            return_value={"outputs": {}, "socialLinks": {}},
+        ):
+            body = {**SAMPLE_REQUEST, "summary": ""}
+            res = await client.post("/api/social-posts/generate", json=body)
+            assert res.status_code == 404
 
 
 class TestRouterHappyPath:
@@ -420,6 +555,7 @@ class TestRouterHappyPath:
         data = res.json()
         assert "instagram" in data
         assert "facebook" in data
+        assert "twitter" in data
 
     @pytest.mark.asyncio
     async def test_response_shape(self, client):
@@ -427,6 +563,7 @@ class TestRouterHappyPath:
         data = res.json()
         assert "caption" in data["instagram"]
         assert "post" in data["facebook"]
+        assert "tweet" in data["twitter"]
 
     @pytest.mark.asyncio
     async def test_passes_all_params_to_agent(self, client):
@@ -438,7 +575,8 @@ class TestRouterHappyPath:
             report_type="margin",
             summary="$847/mo total profit leakage across 12 menu items. Overall score: 62/100.",
             report_url="https://storage.googleapis.com/everything-hephae/bosphorus-kitchen/margin-1234.html",
-            social_handles={"instagram": "@bosphorus_nj", "facebook": "BosphorusKitchenNJ"},
+            social_handles={"instagram": "@bosphorus_nj", "facebook": "BosphorusKitchenNJ", "twitter": "@bosphorus_nj"},
+            latest_outputs=None,
         )
 
     @pytest.mark.asyncio
@@ -560,6 +698,33 @@ class TestPostQualityReviewer:
         has_data = "$847" in fb_post or "12 menu items" in fb_post or "leakage" in fb_post.lower()
         assert has_data, "Facebook post should reference specific data from report"
 
+    # --- X/Twitter Quality Checks ---
+
+    @pytest.fixture
+    def tw_tweet(self):
+        return json.loads(SAMPLE_TW_OUTPUT)["tweet"]
+
+    def test_tw_under_280_chars(self, tw_tweet):
+        """Tweets must be under 280 characters."""
+        assert len(tw_tweet) <= 280, f"Tweet too long: {len(tw_tweet)} chars"
+
+    def test_tw_has_hephae_hashtag(self, tw_tweet):
+        """Must include #Hephae for brand visibility."""
+        assert "#Hephae" in tw_tweet or "#hephae" in tw_tweet.lower()
+
+    def test_tw_mentions_business(self, tw_tweet):
+        """Should mention the business name."""
+        assert "bosphorus" in tw_tweet.lower()
+
+    def test_tw_no_url_in_body(self, tw_tweet):
+        """Tweet should not contain URLs (attached separately via card)."""
+        assert "https://" not in tw_tweet and "http://" not in tw_tweet
+
+    def test_tw_has_data_point(self, tw_tweet):
+        """Tweet should include a specific data point."""
+        has_data = "$847" in tw_tweet or "12" in tw_tweet
+        assert has_data, "Tweet should reference specific data from report"
+
     # --- Cross-Platform Quality Checks ---
 
     def test_both_are_different(self, ig_caption, fb_post):
@@ -572,19 +737,21 @@ class TestPostQualityReviewer:
         overlap = len(ig_words & fb_words) / max(len(ig_words), len(fb_words))
         assert overlap < 0.8, f"Posts too similar: {overlap:.0%} word overlap"
 
-    def test_no_placeholder_text(self, ig_caption, fb_post):
+    def test_no_placeholder_text(self, ig_caption, fb_post, tw_tweet):
         """Posts should not contain placeholder/template text."""
         placeholders = ["[business name]", "[link]", "[handle]", "INSERT", "TODO", "PLACEHOLDER"]
         for p in placeholders:
             assert p.lower() not in ig_caption.lower(), f"IG has placeholder: {p}"
             assert p.lower() not in fb_post.lower(), f"FB has placeholder: {p}"
+            assert p.lower() not in tw_tweet.lower(), f"TW has placeholder: {p}"
 
-    def test_no_ai_artifacts(self, ig_caption, fb_post):
+    def test_no_ai_artifacts(self, ig_caption, fb_post, tw_tweet):
         """Posts should not contain AI generation artifacts."""
         artifacts = ["as an ai", "i'm an ai", "language model", "i cannot", "here is", "here's a"]
         for a in artifacts:
             assert a not in ig_caption.lower(), f"IG has AI artifact: {a}"
             assert a not in fb_post.lower(), f"FB has AI artifact: {a}"
+            assert a not in tw_tweet.lower(), f"TW has AI artifact: {a}"
 
 
 # ---------------------------------------------------------------------------
@@ -623,6 +790,91 @@ class TestFallbackPostQuality:
         caption = fallback["instagram"]["caption"]
         assert "Foot Traffic Forecast" in caption or "Traffic" in caption
 
+    def test_fallback_tw_has_hephae(self, fallback):
+        assert "#Hephae" in fallback["twitter"]["tweet"]
+
+    def test_fallback_tw_has_business_name(self, fallback):
+        assert "Pizza Palace" in fallback["twitter"]["tweet"]
+
+    def test_fallback_tw_under_280(self, fallback):
+        assert len(fallback["twitter"]["tweet"]) <= 280
+
     def test_fallback_not_empty(self, fallback):
         assert len(fallback["instagram"]["caption"]) > 20
         assert len(fallback["facebook"]["post"]) > 20
+        assert len(fallback["twitter"]["tweet"]) > 10
+
+
+# ---------------------------------------------------------------------------
+# Data-enriched mode router tests
+# ---------------------------------------------------------------------------
+
+class TestRouterDataEnrichedMode:
+    """Test the router when called without summary (Firestore-backed mode)."""
+
+    @pytest.mark.asyncio
+    async def test_200_with_firestore_data(self, client):
+        """businessName alone should work when Firestore has data."""
+        with patch(
+            "backend.lib.latest_outputs.fetch_latest_outputs",
+            return_value={
+                "outputs": SAMPLE_LATEST_OUTPUTS,
+                "socialLinks": {"instagram": "@test"},
+            },
+        ):
+            res = await client.post(
+                "/api/social-posts/generate",
+                json={"businessName": "Test Biz"},
+            )
+            assert res.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_auto_populates_social_handles(self, client):
+        """Social handles should be auto-populated from stored socialLinks."""
+        with patch(
+            "backend.lib.latest_outputs.fetch_latest_outputs",
+            return_value={
+                "outputs": SAMPLE_LATEST_OUTPUTS,
+                "socialLinks": {"instagram": "@auto_ig", "facebook": "AutoFB"},
+            },
+        ):
+            res = await client.post(
+                "/api/social-posts/generate",
+                json={"businessName": "Test Biz"},
+            )
+            assert res.status_code == 200
+            mock = client._mock_generate
+            call_kwargs = mock.call_args.kwargs
+            assert call_kwargs["social_handles"]["instagram"] == "@auto_ig"
+
+    @pytest.mark.asyncio
+    async def test_backward_compat_with_summary(self, client):
+        """Legacy mode with summary should still work without Firestore lookup."""
+        res = await client.post(
+            "/api/social-posts/generate",
+            json=SAMPLE_REQUEST,
+        )
+        assert res.status_code == 200
+        mock = client._mock_generate
+        call_kwargs = mock.call_args.kwargs
+        assert call_kwargs["summary"] == SAMPLE_REQUEST["summary"]
+        assert call_kwargs["latest_outputs"] is None
+
+    @pytest.mark.asyncio
+    async def test_passes_latest_outputs_to_agent(self, client):
+        """Enriched mode should pass latest_outputs to agent function."""
+        with patch(
+            "backend.lib.latest_outputs.fetch_latest_outputs",
+            return_value={
+                "outputs": SAMPLE_LATEST_OUTPUTS,
+                "socialLinks": {},
+            },
+        ):
+            res = await client.post(
+                "/api/social-posts/generate",
+                json={"businessName": "Test Biz"},
+            )
+            assert res.status_code == 200
+            mock = client._mock_generate
+            call_kwargs = mock.call_args.kwargs
+            assert call_kwargs["latest_outputs"] == SAMPLE_LATEST_OUTPUTS

@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2, Zap, Shield, Eye, MessageCircle, Map, Sparkles } from 'lucide-react';
 import { SurgicalReport } from '@/types/api';
+import { SuggestionChip } from '@/components/Chatbot/types';
+import { computeSuggestionChips, ACTION_CHIP_MAP } from '@/lib/suggestionChips';
 import clsx from 'clsx';
 import dynamic from 'next/dynamic';
 
@@ -153,19 +155,7 @@ export default function Home() {
     }
   };
 
-  // Map action-oriented follow-up chips to capability IDs
-  const ACTION_CHIP_MAP: Record<string, string> = {
-    "Now forecast the foot traffic": "traffic",
-    "How's their online presence?": "seo",
-    "Now analyze the menu margins": "surgery",
-    "Now scan the menu for profit leaks": "surgery",
-    "How do they rank on Google?": "seo",
-    "Run an SEO audit next": "seo",
-    "Let's check the menu margins": "surgery",
-    "Will rain hurt their traffic?": "traffic",
-    "Analyze their social media": "marketing",
-    "What's their social media like?": "marketing",
-  };
+  // ACTION_CHIP_MAP imported from @/lib/suggestionChips
 
   const sendMessage = async (text: string) => {
     // Route action chips directly to executeCapability
@@ -258,10 +248,10 @@ export default function Home() {
 
     // Simulated progress updates that appear in chat while discovery runs
     const progressMessages = [
-      { delay: 6000, text: `Crawling **${identity.name}**'s website for menus, hours, and contact info...` },
-      { delay: 14000, text: `Dispatching research agents \u2014 analyzing theme, social links, competitors, and news coverage...` },
-      { delay: 24000, text: `Profiling social media presence across Instagram, Facebook, and more...` },
-      { delay: 34000, text: `Cross-referencing and validating all discovered URLs...` },
+      { delay: 2000, text: `Crawling **${identity.name}**'s website for menus, hours, and contact info...` },
+      { delay: 10000, text: `Dispatching research agents \u2014 analyzing theme, social links, competitors, and news coverage...` },
+      { delay: 20000, text: `Profiling social media presence across Instagram, Facebook, and more...` },
+      { delay: 30000, text: `Cross-referencing and validating all discovered URLs...` },
     ];
     const progressTimers: ReturnType<typeof setTimeout>[] = [];
     let discoveryDone = false;
@@ -334,7 +324,7 @@ export default function Home() {
     setMessages(prev => [
       ...prev,
       msg('user', identity.name),
-      msg('model', `I found **${identity.name}** at ${identity.address}. What would you like to do next?`),
+      msg('model', `Found **${identity.name}** at ${identity.address}! Starting deep discovery \u2014 our AI agents are mapping the entire digital presence.`),
     ]);
 
     // Reset and set located business
@@ -1264,50 +1254,21 @@ export default function Home() {
 
   const isCentered = !locatedBusiness && !report && !forecast && !seoReport && !competitiveReport && !socialAuditReport;
 
-  // Dynamic follow-up chips that change based on what the user has done
-  const dynamicChips = useMemo(() => {
-    if (isCentered) {
-      return ["Bosphorus Nutley NJ", "Tick Tock Diner Clifton NJ"];
-    }
-    if (isDiscovering || isTyping) return []; // Hidden during loading
-
-    const chips: string[] = [];
-    const name = locatedBusiness?.name || 'this business';
-
-    if (report) {
-      // After margin analysis
-      chips.push("Which item is bleeding the most money?");
-      if (!forecast) chips.push("Now forecast the foot traffic");
-      if (!seoReport) chips.push("How's their online presence?");
-    } else if (seoReport) {
-      // After SEO audit
-      chips.push("What's the biggest SEO red flag?");
-      if (!report) chips.push("Now analyze the menu margins");
-      if (!forecast) chips.push("Will rain hurt their traffic?");
-    } else if (forecast) {
-      // After traffic forecast
-      chips.push("When is the worst time to be short-staffed?");
-      if (!report) chips.push("Now scan the menu for profit leaks");
-      if (!seoReport) chips.push("How do they rank on Google?");
-    } else if (socialAuditReport) {
-      // After social media audit
-      chips.push("Which platform needs the most work?");
-      if (!report) chips.push("Let's check the menu margins");
-      if (!competitiveReport) chips.push("Analyze the competition");
-    } else if (competitiveReport) {
-      // After competitive analysis
-      chips.push("Who's their biggest threat?");
-      if (!report) chips.push("Let's check the menu margins");
-      if (!socialAuditReport) chips.push("Audit their social media");
-    } else if (capabilities.length > 0) {
-      // Discovery complete, no analyses run yet
-      chips.push(`What did you find about ${name}?`);
-      chips.push("Where is their money leaking?");
-      chips.push("What's their social media like?");
-    }
-
-    return chips.slice(0, 3);
-  }, [isCentered, isDiscovering, isTyping, locatedBusiness, report, seoReport, forecast, competitiveReport, socialAuditReport, marketingReportUrl, capabilities]);
+  // Dynamic follow-up chips — split into insights (about current results) and actions (new capabilities)
+  const dynamicChips = useMemo((): SuggestionChip[] => {
+    return computeSuggestionChips({
+      isCentered,
+      isDiscovering,
+      isTyping,
+      businessName: locatedBusiness?.name,
+      hasReport: !!report,
+      hasForecast: !!forecast,
+      hasSeoReport: !!seoReport,
+      hasCompetitiveReport: !!competitiveReport,
+      hasSocialAuditReport: !!socialAuditReport,
+      hasCapabilities: capabilities.length > 0,
+    });
+  }, [isCentered, isDiscovering, isTyping, locatedBusiness, report, seoReport, forecast, competitiveReport, socialAuditReport, capabilities]);
 
   return (
     <main className={`flex flex-col md:flex-row h-screen w-screen overflow-hidden relative transition-colors duration-700 ${isCentered ? 'bg-white' : 'bg-gray-50'}`}>
@@ -1332,7 +1293,7 @@ export default function Home() {
       )}
 
       {/* LEFT VISUALIZER PANEL - Hidden when centered, fills remaining space when active */}
-      <div className={`relative z-10 transition-all duration-700 ease-in-out flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden hidden md:flex' : isChatCollapsed ? 'md:w-[calc(100%-56px)] w-full opacity-100' : `md:w-[55%] w-full opacity-100 ${mobilePanel === 'chat' ? 'hidden md:flex' : 'flex'}`} ${!isCentered ? 'h-full' : ''}`}>
+      <div className={`relative z-10 transition-all duration-500 ease-in-out flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden hidden md:flex' : isChatCollapsed ? 'md:w-[calc(100%-56px)] w-full opacity-100' : `md:w-[55%] w-full opacity-100 ${mobilePanel === 'chat' ? 'hidden md:flex' : 'flex'}`} ${!isCentered ? 'h-full' : ''}`}>
         {!isCentered && (
           <>
             {(isTyping || isDiscovering) && <BlobBackground className="z-0 opacity-30" />}
@@ -1432,8 +1393,8 @@ export default function Home() {
               </div>
             )}
 
-            {/* Full-panel loading overlay — covers entire left panel for capabilities AND discovery */}
-            {((isTyping && activeCapability) || isDiscovering) && (
+            {/* Full-panel loading overlay — covers entire left panel for capability runs (not discovery — that uses full-screen) */}
+            {isTyping && activeCapability && activeCapability !== 'discovery' && (
               <LoadingOverlay
                 capabilityId={activeCapability}
                 startTime={capabilityStartTime}
@@ -1576,6 +1537,18 @@ export default function Home() {
           }}
           onClose={() => setShowSharePanel(false)}
         />
+      )}
+
+      {/* Full-screen discovery overlay — renders independently of panel transitions */}
+      {isDiscovering && (
+        <div className="fixed inset-0 z-[55] bg-white animate-fade-in">
+          <LoadingOverlay
+            capabilityId={activeCapability}
+            startTime={capabilityStartTime}
+            businessName={locatedBusiness?.name}
+            businessLogo={(locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon}
+          />
+        </div>
       )}
     </main>
   );

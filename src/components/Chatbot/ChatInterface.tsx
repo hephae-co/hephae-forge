@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChatMessage } from './types';
+import { ChatMessage, SuggestionChip } from './types';
 import { BaseIdentity } from '@/types/api';
 import MarkdownRenderer from './MarkdownRenderer';
 import BlobBackground from '@/components/BlobBackground';
 import HephaeLogo from '@/components/HephaeLogo';
-import { Bot, RefreshCcw, Info, BarChart3, Users, Search as SearchIcon, Swords, Share2, Sparkles, MapPin, Loader2, Lock, PanelRightClose, ChevronLeft, ChevronDown, Copy, Check } from 'lucide-react';
+import { Bot, RefreshCcw, Info, BarChart3, Users, Search as SearchIcon, Swords, Share2, Sparkles, MapPin, Loader2, Lock, PanelRightClose, ChevronLeft, ChevronDown, Copy, Check, Lightbulb, ArrowRight } from 'lucide-react';
 import ExplainerModal from './ExplainerModal';
 import DiscoveryProgress, { ALL_DISCOVERY_MESSAGES, useRotatingMessage } from './DiscoveryProgress';
 import { NeuralBackground } from './NeuralBackground';
@@ -28,7 +28,7 @@ interface ChatInterfaceProps {
     capabilities?: { id: string; label: string; icon?: React.ReactNode }[];
     onSelectCapability?: (id: string) => void;
     isCentered?: boolean;
-    followUpChips?: string[];
+    followUpChips?: SuggestionChip[];
     isCollapsed?: boolean;
     onToggleCollapse?: () => void;
 }
@@ -351,8 +351,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 className={`relative overflow-y-auto p-4 flex flex-col w-full ${isCentered ? 'items-center max-w-3xl flex-none space-y-6 pointer-events-none' : 'flex-grow bg-gradient-to-b from-slate-50/80 to-white space-y-5 pointer-events-auto'}`}
             >
                 {!isCentered && <BlobBackground className="opacity-15" />}
-                {!isCentered && isDiscovering && (
-                    <div className="absolute inset-0 opacity-10 pointer-events-none z-0">
+                {!isCentered && (isDiscovering || isTyping) && (
+                    <div className="absolute inset-0 opacity-20 pointer-events-none z-0">
                         <NeuralBackground />
                     </div>
                 )}
@@ -560,32 +560,71 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             {/* Input Area */}
             <div className={`flex flex-col flex-shrink-0 pointer-events-auto ${isCentered ? 'p-4 items-center mb-10 bg-transparent border-none w-full' : 'px-4 pt-3 pb-4 bg-white border-t border-gray-100 shadow-[0_-8px_30px_-8px_rgba(99,102,241,0.08)]'}`}>
                 <div className={`w-full ${isCentered ? 'max-w-3xl' : ''}`}>
-                    {followUpChips.length > 0 && (
+                    {/* Centered mode: search example chips */}
+                    {followUpChips.length > 0 && isCentered && (
                         <div className="flex flex-wrap gap-2 mb-3">
                             {followUpChips.map(chip => (
                                 <button
-                                    key={chip}
+                                    key={chip.text}
                                     onClick={() => {
-                                        if (isCentered) {
-                                            setInput(chip);
-                                            inputRef.current?.focus();
-                                        } else {
-                                            onSendMessage(chip);
-                                        }
+                                        setInput(chip.text);
+                                        inputRef.current?.focus();
                                     }}
                                     disabled={isInputDisabled}
-                                    className={`text-xs font-medium px-4 py-1.5 rounded-full whitespace-nowrap transition-all disabled:opacity-50 shadow-sm flex items-center gap-1.5 ${
-                                        isCentered
-                                            ? 'bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-600'
-                                            : 'bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 text-indigo-700'
-                                    }`}
+                                    className="text-xs font-medium px-4 py-1.5 rounded-full whitespace-nowrap transition-all disabled:opacity-50 shadow-sm flex items-center gap-1.5 bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-600"
                                 >
-                                    {isCentered && <MapPin className="w-3 h-3" />}
-                                    {chip}
+                                    <MapPin className="w-3 h-3" />
+                                    {chip.text}
                                 </button>
                             ))}
                         </div>
                     )}
+
+                    {/* Chat mode: categorized suggestion chips */}
+                    {followUpChips.length > 0 && !isCentered && (() => {
+                        const insightChips = followUpChips.filter(c => c.category === 'insight');
+                        const actionChips = followUpChips.filter(c => c.category === 'action');
+                        return (
+                            <div className="flex flex-col gap-2.5 mb-3">
+                                {insightChips.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 px-1">Ask about results</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {insightChips.map(chip => (
+                                                <button
+                                                    key={chip.text}
+                                                    onClick={() => onSendMessage(chip.text)}
+                                                    disabled={isInputDisabled}
+                                                    className="text-xs font-medium px-3.5 py-1.5 rounded-full whitespace-nowrap transition-all disabled:opacity-50 shadow-sm flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600"
+                                                >
+                                                    <Lightbulb className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                                                    {chip.text}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {actionChips.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1.5 px-1">Try next</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {actionChips.map(chip => (
+                                                <button
+                                                    key={chip.text}
+                                                    onClick={() => onSendMessage(chip.text)}
+                                                    disabled={isInputDisabled}
+                                                    className="text-xs font-semibold px-3.5 py-1.5 rounded-full whitespace-nowrap transition-all disabled:opacity-50 shadow-sm flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 text-indigo-700"
+                                                >
+                                                    <ArrowRight className="w-3 h-3 flex-shrink-0" />
+                                                    {chip.text}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
 
                     <form onSubmit={handleSubmit} className="relative" ref={dropdownRef}>
                         {/* Places Autocomplete Dropdown — appears above the input */}

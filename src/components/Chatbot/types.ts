@@ -51,3 +51,11 @@ export interface ForecastResponse {
     forecast: DailyForecast[];
     summary: string;
 }
+
+export type ChipCategory = 'insight' | 'action';
+
+export interface SuggestionChip {
+    text: string;
+    category: ChipCategory;
+    capability?: string;
+}

@@ -2,11 +2,12 @@
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────
-# deploy.sh — Build & deploy Hephae Forge (3 Cloud Run services)
+# deploy.sh — Build & deploy Hephae Forge
 #
 # Usage:
-#   ./infra/deploy.sh               # Build + deploy all services
-#   ./infra/deploy.sh --skip-checks # Skip prerequisite verification
+#   ./infra/deploy.sh                  # Build + deploy web + API only
+#   ./infra/deploy.sh --with-crawl4ai  # Also rebuild + redeploy crawl4ai
+#   ./infra/deploy.sh --skip-checks    # Skip prerequisite verification
 # ─────────────────────────────────────────────────────────────
 
 PROJECT_ID="hephae-co-dev"
@@ -34,9 +35,11 @@ MIN_INSTANCES="0"
 # Parse flags
 # ─────────────────────────────────────────────────────────────
 SKIP_CHECKS=false
+WITH_CRAWL4AI=false
 for arg in "$@"; do
   case $arg in
     --skip-checks) SKIP_CHECKS=true ;;
+    --with-crawl4ai) WITH_CRAWL4AI=true ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
 done
@@ -91,12 +94,16 @@ fi
 # ─────────────────────────────────────────────────────────────
 # 1. Build images
 # ─────────────────────────────────────────────────────────────
-echo "──── Hephae Forge Deploy (3-service) ────────────"
+echo "──── Hephae Forge Deploy ────────────────────────"
 echo "  Project:   ${PROJECT_ID}"
 echo "  Region:    ${REGION}"
 echo "  Web:       ${WEB_SERVICE} → ${WEB_IMAGE}"
 echo "  API:       ${API_SERVICE} → ${API_IMAGE}"
-echo "  crawl4ai:  ${CRAWL4AI_SERVICE} → ${CRAWL4AI_IMAGE}"
+if $WITH_CRAWL4AI; then
+  echo "  crawl4ai:  ${CRAWL4AI_SERVICE} → ${CRAWL4AI_IMAGE} (rebuild)"
+else
+  echo "  crawl4ai:  ${CRAWL4AI_SERVICE} (skipped — already deployed)"
+fi
 echo ""
 
 echo "── Building Next.js image..."
@@ -125,8 +132,9 @@ gcloud builds submit \
   --region "$REGION" \
   --timeout=900 .
 
-echo "── Mirroring crawl4ai image to Artifact Registry..."
-cat > /tmp/cloudbuild-crawl4ai.yaml <<YAML
+if $WITH_CRAWL4AI; then
+  echo "── Mirroring crawl4ai image to Artifact Registry..."
+  cat > /tmp/cloudbuild-crawl4ai.yaml <<YAML
 steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['pull', 'unclecode/crawl4ai:latest']
@@ -134,35 +142,40 @@ steps:
     args: ['tag', 'unclecode/crawl4ai:latest', '${CRAWL4AI_IMAGE}']
 images: ['${CRAWL4AI_IMAGE}']
 YAML
-gcloud builds submit \
-  --config /tmp/cloudbuild-crawl4ai.yaml \
-  --project "$PROJECT_ID" \
-  --region "$REGION" \
-  --no-source \
-  --timeout=300
+  gcloud builds submit \
+    --config /tmp/cloudbuild-crawl4ai.yaml \
+    --project "$PROJECT_ID" \
+    --region "$REGION" \
+    --no-source \
+    --timeout=300
 
-# ─────────────────────────────────────────────────────────────
-# 2. Deploy crawl4ai service (web scraper — unauthenticated)
-# ─────────────────────────────────────────────────────────────
-echo "── Deploying crawl4ai service (${CRAWL4AI_SERVICE})..."
-gcloud run deploy "$CRAWL4AI_SERVICE" \
-  --image "$CRAWL4AI_IMAGE" \
-  --project "$PROJECT_ID" \
-  --region "$REGION" \
-  --platform managed \
-  --port 11235 \
-  --memory 2Gi \
-  --cpu 2 \
-  --timeout "$TIMEOUT" \
-  --min-instances 0 \
-  --max-instances 3 \
-  --service-account "$SERVICE_ACCOUNT" \
-  --allow-unauthenticated
+  # ─────────────────────────────────────────────────────────────
+  # Deploy crawl4ai service (web scraper — unauthenticated)
+  # ─────────────────────────────────────────────────────────────
+  echo "── Deploying crawl4ai service (${CRAWL4AI_SERVICE})..."
+  gcloud run deploy "$CRAWL4AI_SERVICE" \
+    --image "$CRAWL4AI_IMAGE" \
+    --project "$PROJECT_ID" \
+    --region "$REGION" \
+    --platform managed \
+    --port 11235 \
+    --memory 2Gi \
+    --cpu 2 \
+    --timeout "$TIMEOUT" \
+    --min-instances 0 \
+    --max-instances 3 \
+    --service-account "$SERVICE_ACCOUNT" \
+    --allow-unauthenticated
+  echo "   ✓ crawl4ai rebuilt + deployed"
+else
+  echo "── Skipping crawl4ai (use --with-crawl4ai to rebuild)"
+fi
 
+# Get crawl4ai URL from existing service (needed for API env var)
 CRAWL4AI_URL=$(gcloud run services describe "$CRAWL4AI_SERVICE" \
   --region "$REGION" --project "$PROJECT_ID" \
   --format="value(status.url)")
-echo "   ✓ crawl4ai deployed: ${CRAWL4AI_URL}"
+echo "   ✓ crawl4ai: ${CRAWL4AI_URL}"
 
 # ─────────────────────────────────────────────────────────────
 # 3. Deploy API service (backend — internal only, no public access)

@@ -355,7 +355,7 @@ Capabilities Competitive
 
 Capabilities Marketing
 
-**Response model:** `MarketingReport`
+**Response model:** `SocialAuditReport`
 
 #### `POST /api/capabilities/seo`
 
@@ -611,6 +611,21 @@ Defined in `src/types/api.ts` (single source of truth for frontend types).
 
 <!-- BEGIN:AUTO:TYPES -->
 
+#### `AIOverview`
+
+```typescript
+interface AIOverview {
+  summary?: string;
+  highlights?: string[];
+  businessType?: string | null;
+  priceRange?: string | null;
+  established?: string | null;
+  notableMentions?: string[];
+  reputationSignals?: string | null;
+  sources?: Record<string, any>[];
+}
+```
+
 #### `AuditSection`
 
 ```typescript
@@ -728,6 +743,7 @@ interface EnrichedProfile {
   competitors?: Competitor[] | null;
   news?: NewsItem[] | null;
   socialProfileMetrics?: SocialProfileMetrics | null;
+  aiOverview?: AIOverview | null;
   validationReport?: ValidationReport | null;
   reportUrl?: string | null;
   _debugError?: string | null;
@@ -763,15 +779,6 @@ interface ForecastSlot {
   score: number;
   label?: string | null;
   weather?: string | null;
-}
-```
-
-#### `MarketingReport`
-
-```typescript
-interface MarketingReport {
-  summary?: string;
-  reportUrl?: string | null;
 }
 ```
 
@@ -834,6 +841,18 @@ interface SeoReport {
   summary?: string;
   url?: string;
   sections?: AuditSection[];
+  reportUrl?: string | null;
+}
+```
+
+#### `SocialAuditReport`
+
+```typescript
+interface SocialAuditReport {
+  overallScore?: number;
+  summary?: string;
+  platforms?: Record<string, any>[];
+  strategicRecommendations?: Record<string, any>[];
   reportUrl?: string | null;
 }
 ```

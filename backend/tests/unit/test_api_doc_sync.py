@@ -63,7 +63,7 @@ class TestResponseModelsPresent:
         "SeoReport",
         "ForecastResponse",
         "CompetitiveReport",
-        "MarketingReport",
+        "SocialAuditReport",
     ]
 
     @pytest.mark.parametrize("model_name", EXPECTED_MODELS)

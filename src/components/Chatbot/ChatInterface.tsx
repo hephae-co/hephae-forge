@@ -406,7 +406,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                                 setCopiedId(msg.id);
                                                 setTimeout(() => setCopiedId(null), 2000);
                                             }}
-                                            className="absolute -bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 text-gray-400 hover:text-gray-600"
+                                            className="absolute -bottom-2 right-2 opacity-60 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-2 md:p-1.5 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 text-gray-400 hover:text-gray-600"
                                             title="Copy message"
                                         >
                                             {copiedId === msg.id
@@ -635,7 +635,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         <input
                             ref={inputRef}
                             type="text"
-                            className={`w-full pl-5 pr-14 ${isCentered ? 'py-5 text-lg' : 'py-3.5 text-sm'} rounded-2xl border text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all outline-none shadow-lg shadow-gray-100/80 ${isDiscovering ? 'bg-gray-50 border-amber-200/60' : 'bg-white border-gray-200'}`}
+                            className={`w-full pl-5 pr-14 ${isCentered ? 'py-5 text-lg' : 'py-3.5 text-base md:text-sm'} rounded-2xl border text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all outline-none shadow-lg shadow-gray-100/80 ${isDiscovering ? 'bg-gray-50 border-amber-200/60' : 'bg-white border-gray-200'}`}
                             placeholder={isDiscovering ? "Discovery in progress — chat unlocks when done..." : isCentered ? "Search for a business by name or city..." : "Ask anything about this business..."}
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
@@ -659,9 +659,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isInputDisabled}
-                                className={`absolute right-2 top-2 p-2 bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-xl hover:from-indigo-400 hover:to-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md shadow-indigo-200/50 hover:shadow-indigo-200`}
+                                className={`absolute right-2 top-2 p-3 md:p-2 bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-xl hover:from-indigo-400 hover:to-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md shadow-indigo-200/50 hover:shadow-indigo-200`}
                             >
-                                <svg className="w-4 h-4 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
+                                <svg className="w-5 h-5 md:w-4 md:h-4 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
                             </button>
                         )}
                     </form>

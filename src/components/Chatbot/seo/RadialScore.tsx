@@ -25,7 +25,7 @@ const RadialScore: React.FC<RadialScoreProps> = ({ score, size = 200, label = "S
   const inactiveColor = '#e5e7eb'; // gray-200
 
   return (
-    <div className="relative flex flex-col items-center justify-center" style={{ width: size, height: size }}>
+    <div className="relative flex flex-col items-center justify-center" style={{ width: size, height: size, maxWidth: '100%' }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           {/* Fixed: Moved cornerRadius from Cell to Pie as Cell does not support it */}

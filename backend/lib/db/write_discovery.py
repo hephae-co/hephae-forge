@@ -82,6 +82,7 @@ async def write_discovery(
             "competitors": profile.get("competitors", []),
             "socialProfileMetrics": profile.get("socialProfileMetrics"),
             "news": profile.get("news"),
+            "aiOverview": profile.get("aiOverview"),
             "validationReport": profile.get("validationReport"),
         }
 

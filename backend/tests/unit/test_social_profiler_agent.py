@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from backend.config import AgentModels
-from backend.agents.shared_tools import crawl4ai_advanced_tool, crawl4ai_deep_tool
+from backend.agents.shared_tools import crawl4ai_advanced_tool, crawl4ai_deep_tool, google_search_tool
 from backend.agents.discovery.agent import (
     discovery_pipeline,
     discovery_fan_out,
@@ -22,13 +22,17 @@ from backend.agents.discovery.agent import (
 
 
 class TestSocialProfilerAgentConfig:
+    def test_agent_has_google_search_tool(self):
+        assert google_search_tool in social_profiler_agent.tools, \
+            "SocialProfilerAgent must have google_search_tool as primary tool"
+
     def test_agent_has_crawl4ai_advanced_tool(self):
-        tool_funcs = [t._func if hasattr(t, "_func") else t for t in social_profiler_agent.tools]
-        assert crawl4ai_advanced_tool in social_profiler_agent.tools or any(
-            getattr(t, "func", None) == crawl4ai_advanced_tool.func
-            if hasattr(crawl4ai_advanced_tool, "func") else t is crawl4ai_advanced_tool
-            for t in social_profiler_agent.tools
-        ), "SocialProfilerAgent must have crawl4ai_advanced_tool"
+        assert crawl4ai_advanced_tool in social_profiler_agent.tools, \
+            "SocialProfilerAgent must have crawl4ai_advanced_tool as supplementary tool"
+
+    def test_agent_has_two_tools(self):
+        assert len(social_profiler_agent.tools) == 2, \
+            f"SocialProfilerAgent should have 2 tools, got {len(social_profiler_agent.tools)}"
 
     def test_agent_output_key(self):
         assert social_profiler_agent.output_key == "socialProfileMetrics"
@@ -49,8 +53,8 @@ class TestPipelineStructure:
         assert subs[2].name == "SocialProfilerAgent"
         assert subs[3].name == "DiscoveryReviewerAgent"
 
-    def test_fan_out_has_seven_agents(self):
-        assert len(discovery_fan_out.sub_agents) == 7
+    def test_fan_out_has_eight_agents(self):
+        assert len(discovery_fan_out.sub_agents) == 8
 
 
 class TestWithSocialUrlsHelper:

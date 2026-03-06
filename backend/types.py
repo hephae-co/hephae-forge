@@ -109,6 +109,19 @@ class SocialProfileMetrics(BaseModel):
     summary: Optional[SocialProfileSummary] = None
 
 
+class AIOverview(BaseModel):
+    summary: str = ""
+    highlights: list[str] = Field(default_factory=list)
+    business_type: Optional[str] = Field(None, alias="businessType")
+    price_range: Optional[str] = Field(None, alias="priceRange")
+    established: Optional[str] = None
+    notable_mentions: list[str] = Field(default_factory=list, alias="notableMentions")
+    reputation_signals: Optional[str] = Field(None, alias="reputationSignals")
+    sources: list[dict] = Field(default_factory=list)
+
+    model_config = {"populate_by_name": True, "extra": "allow"}
+
+
 class EnrichedProfile(BaseIdentity):
     primary_color: Optional[str] = Field(None, alias="primaryColor")
     secondary_color: Optional[str] = Field(None, alias="secondaryColor")
@@ -127,6 +140,7 @@ class EnrichedProfile(BaseIdentity):
     competitors: Optional[list[Competitor]] = None
     news: Optional[list[NewsItem]] = None
     social_profile_metrics: Optional[SocialProfileMetrics] = Field(None, alias="socialProfileMetrics")
+    ai_overview: Optional[AIOverview] = Field(None, alias="aiOverview")
     validation_report: Optional[ValidationReport] = Field(None, alias="validationReport")
     report_url: Optional[str] = Field(None, alias="reportUrl")
     debug_error: Optional[str] = Field(None, alias="_debugError")
@@ -310,6 +324,18 @@ class CompetitiveReport(BaseModel):
 
 class MarketingReport(BaseModel):
     summary: str = ""
+    report_url: Optional[str] = Field(None, alias="reportUrl")
+
+    model_config = {"populate_by_name": True, "extra": "allow"}
+
+
+class SocialAuditReport(BaseModel):
+    overall_score: float = Field(alias="overallScore", default=0)
+    summary: str = ""
+    platforms: list[dict] = Field(default_factory=list)
+    strategic_recommendations: list[dict] = Field(
+        default_factory=list, alias="strategicRecommendations"
+    )
     report_url: Optional[str] = Field(None, alias="reportUrl")
 
     model_config = {"populate_by_name": True, "extra": "allow"}

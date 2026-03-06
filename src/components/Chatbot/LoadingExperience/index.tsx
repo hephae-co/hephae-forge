@@ -158,7 +158,7 @@ export default function LoadingOverlay({
               </div>
 
               {/* Activity cards */}
-              <div className="grid grid-cols-3 gap-3 max-w-lg w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg w-full">
                 {ACTIVITIES.map((act, i) => {
                   const Icon = act.icon;
                   return (

@@ -66,6 +66,7 @@ export interface EnrichedProfile extends BaseIdentity {
     }[];
     news?: NewsItem[];
     socialProfileMetrics?: SocialProfileMetrics;
+    aiOverview?: AIOverview;
     validationReport?: ValidationReport;
     reportUrl?: string;
     _debugError?: string;
@@ -110,6 +111,19 @@ export interface SocialProfileMetrics {
     tiktok?: SocialPlatformMetrics | null;
     yelp?: SocialPlatformMetrics | null;
     summary?: SocialProfileSummary;
+}
+
+// --- AI Overview types ---
+
+export interface AIOverview {
+    summary: string;
+    highlights: string[];
+    business_type?: string;
+    price_range?: string;
+    established?: string;
+    notable_mentions?: string[];
+    reputation_signals?: 'positive' | 'mixed' | 'negative' | 'unknown';
+    sources?: { url: string; title: string }[];
 }
 
 // --- Report types (from src/lib/types.ts) ---

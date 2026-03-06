@@ -51,19 +51,19 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ day, slot, onAskAI }) => {
         <span className="text-xs font-bold text-indigo-400 uppercase py-1.5 px-1 whitespace-nowrap">Deep Analysis:</span>
         <button
           onClick={() => onAskAI(`How should I adjust staffing for ${day.dayOfWeek} ${slot.label} considering traffic is ${slot.level}?`)}
-          className="px-3 py-1 bg-white border border-indigo-200 text-indigo-700 text-xs rounded-full hover:bg-indigo-50 shadow-sm whitespace-nowrap transition-colors"
+          className="px-3 py-2 md:py-1 bg-white border border-indigo-200 text-indigo-700 text-xs rounded-full hover:bg-indigo-50 shadow-sm whitespace-nowrap transition-colors"
         >
           👨‍🍳 Staffing?
         </button>
         <button
           onClick={() => onAskAI(`Suggest a promotion to capitalize on ${slot.level} traffic on ${day.dayOfWeek} ${slot.label}.`)}
-          className="px-3 py-1 bg-white border border-indigo-200 text-indigo-700 text-xs rounded-full hover:bg-indigo-50 shadow-sm whitespace-nowrap transition-colors"
+          className="px-3 py-2 md:py-1 bg-white border border-indigo-200 text-indigo-700 text-xs rounded-full hover:bg-indigo-50 shadow-sm whitespace-nowrap transition-colors"
         >
           📢 Promo Idea?
         </button>
         <button
           onClick={() => onAskAI(`Why exactly is traffic ${slot.level} on ${day.dayOfWeek} ${slot.label}? Expand on the reason.`)}
-          className="px-3 py-1 bg-white border border-indigo-200 text-indigo-700 text-xs rounded-full hover:bg-indigo-50 shadow-sm whitespace-nowrap transition-colors"
+          className="px-3 py-2 md:py-1 bg-white border border-indigo-200 text-indigo-700 text-xs rounded-full hover:bg-indigo-50 shadow-sm whitespace-nowrap transition-colors"
         >
           🔍 Analyze Why
         </button>

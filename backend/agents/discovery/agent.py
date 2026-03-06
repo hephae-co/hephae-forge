@@ -1,11 +1,10 @@
 """
 DiscoveryPipeline — four-stage discovery:
   Stage 1: SiteCrawlerAgent crawls the business URL once -> rawSiteData
-  Stage 2: DiscoveryFanOut fans out to 7 specialized agents reading rawSiteData
-  Stage 3: SocialProfilerAgent crawls social profiles found in Stage 2 -> socialProfileMetrics
+  Stage 2: DiscoveryFanOut fans out to 8 specialized agents reading rawSiteData
+  Stage 3: SocialProfilerAgent researches social profiles via google_search + crawl4ai -> socialProfileMetrics
   Stage 4: DiscoveryReviewerAgent validates all URLs and corrects invalid ones -> reviewerData
 
-Port of src/agents/discovery/pipeline.ts.
 Uses Google ADK Python SDK (LlmAgent, ParallelAgent, SequentialAgent).
 """
 
@@ -34,6 +33,7 @@ from backend.agents.discovery.prompts import (
     MAPS_AGENT_INSTRUCTION,
     COMPETITOR_AGENT_INSTRUCTION,
     SOCIAL_PROFILER_INSTRUCTION,
+    BUSINESS_OVERVIEW_INSTRUCTION,
     NEWS_AGENT_INSTRUCTION,
     DISCOVERY_REVIEWER_INSTRUCTION,
 )
@@ -152,14 +152,23 @@ news_agent = LlmAgent(
     on_model_error_callback=fallback_on_error,
 )
 
+business_overview_agent = LlmAgent(
+    name="BusinessOverviewAgent",
+    model=AgentModels.PRIMARY_MODEL,
+    instruction=_with_raw_data(BUSINESS_OVERVIEW_INSTRUCTION),
+    tools=[google_search_tool],
+    output_key="aiOverview",
+    on_model_error_callback=fallback_on_error,
+)
+
 # ---------------------------------------------------------------------------
 # Stage 2: ParallelAgent fan-out
 # ---------------------------------------------------------------------------
 
 discovery_fan_out = ParallelAgent(
     name="DiscoveryFanOut",
-    description="Runs 7 specialized discovery sub-agents concurrently, each processing raw crawl data.",
-    sub_agents=[theme_agent, contact_agent, social_media_agent, menu_agent, maps_agent, competitor_agent, news_agent],
+    description="Runs 8 specialized discovery sub-agents concurrently, each processing raw crawl data.",
+    sub_agents=[theme_agent, contact_agent, social_media_agent, menu_agent, maps_agent, competitor_agent, news_agent, business_overview_agent],
 )
 
 # ---------------------------------------------------------------------------
@@ -170,7 +179,7 @@ social_profiler_agent = LlmAgent(
     name="SocialProfilerAgent",
     model=AgentModels.PRIMARY_MODEL,
     instruction=_with_social_urls(SOCIAL_PROFILER_INSTRUCTION),
-    tools=[crawl4ai_advanced_tool],
+    tools=[google_search_tool, crawl4ai_advanced_tool],
     output_key="socialProfileMetrics",
     on_model_error_callback=fallback_on_error,
 )
@@ -188,6 +197,7 @@ def _with_all_discovery_data(base_instruction: str):
         data_keys = [
             "themeData", "contactData", "socialData", "menuData",
             "mapsData", "competitorData", "newsData", "socialProfileMetrics",
+            "aiOverview",
         ]
         all_data = {}
         for key in data_keys:
@@ -226,6 +236,6 @@ discovery_reviewer_agent = LlmAgent(
 
 discovery_pipeline = SequentialAgent(
     name="DiscoveryPipeline",
-    description="Four-stage discovery: crawl site, fan out to 7 agents, profile social accounts, then validate all data.",
+    description="Four-stage discovery: crawl site, fan out to 8 agents, profile social accounts, then validate all data.",
     sub_agents=[site_crawler_agent, discovery_fan_out, social_profiler_agent, discovery_reviewer_agent],
 )

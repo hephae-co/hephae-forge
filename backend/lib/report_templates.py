@@ -980,7 +980,215 @@ def build_marketing_report(result: dict[str, Any], identity: dict[str, Any]) -> 
 
 
 # ---------------------------------------------------------------------------
-# 7. Blog Report
+# 7. Social Media Audit Report
+# ---------------------------------------------------------------------------
+
+
+def build_social_audit_report(result: dict[str, Any], identity: dict[str, Any]) -> str:
+    now = datetime.utcnow().isoformat()
+    overall_score = result.get("overall_score", 0)
+    summary = _esc(result.get("summary", ""))
+    platforms = result.get("platforms", [])
+    recs = result.get("strategic_recommendations", [])
+    benchmarks = result.get("competitor_benchmarks", [])
+    content_strat = result.get("content_strategy", {})
+    sources = result.get("sources", [])
+
+    # Score color
+    def _score_color(s: int) -> str:
+        if s >= 70:
+            return "#22c55e"
+        if s >= 40:
+            return "#eab308"
+        return "#ef4444"
+
+    # Overall score card
+    score_color = _score_color(overall_score)
+    body = f"""
+      <div class="card" style="text-align:center;padding:32px 24px">
+        <div style="font-size:4rem;font-weight:900;color:{score_color};line-height:1">{overall_score}</div>
+        <div style="font-size:.85rem;opacity:.6;text-transform:uppercase;letter-spacing:.1em;margin-top:4px">Overall Social Health Score</div>
+        <p style="margin-top:16px;font-size:.95rem;line-height:1.6;max-width:600px;margin-left:auto;margin-right:auto">{summary}</p>
+      </div>
+    """
+
+    # Per-platform cards
+    if platforms:
+        platform_cards = ""
+        for p in platforms:
+            pname = _esc(p.get("name", "unknown")).capitalize()
+            pscore = p.get("score", 0)
+            pcolor = _score_color(pscore)
+            handle = _esc(p.get("handle", ""))
+            followers = _esc(str(p.get("followers", "Unknown")))
+            freq = _esc(p.get("posting_frequency", "unknown"))
+            engagement = _esc(p.get("engagement", "unknown"))
+            recency = _esc(p.get("last_post_recency", "Unknown"))
+            themes = p.get("content_themes", [])
+            strengths = p.get("strengths", [])
+            weaknesses = p.get("weaknesses", [])
+            precs = p.get("recommendations", [])
+
+            themes_html = " ".join(
+                f'<span style="display:inline-block;background:rgba(99,102,241,0.08);color:#6366f1;padding:2px 10px;border-radius:12px;font-size:.75rem;font-weight:600;margin:2px">{_esc(t)}</span>'
+                for t in themes[:5]
+            )
+
+            strengths_html = "".join(f'<li style="color:#16a34a;font-size:.85rem;margin:4px 0">✓ {_esc(s)}</li>' for s in strengths[:3])
+            weaknesses_html = "".join(f'<li style="color:#dc2626;font-size:.85rem;margin:4px 0">✗ {_esc(w)}</li>' for w in weaknesses[:3])
+            precs_html = "".join(f'<li style="font-size:.85rem;margin:4px 0;color:#4f46e5">→ {_esc(r)}</li>' for r in precs[:3])
+
+            platform_cards += f"""
+            <div class="card" style="margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <div>
+                  <div class="card-title" style="margin-bottom:2px">{pname}</div>
+                  {f'<div style="font-size:.8rem;opacity:.5">{handle}</div>' if handle else ''}
+                </div>
+                <div style="text-align:center">
+                  <div style="font-size:1.8rem;font-weight:800;color:{pcolor};line-height:1">{pscore}</div>
+                  <div style="font-size:.65rem;opacity:.5;text-transform:uppercase">/100</div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+                <div style="background:rgba(0,0,0,0.02);padding:10px;border-radius:10px;text-align:center">
+                  <div style="font-size:.65rem;opacity:.5;text-transform:uppercase;margin-bottom:2px">Followers</div>
+                  <div style="font-size:.95rem;font-weight:700">{followers}</div>
+                </div>
+                <div style="background:rgba(0,0,0,0.02);padding:10px;border-radius:10px;text-align:center">
+                  <div style="font-size:.65rem;opacity:.5;text-transform:uppercase;margin-bottom:2px">Posting</div>
+                  <div style="font-size:.85rem;font-weight:600">{freq}</div>
+                </div>
+                <div style="background:rgba(0,0,0,0.02);padding:10px;border-radius:10px;text-align:center">
+                  <div style="font-size:.65rem;opacity:.5;text-transform:uppercase;margin-bottom:2px">Engagement</div>
+                  <div style="font-size:.85rem;font-weight:600;text-transform:capitalize">{engagement}</div>
+                </div>
+                <div style="background:rgba(0,0,0,0.02);padding:10px;border-radius:10px;text-align:center">
+                  <div style="font-size:.65rem;opacity:.5;text-transform:uppercase;margin-bottom:2px">Last Post</div>
+                  <div style="font-size:.85rem;font-weight:600">{recency}</div>
+                </div>
+              </div>
+              {f'<div style="margin-bottom:12px">{themes_html}</div>' if themes_html else ''}
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                {f'<div><div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#16a34a;margin-bottom:4px">Strengths</div><ul style="list-style:none;padding:0">{strengths_html}</ul></div>' if strengths_html else ''}
+                {f'<div><div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#dc2626;margin-bottom:4px">Weaknesses</div><ul style="list-style:none;padding:0">{weaknesses_html}</ul></div>' if weaknesses_html else ''}
+              </div>
+              {f'<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.06)"><div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#4f46e5;margin-bottom:4px">Recommendations</div><ul style="list-style:none;padding:0">{precs_html}</ul></div>' if precs_html else ''}
+            </div>"""
+
+        body += f"""
+        <div style="margin-top:24px">
+          <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:16px">📱 Platform Analysis</h2>
+          {platform_cards}
+        </div>"""
+
+    # Competitor benchmarks
+    if benchmarks:
+        bench_rows = ""
+        for b in benchmarks:
+            bench_rows += f"""
+            <tr>
+              <td style="padding:10px 12px;font-weight:600">{_esc(b.get('name', ''))}</td>
+              <td style="padding:10px 12px;text-transform:capitalize">{_esc(b.get('strongest_platform', ''))}</td>
+              <td style="padding:10px 12px">{_esc(str(b.get('followers', 'N/A')))}</td>
+              <td style="padding:10px 12px">{_esc(b.get('posting_frequency', 'N/A'))}</td>
+              <td style="padding:10px 12px;font-size:.85rem">{_esc(b.get('key_advantage', ''))}</td>
+            </tr>"""
+        body += f"""
+        <div class="card" style="margin-top:24px">
+          <h2 style="font-size:1.1rem;font-weight:800;margin-bottom:16px">🏆 Competitor Benchmarks</h2>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+              <thead><tr style="border-bottom:2px solid rgba(0,0,0,0.08)">
+                <th style="text-align:left;padding:8px 12px;font-size:.7rem;text-transform:uppercase;opacity:.5">Name</th>
+                <th style="text-align:left;padding:8px 12px;font-size:.7rem;text-transform:uppercase;opacity:.5">Best Platform</th>
+                <th style="text-align:left;padding:8px 12px;font-size:.7rem;text-transform:uppercase;opacity:.5">Followers</th>
+                <th style="text-align:left;padding:8px 12px;font-size:.7rem;text-transform:uppercase;opacity:.5">Frequency</th>
+                <th style="text-align:left;padding:8px 12px;font-size:.7rem;text-transform:uppercase;opacity:.5">Advantage</th>
+              </tr></thead>
+              <tbody>{bench_rows}</tbody>
+            </table>
+          </div>
+        </div>"""
+
+    # Strategic recommendations
+    if recs:
+        rec_items = ""
+        for i, r in enumerate(recs, 1):
+            impact = r.get("impact", "medium")
+            effort = r.get("effort", "medium")
+            impact_color = {"high": "#dc2626", "medium": "#eab308", "low": "#22c55e"}.get(impact, "#6b7280")
+            effort_color = {"high": "#dc2626", "medium": "#eab308", "low": "#22c55e"}.get(effort, "#6b7280")
+            rec_items += f"""
+            <div style="display:flex;gap:16px;align-items:flex-start;padding:16px;background:rgba(0,0,0,0.015);border-radius:12px;margin-bottom:8px">
+              <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;flex-shrink:0">{r.get('priority', i)}</div>
+              <div style="flex:1">
+                <div style="font-weight:700;margin-bottom:4px">{_esc(r.get('action', ''))}</div>
+                <div style="font-size:.8rem;opacity:.7;margin-bottom:6px">{_esc(r.get('rationale', ''))}</div>
+                <div style="display:flex;gap:8px">
+                  <span style="font-size:.7rem;padding:2px 8px;border-radius:8px;background:rgba({','.join(str(int(impact_color.lstrip('#')[j:j+2], 16)) for j in (0,2,4))},0.1);color:{impact_color};font-weight:600">Impact: {impact}</span>
+                  <span style="font-size:.7rem;padding:2px 8px;border-radius:8px;background:rgba({','.join(str(int(effort_color.lstrip('#')[j:j+2], 16)) for j in (0,2,4))},0.1);color:{effort_color};font-weight:600">Effort: {effort}</span>
+                </div>
+              </div>
+            </div>"""
+        body += f"""
+        <div class="card" style="margin-top:24px">
+          <h2 style="font-size:1.1rem;font-weight:800;margin-bottom:16px">🎯 Strategic Recommendations</h2>
+          {rec_items}
+        </div>"""
+
+    # Content strategy
+    if content_strat:
+        pillars = content_strat.get("content_pillars", [])
+        hashtags = content_strat.get("hashtag_strategy", [])
+        schedule = _esc(content_strat.get("posting_schedule", ""))
+        quick_wins = content_strat.get("quick_wins", [])
+
+        pillars_html = " ".join(
+            f'<span style="display:inline-block;background:rgba(16,185,129,0.08);color:#059669;padding:4px 12px;border-radius:12px;font-size:.8rem;font-weight:600;margin:3px">{_esc(p)}</span>'
+            for p in pillars
+        )
+        hashtags_html = " ".join(
+            f'<span style="display:inline-block;background:rgba(99,102,241,0.08);color:#6366f1;padding:4px 12px;border-radius:12px;font-size:.8rem;font-weight:600;margin:3px">{_esc(h)}</span>'
+            for h in hashtags[:10]
+        )
+        qw_html = "".join(f'<li style="font-size:.85rem;margin:6px 0">⚡ {_esc(w)}</li>' for w in quick_wins)
+
+        body += f"""
+        <div class="card" style="margin-top:24px">
+          <h2 style="font-size:1.1rem;font-weight:800;margin-bottom:16px">📝 Content Strategy</h2>
+          {f'<div style="margin-bottom:14px"><div style="font-size:.75rem;font-weight:700;text-transform:uppercase;opacity:.5;margin-bottom:6px">Content Pillars</div>{pillars_html}</div>' if pillars_html else ''}
+          {f'<div style="margin-bottom:14px"><div style="font-size:.75rem;font-weight:700;text-transform:uppercase;opacity:.5;margin-bottom:6px">Hashtag Strategy</div>{hashtags_html}</div>' if hashtags_html else ''}
+          {f'<div style="margin-bottom:14px"><div style="font-size:.75rem;font-weight:700;text-transform:uppercase;opacity:.5;margin-bottom:6px">Posting Schedule</div><p style="font-size:.9rem">{schedule}</p></div>' if schedule else ''}
+          {f'<div><div style="font-size:.75rem;font-weight:700;text-transform:uppercase;opacity:.5;margin-bottom:6px">Quick Wins</div><ul style="list-style:none;padding:0">{qw_html}</ul></div>' if qw_html else ''}
+        </div>"""
+
+    # Sources
+    if sources:
+        src_html = "".join(
+            f'<li style="margin:4px 0"><a href="{_esc(s.get("url", ""))}" target="_blank" style="font-size:.85rem">{_esc(s.get("title", s.get("url", "")))}</a></li>'
+            for s in sources[:15]
+        )
+        body += f"""
+        <div class="card" style="margin-top:24px;opacity:.8">
+          <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;opacity:.5;margin-bottom:8px">Sources</div>
+          <ul style="list-style:none;padding:0">{src_html}</ul>
+        </div>"""
+
+    return _page_wrap(
+        "Social Media Audit",
+        identity.get("name", "Business"),
+        now,
+        body,
+        business_logo_url=identity.get("logoUrl", ""),
+        report_type="marketing",
+        primary_color=identity.get("primaryColor", ""),
+        favicon_url=identity.get("favicon", ""),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 8. Blog Report
 # ---------------------------------------------------------------------------
 
 

@@ -140,24 +140,24 @@ const COMPETITIVE_CONFIG: CapabilityConfig = {
 
 const MARKETING_CONFIG: CapabilityConfig = {
   id: "marketing",
-  label: "Social Media Insights",
+  label: "Social Media Audit",
   accentHex: "#ec4899",
-  estimatedDurationMs: 70_000,
+  estimatedDurationMs: 90_000,
   stages: [
-    { id: "social", label: "Analyzing social presence", icon: "Share2", durationPercent: 25 },
-    { id: "content", label: "Evaluating content strategy", icon: "PenTool", durationPercent: 25 },
-    { id: "engagement", label: "Benchmarking engagement", icon: "Heart", durationPercent: 25 },
-    { id: "draft", label: "Drafting recommendations", icon: "FileEdit", durationPercent: 25 },
+    { id: "research", label: "Researching social platforms", icon: "Search", durationPercent: 30 },
+    { id: "analyze", label: "Analyzing presence & engagement", icon: "Share2", durationPercent: 25 },
+    { id: "benchmark", label: "Benchmarking competitors", icon: "Users", durationPercent: 20 },
+    { id: "strategy", label: "Building strategy recommendations", icon: "Target", durationPercent: 25 },
   ],
   quotes: [
     "Posts with food photos get 120% more engagement than text-only updates.",
-    "The best time to post? We\u2019re about to tell you.",
     "Instagram Reels now drive 40% of new restaurant discovery.",
     "Consistency beats virality \u2014 but we\u2019ll aim for both.",
     "Your social media is your digital curb appeal.",
-    "Analyzing their Instagram game (no pressure)\u2026",
-    "Great content doesn\u2019t need a big budget, just a clear strategy.",
-    "One great post can bring in more customers than a week of ads.",
+    "Auditing their presence across every platform\u2026",
+    "Searching for followers, posts, and engagement signals\u2026",
+    "73% of diners check social media before visiting a new restaurant.",
+    "A strong social presence can boost revenue by 20-30%.",
   ],
 };
 

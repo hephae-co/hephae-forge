@@ -48,6 +48,12 @@ export const DISCOVERY_PHASES = {
         "Identifying the 3 biggest threats nearby...",
         "Spying on the competition — legally, of course.",
     ],
+    overview: [
+        "Generating an AI overview of the business...",
+        "Summarizing everything the internet knows about them...",
+        "Building a business intelligence brief...",
+        "Compiling reputation signals and highlights...",
+    ],
 } as const;
 
 // Flat list for general-purpose rotating display
@@ -58,6 +64,7 @@ export const ALL_DISCOVERY_MESSAGES = [
     ...DISCOVERY_PHASES.menu,
     ...DISCOVERY_PHASES.competitors,
     ...DISCOVERY_PHASES.contact,
+    ...DISCOVERY_PHASES.overview,
 ];
 
 // ─── Hook: useRotatingMessage ────────────────────────────────────────────────

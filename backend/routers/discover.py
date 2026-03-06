@@ -128,6 +128,7 @@ async def discover(request: Request):
         social_data = _safe_parse(state.get("socialData"))
         menu_data = _safe_parse(state.get("menuData"))
         social_profile_metrics = _safe_parse(state.get("socialProfileMetrics"))
+        ai_overview = _safe_parse(state.get("aiOverview"))
         maps_url = state.get("mapsData", "")
         if isinstance(maps_url, str):
             maps_url = re.sub(r'```json\n?|\n?```', "", maps_url).replace('"', "").strip()
@@ -200,6 +201,7 @@ async def discover(request: Request):
             "secondaryColor": th.get("secondaryColor") or None,
             "persona": th.get("persona") or None,
             "socialProfileMetrics": social_profile_metrics or None,
+            "aiOverview": ai_overview or None,
             "validationReport": validation_report,
         }
 
@@ -276,6 +278,20 @@ async def discover(request: Request):
                     triggered_by="user",
                     raw_data=news_to_store,
                     summary=f"Found {len(news_to_store)} news mentions",
+                )
+            )
+
+        # Write AI overview results (fire-and-forget)
+        if ai_overview:
+            asyncio.create_task(
+                write_agent_result(
+                    business_slug=slug,
+                    business_name=name,
+                    agent_name="business_overview",
+                    agent_version=AgentVersions.BUSINESS_OVERVIEW,
+                    triggered_by="user",
+                    raw_data=ai_overview,
+                    summary=(ai_overview.get("summary", "") or "")[:200],
                 )
             )
 

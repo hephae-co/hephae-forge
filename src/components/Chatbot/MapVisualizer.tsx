@@ -13,12 +13,12 @@ interface MapVisualizerProps {
     isDiscovering?: boolean;
 }
 
-type ActiveTab = 'profile' | 'theme' | 'contact' | 'social' | 'menu' | 'competitors';
+type ActiveTab = 'overview' | 'profile' | 'theme' | 'contact' | 'social' | 'menu' | 'competitors';
 
 export default function MapVisualizer({ lat, lng, businessName, business, isDiscovering = false }: MapVisualizerProps) {
     const [zoomLevel, setZoomLevel] = useState<number>(15);
     const [resetKey, setResetKey] = useState(0);
-    const [activeTab, setActiveTab] = useState<ActiveTab>('profile');
+    const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
     const [logoError, setLogoError] = useState(false);
 
     const getUrl = () => {
@@ -66,8 +66,10 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
         profile?.socialLinks?.toasttab
     );
     const hasCompetitors = isDiscovering || !!(profile?.competitors?.length);
+    const hasOverview = isDiscovering || !!(profile?.aiOverview?.summary);
 
     const ALL_TABS: { id: ActiveTab; label: string; hasData: boolean }[] = [
+        { id: 'overview', label: 'Overview', hasData: hasOverview },
         { id: 'profile', label: 'Profile', hasData: true },
         { id: 'theme', label: 'Theme', hasData: hasTheme },
         { id: 'contact', label: 'Contact', hasData: hasContact },
@@ -110,8 +112,8 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                 </button>
                 <div className="flex flex-col gap-1">
-                    <button onClick={() => handleZoom(1)} className="bg-white text-gray-700 w-10 h-10 rounded-t-lg shadow-lg hover:bg-gray-100 font-bold flex items-center justify-center border-b border-gray-200 text-lg">+</button>
-                    <button onClick={() => handleZoom(-1)} className="bg-white text-gray-700 w-10 h-10 rounded-b-lg shadow-lg hover:bg-gray-100 font-bold flex items-center justify-center text-lg">-</button>
+                    <button onClick={() => handleZoom(1)} className="bg-white text-gray-700 w-11 h-11 md:w-10 md:h-10 rounded-t-lg shadow-lg hover:bg-gray-100 font-bold flex items-center justify-center border-b border-gray-200 text-lg">+</button>
+                    <button onClick={() => handleZoom(-1)} className="bg-white text-gray-700 w-11 h-11 md:w-10 md:h-10 rounded-b-lg shadow-lg hover:bg-gray-100 font-bold flex items-center justify-center text-lg">-</button>
                 </div>
             </div>
 
@@ -122,7 +124,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                         <div className="relative flex items-center justify-center">
                             <div className="absolute w-12 h-12 bg-indigo-500 rounded-full animate-ping opacity-40"></div>
                             <div className="relative w-4 h-4 bg-indigo-400 rounded-full border-2 border-white shadow-[0_0_20px_rgba(255,255,255,0.9)]"></div>
-                            <div className={`absolute top-full mt-2 text-indigo-100 font-bold text-sm bg-slate-900/90 px-3 py-1.5 rounded-md border border-indigo-500/50 shadow backdrop-blur whitespace-nowrap`}>
+                            <div className={`absolute top-full mt-2 text-indigo-100 font-bold text-sm bg-slate-900/90 px-3 py-1.5 rounded-md border border-indigo-500/50 shadow backdrop-blur whitespace-nowrap max-w-[200px] truncate`}>
                                 {businessName}
                             </div>
                         </div>
@@ -155,12 +157,12 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                             </div>
 
                             {/* TABS — 6 tabs, compact */}
-                            <div className="flex gap-0.5 p-1 bg-black/40 rounded-lg">
+                            <div className="flex gap-0.5 p-1 bg-black/40 rounded-lg overflow-x-auto scrollbar-hide">
                                 {TABS.map(tab => (
                                     <button
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
-                                        className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-colors leading-tight ${activeTab === tab.id ? 'bg-indigo-500 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                                        className={`flex-1 py-2 md:py-1 text-[11px] md:text-[10px] font-bold rounded-md transition-colors leading-tight flex-shrink-0 ${activeTab === tab.id ? 'bg-indigo-500 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                                     >
                                         {tab.label}
                                     </button>
@@ -170,6 +172,79 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
 
                         {/* TAB CONTENT */}
                         <div className="p-6 pt-4 space-y-4">
+
+                            {/* OVERVIEW TAB: AI Overview summary */}
+                            {activeTab === 'overview' && (
+                                <div className="space-y-3 animate-fade-in relative min-h-[140px]">
+                                    {isDiscovering ? (
+                                        <DiscoveryProgress phase="overview" variant="dots" />
+                                    ) : profile?.aiOverview ? (
+                                        <>
+                                            <div className="text-sm text-slate-300 leading-relaxed bg-black/20 p-3 rounded-xl border border-white/5">
+                                                {profile.aiOverview.summary}
+                                            </div>
+
+                                            {profile.aiOverview.highlights?.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {profile.aiOverview.highlights.map((h, i) => (
+                                                        <span key={i} className="px-2 py-1 rounded-full bg-indigo-500/15 text-indigo-300 text-[11px] font-medium border border-indigo-500/20">
+                                                            {h}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <div className="flex flex-wrap gap-2">
+                                                {profile.aiOverview.business_type && (
+                                                    <div className="flex items-center gap-1.5 bg-black/20 px-2.5 py-1.5 rounded-lg border border-white/5">
+                                                        <span className="text-[10px] font-bold text-slate-500 uppercase">Type</span>
+                                                        <span className="text-xs text-white font-semibold">{profile.aiOverview.business_type}</span>
+                                                    </div>
+                                                )}
+                                                {profile.aiOverview.price_range && (
+                                                    <div className="flex items-center gap-1.5 bg-black/20 px-2.5 py-1.5 rounded-lg border border-white/5">
+                                                        <span className="text-[10px] font-bold text-slate-500 uppercase">Price</span>
+                                                        <span className="text-xs text-emerald-400 font-semibold">{profile.aiOverview.price_range}</span>
+                                                    </div>
+                                                )}
+                                                {profile.aiOverview.established && (
+                                                    <div className="flex items-center gap-1.5 bg-black/20 px-2.5 py-1.5 rounded-lg border border-white/5">
+                                                        <span className="text-[10px] font-bold text-slate-500 uppercase">Est.</span>
+                                                        <span className="text-xs text-white font-semibold">{profile.aiOverview.established}</span>
+                                                    </div>
+                                                )}
+                                                {profile.aiOverview.reputation_signals && profile.aiOverview.reputation_signals !== 'unknown' && (
+                                                    <div className="flex items-center gap-1.5 bg-black/20 px-2.5 py-1.5 rounded-lg border border-white/5">
+                                                        <span className={`w-2 h-2 rounded-full ${
+                                                            profile.aiOverview.reputation_signals === 'positive' ? 'bg-emerald-400' :
+                                                            profile.aiOverview.reputation_signals === 'mixed' ? 'bg-yellow-400' : 'bg-red-400'
+                                                        }`} />
+                                                        <span className="text-xs text-slate-300 capitalize">{profile.aiOverview.reputation_signals}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {profile.aiOverview.notable_mentions && profile.aiOverview.notable_mentions.length > 0 && (
+                                                <div className="bg-black/20 p-2.5 rounded-xl border border-white/5">
+                                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Notable Mentions</p>
+                                                    <ul className="space-y-1">
+                                                        {profile.aiOverview.notable_mentions.map((m, i) => (
+                                                            <li key={i} className="text-xs text-slate-400 flex items-start gap-1.5">
+                                                                <span className="text-indigo-400 mt-0.5 shrink-0">-</span>
+                                                                {m}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="w-full p-4 rounded-xl bg-slate-800/50 border border-slate-700 text-slate-400 text-sm text-center">
+                                            No AI overview available.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* PROFILE TAB: address + website only */}
                             {activeTab === 'profile' && (

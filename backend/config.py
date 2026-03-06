@@ -66,16 +66,17 @@ class AgentVersions:
     can be distinguished from runs under a different schema.
     """
 
-    # Discovery pipeline (v4: 4-stage with reviewer + news)
-    DISCOVERY_PIPELINE = "4.0.0"
+    # Discovery pipeline (v5: 8-agent fan-out + google_search social profiler)
+    DISCOVERY_PIPELINE = "5.0.0"
     SITE_CRAWLER = "1.1.0"
     CONTACT_DISCOVERY = "1.0.0"
     MENU_DISCOVERY = "2.1.0"
     SOCIAL_DISCOVERY = "2.0.0"
-    SOCIAL_PROFILER = "1.0.0"
+    SOCIAL_PROFILER = "2.0.0"
     MAPS_DISCOVERY = "2.0.0"
     COMPETITOR_DISCOVERY = "2.0.0"
     THEME_DISCOVERY = "2.0.0"
+    BUSINESS_OVERVIEW = "1.0.0"
 
     # Analysis agents
     MARGIN_SURGEON = "1.0.0"
@@ -85,6 +86,9 @@ class AgentVersions:
 
     # Marketing
     MARKETING_SWARM = "1.0.0"
+
+    # Social Media Auditor
+    SOCIAL_MEDIA_AUDITOR = "1.0.0"
 
     # Blog
     BLOG_WRITER = "1.0.0"

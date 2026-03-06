@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2, Zap, Shield, Eye } from 'lucide-react';
+import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2, Zap, Shield, Eye, MessageCircle, Map, Sparkles } from 'lucide-react';
 import { SurgicalReport } from '@/types/api';
 import clsx from 'clsx';
 import dynamic from 'next/dynamic';
@@ -68,6 +68,7 @@ export default function Home() {
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
   const [seoReport, setSeoReport] = useState<SeoReport | null>(null);
   const [competitiveReport, setCompetitiveReport] = useState<any | null>(null);
+  const [socialAuditReport, setSocialAuditReport] = useState<any | null>(null);
 
   // Report share URLs
   const [profileReportUrl, setProfileReportUrl] = useState<string | null>(null);
@@ -79,6 +80,7 @@ export default function Home() {
   const [copyToast, setCopyToast] = useState(false);
   const [showSharePanel, setShowSharePanel] = useState(false);
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<'chat' | 'visualizer'>('chat');
 
   // Detail Panel State for Traffic Forecast Phase 14
   const [selectedDay, setSelectedDay] = useState<DailyForecast | null>(null);
@@ -115,6 +117,13 @@ export default function Home() {
   useEffect(() => {
     if (isTyping || isDiscovering) setIsChatCollapsed(false);
   }, [isTyping, isDiscovering]);
+
+  // Auto-switch to visualizer panel on mobile when a report loads
+  useEffect(() => {
+    if (report || forecast || seoReport || competitiveReport || socialAuditReport) {
+      setMobilePanel('visualizer');
+    }
+  }, [report, forecast, seoReport, competitiveReport, socialAuditReport]);
 
   // Rotating messages for the discovery overlay
   // Discovery messages now handled inside LoadingOverlay
@@ -515,7 +524,7 @@ export default function Home() {
         setCapabilityStartTime(null);
       }
     } else if (capId === 'marketing') {
-      setMessages(prev => [...prev, msg('model', "Deploying Social Media Insights agent to analyze your social presence and craft content strategy... ⏱️")]);
+      setMessages(prev => [...prev, msg('model', "Deploying Social Media Auditor to research your social presence across all platforms... ⏱️")]);
       setCapabilities([]);
       setIsTyping(true);
 
@@ -527,23 +536,23 @@ export default function Home() {
         });
 
         if (!res.ok) {
-          let errMsg = "Strategy Generation Failed";
+          let errMsg = "Social Media Audit Failed";
           try { const err = await res.json(); errMsg = err.error || errMsg; } catch { errMsg = `Server error (${res.status})`; }
           throw new Error(errMsg);
         }
 
         const data = await res.json();
+        setSocialAuditReport(data);
         if (data.reportUrl) {
           setMarketingReportUrl(data.reportUrl);
-          sendReportEmailAsync('marketing', data.reportUrl, locatedBusiness!.name, data.summary || 'Your social media strategy report is ready.');
+          sendReportEmailAsync('marketing', data.reportUrl, locatedBusiness!.name, data.summary || 'Your social media audit is ready.');
         }
 
-        const platform = data.platform || 'Social Media';
-        const draftPreview = typeof data.draft === 'string' ? data.draft.slice(0, 300) : '';
-        setMessages(prev => [...prev, msg('model', `**Social Media Insights** for **${locatedBusiness.name}** is ready!\n\n${data.summary || ''}\n\n${draftPreview ? `**Draft Preview:**\n${draftPreview}${data.draft?.length > 300 ? '...' : ''}` : ''}${data.reportUrl ? `\n\n[View Full Report](${data.reportUrl})` : ''}`)]);
+        const platformCount = data.platforms?.length || 0;
+        setMessages(prev => [...prev, msg('model', `**Social Media Audit** for **${locatedBusiness.name}** is complete! Score: **${data.overall_score ?? 'N/A'}/100** across ${platformCount} platform${platformCount !== 1 ? 's' : ''}.${data.summary ? `\n\n${data.summary}` : ''}`)]);
 
       } catch (e: any) {
-        setMessages(prev => [...prev, msg('model', `Failed to execute Social Media Insights: ${e.message}`)]);
+        setMessages(prev => [...prev, msg('model', `Failed to execute Social Media Audit: ${e.message}`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
@@ -611,6 +620,7 @@ export default function Home() {
     if (forecast) return forecast.summary || `3-day foot traffic forecast for ${forecast.business?.name || 'your business'}`;
     if (seoReport) return `SEO score: ${seoReport.overallScore}/100. ${seoReport.summary || ''}`;
     if (competitiveReport) return competitiveReport.market_summary || 'Competitive analysis complete.';
+    if (socialAuditReport) return socialAuditReport.summary || 'Social media audit complete.';
     return `Business analysis for ${locatedBusiness?.name || 'your business'}`;
   };
 
@@ -622,6 +632,7 @@ export default function Home() {
     if (seoReport) return `${seoReport.overallScore || 0}/100`;
     if (forecast) return '3-Day Forecast';
     if (competitiveReport) return `${(competitiveReport as any).competitor_profiles?.length || 0} Competitors`;
+    if (socialAuditReport) return `${socialAuditReport.overall_score || 0}/100`;
     return '';
   };
 
@@ -630,6 +641,7 @@ export default function Home() {
     if (seoReport) return 'SEO Performance Score';
     if (forecast) return 'Foot Traffic Prediction';
     if (competitiveReport) return 'Market Analysis';
+    if (socialAuditReport) return 'Social Media Health';
     return 'Business Intelligence';
   };
 
@@ -684,34 +696,34 @@ export default function Home() {
           <NeuralBackground />
         </div>
 
-        <div className="relative z-10 p-8">
+        <div className="relative z-10 p-4 md:p-8">
           {/* Gradient Header */}
-          <header className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 shadow-xl animate-fade-in-up">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-4">
+          <header className="mb-6 md:mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 shadow-xl animate-fade-in-up">
+            <div className="flex justify-between items-center gap-3">
+              <div className="flex items-center gap-3 md:gap-4 min-w-0">
                 {identity.logoUrl ? (
-                  <img src={identity.logoUrl} className="h-12 w-12 rounded-full object-cover border-2 border-white/30 shadow-lg" alt="Logo" />
+                  <img src={identity.logoUrl} className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover border-2 border-white/30 shadow-lg flex-shrink-0" alt="Logo" />
                 ) : (
-                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <Building2 className="w-6 h-6 text-white" />
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-5 h-5 md:w-6 md:h-6 text-white" />
                   </div>
                 )}
-                <div>
-                  <h1 className="text-xl font-bold text-white">{identity.name}</h1>
-                  <p className="text-indigo-100 text-sm">Margin Surgery Report</p>
+                <div className="min-w-0">
+                  <h1 className="text-lg md:text-xl font-bold text-white truncate">{identity.name}</h1>
+                  <p className="text-indigo-100 text-xs md:text-sm">Margin Surgery Report</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <HephaeLogo size="sm" variant="white" />
-                <button onClick={() => setReport(null)} className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close Report">
-                  <X size={20} />
+              <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+                <span className="hidden md:block"><HephaeLogo size="sm" variant="white" /></span>
+                <button onClick={() => setReport(null)} className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close Report">
+                  <X size={18} />
                 </button>
               </div>
             </div>
           </header>
 
           {/* Score + Leakage Hero Row */}
-          <div className="grid grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
             <div className="p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-indigo-100 shadow-sm flex flex-col items-center justify-center animate-fade-in-up stagger-1">
               <RadialScoreChart score={overall_score} size={140} label="Health" color="#6366f1" />
               <p className="text-xs text-gray-500 mt-2 font-semibold uppercase tracking-wider">Surgical Score</p>
@@ -743,30 +755,32 @@ export default function Home() {
             <div className="p-5 border-b border-indigo-50 bg-gradient-to-r from-indigo-50 to-purple-50">
               <h3 className="font-bold text-lg text-indigo-900 flex items-center gap-2"><Scale size={18} /> Surgical Breakdown</h3>
             </div>
-            <table className="w-full text-left text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm min-w-[540px]">
               <thead className="bg-indigo-50/50 text-xs uppercase tracking-wider text-indigo-400">
                 <tr>
-                  <th className="p-4">Item</th>
-                  <th className="p-4">Benchmark</th>
-                  <th className="p-4">Price</th>
-                  <th className="p-4 text-emerald-600">Rec.</th>
-                  <th className="p-4 text-right text-red-500">Leakage</th>
+                  <th className="p-3 md:p-4">Item</th>
+                  <th className="p-3 md:p-4">Benchmark</th>
+                  <th className="p-3 md:p-4">Price</th>
+                  <th className="p-3 md:p-4 text-emerald-600">Rec.</th>
+                  <th className="p-3 md:p-4 text-right text-red-500">Leakage</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-indigo-50">
                 {topLeaks.map((item, i) => (
                   <tr key={i} className="hover:bg-indigo-50/40 transition-colors animate-fade-in-right" style={{ animationDelay: `${0.18 + i * 0.04}s` }}>
-                    <td className="p-4 text-gray-900 font-medium">{item.item_name}</td>
-                    <td className="p-4 text-gray-500">${item.competitor_benchmark.toFixed(2)}</td>
-                    <td className="p-4 text-gray-500">${item.current_price.toFixed(2)}</td>
-                    <td className="p-4 font-bold text-emerald-600">${item.recommended_price.toFixed(2)}</td>
-                    <td className="p-4 text-right">
+                    <td className="p-3 md:p-4 text-gray-900 font-medium">{item.item_name}</td>
+                    <td className="p-3 md:p-4 text-gray-500">${item.competitor_benchmark.toFixed(2)}</td>
+                    <td className="p-3 md:p-4 text-gray-500">${item.current_price.toFixed(2)}</td>
+                    <td className="p-3 md:p-4 font-bold text-emerald-600">${item.recommended_price.toFixed(2)}</td>
+                    <td className="p-3 md:p-4 text-right">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-mono text-xs font-bold">+${item.price_leakage.toFixed(2)}</span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Strategic Advice */}
@@ -816,45 +830,45 @@ export default function Home() {
           <NeuralBackground />
         </div>
 
-        <div className="relative z-10 p-8">
+        <div className="relative z-10 p-4 md:p-8">
           {/* Gradient Header */}
-          <header className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 shadow-xl animate-fade-in-up">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-4">
+          <header className="mb-6 md:mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 shadow-xl animate-fade-in-up">
+            <div className="flex justify-between items-center gap-3">
+              <div className="flex items-center gap-3 md:gap-4 min-w-0">
                 {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
-                  <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-12 w-12 rounded-full object-cover border-2 border-white/30 shadow-lg" alt="Logo" />
+                  <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover border-2 border-white/30 shadow-lg flex-shrink-0" alt="Logo" />
                 ) : (
-                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <Users className="w-6 h-6 text-white" />
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                    <Users className="w-5 h-5 md:w-6 md:h-6 text-white" />
                   </div>
                 )}
-                <div>
-                  <h1 className="text-xl font-bold text-white">{forecast.business.name}</h1>
-                  <p className="text-emerald-100 text-sm">Foot Traffic Forecast</p>
+                <div className="min-w-0">
+                  <h1 className="text-lg md:text-xl font-bold text-white truncate">{forecast.business.name}</h1>
+                  <p className="text-emerald-100 text-xs md:text-sm">Foot Traffic Forecast</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <HephaeLogo size="sm" variant="white" />
-                <button onClick={() => setForecast(null)} className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close Forecast">
-                  <X size={20} />
+              <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+                <span className="hidden md:block"><HephaeLogo size="sm" variant="white" /></span>
+                <button onClick={() => setForecast(null)} className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close Forecast">
+                  <X size={18} />
                 </button>
               </div>
             </div>
           </header>
 
           {/* Quick Stats Row */}
-          <div className="grid grid-cols-3 gap-4 mb-8 animate-fade-in-up stagger-1">
-            <div className="p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-emerald-100 shadow-sm text-center">
-              <div className="text-2xl font-black text-emerald-600">{forecast.forecast.length}</div>
-              <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Days Forecast</div>
+          <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6 md:mb-8 animate-fade-in-up stagger-1">
+            <div className="p-3 md:p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-emerald-100 shadow-sm text-center">
+              <div className="text-xl md:text-2xl font-black text-emerald-600">{forecast.forecast.length}</div>
+              <div className="text-[10px] md:text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Days Forecast</div>
             </div>
-            <div className="p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-teal-100 shadow-sm text-center">
-              <div className="text-2xl font-black text-teal-600">{peakDay?.name || '—'}</div>
-              <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Peak Day</div>
+            <div className="p-3 md:p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-teal-100 shadow-sm text-center">
+              <div className="text-xl md:text-2xl font-black text-teal-600">{peakDay?.name || '—'}</div>
+              <div className="text-[10px] md:text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Peak Day</div>
             </div>
-            <div className="p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-cyan-100 shadow-sm text-center">
-              <div className="text-2xl font-black text-cyan-600">{totalEvents}</div>
-              <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Local Events</div>
+            <div className="p-3 md:p-4 rounded-xl bg-white/80 backdrop-blur-sm border border-cyan-100 shadow-sm text-center">
+              <div className="text-xl md:text-2xl font-black text-cyan-600">{totalEvents}</div>
+              <div className="text-[10px] md:text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Local Events</div>
             </div>
           </div>
 
@@ -913,27 +927,27 @@ export default function Home() {
           <NeuralBackground />
         </div>
 
-        <div className="relative z-10 p-8">
+        <div className="relative z-10 p-4 md:p-8">
           {/* Gradient Header */}
-          <header className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 shadow-xl animate-fade-in-up">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-4">
+          <header className="mb-6 md:mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 shadow-xl animate-fade-in-up">
+            <div className="flex justify-between items-center gap-3">
+              <div className="flex items-center gap-3 md:gap-4 min-w-0">
                 {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
-                  <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-12 w-12 rounded-full object-cover border-2 border-white/30 shadow-lg" alt="Logo" />
+                  <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover border-2 border-white/30 shadow-lg flex-shrink-0" alt="Logo" />
                 ) : (
-                  <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <Swords className="w-6 h-6 text-white" />
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                    <Swords className="w-5 h-5 md:w-6 md:h-6 text-white" />
                   </div>
                 )}
-                <div>
-                  <h1 className="text-xl font-bold text-white">{locatedBusiness?.name || 'Business'}</h1>
-                  <p className="text-orange-100 text-sm">Competitive Market Strategy</p>
+                <div className="min-w-0">
+                  <h1 className="text-lg md:text-xl font-bold text-white truncate">{locatedBusiness?.name || 'Business'}</h1>
+                  <p className="text-orange-100 text-xs md:text-sm">Competitive Market Strategy</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <HephaeLogo size="sm" variant="white" />
-                <button onClick={() => setCompetitiveReport(null)} className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close Report">
-                  <X size={20} />
+              <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+                <span className="hidden md:block"><HephaeLogo size="sm" variant="white" /></span>
+                <button onClick={() => setCompetitiveReport(null)} className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close Report">
+                  <X size={18} />
                 </button>
               </div>
             </div>
@@ -1018,7 +1032,237 @@ export default function Home() {
     );
   };
 
-  const isCentered = !locatedBusiness && !report && !forecast && !seoReport && !competitiveReport;
+  const renderSocialAuditReport = () => {
+    if (!socialAuditReport) return null;
+    const platforms = socialAuditReport.platforms || [];
+    const recs = socialAuditReport.strategic_recommendations || [];
+    const benchmarks = socialAuditReport.competitor_benchmarks || [];
+    const contentStrategy = socialAuditReport.content_strategy || {};
+
+    const scoreColor = (s: number) => s >= 70 ? 'text-emerald-600' : s >= 40 ? 'text-yellow-600' : 'text-red-600';
+    const scoreBg = (s: number) => s >= 70 ? 'bg-emerald-50 border-emerald-200' : s >= 40 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200';
+    const impactColor = (v: string) => v === 'high' ? 'bg-red-100 text-red-700' : v === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700';
+
+    return (
+      <div className="w-full h-full overflow-y-auto pb-20 animate-fade-in relative" style={{ background: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 40%, #faf5ff 100%)', color: '#1e293b' }}>
+        <BlobBackground className="opacity-20 fixed" />
+        <div className="absolute inset-0 pointer-events-none opacity-[0.20]">
+          <NeuralBackground />
+        </div>
+
+        <div className="relative z-10 p-4 md:p-8">
+          {/* Header */}
+          <header className="mb-6 md:mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-fuchsia-500 shadow-xl animate-fade-in-up">
+            <div className="flex justify-between items-center gap-3">
+              <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
+                  <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover border-2 border-white/30 shadow-lg flex-shrink-0" alt="Logo" />
+                ) : (
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                    <Share2 className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <h1 className="text-lg md:text-xl font-bold text-white truncate">{locatedBusiness?.name || 'Business'}</h1>
+                  <p className="text-pink-100 text-xs md:text-sm">Social Media Audit</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+                <span className="hidden md:block"><HephaeLogo size="sm" variant="white" /></span>
+                <button onClick={() => setSocialAuditReport(null)} className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close Report">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* Overall Score */}
+          <div className="text-center p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-pink-100 shadow-sm mb-6 md:mb-8 animate-fade-in-up stagger-1">
+            <div className={`text-5xl font-black ${scoreColor(socialAuditReport.overall_score || 0)}`}>{socialAuditReport.overall_score || 0}</div>
+            <div className="text-xs text-gray-400 uppercase tracking-wider font-bold mt-1">Overall Social Health Score</div>
+            {socialAuditReport.summary && <p className="text-sm text-gray-600 leading-relaxed mt-3 max-w-lg mx-auto">{socialAuditReport.summary}</p>}
+          </div>
+
+          {/* Platform Cards */}
+          {platforms.length > 0 && (
+            <div className="space-y-4 mb-6 md:mb-8 animate-fade-in-up stagger-2">
+              <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2"><Share2 size={18} className="text-pink-500" /> Platform Analysis</h3>
+              {platforms.map((p: any, i: number) => (
+                <div key={i} className="p-4 md:p-5 rounded-2xl bg-white/80 backdrop-blur-sm border border-pink-100 shadow-sm animate-fade-in-up" style={{ animationDelay: `${0.18 + i * 0.08}s` }}>
+                  <div className="flex justify-between items-center mb-3">
+                    <div>
+                      <span className="font-bold text-gray-900 text-lg capitalize">{p.name}</span>
+                      {p.handle && <span className="text-gray-400 text-sm ml-2">{p.handle}</span>}
+                    </div>
+                    <div className={`px-3 py-1.5 rounded-xl border font-black text-lg ${scoreBg(p.score || 0)} ${scoreColor(p.score || 0)}`}>
+                      {p.score || 0}<span className="text-xs font-normal opacity-60">/100</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-3">
+                    <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                      <div className="text-[10px] text-gray-400 uppercase font-bold">Followers</div>
+                      <div className="text-sm font-bold text-gray-800">{p.followers || 'Unknown'}</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                      <div className="text-[10px] text-gray-400 uppercase font-bold">Posting</div>
+                      <div className="text-sm font-semibold text-gray-700">{p.posting_frequency || 'Unknown'}</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                      <div className="text-[10px] text-gray-400 uppercase font-bold">Engagement</div>
+                      <div className="text-sm font-semibold text-gray-700 capitalize">{p.engagement || 'Unknown'}</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                      <div className="text-[10px] text-gray-400 uppercase font-bold">Last Post</div>
+                      <div className="text-sm font-semibold text-gray-700">{p.last_post_recency || 'Unknown'}</div>
+                    </div>
+                  </div>
+
+                  {p.content_themes?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {p.content_themes.map((t: string, j: number) => (
+                        <span key={j} className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 font-semibold">{t}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {p.strengths?.length > 0 && (
+                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                        <div className="text-[10px] text-emerald-600 uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1"><TrendingUp size={10} /> Strengths</div>
+                        {p.strengths.map((s: string, j: number) => (
+                          <div key={j} className="text-sm text-gray-700 leading-relaxed">+ {s}</div>
+                        ))}
+                      </div>
+                    )}
+                    {p.weaknesses?.length > 0 && (
+                      <div className="p-3 rounded-xl bg-red-50 border border-red-200">
+                        <div className="text-[10px] text-red-600 uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1"><AlertTriangle size={10} /> Weaknesses</div>
+                        {p.weaknesses.map((w: string, j: number) => (
+                          <div key={j} className="text-sm text-gray-700 leading-relaxed">- {w}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {p.recommendations?.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="text-[10px] text-indigo-600 uppercase font-bold tracking-wider mb-1.5">Recommendations</div>
+                      {p.recommendations.map((r: string, j: number) => (
+                        <div key={j} className="text-sm text-indigo-700 leading-relaxed">→ {r}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Competitor Benchmarks */}
+          {benchmarks.length > 0 && (
+            <div className="p-4 md:p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-pink-100 shadow-sm mb-6 md:mb-8 animate-fade-in-up stagger-3">
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><Eye size={18} className="text-pink-500" /> Competitor Benchmarks</h3>
+              <div className="space-y-3">
+                {benchmarks.map((b: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                    <div>
+                      <div className="font-bold text-gray-800">{b.name}</div>
+                      <div className="text-xs text-gray-500 capitalize">{b.strongest_platform} · {b.posting_frequency}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-gray-800">{b.followers}</div>
+                      <div className="text-xs text-gray-400">followers</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Strategic Recommendations */}
+          {recs.length > 0 && (
+            <div className="p-4 md:p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 shadow-sm mb-6 md:mb-8 animate-fade-in-up stagger-3">
+              <h3 className="text-indigo-700 font-bold mb-4 flex items-center gap-2"><Zap size={18} /> Strategic Recommendations</h3>
+              <div className="space-y-3">
+                {recs.map((r: any, i: number) => (
+                  <div key={i} className="flex gap-3 items-start p-4 bg-white/80 border border-indigo-100 rounded-xl animate-fade-in-right" style={{ animationDelay: `${0.24 + i * 0.05}s` }}>
+                    <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold text-xs flex items-center justify-center shadow-sm">{r.priority || i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-gray-800 text-sm">{r.action}</div>
+                      {r.rationale && <div className="text-xs text-gray-500 mt-1">{r.rationale}</div>}
+                      <div className="flex gap-2 mt-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${impactColor(r.impact)}`}>Impact: {r.impact}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${impactColor(r.effort)}`}>Effort: {r.effort}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Content Strategy */}
+          {(contentStrategy.content_pillars?.length > 0 || contentStrategy.hashtag_strategy?.length > 0 || contentStrategy.quick_wins?.length > 0) && (
+            <div className="p-4 md:p-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-pink-100 shadow-sm mb-6 md:mb-8 animate-fade-in-up stagger-4">
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><Sparkles size={18} className="text-pink-500" /> Content Strategy</h3>
+              {contentStrategy.content_pillars?.length > 0 && (
+                <div className="mb-4">
+                  <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-2">Content Pillars</div>
+                  <div className="flex flex-wrap gap-2">
+                    {contentStrategy.content_pillars.map((p: string, i: number) => (
+                      <span key={i} className="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">{p}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {contentStrategy.posting_schedule && (
+                <div className="mb-4">
+                  <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Posting Schedule</div>
+                  <p className="text-sm text-gray-700">{contentStrategy.posting_schedule}</p>
+                </div>
+              )}
+              {contentStrategy.hashtag_strategy?.length > 0 && (
+                <div className="mb-4">
+                  <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-2">Hashtag Strategy</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {contentStrategy.hashtag_strategy.map((h: string, i: number) => (
+                      <span key={i} className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-semibold">{h}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {contentStrategy.quick_wins?.length > 0 && (
+                <div>
+                  <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-2">Quick Wins</div>
+                  {contentStrategy.quick_wins.map((w: string, i: number) => (
+                    <div key={i} className="text-sm text-gray-700 mb-1 flex items-start gap-1.5">
+                      <Zap size={12} className="text-yellow-500 mt-0.5 flex-shrink-0" /> {w}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Sources */}
+          {socialAuditReport.sources?.length > 0 && (
+            <div className="p-5 rounded-2xl bg-white/60 backdrop-blur-sm border border-gray-200 animate-fade-in-up stagger-4">
+              <h3 className="text-gray-500 font-bold mb-3 text-xs uppercase tracking-wider">Research Sources</h3>
+              <ul className="space-y-1">
+                {socialAuditReport.sources.map((s: any, i: number) => (
+                  <li key={i}>
+                    <a href={s.url} target="_blank" rel="noreferrer" className="text-indigo-600 text-sm hover:underline">↗ {s.title || s.url}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const isCentered = !locatedBusiness && !report && !forecast && !seoReport && !competitiveReport && !socialAuditReport;
 
   // Dynamic follow-up chips that change based on what the user has done
   const dynamicChips = useMemo(() => {
@@ -1045,11 +1289,16 @@ export default function Home() {
       chips.push("When is the worst time to be short-staffed?");
       if (!report) chips.push("Now scan the menu for profit leaks");
       if (!seoReport) chips.push("How do they rank on Google?");
+    } else if (socialAuditReport) {
+      // After social media audit
+      chips.push("Which platform needs the most work?");
+      if (!report) chips.push("Let's check the menu margins");
+      if (!competitiveReport) chips.push("Analyze the competition");
     } else if (competitiveReport) {
       // After competitive analysis
       chips.push("Who's their biggest threat?");
       if (!report) chips.push("Let's check the menu margins");
-      if (!marketingReportUrl) chips.push("Analyze their social media");
+      if (!socialAuditReport) chips.push("Audit their social media");
     } else if (capabilities.length > 0) {
       // Discovery complete, no analyses run yet
       chips.push(`What did you find about ${name}?`);
@@ -1058,10 +1307,10 @@ export default function Home() {
     }
 
     return chips.slice(0, 3);
-  }, [isCentered, isDiscovering, isTyping, locatedBusiness, report, seoReport, forecast, competitiveReport, marketingReportUrl, capabilities]);
+  }, [isCentered, isDiscovering, isTyping, locatedBusiness, report, seoReport, forecast, competitiveReport, socialAuditReport, marketingReportUrl, capabilities]);
 
   return (
-    <main className={`flex h-screen w-screen overflow-hidden relative transition-colors duration-700 ${isCentered ? 'bg-white' : 'bg-gray-50'}`}>
+    <main className={`flex flex-col md:flex-row h-screen w-screen overflow-hidden relative transition-colors duration-700 ${isCentered ? 'bg-white' : 'bg-gray-50'}`}>
 
       {/* BACKGROUND ANIMATION — blob at z-0 (decorative), neural canvas at z-10 (interactive) */}
       {isCentered && (
@@ -1076,14 +1325,14 @@ export default function Home() {
       {/* Search animation moved into ChatInterface to avoid overlapping the chat panel */}
 
       {/* Global Hephae logo — visible on home screen and during panel transition */}
-      {(isCentered || (!report && !forecast && !seoReport && !competitiveReport && !isDiscovering && !isTyping)) && (
+      {(isCentered || (!report && !forecast && !seoReport && !competitiveReport && !socialAuditReport && !isDiscovering && !isTyping)) && (
         <div className="fixed top-4 left-4 z-[100] animate-fade-in pointer-events-none">
           <HephaeLogo size="sm" variant="color" />
         </div>
       )}
 
       {/* LEFT VISUALIZER PANEL - Hidden when centered, fills remaining space when active */}
-      <div className={`relative z-10 transition-all duration-700 ease-in-out flex flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden' : isChatCollapsed ? 'w-[calc(100%-56px)] opacity-100' : 'w-[55%] opacity-100'}`}>
+      <div className={`relative z-10 transition-all duration-700 ease-in-out flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden hidden md:flex' : isChatCollapsed ? 'md:w-[calc(100%-56px)] w-full opacity-100' : `md:w-[55%] w-full opacity-100 ${mobilePanel === 'chat' ? 'hidden md:flex' : 'flex'}`} ${!isCentered ? 'h-full' : ''}`}>
         {!isCentered && (
           <>
             {(isTyping || isDiscovering) && <BlobBackground className="z-0 opacity-30" />}
@@ -1095,38 +1344,38 @@ export default function Home() {
             )}
 
             {!isDiscovering && !isTyping && (
-              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 animate-fade-in-up pointer-events-auto bg-white/90 backdrop-blur-md p-1.5 rounded-full shadow-2xl border border-gray-200/80">
-                <button onClick={() => handleSelectCapability("surgery")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/80 transition-all group">
+              <div className="absolute bottom-8 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto z-50 flex items-center gap-1 animate-fade-in-up pointer-events-auto bg-white/90 backdrop-blur-md p-1.5 rounded-2xl md:rounded-full shadow-2xl border border-gray-200/80 overflow-x-auto scrollbar-hide">
+                <button onClick={() => handleSelectCapability("surgery")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/80 transition-all group flex-shrink-0 whitespace-nowrap">
                   <BarChart3 className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
                   Margin Surgery
                 </button>
 
-                <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                <div className="w-px h-4 bg-gray-200 mx-1 flex-shrink-0"></div>
 
-                <button onClick={() => handleSelectCapability("traffic")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-emerald-600 hover:bg-emerald-50/80 transition-all group">
+                <button onClick={() => handleSelectCapability("traffic")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-emerald-600 hover:bg-emerald-50/80 transition-all group flex-shrink-0 whitespace-nowrap">
                   <Users className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-110 transition-transform" />
                   Foot Traffic Forecast
                 </button>
 
-                <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                <div className="w-px h-4 bg-gray-200 mx-1 flex-shrink-0"></div>
 
-                <button onClick={() => handleSelectCapability("seo")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-purple-600 hover:bg-purple-50/80 transition-all group">
+                <button onClick={() => handleSelectCapability("seo")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-purple-600 hover:bg-purple-50/80 transition-all group flex-shrink-0 whitespace-nowrap">
                   <SearchIcon className="w-3.5 h-3.5 text-purple-500 group-hover:scale-110 transition-transform" />
                   SEO Deep Audit
                 </button>
 
-                <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                <div className="w-px h-4 bg-gray-200 mx-1 flex-shrink-0"></div>
 
-                <button onClick={() => handleSelectCapability("competitive")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 transition-all group">
+                <button onClick={() => handleSelectCapability("competitive")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 transition-all group flex-shrink-0 whitespace-nowrap">
                   <Swords className="w-3.5 h-3.5 text-orange-500 group-hover:scale-110 transition-transform" />
                   Competitive Analysis
                 </button>
 
-                <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                <div className="w-px h-4 bg-gray-200 mx-1 flex-shrink-0"></div>
 
-                <button onClick={() => handleSelectCapability("marketing")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-pink-600 hover:bg-pink-50/80 transition-all group">
+                <button onClick={() => handleSelectCapability("marketing")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-pink-600 hover:bg-pink-50/80 transition-all group flex-shrink-0 whitespace-nowrap">
                   <Share2 className="w-3.5 h-3.5 text-pink-500 group-hover:scale-110 transition-transform" />
-                  Social Media Insights
+                  Social Media Audit
                 </button>
 
                 {activeReportUrl && (
@@ -1134,7 +1383,7 @@ export default function Home() {
                     <div className="w-px h-4 bg-gray-200 mx-1"></div>
                     <button
                       onClick={() => setShowSharePanel(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all group border border-indigo-200"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all group border border-indigo-200 flex-shrink-0 whitespace-nowrap"
                     >
                       <Share2 className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
                       Share Report
@@ -1145,7 +1394,7 @@ export default function Home() {
             )}
 
             {/* Hephae logo badge — persistent branding on left panel when no report is displayed */}
-            {!report && !forecast && !seoReport && !competitiveReport && !isDiscovering && !isTyping && (
+            {!report && !forecast && !seoReport && !competitiveReport && !socialAuditReport && !isDiscovering && !isTyping && (
               <div className="absolute top-4 right-4 z-50 animate-fade-in">
                 <HephaeLogo size="sm" variant="color" />
               </div>
@@ -1199,32 +1448,34 @@ export default function Home() {
               renderTrafficForecast()
             ) : competitiveReport ? (
               renderCompetitiveReport()
+            ) : socialAuditReport ? (
+              renderSocialAuditReport()
             ) : seoReport ? (
               <div className="w-full h-full overflow-y-auto pb-20 animate-fade-in relative" style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 40%, #e0e7ff 100%)', color: '#1e293b' }}>
                 <BlobBackground className="opacity-25 fixed" />
                 <div className="absolute inset-0 pointer-events-none opacity-[0.25]">
                   <NeuralBackground />
                 </div>
-                <div className="relative z-10 p-8">
+                <div className="relative z-10 p-4 md:p-8">
                   {/* Gradient Header */}
-                  <header className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-500 to-indigo-500 shadow-xl animate-fade-in-up">
+                  <header className="mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-500 to-indigo-500 shadow-xl animate-fade-in-up">
                     <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3 md:gap-4 min-w-0">
                         {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
-                          <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-12 w-12 rounded-full object-cover border-2 border-white/30 shadow-lg" alt="Logo" />
+                          <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover border-2 border-white/30 shadow-lg flex-shrink-0" alt="Logo" />
                         ) : (
-                          <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                            <SearchIcon className="w-6 h-6 text-white" />
+                          <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                            <SearchIcon className="w-5 h-5 md:w-6 md:h-6 text-white" />
                           </div>
                         )}
-                        <div>
-                          <h1 className="text-xl font-bold text-white">{locatedBusiness?.name || 'Business'}</h1>
+                        <div className="min-w-0">
+                          <h1 className="text-lg md:text-xl font-bold text-white truncate">{locatedBusiness?.name || 'Business'}</h1>
                           <p className="text-purple-100 text-sm">SEO Deep Audit</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <HephaeLogo size="sm" variant="white" />
-                        <button onClick={() => setSeoReport(null)} className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close SEO Report">
+                      <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+                        <span className="hidden md:block"><HephaeLogo size="sm" variant="white" /></span>
+                        <button onClick={() => setSeoReport(null)} className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close SEO Report">
                           <X size={20} />
                         </button>
                       </div>
@@ -1256,7 +1507,7 @@ export default function Home() {
 
       {/* RIGHT CHATBOT PANEL - Full screen when centered, narrow sidebar when active */}
       {/* When centered: pointer-events-none on wrapper so neural background is interactive; children re-enable pointer-events-auto on inputs/buttons */}
-      <div className={`relative z-20 flex-shrink-0 transition-all duration-700 ease-in-out h-full ${isCentered ? 'w-full max-w-none pointer-events-none' : isChatCollapsed ? 'w-14' : 'w-[45%]'}`}>
+      <div className={`relative z-20 flex-shrink-0 transition-all duration-700 ease-in-out h-full ${isCentered ? 'w-full max-w-none pointer-events-none' : isChatCollapsed ? 'md:w-14 hidden md:block' : `md:w-[45%] w-full ${mobilePanel === 'visualizer' ? 'hidden md:block' : 'block'}`}`}>
         <ChatInterface
           messages={messages}
           onSendMessage={sendMessage}
@@ -1270,6 +1521,7 @@ export default function Home() {
             setForecast(null);
             setSeoReport(null);
             setCompetitiveReport(null);
+            setSocialAuditReport(null);
             setCapabilities([]);
             setIsDiscovering(false);
             setProfileReportUrl(null);
@@ -1288,6 +1540,22 @@ export default function Home() {
           onToggleCollapse={() => setIsChatCollapsed(v => !v)}
         />
       </div>
+
+      {/* Mobile panel toggle button */}
+      {!isCentered && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[70] flex md:hidden">
+          <button
+            onClick={() => setMobilePanel(mobilePanel === 'chat' ? 'visualizer' : 'chat')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white/95 backdrop-blur-md rounded-full shadow-2xl border border-gray-200 text-sm font-bold text-gray-700 active:scale-95 transition-transform"
+          >
+            {mobilePanel === 'chat' ? (
+              <><Map className="w-4 h-4 text-indigo-500" /> View Report / Map</>
+            ) : (
+              <><MessageCircle className="w-4 h-4 text-indigo-500" /> Back to Chat</>
+            )}
+          </button>
+        </div>
+      )}
 
       <EmailWall isOpen={showEmailWall} onSubmit={handleEmailSubmit} />
 

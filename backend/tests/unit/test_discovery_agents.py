@@ -15,6 +15,7 @@ from backend.agents.discovery.agent import (
     news_agent,
     discovery_reviewer_agent,
     social_profiler_agent,
+    business_overview_agent,
     _with_all_discovery_data,
 )
 
@@ -74,20 +75,46 @@ class TestPipelineStructureV4:
         assert subs[2].name == "SocialProfilerAgent"
         assert subs[3].name == "DiscoveryReviewerAgent"
 
-    def test_fan_out_has_seven_agents(self):
-        assert len(discovery_fan_out.sub_agents) == 7
+    def test_fan_out_has_eight_agents(self):
+        assert len(discovery_fan_out.sub_agents) == 8
 
     def test_fan_out_includes_news_agent(self):
         names = [a.name for a in discovery_fan_out.sub_agents]
         assert "NewsAgent" in names
+
+    def test_fan_out_includes_business_overview_agent(self):
+        names = [a.name for a in discovery_fan_out.sub_agents]
+        assert "BusinessOverviewAgent" in names
 
     def test_fan_out_agent_names(self):
         names = sorted([a.name for a in discovery_fan_out.sub_agents])
         expected = sorted([
             "ThemeAgent", "ContactAgent", "SocialMediaAgent",
             "MenuAgent", "MapsAgent", "CompetitorAgent", "NewsAgent",
+            "BusinessOverviewAgent",
         ])
         assert names == expected
+
+
+# ============================================================================
+# BusinessOverviewAgent configuration
+# ============================================================================
+
+class TestBusinessOverviewAgentConfig:
+    def test_agent_name(self):
+        assert business_overview_agent.name == "BusinessOverviewAgent"
+
+    def test_agent_model(self):
+        assert business_overview_agent.model == AgentModels.DEFAULT_FAST_MODEL
+
+    def test_agent_output_key(self):
+        assert business_overview_agent.output_key == "aiOverview"
+
+    def test_agent_has_google_search_tool(self):
+        assert google_search_tool in business_overview_agent.tools
+
+    def test_agent_has_one_tool(self):
+        assert len(business_overview_agent.tools) == 1
 
 
 # ============================================================================
@@ -108,6 +135,7 @@ class TestWithAllDiscoveryDataHelper:
             "competitorData": json.dumps([{"name": "Rival"}]),
             "newsData": json.dumps([{"title": "Local news"}]),
             "socialProfileMetrics": json.dumps({"summary": {"totalFollowers": 1000}}),
+            "aiOverview": json.dumps({"summary": "A classic NJ diner."}),
         })
         result = builder(ctx)
 
@@ -121,6 +149,7 @@ class TestWithAllDiscoveryDataHelper:
         assert "Rival" in result
         assert "Local news" in result
         assert "totalFollowers" in result
+        assert "classic NJ diner" in result
 
     def test_handles_empty_state(self):
         base = "You are a reviewer."

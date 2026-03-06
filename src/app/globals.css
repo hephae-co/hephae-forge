@@ -88,6 +88,11 @@ body {
 .stagger-7 { animation-delay: 0.42s; }
 .stagger-8 { animation-delay: 0.48s; }
 
+/* ── Scrollbar hide (for mobile horizontal scroll areas) ─────────── */
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* ── Shimmer skeleton ─────────────────────────────────────────────── */
 
 @keyframes shimmer {

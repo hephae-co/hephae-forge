@@ -2,8 +2,8 @@ import pytest
 import json
 from unittest.mock import patch, MagicMock
 
-from config import AgentModels
-from agents.trends_researcher import (
+from backend.config import AgentModels
+from backend.agents.trends_researcher import (
     execute_trends_bigquery,
     trends_query_generator,
     trends_query_executor,
@@ -82,7 +82,7 @@ class TestAgentInitialization:
 # ---------------------------------------------------------------------------
 
 class TestExecuteTrendsBigquery:
-    @patch("agents.trends_researcher.bigquery.Client")
+    @patch("backend.agents.trends_researcher.bigquery.Client")
     def test_successful_query(self, mock_client_cls):
         mock_client = mock_client_cls.return_value
         mock_row1 = {"term": "pizza delivery", "percent_gain": 500, "rank": 1}
@@ -100,7 +100,7 @@ class TestExecuteTrendsBigquery:
         assert parsed[1]["percent_gain"] == 300
         mock_client.query.assert_called_once()
 
-    @patch("agents.trends_researcher.bigquery.Client")
+    @patch("backend.agents.trends_researcher.bigquery.Client")
     def test_empty_results(self, mock_client_cls):
         mock_client = mock_client_cls.return_value
         mock_result = MagicMock()
@@ -110,7 +110,7 @@ class TestExecuteTrendsBigquery:
         result = execute_trends_bigquery("SELECT term FROM trends WHERE 1=0")
         assert result == "Query returned no results."
 
-    @patch("agents.trends_researcher.bigquery.Client")
+    @patch("backend.agents.trends_researcher.bigquery.Client")
     def test_bigquery_error_returns_error_string(self, mock_client_cls):
         mock_client = mock_client_cls.return_value
         mock_client.query.side_effect = Exception("Access denied: bigquery-public-data")
@@ -119,7 +119,7 @@ class TestExecuteTrendsBigquery:
         assert "Error executing BigQuery query" in result
         assert "Access denied" in result
 
-    @patch("agents.trends_researcher.bigquery.Client")
+    @patch("backend.agents.trends_researcher.bigquery.Client")
     def test_cleans_sql_before_execution(self, mock_client_cls):
         mock_client = mock_client_cls.return_value
         mock_result = MagicMock()
@@ -132,7 +132,7 @@ class TestExecuteTrendsBigquery:
         assert "```" not in called_sql
         assert "SELECT 1" in called_sql
 
-    @patch("agents.trends_researcher.bigquery.Client")
+    @patch("backend.agents.trends_researcher.bigquery.Client")
     def test_handles_datetime_serialization(self, mock_client_cls):
         from datetime import date
 

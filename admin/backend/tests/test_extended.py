@@ -1,14 +1,14 @@
 import pytest
 import json
 from unittest.mock import patch, MagicMock, AsyncMock
-from agents.outreach import draft_and_send_outreach, CommunicatorInput
-from services.test_runner import test_runner
-from agents.evaluators import seo_evaluator_agent
+from backend.agents.outreach import draft_and_send_outreach, CommunicatorInput
+from backend.services.test_runner import test_runner
+from backend.agents.evaluators import seo_evaluator_agent
 
 @pytest.mark.asyncio
-@patch("agents.outreach.firestore_service.get_business_by_id")
+@patch("backend.agents.outreach.firestore_service.get_business_by_id")
 @patch("google.adk.Runner.run_async")
-@patch("agents.outreach.send_email", new_callable=AsyncMock)
+@patch("backend.agents.outreach.send_email", new_callable=AsyncMock)
 async def test_draft_and_send_outreach_success(mock_send_email, mock_runner_run, mock_get_biz):
     # Mock business data
     mock_get_biz.return_value = {
@@ -46,7 +46,7 @@ async def test_draft_and_send_outreach_success(mock_send_email, mock_runner_run,
 
 @pytest.mark.asyncio
 @patch("httpx.AsyncClient.post")
-@patch("services.test_runner.HephaeAdminRunner.evaluate_with_agent", new_callable=AsyncMock)
+@patch("backend.services.test_runner.HephaeAdminRunner.evaluate_with_agent", new_callable=AsyncMock)
 async def test_run_all_tests_success(mock_evaluate, mock_post):
     # Mock API response
     mock_resp = MagicMock()

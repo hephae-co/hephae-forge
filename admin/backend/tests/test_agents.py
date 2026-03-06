@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
-from agents.discovery import scan_zipcode, BusinessItem
-from agents.analyst import run_deep_dive
+from backend.agents.discovery import scan_zipcode, BusinessItem
+from backend.agents.analyst import run_deep_dive
 
 @pytest.mark.asyncio
-@patch("agents.discovery.firestore_service.get_businesses_in_zipcode")
+@patch("backend.agents.discovery.firestore_service.get_businesses_in_zipcode")
 async def test_scan_zipcode_cached(mock_get_cached):
     mock_get_cached.return_value = [{"name": "Cached Biz", "address": "123 St", "docId": "cached-biz"}]
 
@@ -15,7 +15,7 @@ async def test_scan_zipcode_cached(mock_get_cached):
     mock_get_cached.assert_called_with("10001")
 
 @pytest.mark.asyncio
-@patch("agents.discovery.firestore_service")
+@patch("backend.agents.discovery.firestore_service")
 async def test_scan_zipcode_cached_enriched(mock_fs):
     """Cache hit with enriched data returns full BusinessItem fields."""
     mock_fs.get_businesses_in_zipcode.return_value = [
@@ -39,7 +39,7 @@ async def test_scan_zipcode_cached_enriched(mock_fs):
 
 @pytest.mark.asyncio
 @patch("httpx.AsyncClient.post")
-@patch("agents.analyst.firestore_service.update_latest_outputs")
+@patch("backend.agents.analyst.firestore_service.update_latest_outputs")
 async def test_run_deep_dive_success(mock_update, mock_post):
     # Mock responses for 3 API calls
     mock_resp = MagicMock()

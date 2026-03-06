@@ -1,8 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock, AsyncMock
-from main import app
-from config import settings
+from backend.main import app
+from backend.config import settings
 
 client = TestClient(app)
 
@@ -10,8 +10,8 @@ client = TestClient(app)
 def mock_auth_header():
     return {"Authorization": f"Bearer {settings.CRON_SECRET}"}
 
-@patch("main.scan_zipcode", new_callable=AsyncMock)
-@patch("main.run_deep_dive", new_callable=AsyncMock)
+@patch("backend.main.scan_zipcode", new_callable=AsyncMock)
+@patch("backend.main.run_deep_dive", new_callable=AsyncMock)
 def test_cron_run_analysis_success(mock_deep_dive, mock_scan, mock_auth_header):
     # Mock data
     mock_biz = MagicMock()
@@ -32,7 +32,7 @@ def test_cron_run_analysis_unauthorized():
     response = client.get("/api/cron/run-analysis?zip=10001", headers={"Authorization": "Bearer wrong"})
     assert response.status_code == 401
 
-@patch("main.test_runner.run_all_tests", new_callable=AsyncMock)
+@patch("backend.main.test_runner.run_all_tests", new_callable=AsyncMock)
 def test_run_tests_success(mock_run_all):
     mock_run_all.return_value = {"runId": "run_123", "totalTests": 10}
     response = client.post("/api/run-tests")
@@ -49,7 +49,7 @@ def test_get_test_runs_empty():
 # Zipcode Research API endpoints
 # ---------------------------------------------------------------------------
 
-@patch("main.run_zipcode_research", new_callable=AsyncMock)
+@patch("backend.main.run_zipcode_research", new_callable=AsyncMock)
 def test_post_zipcode_research_success(mock_run):
     mock_report = {
         "summary": "Test zip 07110",
@@ -69,7 +69,7 @@ def test_post_zipcode_research_success(mock_run):
     mock_run.assert_called_once_with("07110")
 
 
-@patch("main.run_zipcode_research", new_callable=AsyncMock)
+@patch("backend.main.run_zipcode_research", new_callable=AsyncMock)
 def test_post_zipcode_research_pipeline_error(mock_run):
     mock_run.side_effect = Exception("Pipeline timeout")
 
@@ -89,7 +89,7 @@ def test_post_zipcode_research_too_short():
     assert response.status_code == 422
 
 
-@patch("main.firestore_service")
+@patch("backend.main.firestore_service")
 def test_get_zipcode_research_cached(mock_fs):
     cached = {
         "summary": "Cached for 20002",
@@ -109,7 +109,7 @@ def test_get_zipcode_research_cached(mock_fs):
     mock_fs.get_zipcode_research.assert_called_once_with("20002")
 
 
-@patch("main.firestore_service")
+@patch("backend.main.firestore_service")
 def test_get_zipcode_research_not_cached(mock_fs):
     mock_fs.get_zipcode_research.return_value = None
 

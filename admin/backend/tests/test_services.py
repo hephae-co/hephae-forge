@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from services.firestore_service import FirestoreService
-from services.bigquery_service import BigQueryService
+from backend.services.firestore_service import FirestoreService
+from backend.services.bigquery_service import BigQueryService
 
 @patch("google.cloud.firestore.Client")
 def test_firestore_get_businesses(mock_client_class):

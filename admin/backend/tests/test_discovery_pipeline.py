@@ -6,8 +6,8 @@ from unittest.mock import patch, MagicMock, AsyncMock
 
 from google.adk.tools import google_search
 
-from config import AgentModels
-from agents.discovery import (
+from backend.config import AgentModels
+from backend.agents.discovery import (
     BusinessItem,
     ConfidenceScorer,
     CategoryProgressChecker,
@@ -356,7 +356,7 @@ class TestAgentSetup:
         ]
 
     def test_loop_agent_sub_agents(self):
-        from agents.discovery import category_discovery_loop
+        from backend.agents.discovery import category_discovery_loop
         names = [a.name for a in category_discovery_loop.sub_agents]
         assert names == [
             "category_scanner",
@@ -371,7 +371,7 @@ class TestAgentSetup:
 
 class TestScanZipcode:
     @pytest.mark.asyncio
-    @patch("agents.discovery.firestore_service")
+    @patch("backend.agents.discovery.firestore_service")
     async def test_cache_hit_returns_enriched_data(self, mock_fs):
         mock_fs.get_businesses_in_zipcode.return_value = [
             {
@@ -398,7 +398,7 @@ class TestScanZipcode:
         mock_fs.get_businesses_in_zipcode.assert_called_with("07110")
 
     @pytest.mark.asyncio
-    @patch("agents.discovery.firestore_service")
+    @patch("backend.agents.discovery.firestore_service")
     async def test_cache_hit_backward_compat(self, mock_fs):
         """Old cache entries with only name/address/docId still work."""
         mock_fs.get_businesses_in_zipcode.return_value = [

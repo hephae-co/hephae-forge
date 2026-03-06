@@ -17,7 +17,7 @@ class TestIsRetriable:
         exc.__class__.__name__ = "APIError"
         exc.code = 429
         # Patch the isinstance check
-        with patch("backend.lib.model_fallback.genai_errors") as mock_errors:
+        with patch("hephae_common.model_fallback.genai_errors") as mock_errors:
             mock_errors.APIError = type(exc)
             exc.__class__ = mock_errors.APIError
             assert _is_retriable(exc) is True
@@ -74,7 +74,7 @@ class TestFallbackOnError:
         mock_response.candidates[0].content = mock_content
         mock_response.candidates[0].grounding_metadata = None
 
-        with patch("backend.lib.model_fallback.genai") as mock_genai:
+        with patch("hephae_common.model_fallback.genai") as mock_genai:
             mock_client = MagicMock()
             mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
             mock_genai.Client.return_value = mock_client

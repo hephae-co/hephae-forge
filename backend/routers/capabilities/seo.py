@@ -12,8 +12,10 @@ from google.adk.agents import LlmAgent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+
+from backend.lib.auth import verify_request
 
 from backend.agents.seo_auditor import seo_auditor_agent
 from backend.agents.seo_auditor.prompt import SEO_AUDITOR_INSTRUCTION
@@ -128,7 +130,7 @@ async def _run_seo_agent(agent, identity: dict) -> dict:
     )
 
 
-@router.post("/capabilities/seo", response_model=SeoReportModel)
+@router.post("/capabilities/seo", response_model=SeoReportModel, dependencies=[Depends(verify_request)])
 async def capabilities_seo(request: Request):
     try:
         body = await request.json()

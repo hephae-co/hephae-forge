@@ -11,8 +11,10 @@ import time
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+
+from backend.lib.auth import verify_api_key
 
 from backend.agents.seo_auditor import seo_auditor_agent
 from backend.agents.marketing_swarm import generate_and_draft_marketing_content
@@ -36,7 +38,7 @@ def _is_final_response(event) -> bool:
     return True
 
 
-@router.post("/v1/seo", response_model=V1Response[SeoReport])
+@router.post("/v1/seo", response_model=V1Response[SeoReport], dependencies=[Depends(verify_api_key)])
 async def v1_seo(request: Request):
     try:
         body = await request.json()

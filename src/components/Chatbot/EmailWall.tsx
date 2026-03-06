@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, Calendar, ExternalLink } from 'lucide-react';
 
 interface EmailWallProps {
     isOpen: boolean;
@@ -99,6 +99,20 @@ export function EmailWall({ isOpen, onSubmit }: EmailWallProps) {
                             <p className="text-slate-500 text-xs mt-6">
                                 We'll never share your email with third parties.
                             </p>
+
+                            <div className="mt-6 pt-5 border-t border-white/10">
+                                <p className="text-slate-400 text-xs mb-3">Want to talk to a human?</p>
+                                <a
+                                    href="https://hephae.co/schedule"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                    <Calendar className="w-4 h-4" />
+                                    Schedule an intro call
+                                    <ExternalLink className="w-3 h-3" />
+                                </a>
+                            </div>
                         </div>
                     </motion.div>
                 </motion.div>

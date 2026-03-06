@@ -11,8 +11,10 @@ import time
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+
+from backend.lib.auth import verify_request
 
 from backend.agents.margin_analyzer import (
     vision_intake_agent,
@@ -64,7 +66,7 @@ async def _download_screenshot_as_base64(url: str) -> str | None:
     return None
 
 
-@router.post("/analyze", response_model=SurgicalReportModel)
+@router.post("/analyze", response_model=SurgicalReportModel, dependencies=[Depends(verify_request)])
 async def analyze(request: Request):
     try:
         body = await request.json()

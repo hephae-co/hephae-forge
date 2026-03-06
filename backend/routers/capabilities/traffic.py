@@ -5,8 +5,10 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+
+from backend.lib.auth import verify_request
 
 from backend.agents.traffic_forecaster import ForecasterAgent
 from backend.agents.marketing_swarm import generate_and_draft_marketing_content
@@ -22,7 +24,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/capabilities/traffic", response_model=ForecastResponseModel)
+@router.post("/capabilities/traffic", response_model=ForecastResponseModel, dependencies=[Depends(verify_request)])
 async def capabilities_traffic(request: Request):
     try:
         body = await request.json()

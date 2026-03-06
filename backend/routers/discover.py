@@ -14,8 +14,10 @@ from google import genai
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+
+from backend.lib.auth import verify_request
 
 from backend.agents.discovery import discovery_pipeline
 from backend.config import AgentModels, AgentVersions
@@ -72,7 +74,7 @@ async def _capture_menu(menu_url: str, slug: str) -> tuple[str, str]:
     return screenshot_url, html_url
 
 
-@router.post("/discover", response_model=EnrichedProfileModel)
+@router.post("/discover", response_model=EnrichedProfileModel, dependencies=[Depends(verify_request)])
 async def discover(request: Request):
     try:
         body = await request.json()

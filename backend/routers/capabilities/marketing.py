@@ -14,8 +14,10 @@ import time
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+
+from backend.lib.auth import verify_request
 
 from backend.agents.social_media_auditor import (
     social_researcher_agent,
@@ -34,7 +36,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/capabilities/marketing", response_model=SocialAuditReportModel)
+@router.post("/capabilities/marketing", response_model=SocialAuditReportModel, dependencies=[Depends(verify_request)])
 async def capabilities_marketing(request: Request):
     try:
         body = await request.json()

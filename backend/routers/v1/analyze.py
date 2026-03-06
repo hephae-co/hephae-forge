@@ -12,8 +12,10 @@ from datetime import datetime, timezone
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+
+from backend.lib.auth import verify_api_key
 
 from backend.agents.margin_analyzer import (
     vision_intake_agent,
@@ -35,7 +37,7 @@ def _clean(text: str) -> str:
     return re.sub(r"```json\s*|\s*```", "", text).strip()
 
 
-@router.post("/v1/analyze", response_model=V1Response[SurgicalReport])
+@router.post("/v1/analyze", response_model=V1Response[SurgicalReport], dependencies=[Depends(verify_api_key)])
 async def v1_analyze(request: Request):
     try:
         body = await request.json()

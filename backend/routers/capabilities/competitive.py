@@ -11,8 +11,10 @@ import time
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+
+from backend.lib.auth import verify_request
 
 from backend.agents.competitive_analysis import (
     competitor_profiler_agent,
@@ -32,7 +34,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/capabilities/competitive", response_model=CompetitiveReportModel)
+@router.post("/capabilities/competitive", response_model=CompetitiveReportModel, dependencies=[Depends(verify_request)])
 async def capabilities_competitive(request: Request):
     try:
         body = await request.json()

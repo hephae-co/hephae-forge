@@ -1,9 +1,11 @@
 import { NextRequest } from 'next/server';
+import { createHmac } from 'crypto';
 
 export const maxDuration = 180; // 3 minutes — discovery + analyze pipelines are long-running
 export const dynamic = 'force-dynamic';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const FORGE_API_SECRET = process.env.FORGE_API_SECRET || '';
 
 /**
  * Fetch an identity token from the GCE metadata server.
@@ -36,6 +38,16 @@ async function proxyRequest(
   const token = await getIdentityToken(BACKEND_URL);
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  // HMAC request signing for backend auth
+  if (FORGE_API_SECRET) {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const signature = createHmac('sha256', FORGE_API_SECRET)
+      .update(timestamp)
+      .digest('hex');
+    headers.set('x-forge-timestamp', timestamp);
+    headers.set('x-forge-signature', signature);
   }
 
   const init: RequestInit & { duplex?: string } = {

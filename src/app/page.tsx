@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2, Zap, Shield, Eye, MessageCircle, Map, Sparkles } from 'lucide-react';
+import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2, Zap, Shield, Eye, MessageCircle, Map, Sparkles, Calendar } from 'lucide-react';
 import { SurgicalReport } from '@/types/api';
 import { SuggestionChip } from '@/components/Chatbot/types';
 import { computeSuggestionChips, ACTION_CHIP_MAP } from '@/lib/suggestionChips';
@@ -131,27 +131,46 @@ export default function Home() {
   // Discovery messages now handled inside LoadingOverlay
 
   const handleEmailSubmit = async (email: string) => {
-    if (!searchDocId) return;
-    const res = await fetch('/api/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: searchDocId, email })
-    });
-    if (res.ok) {
-      setUserEmail(email);
-      setShowEmailWall(false);
-      setHasProvidedEmail(true);
-      localStorage.setItem('hephae_has_provided_email', 'true');
-      localStorage.setItem('hephae_user_email', email);
+    let docId = searchDocId;
 
-      // Resume the capability execution if one was pending
-      if (pendingCapability) {
-        const capToRun = pendingCapability;
-        setPendingCapability(null);
-        executeCapability(capToRun);
-      }
-    } else {
-      throw new Error("Failed to save email");
+    // If no tracking doc exists yet, create one on the fly
+    if (!docId) {
+      try {
+        const trackRes = await fetch('/api/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: locatedBusiness?.name || 'unknown' })
+        });
+        if (trackRes.ok) {
+          const trackData = await trackRes.json();
+          docId = trackData.id;
+          setSearchDocId(docId);
+        }
+      } catch (e) { /* proceed without tracking */ }
+    }
+
+    // Save email to tracking doc if available
+    if (docId) {
+      const res = await fetch('/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: docId, email })
+      });
+      if (!res.ok) throw new Error("Failed to save email");
+    }
+
+    // Unlock regardless of tracking success
+    setUserEmail(email);
+    setShowEmailWall(false);
+    setHasProvidedEmail(true);
+    localStorage.setItem('hephae_has_provided_email', 'true');
+    localStorage.setItem('hephae_user_email', email);
+
+    // Resume the capability execution if one was pending
+    if (pendingCapability) {
+      const capToRun = pendingCapability;
+      setPendingCapability(null);
+      executeCapability(capToRun);
     }
   };
 
@@ -282,6 +301,11 @@ export default function Home() {
         setLocatedBusiness(enrichedProfile); // Update to enriched profile
         // Add a discovery-complete message to chat
         setMessages(prev => [...prev, msg('model', `Discovery complete for **${enrichedProfile.name || identity.name}**! I've mapped out their digital presence, brand identity, social profiles, and competitive landscape. Pick any capability below to dive deeper.`)]);
+
+        // Show email wall after discovery completes (if not already provided)
+        if (!hasProvidedEmail) {
+          setShowEmailWall(true);
+        }
       } else {
         console.error("Discovery returned", res.status);
       }
@@ -419,7 +443,7 @@ export default function Home() {
           const totalLeakage = data.menu_items?.reduce((s: number, i: { price_leakage: number }) => s + i.price_leakage, 0) || 0;
           sendReportEmailAsync('margin', data.reportUrl, locatedBusiness!.name, `$${totalLeakage.toFixed(2)} total profit leakage detected across ${data.menu_items?.length || 0} menu items. Overall score: ${data.overall_score}/100.`);
         }
-        setMessages(prev => [...prev, msg('model', "Surgery complete. The surgical dashboard has been rendered.")]);
+        setMessages(prev => [...prev, msg('model', "Surgery complete. The surgical dashboard has been rendered.\n\n[Schedule a call](https://hephae.co/schedule) to discuss your optimization strategy with our team.")]);
 
       } catch (e: any) {
         setMessages(prev => [...prev, msg('model', `Failed to execute Margin Surgery: ${e.message}`)]);
@@ -459,7 +483,7 @@ export default function Home() {
           setSelectedSlot(firstDay.slots.find((s: any) => s.score > 70) || firstDay.slots[0]);
         }
 
-        setMessages(prev => [...prev, msg('model', `Forecast complete!\n\n**Executive Summary**:\n${data.summary}`)]);
+        setMessages(prev => [...prev, msg('model', `Forecast complete!\n\n**Executive Summary**:\n${data.summary}\n\n[Schedule a call](https://hephae.co/schedule) to plan your staffing strategy with our team.`)]);
 
       } catch (e: any) {
         setMessages(prev => [...prev, msg('model', `Failed to execute Foot Traffic Forecast: ${e.message}`)]);
@@ -503,7 +527,7 @@ export default function Home() {
             setSeoReportUrl(data.reportUrl);
             sendReportEmailAsync('seo', data.reportUrl, locatedBusiness!.name, `SEO score: ${data.overallScore ?? 'N/A'}/100. ${sectionCount} categories analyzed. ${data.summary || ''}`);
           }
-          setMessages(prev => [...prev, msg('model', `SEO Audit complete! Verified ${sectionCount} critical infrastructure categories.`)]);
+          setMessages(prev => [...prev, msg('model', `SEO Audit complete! Verified ${sectionCount} critical infrastructure categories.\n\n[Schedule a call](https://hephae.co/schedule) to improve your search rankings with our team.`)]);
         }
 
       } catch (e: any) {
@@ -539,7 +563,7 @@ export default function Home() {
         }
 
         const platformCount = data.platforms?.length || 0;
-        setMessages(prev => [...prev, msg('model', `**Social Media Audit** for **${locatedBusiness.name}** is complete! Score: **${data.overall_score ?? 'N/A'}/100** across ${platformCount} platform${platformCount !== 1 ? 's' : ''}.${data.summary ? `\n\n${data.summary}` : ''}`)]);
+        setMessages(prev => [...prev, msg('model', `**Social Media Audit** for **${locatedBusiness.name}** is complete! Score: **${data.overall_score ?? 'N/A'}/100** across ${platformCount} platform${platformCount !== 1 ? 's' : ''}.${data.summary ? `\n\n${data.summary}` : ''}\n\n[Schedule a call](https://hephae.co/schedule) to build your social strategy with our team.`)]);
 
       } catch (e: any) {
         setMessages(prev => [...prev, msg('model', `Failed to execute Social Media Audit: ${e.message}`)]);
@@ -572,7 +596,7 @@ export default function Home() {
           setCompetitiveReportUrl(data.reportUrl);
           sendReportEmailAsync('competitive', data.reportUrl, locatedBusiness!.name, data.market_summary || 'Your competitive strategy report is ready.');
         }
-        setMessages(prev => [...prev, msg('model', `Competitive Strategy complete! ${data.market_summary}`)]);
+        setMessages(prev => [...prev, msg('model', `Competitive Strategy complete! ${data.market_summary}\n\n[Schedule a call](https://hephae.co/schedule) to discuss your competitive positioning with our team.`)]);
 
       } catch (e: any) {
         setMessages(prev => [...prev, msg('model', `Failed to execute Competitive Analysis: ${e.message}`)]);
@@ -1338,6 +1362,17 @@ export default function Home() {
                   <Share2 className="w-3.5 h-3.5 text-pink-500 group-hover:scale-110 transition-transform" />
                   Social Media Audit
                 </button>
+
+                <div className="w-px h-4 bg-gray-200 mx-1 flex-shrink-0"></div>
+                <a
+                  href="https://hephae.co/schedule"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all group flex-shrink-0 whitespace-nowrap border border-blue-200"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
+                  Schedule Call
+                </a>
 
                 {activeReportUrl && (
                   <>

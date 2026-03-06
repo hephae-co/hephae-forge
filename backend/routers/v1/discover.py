@@ -9,8 +9,10 @@ import time
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+
+from backend.lib.auth import verify_api_key
 
 from backend.agents.discovery import LocatorAgent, discovery_pipeline
 from backend.lib.firebase import db
@@ -22,7 +24,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/v1/discover", response_model=V1Response[EnrichedProfile])
+@router.post("/v1/discover", response_model=V1Response[EnrichedProfile], dependencies=[Depends(verify_api_key)])
 async def v1_discover(request: Request):
     try:
         body = await request.json()

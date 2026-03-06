@@ -74,7 +74,7 @@ if ! $SKIP_CHECKS; then
     PREFLIGHT_FAIL=$((PREFLIGHT_FAIL + 1))
   fi
 
-  for secret in "GEMINI_API_KEY" "BLS_API_KEY" "FRED_API_KEY" "GOOGLE_MAPS_API_KEY"; do
+  for secret in "GEMINI_API_KEY" "BLS_API_KEY" "FRED_API_KEY" "GOOGLE_MAPS_API_KEY" "FORGE_API_SECRET" "FORGE_V1_API_KEY"; do
     if gcloud secrets describe "$secret" --project="$PROJECT_ID" &>/dev/null; then
       echo "  ✓ Secret: ${secret}"
     else
@@ -194,7 +194,7 @@ gcloud run deploy "$API_SERVICE" \
   --max-instances "$MAX_INSTANCES" \
   --service-account "$SERVICE_ACCOUNT" \
   --set-env-vars "PYTHONUNBUFFERED=1,CRAWL4AI_URL=${CRAWL4AI_URL}" \
-  --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,BLS_API_KEY=BLS_API_KEY:latest,FRED_API_KEY=FRED_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest" \
+  --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,BLS_API_KEY=BLS_API_KEY:latest,FRED_API_KEY=FRED_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest,FORGE_API_SECRET=FORGE_API_SECRET:latest,FORGE_V1_API_KEY=FORGE_V1_API_KEY:latest" \
   --no-allow-unauthenticated
 
 # Get the API service URL for the frontend to use
@@ -227,6 +227,7 @@ gcloud run deploy "$WEB_SERVICE" \
   --max-instances "$MAX_INSTANCES" \
   --service-account "$SERVICE_ACCOUNT" \
   --set-env-vars "NODE_ENV=production,BACKEND_URL=${API_URL}" \
+  --set-secrets "FORGE_API_SECRET=FORGE_API_SECRET:latest" \
   --allow-unauthenticated
 
 WEB_URL=$(gcloud run services describe "$WEB_SERVICE" \

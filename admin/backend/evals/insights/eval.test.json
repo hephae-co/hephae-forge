@@ -1,0 +1,81 @@
+{
+  "eval_set_id": "insights_eval",
+  "name": "Insights Agent Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "restaurant_full_data",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "BUSINESS: {\"name\": \"Mario's Pizzeria\", \"address\": \"123 Main St, Nutley, NJ 07110\"}\n\nCAPABILITY OUTPUTS:\n{\"seo\": {\"summary\": \"Site has poor mobile optimization and missing meta descriptions. Domain authority is 12/100.\", \"score\": 35}, \"traffic\": {\"summary\": \"Peak hours 11am-2pm and 5pm-9pm. Weekday avg 85 visitors, weekend avg 140. Strong Friday-Saturday traffic.\", \"peakHours\": [\"11:00-14:00\", \"17:00-21:00\"]}, \"competitive\": {\"summary\": \"3 pizza competitors within 0.5 miles. Average pizza price $18-22. Mario's prices slightly below average at $16-19.\", \"competitors\": 3}, \"marginSurgeon\": {\"summary\": \"Food cost at 38% vs industry 30-33%. Cheese and flour main cost drivers. Suggested menu repricing could save 5-8% on food costs.\", \"foodCostPct\": 38}}\n\nFOOD_PRICING_CONTEXT:\n{\"bls_cpi\": {\"dairy\": {\"yoy_change\": 3.2, \"trend\": \"rising\"}}, \"usda\": {\"wheat_flour\": {\"price_per_lb\": 0.28, \"trend\": \"stable\"}}}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"summary\": \"Mario's Pizzeria faces significant digital and operational challenges. The website needs urgent SEO improvements, while food costs at 38% are well above the industry benchmark of 30-33%. However, strong weekend foot traffic and competitive pricing create a foundation for growth.\", \"keyFindings\": [\"Food cost ratio of 38% is 5-8 points above industry standard, driven by cheese and flour expenses\", \"Website SEO score of 35/100 with poor mobile optimization limits online discoverability\", \"Strong weekend traffic (140 daily visitors) indicates solid local demand\", \"Pricing below competitors ($16-19 vs $18-22) while having higher costs is squeezing margins\", \"Dairy costs up 3.2% YoY per BLS CPI, putting additional pressure on cheese-heavy menu\"], \"recommendations\": [\"Prioritize mobile website redesign and add meta descriptions to improve SEO from 35 to 60+ within 3 months\", \"Implement menu engineering: raise prices on signature items by $1-2 to align with competitor range while costs are rising\", \"Negotiate bulk flour purchasing — wheat flour stable at $0.28/lb per USDA, lock in pricing\", \"Explore cheese alternatives or portion optimization given dairy up 3.2% YoY\", \"Leverage strong Friday-Saturday traffic for premium specials at higher margin\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "insights",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "salon_standard_data",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "BUSINESS: {\"name\": \"Glow Salon & Spa\", \"address\": \"456 Oak Ave, Montclair, NJ 07042\"}\n\nCAPABILITY OUTPUTS:\n{\"seo\": {\"summary\": \"Good local SEO with Google Business Profile optimized. Site loads slowly at 4.2 seconds.\", \"score\": 62}, \"traffic\": {\"summary\": \"Steady weekday traffic 40-50 visitors, Saturday peak at 75. Appointment-based flow reduces walk-in variability.\", \"peakHours\": [\"10:00-18:00\"]}, \"competitive\": {\"summary\": \"5 salons within 1 mile. Glow's pricing mid-range. Competitors weak on spa services — opportunity for differentiation.\", \"competitors\": 5}}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"summary\": \"Glow Salon & Spa has solid local visibility with a 62/100 SEO score and optimized Google Business Profile. The main growth opportunity lies in expanding spa services where competitors are weak, combined with fixing site speed to convert more online visitors.\", \"keyFindings\": [\"SEO foundation is solid at 62/100 but site speed of 4.2s is losing potential bookings\", \"Saturday peak of 75 visitors shows strong demand — potential to extend hours or add Sunday slots\", \"5 competitors nearby but none strong in spa services — clear differentiation opportunity\", \"Appointment-based model provides predictable revenue but limits walk-in capture\"], \"recommendations\": [\"Fix site speed — target under 2 seconds to reduce bounce rate and improve conversions\", \"Launch spa service packages to differentiate from the 5 nearby competitors\", \"Add online booking prominently on homepage to convert the good SEO traffic\", \"Consider extending Saturday hours or adding Sunday availability to capture unmet demand\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "insights",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "minimal_data_input",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "BUSINESS: {\"name\": \"Quick Stop Mart\", \"address\": \"789 Elm St, Newark, NJ 07102\"}\n\nCAPABILITY OUTPUTS:\n{\"seo\": {\"summary\": \"No website found. Google Business Profile exists but incomplete.\", \"score\": 10}}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"summary\": \"Quick Stop Mart has almost no digital presence with an SEO score of just 10/100 and no website. The incomplete Google Business Profile means the business is effectively invisible to online searchers.\", \"keyFindings\": [\"No website exists — the business is missing all online traffic and discoverability\", \"Google Business Profile is incomplete, limiting appearance in local search results\", \"Limited data available for traffic, competitive, and margin analysis\"], \"recommendations\": [\"Create a basic website with business hours, location, and contact info as immediate priority\", \"Complete Google Business Profile with photos, hours, and categories to appear in local search\", \"Request full capability analysis once digital presence is established\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "insights",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

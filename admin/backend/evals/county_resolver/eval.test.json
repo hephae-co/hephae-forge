@@ -1,0 +1,81 @@
+{
+  "eval_set_id": "county_resolver_eval",
+  "name": "County Resolver Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "essex_county_nj",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Resolve the zip codes for \"Essex County, NJ\"."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"zipCodes\": [\"07102\", \"07104\", \"07110\", \"07111\", \"07112\"], \"countyName\": \"Essex County\", \"state\": \"NJ\"}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "los_angeles_county_ca",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Resolve the zip codes for \"Los Angeles County, CA\"."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"zipCodes\": [\"90001\", \"90011\", \"90044\", \"90003\", \"90026\", \"90004\", \"90006\", \"90005\", \"90019\", \"90028\"], \"countyName\": \"Los Angeles County\", \"state\": \"CA\"}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "invalid_county_edge",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Resolve the zip codes for \"Nonexistent County, ZZ\"."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"zipCodes\": [], \"countyName\": \"Nonexistent County\", \"state\": \"ZZ\", \"error\": \"Could not find a valid US county matching 'Nonexistent County, ZZ'.\"}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

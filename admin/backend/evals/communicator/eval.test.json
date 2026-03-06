@@ -1,0 +1,56 @@
+{
+  "eval_set_id": "communicator_eval",
+  "name": "Communicator Agent Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "restaurant_outreach",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "BUSINESS: {\"name\": \"Mario's Pizzeria\", \"email\": \"mario@mariospizzeria.com\", \"address\": \"123 Main St, Nutley, NJ 07110\"}\n\nCHANNEL: email\n\nINSIGHTS:\n{\"summary\": \"Mario's Pizzeria has strong local demand with 140 weekend visitors but faces margin pressure from 38% food costs and poor online visibility.\", \"keyFindings\": [\"Food cost at 38% is above industry benchmark\", \"Weekend traffic is strong at 140 daily visitors\", \"SEO score of 35 needs improvement\"], \"recommendations\": [\"Implement menu repricing to reduce food costs\", \"Improve website SEO and mobile optimization\", \"Leverage weekend traffic for premium specials\"]}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "Dear Mario's Pizzeria Team,\n\nWe recently completed a comprehensive analysis of your business and wanted to share some exciting findings with you.\n\nYour pizzeria shows strong local demand — with an estimated 140 visitors on weekends, it's clear the Nutley community loves what you're serving. However, our analysis identified two key areas where strategic improvements could significantly boost your bottom line:\n\n1. **Menu Optimization Opportunity**: Your current food costs are running above the industry average. With targeted menu repricing and supplier negotiations, there's potential to improve margins without affecting customer satisfaction.\n\n2. **Digital Visibility**: Your current online presence has room for growth. Improving your website's mobile experience and search optimization could help capture even more of the local demand that's already there.\n\nWe'd love to walk you through the full analysis and discuss specific action items tailored to Mario's Pizzeria. Would you be available for a brief 15-minute call this week?\n\nBest regards,\nThe Hephae Team"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "communicator",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "salon_outreach",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "BUSINESS: {\"name\": \"Glow Salon & Spa\", \"email\": \"info@glowsalon.com\", \"address\": \"456 Oak Ave, Montclair, NJ 07042\"}\n\nCHANNEL: email\n\nINSIGHTS:\n{\"summary\": \"Glow Salon has solid local SEO but competitors are weak on spa services, creating a differentiation opportunity.\", \"keyFindings\": [\"Site speed at 4.2s is hurting conversions\", \"Competitors weak on spa offerings\", \"Saturday peak of 75 visitors shows strong demand\"], \"recommendations\": [\"Launch dedicated spa service packages\", \"Fix website speed to under 2 seconds\", \"Add online booking to homepage\"]}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "Dear Glow Salon & Spa Team,\n\nWe've just completed a detailed market analysis for your business and uncovered some valuable growth opportunities we'd love to share.\n\nYour salon already has a solid local presence, and Saturdays show strong demand with peak visitor traffic. Our analysis revealed two standout opportunities:\n\n1. **Spa Service Differentiation**: Among the nearby competitors, none are strong in spa offerings. Launching dedicated spa packages could position Glow as the go-to destination for the full salon-and-spa experience in Montclair.\n\n2. **Website Performance**: Your site's current load time is impacting potential bookings. A speed optimization combined with a prominent online booking feature could convert significantly more of your existing web visitors.\n\nWe've prepared a detailed action plan specific to your market. Would you be open to a quick 15-minute conversation to go over the findings?\n\nBest regards,\nThe Hephae Team"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "communicator",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

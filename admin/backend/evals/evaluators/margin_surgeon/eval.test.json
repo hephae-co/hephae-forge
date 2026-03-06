@@ -1,0 +1,56 @@
+{
+  "eval_set_id": "margin_surgeon_evaluator_eval",
+  "name": "Margin Surgeon Evaluator Agent Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "good_margin_output",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "BUSINESS_IDENTITY: {\"name\": \"Mario's Pizzeria\", \"address\": \"123 Main St, Nutley, NJ 07110\", \"category\": \"restaurant\"}\n\nACTUAL_OUTPUT:\n{\"overallScore\": 65, \"foodCostPct\": 38, \"industryBenchmark\": 32, \"menuItems\": [{\"name\": \"Margherita Pizza\", \"price\": 16, \"foodCost\": 5.50, \"margin\": 65.6}, {\"name\": \"Pepperoni Pizza\", \"price\": 18, \"foodCost\": 6.20, \"margin\": 65.5}, {\"name\": \"Caesar Salad\", \"price\": 10, \"foodCost\": 2.80, \"margin\": 72.0}, {\"name\": \"Garlic Knots\", \"price\": 6, \"foodCost\": 1.20, \"margin\": 80.0}], \"recommendations\": [\"Increase garlic knots pricing by $1 given high demand and low food cost\", \"Negotiate mozzarella supplier for bulk discount to reduce pizza food costs\", \"Add a premium specialty pizza at $24+ to improve average ticket\"], \"costDrivers\": [\"Mozzarella cheese\", \"Pizza dough flour\", \"Imported olive oil\"]}\n\nFOOD_PRICING_CONTEXT:\n{\"bls_cpi\": {\"dairy\": {\"yoy_change\": 3.2, \"trend\": \"rising\"}, \"fats_and_oils\": {\"yoy_change\": 1.8, \"trend\": \"stable\"}}, \"usda\": {\"wheat_flour\": {\"price_per_lb\": 0.28, \"trend\": \"stable\"}, \"mozzarella\": {\"price_per_lb\": 3.45, \"trend\": \"rising\"}}}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"score\": 85, \"isHallucinated\": false, \"issues\": [\"Menu items are appropriate for a pizzeria\", \"Food cost of 38% is plausible though above benchmark\", \"Margins per item are mathematically consistent with listed prices and costs\", \"Recommendations acknowledge cheese as a cost driver which aligns with BLS dairy trend of +3.2% YoY\", \"Cost drivers (mozzarella, flour, olive oil) are realistic for a pizza restaurant\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "hallucinated_margin_output",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "BUSINESS_IDENTITY: {\"name\": \"Tony's Taco Truck\", \"address\": \"200 Broad St, Newark, NJ 07102\", \"category\": \"restaurant\"}\n\nACTUAL_OUTPUT:\n{\"overallScore\": 88, \"foodCostPct\": 15, \"industryBenchmark\": 32, \"menuItems\": [{\"name\": \"Dragon Roll\", \"price\": 22, \"foodCost\": 2.00, \"margin\": 90.9}, {\"name\": \"Sashimi Platter\", \"price\": 35, \"foodCost\": 3.00, \"margin\": 91.4}, {\"name\": \"Miso Soup\", \"price\": 8, \"foodCost\": 0.50, \"margin\": 93.7}], \"recommendations\": [\"Expand sushi menu with premium omakase option at $100+\", \"Reduce staff to minimum wage to cut labor costs\", \"Use frozen fish to reduce food costs further\"], \"costDrivers\": [\"Fresh tuna\", \"Soy sauce\", \"Wasabi\"]}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"score\": 8, \"isHallucinated\": true, \"issues\": [\"Menu items are sushi/Japanese but the business is a taco truck — completely wrong cuisine category\", \"Food cost of 15% is impossibly low, especially for sushi which uses expensive fresh fish\", \"Margins above 90% are unrealistic for any restaurant\", \"Dragon Roll at $2.00 food cost is impossible given fish prices\", \"Recommendation to reduce staff to minimum wage is unethical and not actionable business advice\", \"Cost drivers reference sushi ingredients not taco ingredients\", \"The entire analysis appears to be for a different restaurant type\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

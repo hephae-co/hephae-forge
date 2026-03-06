@@ -1,0 +1,56 @@
+{
+  "eval_set_id": "traffic_evaluator_eval",
+  "name": "Traffic Evaluator Agent Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "good_traffic_output",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "BUSINESS_IDENTITY: {\"name\": \"Mario's Pizzeria\", \"address\": \"123 Main St, Nutley, NJ 07110\", \"category\": \"restaurant\"}\n\nACTUAL_OUTPUT:\n{\"dailyTraffic\": {\"weekday\": 85, \"weekend\": 140}, \"peakHours\": [{\"slot\": \"11:00-14:00\", \"avgVisitors\": 35, \"day\": \"weekday\"}, {\"slot\": \"17:00-21:00\", \"avgVisitors\": 45, \"day\": \"weekday\"}, {\"slot\": \"12:00-21:00\", \"avgVisitors\": 70, \"day\": \"weekend\"}], \"footTrafficTrend\": \"stable\", \"nearbyAnchors\": [\"Nutley Park Mall\", \"Franklin Avenue shops\"], \"seasonalPattern\": \"Higher in summer due to outdoor seating\"}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"score\": 82, \"isHallucinated\": false, \"issues\": [\"Visitor counts are plausible for a local pizzeria\", \"Peak hours align with typical restaurant dining patterns\", \"Nearby anchors should be verified against actual local landmarks\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "hallucinated_traffic_output",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "BUSINESS_IDENTITY: {\"name\": \"Corner Bookstore\", \"address\": \"55 Elm St, Montclair, NJ 07042\", \"category\": \"bookstore\"}\n\nACTUAL_OUTPUT:\n{\"dailyTraffic\": {\"weekday\": 5000, \"weekend\": 12000}, \"peakHours\": [{\"slot\": \"02:00-05:00\", \"avgVisitors\": 2000, \"day\": \"weekday\"}], \"footTrafficTrend\": \"exponential growth\", \"nearbyAnchors\": [\"Times Square\", \"Grand Central Terminal\"], \"seasonalPattern\": \"Constant year-round with no variation\"}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"score\": 10, \"isHallucinated\": true, \"issues\": [\"5000 weekday visitors is impossibly high for a small bookstore\", \"Peak at 2:00-5:00 AM makes no sense for a retail bookstore\", \"Times Square and Grand Central are in Manhattan, not Montclair NJ — geographic mismatch\", \"12000 weekend visitors exceeds most major bookstores\", \"Exponential growth trend claim is unsubstantiated and implausible\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "hephae-optimizer": {
+      "type": "stdio",
+      "command": "/Users/sarthak/Desktop/hephae/hephae-optimizer/.venv/bin/python",
+      "args": ["-m", "hephae_optimizer.server"],
+      "env": {
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+        "GOOGLE_CLOUD_PROJECT": "${GOOGLE_CLOUD_PROJECT}"
+      }
+    }
+  }
+}

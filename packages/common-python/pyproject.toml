@@ -1,0 +1,15 @@
+[project]
+name = "hephae-common"
+version = "0.1.0"
+description = "Shared Python code for hephae-forge monorepo"
+requires-python = ">=3.11"
+dependencies = [
+    "firebase-admin>=6.0",
+    "google-cloud-bigquery>=3.0",
+    "google-cloud-storage>=2.0",
+    "pydantic>=2.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"

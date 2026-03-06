@@ -1,0 +1,60 @@
+{
+  "eval_set_id": "zipcode_scanner_eval",
+  "name": "Zipcode Scanner Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "scan_07110_nutley",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Find real businesses currently operating in zip code 07110. Search for local business directories, Yelp listings, and chamber of commerce for 07110."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"businesses\": [{\"name\": \"Nutley Diner\", \"address\": \"372 Centre St, Nutley, NJ 07110\", \"website\": \"\", \"category\": \"restaurant\"}, {\"name\": \"Ralph's Italian Ices\", \"address\": \"59 Franklin Ave, Nutley, NJ 07110\", \"website\": \"\", \"category\": \"dessert\"}, {\"name\": \"Bagel Chateau\", \"address\": \"184 Franklin Ave, Nutley, NJ 07110\", \"website\": \"\", \"category\": \"cafe\"}, {\"name\": \"Nutley Park Barber\", \"address\": \"200 Franklin Ave, Nutley, NJ 07110\", \"website\": \"\", \"category\": \"salon\"}]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "businesses in 07110 Nutley NJ"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "scan_90210_beverly_hills",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Find real businesses currently operating in zip code 90210. Search for local business directories, Yelp listings, and chamber of commerce for 90210."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"businesses\": [{\"name\": \"Spago Beverly Hills\", \"address\": \"176 N Canon Dr, Beverly Hills, CA 90210\", \"website\": \"https://www.wolfgangpuck.com/dining/spago\", \"category\": \"restaurant\"}, {\"name\": \"Beverly Hills Nail Design\", \"address\": \"415 N Canon Dr, Beverly Hills, CA 90210\", \"website\": \"\", \"category\": \"salon\"}, {\"name\": \"Nate n Al Delicatessen\", \"address\": \"414 N Beverly Dr, Beverly Hills, CA 90210\", \"website\": \"\", \"category\": \"restaurant\"}]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "businesses in 90210 Beverly Hills CA"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

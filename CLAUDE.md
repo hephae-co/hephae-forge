@@ -1,88 +1,115 @@
-# CLAUDE.md
+# CLAUDE.md — Hephae Forge Monorepo
 
-This file provides guidance to any LLM (including Claude 3.5 Sonnet) working on this project as a reference for the latest Hephae Forge architecture.
+This is the root of the hephae-forge monorepo. It contains two apps and shared packages.
 
-## Model Strategy (Gemini-First)
+## Repository Structure
 
-This project standardizes on **Google Gemini 2.5** for all core operations:
-- **Gemini 2.5 Flash:** High-volume "workhorse" tasks (Scraping, OCR, Discovery, Initial Profiler).
-- **Gemini 2.5 Pro:** Strategic synthesis and deep reasoning (Surgeon, Advisor, SEO Auditor).
+```
+hephae-forge/
+├── web/                   # Customer-facing web app (hephae.co)
+├── admin/                 # Internal admin/CI dashboard
+├── packages/
+│   ├── common-python/     # Shared Python code (Firebase, auth, models)
+│   └── common-ts/         # Shared TypeScript code (types, Firebase client)
+└── contracts/             # Shared API & data contracts (documentation)
+```
 
-## Core Architecture: The "High-Impact Funnel"
+## Apps
 
-The pipeline follows a strict sequence to generate high-conviction "Surgical Intelligence" reports:
-1.  **Funnel (Gemini Flash):** Broad menu scraping and identity discovery. It picks the **Top 5 High-Volatility Items** (Beef, Poultry, Seafood, Eggs, Dairy) for deep analysis.
-2.  **Surgical Analysis (Gemini Pro):** Deep reasoning on those 5 items using USDA trends and neighborhood proxies.
-3.  **Data Layer:** Firestore is used as a **Zip Code Knowledge Graph** for cross-prospect caching.
+- **`web/`** — The customer-facing product at hephae.co. Analyzes restaurants using AI agents (margin surgery, SEO audit, traffic forecast, competitive analysis). Next.js frontend + FastAPI backend.
+- **`admin/`** — Internal admin dashboard that orchestrates and evaluates web app capabilities. Runs multi-phase workflows: discovery, enrichment, analysis, evaluation, outreach. Next.js frontend + FastAPI backend.
 
-## Deterministic Math Requirement
-- **Arithmetic Prohibition:** Do not perform calculations for "Annual Profit Leakage" or "Margin %" within the prompt. 
-- **Action:** Extract the necessary variables (Prospect Price, Commodity Cost, Neighborhood Average) into a structured JSON. 
-- **Logic:** These variables are piped into deterministic TypeScript functions in `src/lib/math/`. Your job is to interpret the *result* of those calculations.
+Admin depends on web's API endpoints. Web is standalone.
 
-## Model Configuration (`src/agents/config.ts`)
-- `DEFAULT_FAST_MODEL` (Gemini 2.5 Flash): Scraping, Discovery, Vision.
-- `STRATEGIC_LOGIC_MODEL` (Gemini 2.5 Pro): Surgeon, Advisor, SEO Auditor.
-- `DEEP_ANALYST_MODEL` (Gemini 2.5 Pro): Complex SEO/Market positioning.
+## Cross-App Standards
 
-## MCP Integration
-`mcp-servers/market-truth` provides:
-- `get_usda_wholesale_prices`: Live commodity costs.
-- `get_bls_cpi_data` / `get_fred_economic_indicators`: Macro trends.
-- `get_weather_hourly`: Hourly precipitation probability (via Open-Meteo).
-- `get_nearby_anchors`: Traffic anchors (via OpenStreetMap Overpass API).
+### Model Strategy
 
-## The "Sassy Advisor" Persona
-- **Tone:** Professional, data-backed, but provocative and "sassy."
-- **Focus:** Highlight the "Invisible Bleed"—the money the owner is losing right now.
-- **Example:** "You're essentially giving away a free burger for every table of four on Friday nights. Here is the math to stop the bleed."
+All AI agents across both apps use Google Gemini via Google ADK.
 
-## Handling Gaps
-- **Proxy Reasoning:** If Gemini Flash cannot find a specific competitor price, it provides a `Neighborhood Proxy`. Gemini Pro must use this to build a "Market Gravity" argument. "You are $3.00 under the neighborhood average for this zip code."
+| Tier | Model | Use Case |
+|------|-------|----------|
+| PRIMARY | `gemini-3.1-flash-lite-preview` | All standard agents (discovery, research, formatting, outreach) |
+| PRIMARY_FALLBACK | `gemini-2.5-flash-lite` | Automatic fallback on 429/503/529 |
+| ENHANCED | `gemini-3.0-flash-preview` | Complex analysis (SEO auditor) |
+| CREATIVE_VISION | `gemini-3-pro-image-preview` | Image generation |
 
-## Data Strategy
-- Use `src/lib/data/standard_recipes.json` for "Standard Industry Benchmarks" to estimate COGS without internal recipes.
+Thinking modes: MEDIUM for evaluators, HIGH for competitive/market positioning.
 
-## Database Rules (strictly enforced)
+When upgrading model tiers, update BOTH `web/backend/config.py` and `admin/backend/config.py`, or (once extracted) `packages/common-python/hephae_common/model_config.py`.
 
-### No blobs in Firestore or BigQuery
-Never write binary data to Firestore or BigQuery. This includes:
-- `menuScreenshotBase64` or any base64-encoded image
-- Raw HTML report content
-- Any logo, favicon, or image buffer
-Always upload binary assets to GCS first (`everything-hephae` bucket), then store only the resulting `https://storage.googleapis.com/everything-hephae/...` URL.
+### Database Rules (strictly enforced)
 
-### Agent Versioning — mandatory on breaking changes
-Every agent definition in `src/agents/` has an `agentVersion` string in `src/agents/config.ts` under `AgentVersions`. When making any of the following changes to an agent, you MUST increment its semantic version:
-- Adding, removing, or renaming output fields
-- Changing the JSON schema of the agent's output
-- Changing the agent's model tier (e.g. Flash → Pro)
-- Splitting one agent into two or merging two agents
+1. **No blobs in Firestore or BigQuery** — upload binary assets to GCS (`everything-hephae` bucket), store only the resulting URL.
+2. **`zipCode` is first-class** — always a top-level field, never derived from address at query time.
+3. **No growing arrays in Firestore** — no `reports[]`, no `analyses[]`. Historical data goes to BigQuery. Firestore stores only current state.
+4. **Use `update()` with dotted paths** for nested Firestore fields. `set({merge:true})` only for new docs.
 
-Version format: `MAJOR.MINOR.PATCH`
+### Agent Versioning
+
+Every agent has a semantic version in its app's `config.py` under `AgentVersions`.
+
 - MAJOR: output schema change (fields added/removed/renamed)
 - MINOR: logic change, same schema
 - PATCH: prompt wording, no logic change
 
-The `AgentVersions` map in `src/agents/config.ts` is the single source of truth. Every call to `writeAgentResult()` must pass `agentVersion: AgentVersions.AGENT_NAME`.
+Bump the version in the same commit as the breaking change.
 
-### Zip code is a first-class field
-Always parse and store `zipCode` as an explicit top-level field — never derive it from the address string at query time. This applies to both Firestore `businesses/{slug}` and all BigQuery tables. The weekly analysis pipeline operates at zipcode granularity.
+### Authentication
 
-### Firestore document size
-The `businesses/{slug}` top-level document must never contain arrays that grow over time (no `reports[]`, no `analyses[]`). All historical data lives in BigQuery. Firestore stores only current state via `latestOutputs.{agentName}` map keys.
+| Context | Mechanism |
+|---------|-----------|
+| Web app internal | Firebase Admin SDK (server-side only, no client DB access) |
+| Admin → Web API calls | HMAC-SHA256 signing (`FORGE_API_SECRET`) for capability endpoints; API key header for v1 endpoints |
+| Cloud Run services | GCP identity tokens via metadata server |
+| Firestore rules | All client access denied (`allow read, write: if false`) |
 
-### Keep `ADMIN_APP_API.md` in sync
-`ADMIN_APP_API.md` is the external contract for the Hephae Admin App.
+### GCP Infrastructure
 
-**Automated enforcement:**
-- All API routes have `response_model=` in their FastAPI decorators, making `/api/openapi.json` the programmatic source of truth.
-- `backend/tests/unit/test_api_doc_sync.py` verifies every POST route has a response schema and all key models appear in OpenAPI.
-- Run `python scripts/sync-api-doc.py` to auto-update the API Endpoints and Core TypeScript Interfaces sections from the OpenAPI spec.
-- Run `python scripts/sync-api-doc.py --check` in CI to detect staleness.
+| Component | Value |
+|-----------|-------|
+| GCP Project | `hephae-co-dev` |
+| Firestore | Default (auto-initialized via ADC) |
+| BigQuery Dataset | `hephae-co-dev.hephae` |
+| GCS Bucket | `everything-hephae` |
+| GCS Public Base | `https://storage.googleapis.com/everything-hephae/` |
 
-**Manual sections** (update in the same commit when changed):
-- Firestore document schema (`businesses/{slug}`, `hub_searches/{id}`)
-- BigQuery table columns (`analyses`, `discoveries`, `interactions`)
-- Agent registry entries or version keys in `backend/config.py`
-- GCS path conventions in `backend/lib/report_storage.py`
+### Evaluation Standards (admin evaluators)
+
+Admin evaluator agents validate web app capability outputs:
+- **Pass threshold:** score >= 80 AND !isHallucinated
+- **Evaluator model:** ENHANCED tier + MEDIUM thinking
+- All 4 capabilities (SEO, traffic, competitive, margin) have dedicated evaluator agents
+
+When changing a web app agent's output schema, check that admin's corresponding evaluator still works.
+
+## Contracts
+
+See `contracts/` for shared documentation:
+- `contracts/firestore-schema.md` — Firestore document shapes
+- `contracts/bigquery-schema.md` — BigQuery table definitions
+- `contracts/api-web.md` — Web app's published API (for admin consumption)
+- `contracts/api-admin.md` — Admin app's published API
+- `contracts/gcs-conventions.md` — GCS path patterns
+- `contracts/eval-standards.md` — Evaluation criteria and thresholds
+
+## Shared Packages
+
+### `packages/common-python/` (`hephae-common`)
+Shared Python code installed as a local path dependency by both apps.
+```bash
+pip install -e packages/common-python
+```
+
+### `packages/common-ts/` (`@hephae/common`)
+Shared TypeScript code resolved via npm workspaces.
+```json
+"@hephae/common": "workspace:*"
+```
+
+## Working in This Repo
+
+- When modifying shared types/models, run tests in BOTH `web/` and `admin/`.
+- When changing a web app API endpoint, update `contracts/api-web.md` in the same commit.
+- When changing admin's expectations of web, update `contracts/api-admin.md`.
+- Each app has its own `CLAUDE.md` with app-specific details. Read it before working in that app.

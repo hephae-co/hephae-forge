@@ -1,0 +1,56 @@
+{
+  "eval_set_id": "competitive_evaluator_eval",
+  "name": "Competitive Evaluator Agent Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "good_competitive_output",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "BUSINESS_IDENTITY: {\"name\": \"Mario's Pizzeria\", \"address\": \"123 Main St, Nutley, NJ 07110\", \"category\": \"restaurant\"}\n\nACTUAL_OUTPUT:\n{\"competitors\": [{\"name\": \"Rossini's Pizza\", \"address\": \"210 Centre St, Nutley, NJ 07110\", \"distance\": \"0.3 miles\", \"priceRange\": \"$15-22\", \"rating\": 4.1}, {\"name\": \"Villa Pizza\", \"address\": \"88 Washington Ave, Nutley, NJ 07110\", \"distance\": \"0.5 miles\", \"priceRange\": \"$12-18\", \"rating\": 3.8}, {\"name\": \"Tuscany Express\", \"address\": \"340 Franklin Ave, Nutley, NJ 07110\", \"distance\": \"0.4 miles\", \"priceRange\": \"$18-28\", \"rating\": 4.3}], \"marketPosition\": \"mid-range\", \"pricingGap\": \"Below average for the area\", \"differentiators\": [\"Location on Main St with higher foot traffic\", \"Lower prices than Tuscany Express\"], \"threats\": [\"Tuscany Express has higher ratings and premium positioning\"]}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"score\": 80, \"isHallucinated\": false, \"issues\": [\"Competitor addresses are in Nutley NJ which matches the business location\", \"Price ranges are realistic for pizza restaurants\", \"Ratings are plausible Google-style ratings\", \"Distance measurements seem reasonable for the area\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "hallucinated_competitive_output",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "BUSINESS_IDENTITY: {\"name\": \"Neighborhood Laundromat\", \"address\": \"77 Park Ave, Bloomfield, NJ 07003\", \"category\": \"laundromat\"}\n\nACTUAL_OUTPUT:\n{\"competitors\": [{\"name\": \"Domino's Pizza\", \"address\": \"100 Park Ave, Bloomfield, NJ 07003\", \"distance\": \"0.1 miles\", \"priceRange\": \"$8-20\", \"rating\": 3.5}, {\"name\": \"Subway\", \"address\": \"102 Park Ave, Bloomfield, NJ 07003\", \"distance\": \"0.1 miles\", \"priceRange\": \"$6-12\", \"rating\": 3.2}], \"marketPosition\": \"premium\", \"pricingGap\": \"$5 above average per wash\", \"differentiators\": [\"Michelin star quality service\"], \"threats\": [\"Amazon entering the laundry market nationwide\"]}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"score\": 12, \"isHallucinated\": true, \"issues\": [\"Competitors listed are pizza and sandwich shops, not laundromats — wrong business category\", \"Michelin star reference makes no sense for a laundromat\", \"Amazon laundry market entry is speculative and unsupported\", \"$5 above average pricing claim has no supporting data\", \"Competitive analysis is entirely for the wrong industry\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

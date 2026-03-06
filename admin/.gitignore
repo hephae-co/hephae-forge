@@ -1,0 +1,12 @@
+.env
+.env.local
+.env.production
+node_modules
+.next
+out
+npm-debug.log
+backend/venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+test-results/

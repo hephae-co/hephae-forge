@@ -1,0 +1,56 @@
+{
+  "eval_set_id": "seo_evaluator_eval",
+  "name": "SEO Evaluator Agent Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "good_seo_output",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "TARGET_URL: https://www.mariospizzeria.com\n\nACTUAL_OUTPUT:\n{\"overallScore\": 42, \"mobileOptimization\": {\"score\": 35, \"issues\": [\"Viewport not set\", \"Text too small for mobile\", \"Tap targets too close\"]}, \"metaData\": {\"title\": \"Mario's Pizzeria - Best Pizza in Nutley NJ\", \"description\": \"Missing\", \"hasOpenGraph\": false}, \"performance\": {\"loadTime\": 4.2, \"firstContentfulPaint\": 3.1}, \"localSeo\": {\"googleBusinessProfile\": true, \"napConsistency\": \"partial\", \"localSchemaMarkup\": false}, \"backlinks\": {\"domainAuthority\": 12, \"totalBacklinks\": 23}}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"score\": 85, \"isHallucinated\": false, \"issues\": [\"Load time of 4.2s is plausible but should be verified\", \"Domain authority of 12 is realistic for a local pizzeria\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "hallucinated_seo_output",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "TARGET_URL: https://www.joesautoshop.com\n\nACTUAL_OUTPUT:\n{\"overallScore\": 92, \"mobileOptimization\": {\"score\": 95, \"issues\": []}, \"metaData\": {\"title\": \"Nike Official Store - Just Do It\", \"description\": \"Shop the latest Nike shoes, clothing and gear at Nike.com\", \"hasOpenGraph\": true}, \"performance\": {\"loadTime\": 0.3, \"firstContentfulPaint\": 0.1}, \"localSeo\": {\"googleBusinessProfile\": true, \"napConsistency\": \"perfect\", \"localSchemaMarkup\": true}, \"backlinks\": {\"domainAuthority\": 98, \"totalBacklinks\": 5000000}}"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"score\": 15, \"isHallucinated\": true, \"issues\": [\"Meta title references Nike but target URL is Joe's Auto Shop — data belongs to wrong website\", \"Domain authority of 98 is impossible for a local auto shop\", \"5 million backlinks is unrealistic for a small business\", \"Load time of 0.3s is unusually fast and likely fabricated\", \"The entire output appears to be from Nike.com, not joesautoshop.com\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

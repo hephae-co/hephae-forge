@@ -5,15 +5,20 @@
 
 FROM node:20-slim AS deps
 WORKDIR /app
+# Copy workspace root config + lockfile
+COPY package.json package-lock.json ./
+# Copy shared TS package
 COPY packages/common-ts/package.json ./packages/common-ts/
 COPY packages/common-ts/src/ ./packages/common-ts/src/
 COPY packages/common-ts/tsconfig.json ./packages/common-ts/
-COPY admin/package.json admin/package-lock.json* ./admin/
-COPY package.json ./
-RUN cd admin && npm ci
+# Copy admin package.json for workspace resolution
+COPY admin/package.json ./admin/
+# Install all workspace deps from root
+RUN npm ci
 
 FROM node:20-slim AS builder
 WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages ./packages
 COPY --from=deps /app/admin/node_modules ./admin/node_modules
 COPY --from=deps /app/package.json ./

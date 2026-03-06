@@ -1,0 +1,24 @@
+# Cloud Build ignore (build context: repo root)
+.git
+.github
+node_modules
+.venv
+__pycache__
+.next
+.pytest_cache
+.claude
+mcp-servers
+test-results
+
+# IDE / OS
+.DS_Store
+.vscode
+.idea
+
+# Logs
+*.log
+
+# Local env files (secrets come from Cloud Run)
+.env
+.env.local
+.env.production

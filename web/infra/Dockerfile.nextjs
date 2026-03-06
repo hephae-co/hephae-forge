@@ -5,17 +5,20 @@
 
 FROM node:20-bookworm-slim AS deps
 WORKDIR /app
-# Install shared TS package
+# Copy workspace root config + lockfile
+COPY package.json package-lock.json ./
+# Copy shared TS package
 COPY packages/common-ts/package.json ./packages/common-ts/
 COPY packages/common-ts/src/ ./packages/common-ts/src/
 COPY packages/common-ts/tsconfig.json ./packages/common-ts/
-# Install web app deps (with workspace resolution)
-COPY web/package.json web/package-lock.json* ./web/
-COPY package.json ./
-RUN cd web && npm ci
+# Copy web app package.json for workspace resolution
+COPY web/package.json ./web/
+# Install all workspace deps from root
+RUN npm ci
 
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages ./packages
 COPY --from=deps /app/web/node_modules ./web/node_modules
 COPY --from=deps /app/package.json ./

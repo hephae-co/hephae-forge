@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 import { BaseIdentity, EnrichedProfile, SocialPlatformMetrics } from '@/types/api';
 import DiscoveryProgress from './DiscoveryProgress';
@@ -20,6 +20,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
     const [resetKey, setResetKey] = useState(0);
     const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
     const [logoError, setLogoError] = useState(false);
+    const [profileCollapsed, setProfileCollapsed] = useState(false);
 
     const getUrl = () => {
         // Google Maps embed — no API key needed for this format, avoids 403 referrer issues
@@ -138,13 +139,13 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                     <div className="bg-slate-900/85 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl overflow-hidden">
 
                         {/* HEADER */}
-                        <div className="p-6 pb-4 border-b border-white/10">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/50">
+                        <div className={`p-6 ${profileCollapsed ? 'pb-5' : 'pb-4'} ${profileCollapsed ? '' : 'border-b border-white/10'}`}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/50 shrink-0">
                                     <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                                 </div>
-                                <div>
-                                    <h2 className="text-white font-bold text-lg leading-tight">{business.name}</h2>
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="text-white font-bold text-lg leading-tight truncate">{business.name}</h2>
                                     {isDiscovering ? (
                                         <DiscoveryProgress phase="all" variant="inline" />
                                     ) : (
@@ -154,10 +155,23 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                                         </p>
                                     )}
                                 </div>
+                                {/* Collapse toggle */}
+                                <button
+                                    onClick={() => setProfileCollapsed(v => !v)}
+                                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors shrink-0"
+                                    title={profileCollapsed ? 'Expand profile' : 'Collapse profile'}
+                                >
+                                    <svg
+                                        className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${profileCollapsed ? 'rotate-180' : ''}`}
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                </button>
                             </div>
 
                             {/* TABS — 6 tabs, compact */}
-                            <div className="flex gap-0.5 p-1 bg-black/40 rounded-lg overflow-x-auto scrollbar-hide">
+                            <div className={`flex gap-0.5 p-1 bg-black/40 rounded-lg overflow-x-auto scrollbar-hide transition-all duration-300 ${profileCollapsed ? 'max-h-0 opacity-0 overflow-hidden mt-0 p-0' : 'max-h-20 opacity-100 mt-4'}`}>
                                 {TABS.map(tab => (
                                     <button
                                         key={tab.id}
@@ -171,7 +185,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                         </div>
 
                         {/* TAB CONTENT */}
-                        <div className="p-6 pt-4 space-y-4">
+                        <div className={`space-y-4 transition-all duration-300 ${profileCollapsed ? 'max-h-0 opacity-0 overflow-hidden p-0' : 'max-h-[600px] opacity-100 p-6 pt-4'}`}>
 
                             {/* OVERVIEW TAB: AI Overview summary */}
                             {activeTab === 'overview' && (
@@ -180,9 +194,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                                         <DiscoveryProgress phase="overview" variant="dots" />
                                     ) : profile?.aiOverview ? (
                                         <>
-                                            <div className="text-sm text-slate-300 leading-relaxed bg-black/20 p-3 rounded-xl border border-white/5">
-                                                {profile.aiOverview.summary}
-                                            </div>
+                                            <TruncatedText text={profile.aiOverview.summary} />
 
                                             {profile.aiOverview.highlights?.length > 0 && (
                                                 <div className="flex flex-wrap gap-1.5">
@@ -570,6 +582,42 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                         </div>
                     </div>
                 </div>
+            )}
+        </div>
+    );
+}
+
+function TruncatedText({ text }: { text: string }) {
+    const [expanded, setExpanded] = useState(false);
+    const [overflows, setOverflows] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const el = ref.current;
+        if (el) setOverflows(el.scrollHeight > el.clientHeight + 2);
+    }, [text]);
+
+    return (
+        <div className="relative bg-black/20 p-3 rounded-xl border border-white/5">
+            <div
+                ref={ref}
+                className={`text-sm text-slate-300 leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}
+            >
+                {text}
+            </div>
+            {overflows && (
+                <button
+                    onClick={() => setExpanded(v => !v)}
+                    className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                    {expanded ? 'Show less' : 'Read more'}
+                    <svg
+                        className={`w-3 h-3 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
             )}
         </div>
     );

@@ -615,7 +615,7 @@ export default function Home() {
     });
   };
 
-  const activeReportUrl = marginReportUrl || trafficReportUrl || seoReportUrl || competitiveReportUrl || marketingReportUrl || profileReportUrl;
+  const activeReportUrl = marginReportUrl || trafficReportUrl || seoReportUrl || competitiveReportUrl || marketingReportUrl;
 
   const getActiveReportType = (): string => {
     if (marginReportUrl) return 'margin';

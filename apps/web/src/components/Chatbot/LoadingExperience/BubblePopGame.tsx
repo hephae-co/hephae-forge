@@ -17,6 +17,7 @@ interface Bubble {
   age: number; // frames since spawn — used for entrance bounce
   points: number; // 1 = normal, 2 = silver, 3 = gold, 5 = diamond
   tier: "normal" | "silver" | "gold" | "diamond";
+  trail: { x: number; y: number }[]; // motion trail positions
 }
 
 interface FloatingScore {
@@ -44,6 +45,9 @@ export default function BubblePopGame({ active, accentColor = "#0052CC", classNa
   const [score, setScore] = useState(0);
   const [floatingScores, setFloatingScores] = useState<FloatingScore[]>([]);
   const [hasPopped, setHasPopped] = useState(false);
+  const [combo, setCombo] = useState(0);
+  const comboTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bestScoreRef = useRef(0);
 
   const spawnBubble = useCallback((width: number, height: number, startY?: number) => {
     if (bubblesRef.current.length >= BUBBLE_CONFIG.maxBubbles) return;
@@ -71,10 +75,12 @@ export default function BubblePopGame({ active, accentColor = "#0052CC", classNa
     // Special bubbles are slightly larger
     const radius = tier === "diamond" ? baseRadius * 1.3 : tier === "gold" ? baseRadius * 1.15 : baseRadius;
 
+    const startX = radius + Math.random() * (width - radius * 2);
+    const startYVal = startY ?? height + radius;
     bubblesRef.current.push({
       id: ++nextBubbleId,
-      x: radius + Math.random() * (width - radius * 2),
-      y: startY ?? height + radius,
+      x: startX,
+      y: startYVal,
       radius,
       color,
       symbol: cfg.symbols[Math.floor(Math.random() * cfg.symbols.length)],
@@ -85,6 +91,7 @@ export default function BubblePopGame({ active, accentColor = "#0052CC", classNa
       age: 0,
       points,
       tier,
+      trail: [],
     });
   }, []);
 
@@ -166,10 +173,26 @@ export default function BubblePopGame({ active, accentColor = "#0052CC", classNa
         b.phase += 0.025;
         b.x += Math.sin(b.phase) * BUBBLE_CONFIG.wobbleAmplitude;
 
+        // Track trail positions (every 3 frames for smooth trail)
+        if (b.age % 3 === 0) {
+          b.trail.push({ x: b.x, y: b.y });
+          if (b.trail.length > 8) b.trail.shift();
+        }
+
         // Remove if off-screen
         if (b.y + b.radius < -10) {
           bubbles.splice(i, 1);
           continue;
+        }
+
+        // Draw motion trail
+        for (let t = 0; t < b.trail.length; t++) {
+          const alpha = (t / b.trail.length) * 0.25;
+          const trailR = b.radius * (0.3 + 0.4 * (t / b.trail.length));
+          ctx.beginPath();
+          ctx.arc(b.trail[t].x, b.trail[t].y, trailR, 0, Math.PI * 2);
+          ctx.fillStyle = b.color + Math.round(alpha * 255).toString(16).padStart(2, "0");
+          ctx.fill();
         }
 
         // Entrance bounce: scale up in the first 20 frames
@@ -279,11 +302,26 @@ export default function BubblePopGame({ active, accentColor = "#0052CC", classNa
       if (dx * dx + dy * dy <= b.radius * b.radius * 1.2) {
         b.popping = true;
         b.popProgress = 0;
-        setScore((s) => s + b.points);
+
+        // Combo: increment and reset timer
+        setCombo((prev) => {
+          const next = prev + 1;
+          if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
+          comboTimerRef.current = setTimeout(() => setCombo(0), 1200);
+          return next;
+        });
+
+        const comboMultiplier = combo >= 10 ? 3 : combo >= 5 ? 2 : 1;
+        const earnedPoints = b.points * comboMultiplier;
+        setScore((s) => {
+          const newScore = s + earnedPoints;
+          bestScoreRef.current = Math.max(bestScoreRef.current, newScore);
+          return newScore;
+        });
         if (!hasPopped) setHasPopped(true);
         setFloatingScores((prev) => [
           ...prev,
-          { id: b.id, x: b.x, y: b.y, points: b.points, opacity: 1, created: Date.now() },
+          { id: b.id, x: b.x, y: b.y, points: earnedPoints, opacity: 1, created: Date.now() },
         ]);
         break;
       }
@@ -307,11 +345,16 @@ export default function BubblePopGame({ active, accentColor = "#0052CC", classNa
             <span className="text-sm font-bold text-gray-700">Pop the bubbles!</span>
           </div>
         ) : (
-          <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-1.5 shadow-md border border-gray-200/80 animate-scale-in">
+          <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-1.5 shadow-md border border-gray-200/80 animate-scale-in flex items-center gap-2">
             <span className="text-sm font-bold text-gray-700">
               {score < 5 ? "Keep going!" : score < 15 ? "Nice! \u{1F389}" : "Bubble master! \u{1F525}"}{" "}
-              <span className="text-xs font-medium text-gray-500">{score} popped</span>
+              <span className="text-xs font-medium text-gray-500">{score} pts</span>
             </span>
+            {combo >= 3 && (
+              <span className={`text-xs font-black px-2 py-0.5 rounded-full ${combo >= 10 ? 'bg-amber-100 text-amber-700' : combo >= 5 ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                {combo >= 10 ? '3x' : combo >= 5 ? '2x' : ''}{combo} streak!
+              </span>
+            )}
           </div>
         )}
       </div>

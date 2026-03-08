@@ -17,32 +17,35 @@ const ACTIVITIES = [
   {
     id: "game" as const,
     icon: Gamepad2,
-    title: "Play a Game",
-    description: "Catch data streams while our agents work",
+    title: "Data Catcher",
+    description: "Intercept data streams across 4 phases — earn combos for speed!",
     gradient: "from-indigo-500 to-purple-500",
     hoverBorder: "hover:border-indigo-300",
     iconBg: "bg-indigo-100",
     iconColor: "text-indigo-600",
+    badge: "4 phases",
   },
   {
     id: "quiz" as const,
     icon: ClipboardList,
     title: "AI Readiness Quiz",
-    description: "See how ready your business is for AI",
+    description: "5 real scenarios. Make tough calls. Get your AI readiness score.",
     gradient: "from-blue-500 to-cyan-500",
     hoverBorder: "hover:border-blue-300",
     iconBg: "bg-blue-100",
     iconColor: "text-blue-600",
+    badge: "5 scenarios",
   },
   {
     id: "learn" as const,
     icon: Lightbulb,
     title: "How Hephae Works",
-    description: "Learn what our AI agents do for you",
+    description: "See the 7 AI agents analyzing your business right now",
     gradient: "from-emerald-500 to-teal-500",
     hoverBorder: "hover:border-emerald-300",
     iconBg: "bg-emerald-100",
     iconColor: "text-emerald-600",
+    badge: null,
   },
 ];
 
@@ -169,8 +172,15 @@ export default function LoadingOverlay({
                       style={{ animationDelay: `${0.2 + i * 0.1}s` }}
                     >
                       {/* Icon area */}
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${act.gradient} flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform`}>
-                        <Icon className="w-5 h-5 text-white" />
+                      <div className="flex items-start justify-between mb-3">
+                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${act.gradient} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform`}>
+                          <Icon className="w-5 h-5 text-white" />
+                        </div>
+                        {act.badge && (
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                            {act.badge}
+                          </span>
+                        )}
                       </div>
                       <h3 className="text-sm font-bold text-gray-900 mb-1">
                         {act.title}
@@ -206,7 +216,7 @@ export default function LoadingOverlay({
           {/* ===== QUIZ: Native AI Readiness Quiz ===== */}
           {activity === "quiz" && (
             <div className="flex-1 min-h-0 overflow-hidden">
-              <AIReadinessQuiz />
+              <AIReadinessQuiz businessName={businessName} />
             </div>
           )}
 

@@ -20,7 +20,11 @@ const TYPE_LABELS: Record<string, string> = {
   ai: "AI-Augmented",
 };
 
-export default function AIReadinessQuiz() {
+interface AIReadinessQuizProps {
+  businessName?: string;
+}
+
+export default function AIReadinessQuiz({ businessName }: AIReadinessQuizProps) {
   const [phase, setPhase] = useState<Phase>("playing");
   const [currentIdx, setCurrentIdx] = useState(0);
   const [stats, setStats] = useState({ time: 100, budget: 100, sanity: 100 });
@@ -83,7 +87,7 @@ export default function AIReadinessQuiz() {
   };
 
   if (phase === "results" && result) {
-    return <ResultsView result={result} onReset={reset} />;
+    return <ResultsView result={result} onReset={reset} businessName={businessName} />;
   }
 
   return (
@@ -105,7 +109,7 @@ export default function AIReadinessQuiz() {
         </div>
 
         {/* Resource bars */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-2 mb-3">
           <ResourceBar
             value={stats.time}
             color="bg-blue-500"
@@ -126,15 +130,42 @@ export default function AIReadinessQuiz() {
           />
         </div>
 
+        {/* Live AI readiness preview */}
+        {history.length > 0 && (
+          <div className="mb-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-2.5 border border-indigo-100 flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
+              <span className="text-xs font-black text-white">
+                {Math.min(100, history.filter(h => h.type === 'ai').length * 18 + history.filter(h => h.type === 'digital').length * 10 + history.filter(h => h.type === 'manual').length * 4 + Math.round(((stats.time + stats.budget + stats.sanity) / 3) * 0.1))}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">AI Readiness</div>
+              <div className="w-full h-1 bg-indigo-200 rounded-full mt-0.5 overflow-hidden">
+                <div
+                  className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, history.filter(h => h.type === 'ai').length * 18 + history.filter(h => h.type === 'digital').length * 10 + history.filter(h => h.type === 'manual').length * 4 + Math.round(((stats.time + stats.budget + stats.sanity) / 3) * 0.1))}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Mission card */}
         <div
           className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4 transition-all duration-300 ${
             transitioning
-              ? "opacity-0 translate-y-2"
-              : "opacity-100 translate-y-0"
+              ? "opacity-0 translate-x-8 scale-95"
+              : "opacity-100 translate-x-0 scale-100"
           }`}
         >
-          <div className="text-3xl mb-2">{mission.emoji}</div>
+          <div className="flex items-start justify-between mb-2">
+            <div className="text-3xl">{mission.emoji}</div>
+            {businessName && (
+              <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                {businessName}
+              </span>
+            )}
+          </div>
           <h3 className="text-base font-bold text-gray-900 mb-1.5">
             {mission.title}
           </h3>
@@ -147,8 +178,8 @@ export default function AIReadinessQuiz() {
         <div
           className={`space-y-2.5 transition-all duration-300 ${
             transitioning
-              ? "opacity-0 translate-y-2"
-              : "opacity-100 translate-y-0"
+              ? "opacity-0 translate-x-8"
+              : "opacity-100 translate-x-0"
           }`}
         >
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">
@@ -214,9 +245,11 @@ function ResourceBar({
 function ResultsView({
   result,
   onReset,
+  businessName,
 }: {
   result: QuizResult;
   onReset: () => void;
+  businessName?: string;
 }) {
   const scoreColor =
     result.score >= 70
@@ -246,7 +279,7 @@ function ResultsView({
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-2 font-medium">
-            AI Readiness Score
+            {businessName ? `${businessName}'s AI Readiness` : 'AI Readiness Score'}
           </p>
         </div>
 

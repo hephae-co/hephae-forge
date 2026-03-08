@@ -190,7 +190,6 @@ export default function Home() {
     const newMessages: ChatMessage[] = [...messages, msg('user', text)];
     setMessages(newMessages);
     setIsTyping(true);
-    setCapabilities([]); // Clear capabilities when a new message is sent
 
     // Lead Capture Interception: Always silently track the first query
     if (!hasProvidedEmail && !searchDocId) {
@@ -423,7 +422,6 @@ export default function Home() {
 
     if (capId === 'surgery') {
       setMessages(prev => [...prev, msg('model', "Starting Margin Surgery. Deploying ProfilerAgent to crawl the website, this may take a moment to retrieve the menu screenshots and calculate commodity impacts... ⏱️")]);
-      setCapabilities([]);
       setIsTyping(true);
 
       try {
@@ -455,7 +453,7 @@ export default function Home() {
         setMessages(prev => [...prev, msg('model', "Surgery complete. The surgical dashboard has been rendered.\n\n[Schedule a call](https://hephae.co/schedule) to discuss your optimization strategy with our team.")]);
 
       } catch (e: any) {
-        setMessages(prev => [...prev, msg('model', `Failed to execute Margin Surgery: ${e.message}`)]);
+        setMessages(prev => [...prev, msg('model', `Margin Surgery couldn't complete: ${e.message}\n\nThis can happen if the business website doesn't have a public menu page. Try one of the other analyses instead!`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
@@ -463,7 +461,6 @@ export default function Home() {
       }
     } else if (capId === 'traffic') {
       setMessages(prev => [...prev, msg('model', "Starting Foot Traffic Forecast. Deploying ForecasterAgent to analyze local events, weather, and compute traffic models... ⏱️")]);
-      setCapabilities([]);
       setIsTyping(true);
 
       try {
@@ -503,7 +500,6 @@ export default function Home() {
       }
     } else if (capId === 'seo') {
       setMessages(prev => [...prev, msg('model', "Deploying SEO Auditor to analyze indexing, web vitals, and content hierarchy... ⏱️")]);
-      setCapabilities([]);
       setIsTyping(true);
 
       try {
@@ -548,7 +544,6 @@ export default function Home() {
       }
     } else if (capId === 'marketing') {
       setMessages(prev => [...prev, msg('model', "Deploying Social Media Auditor to research your social presence across all platforms... ⏱️")]);
-      setCapabilities([]);
       setIsTyping(true);
 
       try {
@@ -583,7 +578,6 @@ export default function Home() {
       }
     } else if (capId === 'competitive') {
       setMessages(prev => [...prev, msg('model', "Deploying Competitive Analyzer to compare your business against exactly 3 local rivals... ⏱️")]);
-      setCapabilities([]);
       setIsTyping(true);
 
       try {

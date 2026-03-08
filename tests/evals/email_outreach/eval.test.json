@@ -1,0 +1,40 @@
+[
+  {
+    "eval_id": "restaurant_with_margin_data",
+    "description": "Email for a restaurant with margin surgery data",
+    "session_input": {
+      "app_name": "email_outreach",
+      "user_id": "eval",
+      "state": {}
+    },
+    "conversation": [
+      {
+        "role": "user",
+        "content": "Business: Mario's Pizzeria\nHephae Website: https://hephae.co\n\n## Margin Surgery Results\nScore: 42/100\nTotal Profit Leakage: $3,200/mo\nSummary: High food cost variance on specialty pizzas.\nFull Report: https://storage.googleapis.com/everything-hephae/marios-pizza/margin-001.html"
+      },
+      {
+        "role": "model",
+        "content": "{\"subject\": \"Mario's is leaking $3,200/mo — here's why\", \"body\": \"Hi Mario's Team,\\n\\nWe ran a Margin Surgery on your business and discovered $3,200/mo in profit leakage, primarily from high food cost variance on specialty pizzas.\\n\\nHephae helps restaurants optimize pricing and margins with AI-powered analysis. Your detailed report is ready at https://storage.googleapis.com/everything-hephae/marios-pizza/margin-001.html\\n\\nLet's fix this together. Visit hephae.co or reply to this email.\\n\\nBest regards,\\nThe Hephae Team — hephae.co\"}"
+      }
+    ]
+  },
+  {
+    "eval_id": "salon_with_seo_data",
+    "description": "Email for salon with SEO audit data",
+    "session_input": {
+      "app_name": "email_outreach",
+      "user_id": "eval",
+      "state": {}
+    },
+    "conversation": [
+      {
+        "role": "user",
+        "content": "Business: Glow Salon & Spa\nHephae Website: https://hephae.co\n\n## SEO Audit Results\nOverall Score: 18/100\nTechnical: 35/100\nContent: 8/100\nUX: 20/100\nSummary: No website found. Business is essentially invisible online.\nFull Report: https://storage.googleapis.com/everything-hephae/glow-salon/seo-002.html"
+      },
+      {
+        "role": "model",
+        "content": "{\"subject\": \"Glow Salon scores 18/100 on SEO — but it's fixable\", \"body\": \"Hi Glow Salon,\\n\\nWe ran an SEO audit and found that your business is nearly invisible online (18/100). With no website and minimal online presence, you're missing customers actively searching for salons in your area.\\n\\nThe good news? This is fixable. Hephae specializes in helping local businesses like yours get found online. See the full audit at https://storage.googleapis.com/everything-hephae/glow-salon/seo-002.html\\n\\nLet's get you discovered. Visit hephae.co to learn more.\\n\\nBest regards,\\nThe Hephae Team — hephae.co\"}"
+      }
+    ]
+  }
+]

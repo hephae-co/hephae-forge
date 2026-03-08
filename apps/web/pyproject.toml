@@ -1,0 +1,53 @@
+[project]
+name = "hephae-forge-backend"
+version = "0.1.0"
+description = "MarginSurgeon Python backend — FastAPI + Google ADK agents"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "google-adk>=1.0.0",
+    "google-generativeai>=0.8.0",
+    "firebase-admin>=6.6.0",
+    "google-cloud-bigquery>=3.27.0",
+    "google-cloud-storage>=2.18.0",
+    "playwright>=1.48.0",
+    "httpx>=0.28.0",
+    "pydantic>=2.10.0",
+    "resend>=2.5.0",
+    "python-dotenv>=1.0.0",
+    "hephae-common",
+    "hephae-db",
+    "hephae-integrations",
+    "hephae-capabilities",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-mock>=3.14.0",
+    "pytest-timeout>=2.3.0",
+    "pytest-html>=4.1.0",
+    "ruff>=0.8.0",
+]
+
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+asyncio_mode = "auto"
+pythonpath = ["."]
+markers = [
+    "integration: real API integration tests (requires GEMINI_API_KEY)",
+    "needs_browser: tests that need Playwright/crawl4ai (skip on Cloud Run)",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120

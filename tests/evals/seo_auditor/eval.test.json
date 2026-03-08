@@ -1,0 +1,89 @@
+{
+  "eval_set_id": "seo_auditor_eval",
+  "name": "SEO Auditor Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "restaurant_with_website",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Perform a comprehensive SEO audit for Mario's Pizzeria located at 123 Main St, Nutley, NJ 07110. Their website is https://mariosnj.com. Analyze technical SEO, content quality, UX, performance, and authority. Return a JSON report."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"overallScore\": 42, \"summary\": \"Mario's Pizzeria has significant SEO gaps including poor mobile optimization, missing meta descriptions, and a low domain authority of 15/100. The site lacks structured data and has slow page load times around 4.8 seconds. Immediate wins are available through basic on-page optimization and Google Business Profile enhancement.\", \"seo_technical_score\": 38, \"seo_content_score\": 45, \"seo_ux_score\": 40, \"seo_performance_score\": 35, \"seo_authority_score\": 52, \"issues\": [\"Missing meta descriptions on key pages\", \"No structured data (LocalBusiness schema)\", \"Page speed 4.8s — well above 2s target\", \"No SSL certificate on subdomain pages\", \"Mobile viewport not configured correctly\"], \"recommendations\": [\"Add LocalBusiness JSON-LD schema to homepage\", \"Write unique meta descriptions for all pages\", \"Compress images — 3 images over 500KB found\", \"Enable browser caching for static assets\", \"Claim and optimize Google Business Profile\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "Mario's Pizzeria Nutley NJ site:mariosnj.com SEO"}},
+              {"id": "call_2", "name": "pagespeed_tool", "args": {"url": "https://mariosnj.com"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "seo_auditor",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "salon_no_website",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Perform a comprehensive SEO audit for Glow Salon & Spa located at 456 Oak Ave, Montclair, NJ 07042. They may not have a website — search to find their online presence. Return a JSON report."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"overallScore\": 18, \"summary\": \"Glow Salon & Spa has minimal digital presence with no dedicated website found. Their Google Business Profile exists but is incomplete — missing hours, photos, and service descriptions. Without a website, the business is invisible to organic search and losing potential bookings to competitors with established online presence.\", \"seo_technical_score\": 5, \"seo_content_score\": 10, \"seo_ux_score\": 15, \"seo_performance_score\": 20, \"seo_authority_score\": 40, \"issues\": [\"No website found\", \"Google Business Profile incomplete — missing hours and photos\", \"No backlinks or citations found beyond basic directories\", \"Zero organic search footprint\", \"Competitors capturing all local search traffic\"], \"recommendations\": [\"Build a basic website with services, hours, location, and online booking\", \"Complete Google Business Profile with 10+ photos and full service menu\", \"List on Yelp, StyleSeat, and Vagaro for salon-specific directories\", \"Encourage customers to leave Google reviews\", \"Set up Google Search Console once website is live\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "Glow Salon Spa Montclair NJ 07042 website"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "seo_auditor",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "established_business_good_seo",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Perform a comprehensive SEO audit for Spago Beverly Hills located at 176 N Canon Dr, Beverly Hills, CA 90210. Their website is https://www.wolfgangpuck.com/dining/spago. Return a JSON report."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"overallScore\": 74, \"summary\": \"Spago Beverly Hills benefits from a strong parent domain (wolfgangpuck.com) with high authority and extensive press coverage. Technical SEO is solid with fast load times and proper schema markup. The main opportunity is expanding local landing page content and improving the Google Business Profile with more frequent posting.\", \"seo_technical_score\": 78, \"seo_content_score\": 72, \"seo_ux_score\": 75, \"seo_performance_score\": 80, \"seo_authority_score\": 65, \"issues\": [\"Local landing page thin on unique content vs other Puck venues\", \"Google Business Profile posts infrequent (last post 45+ days ago)\", \"No direct reservation schema markup\", \"Mobile speed 2.8s — acceptable but improvable\"], \"recommendations\": [\"Add unique, Spago-specific content to the landing page (chef bio, signature dishes, awards)\", \"Post to Google Business Profile weekly with specials and events\", \"Add OpenTable/Resy reservation action schema to boost CTR\", \"Compress hero images for faster mobile load\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "Spago Beverly Hills SEO backlinks reviews"}},
+              {"id": "call_2", "name": "pagespeed_tool", "args": {"url": "https://www.wolfgangpuck.com/dining/spago"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "seo_auditor",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

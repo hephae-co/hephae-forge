@@ -1,0 +1,65 @@
+{
+  "eval_set_id": "discovery_pipeline_eval",
+  "name": "Discovery Pipeline Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "restaurant_with_website",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Discover and profile this business:\nName: Mario's Pizzeria\nAddress: 123 Main St, Nutley, NJ 07110\nWebsite: https://mariosnj.com\n\nCrawl their website, extract all business details, discover their social profiles, and validate all URLs found."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"businessName\": \"Mario's Pizzeria\", \"address\": \"123 Main St, Nutley, NJ 07110\", \"phone\": \"(973) 555-0142\", \"email\": \"\", \"officialUrl\": \"https://mariosnj.com\", \"category\": \"Italian Restaurant / Pizzeria\", \"description\": \"Family-owned pizzeria serving authentic NY-style pizza since 2004. Known for hand-tossed crust and fresh ingredients.\", \"hours\": {\"monday\": \"11am-9pm\", \"tuesday\": \"11am-9pm\", \"wednesday\": \"11am-9pm\", \"thursday\": \"11am-9pm\", \"friday\": \"11am-10pm\", \"saturday\": \"11am-10pm\", \"sunday\": \"12pm-8pm\"}, \"socialLinks\": {\"facebook\": \"https://facebook.com/mariospizzanj\", \"instagram\": \"\", \"yelp\": \"https://yelp.com/biz/marios-pizzeria-nutley\"}, \"menu\": {\"categories\": [\"Pizza\", \"Pasta\", \"Calzones\", \"Salads\", \"Desserts\"]}, \"coordinates\": {\"lat\": 40.8218, \"lng\": -74.1554}, \"validatedUrls\": {\"officialUrl\": true, \"facebook\": true, \"yelp\": true}}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "crawl4ai_tool", "args": {"url": "https://mariosnj.com"}},
+              {"id": "call_2", "name": "google_search", "args": {"query": "Mario's Pizzeria Nutley NJ contact hours menu"}},
+              {"id": "call_3", "name": "google_search", "args": {"query": "Mario's Pizzeria Nutley NJ Facebook Instagram Yelp"}},
+              {"id": "call_4", "name": "validate_url_tool", "args": {"url": "https://mariosnj.com"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "discovery_pipeline",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "business_no_website",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Discover and profile this business:\nName: Nutley Park Barber\nAddress: 200 Franklin Ave, Nutley, NJ 07110\nWebsite: (none known)\n\nSearch for this business online, discover whatever digital presence exists, and return all found details."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"businessName\": \"Nutley Park Barber\", \"address\": \"200 Franklin Ave, Nutley, NJ 07110\", \"phone\": \"(973) 555-0189\", \"email\": \"\", \"officialUrl\": \"\", \"category\": \"Barber Shop\", \"description\": \"Traditional barbershop serving the Nutley community. Walk-ins welcome.\", \"hours\": {\"monday\": \"closed\", \"tuesday\": \"9am-6pm\", \"wednesday\": \"9am-6pm\", \"thursday\": \"9am-6pm\", \"friday\": \"9am-7pm\", \"saturday\": \"8am-5pm\", \"sunday\": \"closed\"}, \"socialLinks\": {\"facebook\": \"\", \"instagram\": \"\", \"yelp\": \"https://yelp.com/biz/nutley-park-barber\"}, \"menu\": {\"categories\": [\"Haircut\", \"Shave\", \"Beard Trim\"]}, \"coordinates\": {\"lat\": 40.8225, \"lng\": -74.1548}, \"discoveryNotes\": \"No website found. Business discovered via Google Business Profile and Yelp listing. Limited digital presence.\", \"validatedUrls\": {\"yelp\": true}}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "Nutley Park Barber 200 Franklin Ave Nutley NJ"}},
+              {"id": "call_2", "name": "google_search", "args": {"query": "Nutley Park Barber Facebook Yelp Instagram"}},
+              {"id": "call_3", "name": "validate_url_tool", "args": {"url": "https://yelp.com/biz/nutley-park-barber"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "discovery_pipeline",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

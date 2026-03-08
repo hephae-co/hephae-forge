@@ -1,0 +1,64 @@
+{
+  "eval_set_id": "traffic_forecaster_eval",
+  "name": "Traffic Forecaster Context Gathering Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "restaurant_nutley_nj",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Business: Mario's Pizzeria\nLocation: 123 Main St, Nutley, NJ 07110\nLatitude: 40.8218\nLongitude: -74.1554\nToday: Monday, March 10, 2026\n\nPlease gather intelligence context."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "Context gathering complete. POIs: Multiple restaurants, shops, and a community park within 0.5 miles of Nutley, NJ 07110. Weather: Mild March weather expected, highs around 48F with possible light rain mid-week. Events: No major events found for this week in Nutley. The nearby Franklin Avenue commercial district generates regular foot traffic."}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "points of interest near 123 Main St Nutley NJ 07110"}},
+              {"id": "call_2", "name": "weather_tool", "args": {"lat": 40.8218, "lng": -74.1554}},
+              {"id": "call_3", "name": "google_search", "args": {"query": "events Nutley NJ March 2026"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "traffic_forecaster",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "salon_montclair_nj",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Business: Glow Salon & Spa\nLocation: 456 Oak Ave, Montclair, NJ 07042\nLatitude: 40.8259\nLongitude: -74.2090\nToday: Wednesday, March 12, 2026\n\nPlease gather intelligence context."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "Context gathering complete. POIs: Montclair's Upper Montclair village has dense retail, dining, and service businesses within walking distance. Weather: Clear and cool, highs around 52F. Events: Montclair Art Museum has a weekend opening drawing visitors to the area. Appointment-based service businesses in this area benefit from steady weekday foot traffic from nearby offices and the Montclair State University commuter crowd."}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "points of interest near 456 Oak Ave Montclair NJ 07042"}},
+              {"id": "call_2", "name": "weather_tool", "args": {"lat": 40.8259, "lng": -74.2090}},
+              {"id": "call_3", "name": "google_search", "args": {"query": "events Montclair NJ March 2026"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "traffic_forecaster",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

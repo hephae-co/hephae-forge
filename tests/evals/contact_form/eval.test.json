@@ -1,0 +1,40 @@
+[
+  {
+    "eval_id": "cafe_with_traffic_data",
+    "description": "Contact form message for a cafe with traffic forecast data",
+    "session_input": {
+      "app_name": "contact_form",
+      "user_id": "eval",
+      "state": {}
+    },
+    "conversation": [
+      {
+        "role": "user",
+        "content": "Business: Brew & Bean Coffee House\nHephae Website: https://hephae.co\n\n## Traffic Forecast Results\nPeak Traffic Score: 87\nSummary: Saturday mornings 8-10am show 95% capacity with strong repeat customer patterns.\nFull Report: https://storage.googleapis.com/everything-hephae/brew-bean/traffic-001.html"
+      },
+      {
+        "role": "model",
+        "content": "{\"message\": \"Hi Brew & Bean, Hephae here. Our analysis shows your peak traffic hits 95% capacity on Saturday mornings — you're leaving money on the table. We help businesses like yours optimize operations with AI insights. Check us out at hephae.co and let's make it happen.\"}"
+      }
+    ]
+  },
+  {
+    "eval_id": "restaurant_with_competitive_data",
+    "description": "Contact form message for a restaurant with competitive analysis",
+    "session_input": {
+      "app_name": "contact_form",
+      "user_id": "eval",
+      "state": {}
+    },
+    "conversation": [
+      {
+        "role": "user",
+        "content": "Business: The Hungry Fork\nHephae Website: https://hephae.co\n\n## Competitive Analysis Results\nCompetitors Analyzed: 7\nAvg Threat Level: 8.2/10\nSummary: You're in a highly competitive market with 7 direct competitors. Your pricing is 12% below market average but margins are suffering.\nFull Report: https://storage.googleapis.com/everything-hephae/hungry-fork/competitive-001.html"
+      },
+      {
+        "role": "model",
+        "content": "{\"message\": \"The Hungry Fork — facing 7 tough competitors? Your pricing is 12% below market but your margins are paying the price. Hephae reveals exactly how to compete smarter without cutting deeper. Learn how at hephae.co.\"}"
+      }
+    ]
+  }
+]

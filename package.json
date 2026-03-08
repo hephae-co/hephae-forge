@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": [
     "packages/common-ts",
-    "web",
-    "admin"
+    "apps/web",
+    "apps/admin"
   ]
 }

@@ -1,0 +1,62 @@
+{
+  "eval_set_id": "competitive_analyzer_eval",
+  "name": "Competitive Analyzer Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "pizzeria_nutley_nj",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Perform a competitive analysis for Mario's Pizzeria located at 123 Main St, Nutley, NJ 07110. Category: Italian restaurant / pizza. Find competitors within 1 mile and analyze the competitive landscape. Return a detailed JSON report with competitor profiles and market positioning."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"score\": 62, \"market_summary\": \"Mario's Pizzeria operates in a moderately competitive market with 4 direct competitors within 1 mile. The local pizza market shows healthy demand, but Mario's faces pressure from a recently opened chain location. Mario's primary advantage is its 20-year local reputation and cash-only authentic NY-style pizza. The competitive threat is medium — independent pizzerias hold their ground against chains due to loyal regulars.\", \"competitors\": [{\"name\": \"Tony's Pizza\", \"address\": \"89 Centre St, Nutley, NJ\", \"threat_level\": 7, \"strengths\": [\"Online ordering\", \"Delivery\", \"Higher Google rating (4.4)\"], \"weaknesses\": [\"Higher prices\", \"Less authentic crust\"]}, {\"name\": \"Domino's\", \"address\": \"200 Bloomfield Ave, Nutley, NJ\", \"threat_level\": 6, \"strengths\": [\"Brand recognition\", \"Online ordering\", \"Fast delivery\"], \"weaknesses\": [\"Not perceived as authentic\", \"Different customer base\"]}, {\"name\": \"Napoli Brick Oven\", \"address\": \"45 Franklin Ave, Nutley, NJ\", \"threat_level\": 5, \"strengths\": [\"Upscale positioning\", \"Wine list\", \"Dine-in experience\"], \"weaknesses\": [\"Higher price point\", \"Smaller slice operation\"]}], \"avg_threat_level\": 6, \"opportunities\": [\"Add online ordering to capture delivery demand\", \"Leverage 20-year reputation in marketing\", \"Add loyalty program to defend against chain competition\"], \"positioning_recommendation\": \"Double down on authenticity and local heritage messaging. Mario's should position as the community's original pizza institution — a story no chain can replicate.\"}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "pizza restaurants near 123 Main St Nutley NJ 07110 competitors"}},
+              {"id": "call_2", "name": "google_search", "args": {"query": "Mario's Pizzeria Nutley NJ reviews rating"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "competitive_analyzer",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "salon_montclair_nj",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Perform a competitive analysis for Glow Salon & Spa located at 456 Oak Ave, Montclair, NJ 07042. Category: hair salon and spa services. Find competitors within 1 mile and analyze the competitive landscape. Return a detailed JSON report with competitor profiles and market positioning."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"score\": 55, \"market_summary\": \"Glow Salon & Spa competes in a fragmented market with 5 direct competitors within 1 mile of Montclair. The Upper Montclair corridor has strong disposable income demographics favoring premium service businesses. Glow's main differentiation opportunity is its spa services — most competitors are pure salons without spa treatments. The mid-range pricing positions it well between budget chains and luxury day spas.\", \"competitors\": [{\"name\": \"Salon Bellissimo\", \"address\": \"412 Bloomfield Ave, Montclair, NJ\", \"threat_level\": 8, \"strengths\": [\"Online booking\", \"4.7 Google rating\", \"Large team of stylists\", \"Active Instagram with 2.1K followers\"], \"weaknesses\": [\"No spa services\", \"Higher wait times\"]}, {\"name\": \"Great Clips\", \"address\": \"500 Bloomfield Ave, Montclair, NJ\", \"threat_level\": 4, \"strengths\": [\"Low price\", \"Walk-in model\", \"Brand recognition\"], \"weaknesses\": [\"Budget positioning\", \"No spa\", \"High turnover\"]}, {\"name\": \"The Beauty Spot\", \"address\": \"389 Park St, Montclair, NJ\", \"threat_level\": 6, \"strengths\": [\"Boutique atmosphere\", \"Color specialization\"], \"weaknesses\": [\"Small team\", \"Limited availability\"]}], \"avg_threat_level\": 6, \"opportunities\": [\"Market spa services aggressively — competitors don't offer them\", \"Launch online booking to compete with Salon Bellissimo\", \"Build Instagram presence to match local competitors\"], \"positioning_recommendation\": \"Glow should lead with its spa differentiation: position as the only full-service salon + spa in Upper Montclair, justifying a premium over pure salons while offering more than a day spa alone.\"}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "hair salons near 456 Oak Ave Montclair NJ 07042"}},
+              {"id": "call_2", "name": "google_search", "args": {"query": "Glow Salon Spa Montclair NJ reviews competitors"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "competitive_analyzer",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

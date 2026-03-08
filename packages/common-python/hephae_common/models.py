@@ -145,6 +145,9 @@ class EnrichedProfile(BaseIdentity):
     social_links: Optional[SocialLinks] = Field(None, alias="socialLinks")
     phone: Optional[str] = None
     email: Optional[str] = None
+    email_status: Optional[str] = Field(None, alias="emailStatus")
+    contact_form_url: Optional[str] = Field(None, alias="contactFormUrl")
+    contact_form_status: Optional[str] = Field(None, alias="contactFormStatus")
     hours: Optional[str] = None
     google_maps_url: Optional[str] = Field(None, alias="googleMapsUrl")
     competitors: Optional[list[Competitor]] = None

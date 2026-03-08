@@ -1,0 +1,64 @@
+{
+  "eval_set_id": "margin_surgeon_capability_eval",
+  "name": "Margin Surgeon Capability Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "pizzeria_menu_analysis",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Run a margin surgery analysis for Mario's Pizzeria (123 Main St, Nutley, NJ 07110). Here is their menu:\n\nSMALL PIZZA (12\"): Cheese $12, Pepperoni $14, Supreme $16\nLARGE PIZZA (18\"): Cheese $18, Pepperoni $21, Supreme $24\nCALZONE: $13\nPASTA: Spaghetti $11, Baked Ziti $13, Lasagna $15\nSALADS: Garden $7, Caesar $9\nSOFT DRINKS: $2\nDESSERT: Cannoli $4, Tiramisu $6\n\nAnalyze food costs, identify profit leakage, and provide menu engineering recommendations. Return a JSON report."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"overall_score\": 58, \"summary\": \"Mario's Pizzeria is losing approximately $3,200/month in recoverable profit. Food costs are running at 38% vs the restaurant industry benchmark of 28-32%. Cheese and dough are the primary cost drivers. The large pizza is underpriced relative to its ingredient cost — raising the large cheese pizza by $2 would recover significant margin. The calzone and pasta dishes offer better margins and should be promoted more aggressively.\", \"menu_items\": [{\"name\": \"Large Pizza - Cheese\", \"current_price\": 18, \"estimated_food_cost\": 7.20, \"food_cost_pct\": 40, \"recommended_price\": 20, \"margin_recovery\": 2.0}, {\"name\": \"Large Pizza - Pepperoni\", \"current_price\": 21, \"estimated_food_cost\": 8.40, \"food_cost_pct\": 40, \"recommended_price\": 23, \"margin_recovery\": 2.0}, {\"name\": \"Calzone\", \"current_price\": 13, \"estimated_food_cost\": 3.90, \"food_cost_pct\": 30, \"recommended_price\": 13, \"margin_recovery\": 0}, {\"name\": \"Spaghetti\", \"current_price\": 11, \"estimated_food_cost\": 2.75, \"food_cost_pct\": 25, \"recommended_price\": 11, \"margin_recovery\": 0}, {\"name\": \"Lasagna\", \"current_price\": 15, \"estimated_food_cost\": 5.25, \"food_cost_pct\": 35, \"recommended_price\": 16, \"margin_recovery\": 1.0}], \"totalLeakage\": 3200, \"recommendations\": [\"Raise large pizza prices by $2 — customers are price-insensitive at this tier\", \"Promote calzone and pasta (25-30% food cost) with upsell messaging\", \"Negotiate bulk mozzarella contract — dairy up 3.2% YoY\", \"Add a premium pizza tier ($28-32) with gourmet toppings to capture willing-to-pay customers\", \"Reduce tiramisu portion by 15% — dessert food cost currently at 42%\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "benchmark_tool", "args": {"category": "pizza restaurant", "location": "NJ"}},
+              {"id": "call_2", "name": "commodity_inflation_tool", "args": {"ingredients": ["cheese", "flour", "tomato sauce"]}},
+              {"id": "call_3", "name": "surgery_tool", "args": {"menu_items": [], "benchmarks": {}, "commodity_data": {}}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "margin_surgeon",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "salon_service_menu",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Run a margin surgery analysis for Glow Salon & Spa (456 Oak Ave, Montclair, NJ 07042). Here is their service menu:\n\nHAIR SERVICES: Haircut $45, Color Single Process $85, Highlights Full Head $165, Blowout $40, Treatment $55\nSPA SERVICES: 60-min Facial $95, 30-min Facial $55, Mani/Pedi Combo $75, Manicure $35, Pedicure $50\nADD-ONS: Deep Conditioning $25, Scalp Massage $20, Paraffin Wax $15\n\nAnalyze service costs, identify profit leakage, and provide pricing recommendations. Return a JSON report."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"overall_score\": 65, \"summary\": \"Glow Salon & Spa's margins are healthier than typical restaurants but there is approximately $2,100/month in recoverable profit. Color services are underpriced relative to product cost and stylist time. The 60-min facial at $95 is below the Montclair market rate of $110-120. Spa add-ons are excellent margin contributors and should be upsold more aggressively.\", \"menu_items\": [{\"name\": \"Color Single Process\", \"current_price\": 85, \"estimated_cost\": 28, \"margin_pct\": 67, \"recommended_price\": 95, \"margin_recovery\": 10}, {\"name\": \"Highlights Full Head\", \"current_price\": 165, \"estimated_cost\": 55, \"margin_pct\": 67, \"recommended_price\": 180, \"margin_recovery\": 15}, {\"name\": \"60-min Facial\", \"current_price\": 95, \"estimated_cost\": 22, \"margin_pct\": 77, \"recommended_price\": 115, \"margin_recovery\": 20}, {\"name\": \"Paraffin Wax\", \"current_price\": 15, \"estimated_cost\": 2, \"margin_pct\": 87, \"recommended_price\": 20, \"margin_recovery\": 5}], \"totalLeakage\": 2100, \"recommendations\": [\"Raise 60-min facial to $110-115 — still below Montclair market average of $120\", \"Increase color and highlights pricing by 10-12% — last increase was 18+ months ago\", \"Train staff to suggest add-ons at checkout — paraffin wax has 87% margin\", \"Introduce a premium 90-min facial at $155 to create an aspirational tier\", \"Bundle mani/pedi + facial as a spa day package at $155 (vs $170 a la carte) to increase basket size\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "benchmark_tool", "args": {"category": "salon and spa", "location": "NJ"}},
+              {"id": "call_2", "name": "commodity_inflation_tool", "args": {"ingredients": ["hair color", "facial products", "nail polish"]}},
+              {"id": "call_3", "name": "surgery_tool", "args": {"menu_items": [], "benchmarks": {}, "commodity_data": {}}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "margin_surgeon",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

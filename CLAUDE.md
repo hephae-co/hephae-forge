@@ -1,31 +1,60 @@
 # CLAUDE.md — Hephae Forge Monorepo
 
-This is the root of the hephae-forge monorepo. It contains two apps and shared packages.
+This is the root of the hephae-forge monorepo. It contains three services, five shared packages, and centralized tests.
 
 ## Repository Structure
 
 ```
 hephae-forge/
-├── web/                   # Customer-facing web app (hephae.co)
-├── admin/                 # Internal admin/CI dashboard
+├── apps/
+│   ├── web/                   # Customer-facing web app (hephae.co) — Next.js 16 frontend
+│   ├── admin/                 # Internal admin dashboard — Next.js 14.1 frontend
+│   └── api/                   # Unified backend API — FastAPI (serves both UIs)
 ├── packages/
-│   ├── common-python/     # Shared Python code (Firebase, auth, models)
-│   └── common-ts/         # Shared TypeScript code (types, Firebase client)
-└── contracts/             # Shared API & data contracts (documentation)
+│   ├── common-python/         # hephae-common — Models, config, auth, Firebase, helpers
+│   ├── common-ts/             # @hephae/common — Shared TypeScript types
+│   ├── db/                    # hephae-db — All Firestore, BigQuery, GCS access
+│   ├── integrations/          # hephae-integrations — 3rd-party API clients (BLS, USDA, etc.)
+│   └── capabilities/          # hephae-capabilities — All AI agents + stateless runner functions
+├── tests/                     # Centralized test suite (capabilities, workflows, API, integration)
+├── contracts/                 # Shared API & data contracts (documentation)
+└── package.json               # npm workspaces root
 ```
 
-## Apps
+## Services (Cloud Run deployments)
 
-- **`web/`** — The customer-facing product at hephae.co. Analyzes restaurants using AI agents (margin surgery, SEO audit, traffic forecast, competitive analysis). Next.js frontend + FastAPI backend.
-- **`admin/`** — Internal admin dashboard that orchestrates and evaluates web app capabilities. Runs multi-phase workflows: discovery, enrichment, analysis, evaluation, outreach. Next.js frontend + FastAPI backend.
+| Service | Stack | Port | Purpose |
+|---------|-------|------|---------|
+| `apps/web/` | Next.js 16 | 3000 | Customer UI — proxies `/api/*` to unified API |
+| `apps/admin/` | Next.js 14.1 | 3000 | Admin UI — proxies `/api/*` to unified API |
+| `apps/api/` | FastAPI | 8080 | Unified backend — all capabilities, workflows, DB access |
 
-Admin depends on web's API endpoints. Web is standalone.
+Both UIs call the same backend. Capabilities are direct Python imports (no inter-service HTTP).
+
+## Shared Packages
+
+| Package | Name | Contains |
+|---------|------|----------|
+| `packages/common-python/` | `hephae-common` | Models, config, auth, Firebase, model fallback, ADK helpers, email, report templates |
+| `packages/common-ts/` | `@hephae/common` | TypeScript types |
+| `packages/db/` | `hephae-db` | Firestore, BigQuery, GCS, BusinessContext |
+| `packages/integrations/` | `hephae-integrations` | BLS, USDA, FDA, OSM, social media API clients |
+| `packages/capabilities/` | `hephae-capabilities` | All AI agents + runner.py files (stateless: identity → report) |
+
+### Dependency Graph (no cycles)
+```
+apps/api              → hephae-capabilities, hephae-db, hephae-integrations, hephae-common
+hephae-capabilities   → hephae-integrations, hephae-db, hephae-common
+hephae-integrations   → hephae-common
+hephae-db             → hephae-common
+hephae-common         → (external only)
+```
 
 ## Cross-App Standards
 
 ### Model Strategy
 
-All AI agents across both apps use Google Gemini via Google ADK.
+All AI agents use Google Gemini via Google ADK.
 
 | Tier | Model | Use Case |
 |------|-------|----------|
@@ -36,7 +65,7 @@ All AI agents across both apps use Google Gemini via Google ADK.
 
 Thinking modes: MEDIUM for evaluators, HIGH for competitive/market positioning.
 
-When upgrading model tiers, update BOTH `web/backend/config.py` and `admin/backend/config.py`, or (once extracted) `packages/common-python/hephae_common/model_config.py`.
+Model tiers are defined in `packages/common-python/hephae_common/model_config.py`.
 
 ### Database Rules (strictly enforced)
 
@@ -47,7 +76,7 @@ When upgrading model tiers, update BOTH `web/backend/config.py` and `admin/backe
 
 ### Agent Versioning
 
-Every agent has a semantic version in its app's `config.py` under `AgentVersions`.
+Every agent has a semantic version in `apps/api/backend/config.py` under `AgentVersions`.
 
 - MAJOR: output schema change (fields added/removed/renamed)
 - MINOR: logic change, same schema
@@ -59,10 +88,11 @@ Bump the version in the same commit as the breaking change.
 
 | Context | Mechanism |
 |---------|-----------|
-| Web app internal | Firebase Admin SDK (server-side only, no client DB access) |
-| Admin → Web API calls | HMAC-SHA256 signing (`FORGE_API_SECRET`) for capability endpoints; API key header for v1 endpoints |
+| UI → API | HMAC-SHA256 signing (`FORGE_API_SECRET`) or API key header |
 | Cloud Run services | GCP identity tokens via metadata server |
 | Firestore rules | All client access denied (`allow read, write: if false`) |
+
+Note: Inter-service auth (admin→web HMAC) has been eliminated — capabilities are direct Python imports within the unified API.
 
 ### GCP Infrastructure
 
@@ -74,42 +104,49 @@ Bump the version in the same commit as the breaking change.
 | GCS Bucket | `everything-hephae` |
 | GCS Public Base | `https://storage.googleapis.com/everything-hephae/` |
 
-### Evaluation Standards (admin evaluators)
+### Evaluation Standards
 
-Admin evaluator agents validate web app capability outputs:
+Evaluator agents validate capability outputs:
 - **Pass threshold:** score >= 80 AND !isHallucinated
 - **Evaluator model:** ENHANCED tier + MEDIUM thinking
-- All 4 capabilities (SEO, traffic, competitive, margin) have dedicated evaluator agents
-
-When changing a web app agent's output schema, check that admin's corresponding evaluator still works.
+- All 4 capabilities (SEO, traffic, competitive, margin) have dedicated evaluator agents in `apps/api/backend/workflows/agents/evaluators/`
 
 ## Contracts
 
 See `contracts/` for shared documentation:
 - `contracts/firestore-schema.md` — Firestore document shapes
 - `contracts/bigquery-schema.md` — BigQuery table definitions
-- `contracts/api-web.md` — Web app's published API (for admin consumption)
-- `contracts/api-admin.md` — Admin app's published API
+- `contracts/api-web.md` — Web-facing API routes
+- `contracts/api-admin.md` — Admin-facing API routes
 - `contracts/gcs-conventions.md` — GCS path patterns
 - `contracts/eval-standards.md` — Evaluation criteria and thresholds
 
-## Shared Packages
+## Commands
 
-### `packages/common-python/` (`hephae-common`)
-Shared Python code installed as a local path dependency by both apps.
 ```bash
-pip install -e packages/common-python
-```
+# Unified API
+cd apps/api && pip install -e . && uvicorn backend.main:app --reload --port 8080
 
-### `packages/common-ts/` (`@hephae/common`)
-Shared TypeScript code resolved via npm workspaces.
-```json
-"@hephae/common": "workspace:*"
+# Web UI
+cd apps/web && npm install && npm run dev
+
+# Admin UI
+cd apps/admin && npm install && npm run dev
+
+# Install all shared packages
+pip install -e packages/common-python -e packages/db -e packages/integrations -e packages/capabilities
+
+# Run tests
+python -m pytest tests/
+
+# Deploy unified API
+bash apps/api/infra/deploy.sh
 ```
 
 ## Working in This Repo
 
-- When modifying shared types/models, run tests in BOTH `web/` and `admin/`.
-- When changing a web app API endpoint, update `contracts/api-web.md` in the same commit.
-- When changing admin's expectations of web, update `contracts/api-admin.md`.
+- When modifying shared packages, run tests across all consumers.
+- When changing an API endpoint, update the corresponding `contracts/` doc.
 - Each app has its own `CLAUDE.md` with app-specific details. Read it before working in that app.
+- Capabilities are in `packages/capabilities/` — each has a `runner.py` (stateless: identity in, report out).
+- DB access is in `packages/db/` — never access Firestore/BQ directly from routers or agents.

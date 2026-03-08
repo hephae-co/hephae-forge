@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ─────────────────────────────────────────────────────────────
+# deploy.sh — Build & deploy unified API to Cloud Run
+#
+# Usage:
+#   bash apps/api/infra/deploy.sh
+#   bash apps/api/infra/deploy.sh --skip-checks
+# ─────────────────────────────────────────────────────────────
+
+PROJECT_ID="hephae-co-dev"
+REGION="us-east1"
+BUILD_REGION="us-east1"
+REPO="cloud-run-source-deploy"
+TAG=$(git rev-parse --short HEAD)
+SERVICE_ACCOUNT="hephae-forge@${PROJECT_ID}.iam.gserviceaccount.com"
+
+API_SERVICE="hephae-forge-api"
+API_IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${API_SERVICE}:${TAG}"
+
+CRAWL4AI_SERVICE="hephae-crawl4ai"
+
+# Resolve repo root (build context must be monorepo root)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+# ─────────────────────────────────────────────────────────────
+# Parse flags
+# ─────────────────────────────────────────────────────────────
+SKIP_CHECKS=false
+for arg in "$@"; do
+  case $arg in
+    --skip-checks) SKIP_CHECKS=true ;;
+    *) echo "Unknown flag: $arg"; exit 1 ;;
+  esac
+done
+
+# ─────────────────────────────────────────────────────────────
+# Prerequisite checks
+# ─────────────────────────────────────────────────────────────
+if ! $SKIP_CHECKS; then
+  echo "── Checking prerequisites... ──────────────────"
+  PREFLIGHT_FAIL=0
+
+  if ! command -v gcloud &>/dev/null; then
+    echo "  ✗ gcloud CLI not found"; exit 1
+  fi
+
+  ACCOUNT=$(gcloud config get-value account 2>/dev/null)
+  if [ -z "$ACCOUNT" ]; then
+    echo "  ✗ Not authenticated. Run: gcloud auth login"; exit 1
+  fi
+  echo "  ✓ Authenticated as: ${ACCOUNT}"
+
+  CURRENT_PROJECT=$(gcloud config get-value project 2>/dev/null)
+  if [ "$CURRENT_PROJECT" != "$PROJECT_ID" ]; then
+    gcloud config set project "$PROJECT_ID" --quiet
+  fi
+  echo "  ✓ Project: ${PROJECT_ID}"
+
+  for secret in "GEMINI_API_KEY" "BLS_API_KEY" "FRED_API_KEY" "GOOGLE_MAPS_API_KEY" "FORGE_API_SECRET" "FORGE_V1_API_KEY" "CRON_SECRET" "RESEND_API_KEY"; do
+    if gcloud secrets describe "$secret" --project="$PROJECT_ID" &>/dev/null; then
+      echo "  ✓ Secret: ${secret}"
+    else
+      echo "  ✗ Secret missing: ${secret}"
+      PREFLIGHT_FAIL=$((PREFLIGHT_FAIL + 1))
+    fi
+  done
+
+  if [ $PREFLIGHT_FAIL -gt 0 ]; then
+    echo "  ✗ ${PREFLIGHT_FAIL} prerequisite(s) missing."
+    exit 1
+  fi
+  echo "  All prerequisites met."
+  echo ""
+fi
+
+# ─────────────────────────────────────────────────────────────
+# Build API image
+# ─────────────────────────────────────────────────────────────
+echo "──── Unified API Deploy ────────────────────────"
+echo "  Project:   ${PROJECT_ID}"
+echo "  Region:    ${REGION}"
+echo "  Service:   ${API_SERVICE}"
+echo "  Image:     ${API_IMAGE}"
+echo "  Context:   ${REPO_ROOT}"
+echo ""
+
+echo "── Building FastAPI image..."
+cat > /tmp/cloudbuild-unified-api.yaml <<YAML
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${API_IMAGE}', '-f', 'apps/api/infra/Dockerfile.fastapi', '.']
+images: ['${API_IMAGE}']
+YAML
+gcloud builds submit \
+  --config /tmp/cloudbuild-unified-api.yaml \
+  --project "$PROJECT_ID" \
+  --region "$BUILD_REGION" \
+  --timeout=900 "$REPO_ROOT"
+
+# ─────────────────────────────────────────────────────────────
+# Get crawl4ai URL (needed for API env var)
+# ─────────────────────────────────────────────────────────────
+CRAWL4AI_URL=$(gcloud run services describe "$CRAWL4AI_SERVICE" \
+  --region "$REGION" --project "$PROJECT_ID" \
+  --format="value(status.url)" 2>/dev/null || echo "")
+
+# ─────────────────────────────────────────────────────────────
+# Deploy API service
+# ─────────────────────────────────────────────────────────────
+echo "── Deploying API service (${API_SERVICE})..."
+
+ENV_VARS="PYTHONUNBUFFERED=1"
+if [ -n "$CRAWL4AI_URL" ]; then
+  ENV_VARS="${ENV_VARS},CRAWL4AI_URL=${CRAWL4AI_URL}"
+fi
+
+RESEND_FROM_EMAIL="${RESEND_FROM_EMAIL:-onboarding@resend.dev}"
+ENV_VARS="${ENV_VARS},RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL}"
+
+gcloud run deploy "$API_SERVICE" \
+  --image "$API_IMAGE" \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --platform managed \
+  --port 8080 \
+  --memory 2Gi \
+  --cpu 2 \
+  --timeout 300 \
+  --concurrency 80 \
+  --min-instances 1 \
+  --max-instances 5 \
+  --service-account "$SERVICE_ACCOUNT" \
+  --set-env-vars "$ENV_VARS" \
+  --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,BLS_API_KEY=BLS_API_KEY:latest,FRED_API_KEY=FRED_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest,FORGE_API_SECRET=FORGE_API_SECRET:latest,FORGE_V1_API_KEY=FORGE_V1_API_KEY:latest,CRON_SECRET=CRON_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest" \
+  --no-allow-unauthenticated
+
+# Grant service account invoker role
+gcloud run services add-iam-policy-binding "$API_SERVICE" \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role="roles/run.invoker" 2>/dev/null || true
+
+API_URL=$(gcloud run services describe "$API_SERVICE" \
+  --region "$REGION" --project "$PROJECT_ID" \
+  --format="value(status.url)")
+
+echo ""
+echo "══════════════════════════════════════════════"
+echo "  ✓ API: ${API_URL}"
+if [ -n "$CRAWL4AI_URL" ]; then
+  echo "  ✓ crawl4ai: ${CRAWL4AI_URL}"
+fi
+echo "══════════════════════════════════════════════"

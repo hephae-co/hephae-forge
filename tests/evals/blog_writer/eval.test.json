@@ -1,0 +1,56 @@
+{
+  "eval_set_id": "blog_writer_eval",
+  "name": "Blog Writer Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "restaurant_full_analysis",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Business: Mario's Pizzeria\nAvailable Reports: Margin Surgery, SEO Deep Audit, Foot Traffic Forecast, Competitive Analysis\n\n## Margin Surgery Data\nOverall Score: 58/100\nTotal Profit Leakage: $3,200/mo\nMenu Items Analyzed: 12\nSummary: Food costs running at 38% vs industry benchmark of 28-32%. Large pizzas underpriced. Raising prices by $2 on large pies and promoting high-margin pasta dishes could recover $3,200/month.\n\n## SEO Audit Data\nOverall Score: 42/100\n  - Technical: 38/100\n  - Content: 45/100\n  - UX: 40/100\n  - Performance: 35/100\n  - Authority: 52/100\nSummary: Missing meta descriptions, no structured data, 4.8s page load time. Adding LocalBusiness schema and compressing images are quick wins.\n\n## Traffic Forecast Data\nPeak Traffic Score: 78\nSummary: Strong Friday-Saturday evening traffic. Lunch peaks 11am-2pm daily. Weekend averages 140 daily visitors vs 85 weekday.\n\n## Competitive Analysis Data\nCompetitors Analyzed: 4\nAvg Threat Level: 6/10\nSummary: Moderate competition. Mario's 20-year reputation is primary differentiator. A chain opened nearby but locals prefer authentic pizza. Opportunity to add online ordering to capture delivery demand competitors are taking."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "<h1>How Mario's Pizzeria Can Recover $3,200/Month and Dominate Local Search</h1>\n<p>After 20 years serving Nutley, NJ, Mario's Pizzeria has built something chains can't buy: genuine community loyalty. But loyalty alone doesn't pay the bills — and a deep analysis of Mario's operations reveals thousands of dollars slipping through the cracks every month.</p>\n<h2>The Hidden Profit Problem</h2>\n<p>Mario's food costs are running at 38%, a full 6-10 points above the restaurant industry benchmark of 28-32%. The culprit? Large pizzas are priced below their true value. A $2 increase on large pies — still competitive with local pricing — would recover an estimated $3,200 per month in profit leakage without losing a single customer.</p>\n<h2>A Digital Presence That Needs Work</h2>\n<p>The SEO audit scored Mario's at 42 out of 100. The website lacks meta descriptions, has no structured data to help Google understand the business, and loads in 4.8 seconds — more than twice the optimal speed. These aren't just technical footnotes; they're the reason potential customers searching \"pizza near me\" aren't finding Mario's.</p>\n<p>The fix is straightforward: add LocalBusiness schema markup, write unique meta descriptions for each page, and compress the site's images. These changes could double organic search visibility within 90 days.</p>\n<h2>Peak Hours Are Already There — Capture Them Online</h2>\n<p>Foot traffic data shows strong Friday-Saturday evenings with weekend averages reaching 140 daily visitors. The problem is delivery: with no online ordering, Mario's is ceding the growing takeout market to competitors including a recently-opened chain nearby.</p>\n<h2>The 20-Year Advantage</h2>\n<p>Four competitors operate within 1 mile, but Mario's holds a 6.3/10 competitive position due to one irreplaceable asset: two decades of community trust. No chain can manufacture that. The winning strategy is to leverage this heritage — in marketing, in pricing, and in customer loyalty programs — while modernizing the digital storefront that's holding the business back.</p>\n<h2>Three Actions to Take This Month</h2>\n<ol><li><strong>Raise large pizza prices by $2</strong> — recover $3,200/month immediately</li><li><strong>Add LocalBusiness schema and meta descriptions</strong> — double search visibility within 90 days</li><li><strong>Launch online ordering</strong> — capture the delivery revenue currently going to competitors</li></ol>\n<p>Mario's has the ingredients for a thriving next 20 years. The recipe just needs a few modern updates.</p>"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "blog_writer",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "salon_seo_focused",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Business: Glow Salon & Spa\nAvailable Reports: SEO Deep Audit, Competitive Analysis\n\n## SEO Audit Data\nOverall Score: 18/100\n  - Technical: 5/100\n  - Content: 10/100\n  - UX: 15/100\n  - Performance: 20/100\n  - Authority: 40/100\nSummary: No website found. Google Business Profile exists but is incomplete. Zero organic search footprint. Business is invisible online while competitors capture all local search traffic.\n\n## Competitive Analysis Data\nCompetitors Analyzed: 5\nAvg Threat Level: 6/10\nSummary: Fragmented market with 5 competitors. Glow's main differentiation is spa services — no competitor offers both salon and spa. Mid-range pricing well positioned. Salon Bellissimo is the primary threat with 4.7 stars and active Instagram. Online booking and social presence are the competitive gaps to close."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "<h1>Glow Salon & Spa: The Invisible Business with a Winning Differentiator</h1>\n<p>Glow Salon & Spa has something none of its five Montclair competitors can claim: a genuine full-service salon and spa under one roof. That's a powerful story. The problem is almost no one searching online knows it exists.</p>\n<h2>An SEO Score of 18: What That Means in Practice</h2>\n<p>An 18 out of 100 SEO score isn't just a number — it's a customer count. Every month, hundreds of Montclair residents search \"hair salon near me\" or \"facial Montclair NJ\" and find Glow's competitors instead. Without a website or active digital presence, the business relies entirely on walk-ins and word-of-mouth in a market where five competitors are actively capturing online demand.</p>\n<h2>The Differentiation No One Can See</h2>\n<p>The competitive analysis found that among five nearby salons, none offer spa services. Facials, body treatments, and the full spa-plus-salon experience are Glow's alone. This is the story the website needs to tell — loudly and clearly on every page.</p>\n<h2>A Three-Step Digital Comeback</h2>\n<p>The path forward is clear:</p>\n<ol><li><strong>Build a website in 30 days</strong> — lead with the spa differentiation, include online booking, and get indexed by Google</li><li><strong>Complete the Google Business Profile</strong> — add 10+ photos, hours, service categories, and weekly posts</li><li><strong>Launch Instagram</strong> — spa and salon transformations are among the most-shared content categories; even 3 posts per week will build a following</li></ol>\n<h2>The Competitive Window Won't Stay Open</h2>\n<p>Right now, no competitor has claimed the \"salon + spa\" positioning in Montclair. But positioning is only unique until someone else takes it. Every week without a website is a week a competitor could launch their own spa services and capture this gap first.</p>\n<p>Glow has the services, the location, and the differentiation. The only missing ingredient is visibility.</p>"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "blog_writer",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

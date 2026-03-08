@@ -1,0 +1,1 @@
+"""GCS storage access layer."""

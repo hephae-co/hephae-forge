@@ -10,15 +10,11 @@ from typing import Any, Callable
 
 from backend.workflows.agents.discovery.county_resolver import resolve_county_zip_codes
 from backend.workflows.agents.research.area_summary import generate_area_summary, generate_enhanced_area_summary
-from backend.workflows.agents.research.industry_analyst import analyze_industry
-from backend.workflows.agents.research.industry_news import research_industry_news
+from backend.workflows.agents.research.intel_fan_out import gather_intelligence
 from backend.workflows.agents.research.local_sector_trends import analyze_local_sector_trends
-from hephae_db.bigquery.reader import query_industry_trends
-from hephae_integrations.bls_client import query_bls_cpi
 from hephae_db.firestore.research import create_area_research, save_area_research, load_area_research
 from hephae_db.firestore.research import get_zipcode_report, get_run
-from hephae_integrations.fda_client import is_food_related_industry, query_fda_enforcements
-from hephae_integrations.usda_client import query_usda_prices
+from hephae_integrations.fda_client import is_food_related_industry
 from backend.workflows.orchestrators.zipcode_research import research_zip_code
 from backend.types import AreaResearchDocument, AreaResearchPhase, AreaResearchProgress, AreaResearchProgressEvent
 
@@ -172,6 +168,8 @@ class AreaResearchOrchestrator:
                     local_sector_trends=trends_list,
                     bls_cpi_data=bls_data,
                     usda_price_data=usda_data,
+                    local_catalysts=intel_dict.get("localCatalysts"),
+                    demographic_data=intel_dict.get("demographicData"),
                 )
             else:
                 summary = await generate_area_summary(
@@ -194,11 +192,13 @@ class AreaResearchOrchestrator:
             _active_orchestrators.pop(self.doc.id, None)
 
     async def _gather_industry_intelligence(self) -> dict:
+        """Gather intelligence using ADK ParallelAgent + API data sources."""
         area = self.doc.resolvedCountyName or self.doc.area
         state = self.doc.resolvedState or ""
         industry = self.doc.businessType
+        city = area.split(",")[0].strip() if "," in area else area
 
-        # Try to get DMA name from first completed zip report
+        # Extract DMA name from first completed zip report
         dma_name = ""
         try:
             first_zip = self.doc.completedZipCodes[0] if self.doc.completedZipCodes else None
@@ -215,53 +215,16 @@ class AreaResearchOrchestrator:
         except Exception:
             pass
 
-        tasks = [
-            analyze_industry(industry),
-            research_industry_news(industry, area),
-        ]
-
-        if dma_name:
-            tasks.append(query_industry_trends(dma_name, industry))
-        else:
-            async def _noop():
-                return None
-            tasks.append(_noop())
-
-        if is_food_related_industry(industry):
-            tasks.append(query_fda_enforcements(state))
-        else:
-            async def _noop2():
-                return None
-            tasks.append(_noop2())
-
-        # BLS CPI food price data (always query for food-related industries)
-        if is_food_related_industry(industry):
-            tasks.append(query_bls_cpi(industry))
-        else:
-            async def _noop3():
-                return None
-            tasks.append(_noop3())
-
-        # USDA NASS commodity prices (always query for food-related industries)
-        if is_food_related_industry(industry):
-            tasks.append(query_usda_prices(industry, state))
-        else:
-            async def _noop4():
-                return None
-            tasks.append(_noop4())
-
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        intel: dict[str, Any] = {}
-        labels = ["industryAnalysis", "industryNews", "industryTrends", "fdaData", "blsCpiData", "usdaPriceData"]
-        for i, label in enumerate(labels):
-            if isinstance(results[i], Exception):
-                logger.error(f"[AreaResearch] {label} failed: {results[i]}")
-            elif results[i] is not None:
-                intel[label] = results[i]
-                logger.info(f"[AreaResearch] {label} complete")
-
-        return intel
+        return await gather_intelligence(
+            area=area,
+            state=state,
+            city=city,
+            business_type=industry,
+            completed_zip_codes=self.doc.completedZipCodes,
+            dma_name=dma_name,
+            is_food=is_food_related_industry(industry),
+            on_progress=lambda msg: self._emit("area:industry_intel_progress", msg),
+        )
 
     async def _analyze_local_sectors(self) -> dict:
         trends = []

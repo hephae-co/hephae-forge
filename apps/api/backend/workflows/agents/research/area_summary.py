@@ -73,8 +73,14 @@ Data sources you may receive:
 6. Local sector trends (per-zip sector-specific insights)
 7. BLS Consumer Price Index data (food price indexes with year-over-year changes — REAL government data)
 8. USDA NASS commodity prices (farm-gate prices for agricultural products — REAL government data)
+9. Local Catalysts (forward-looking signals: construction, zoning changes, grants, new developments)
+10. Census/ACS Demographics (authoritative population, income, housing, education data)
 
 When BLS CPI and USDA NASS data are present, use them as CONCRETE EVIDENCE for pricing analysis. Cite specific index values, percent changes, and commodity prices. These are authoritative government statistics — prioritize them over inferred pricing claims.
+
+When LOCAL CATALYSTS are present, integrate them into marketOpportunity (construction/development = growth signal), risks (road closures, regulatory shifts), and recommendations (grants, incentives the business should apply for). Catalysts are FORWARD-LOOKING — they predict what WILL happen, not what has happened.
+
+When CENSUS/ACS DEMOGRAPHICS are present, use them as the AUTHORITATIVE source for demographicFit. Cite specific numbers (median income, population, age distribution) with the data year. These override any estimates from zip code reports.
 
 Return a JSON object with ALL of these sections:
 {
@@ -83,6 +89,7 @@ Return a JSON object with ALL of these sections:
   "competitiveLandscape": { "score": 0-100, "narrative": string, "existingBusinessCount": number, "saturationLevel": "low"|"moderate"|"high"|"saturated", "gaps": [string] },
   "trendingInsights": { "narrative": string, "risingSearches": [string], "decliningSearches": [string], "seasonalPatterns": [string] },
   "industryIntelligence": { "score": 0-100, "narrative": string, "topChallenges": [string], "topOpportunities": [string] },
+  "localCatalysts": { "narrative": string, "developments": [string], "incentives": [string], "risks": [string] },
   "eventImpact": { "narrative": string, "upcomingEvents": [string], "footTrafficDrivers": [string] },
   "seasonalPatterns": { "narrative": string, "peakSeasons": [string], "slowSeasons": [string], "weatherConsiderations": [string] },
   "regulatoryAndSafety": { "narrative": string, "keyRegulations": [string], "recallAlerts": [string], "complianceNotes": [string] },
@@ -123,6 +130,8 @@ async def generate_enhanced_area_summary(
     local_sector_trends: list[dict] | None = None,
     bls_cpi_data: dict | None = None,
     usda_price_data: dict | None = None,
+    local_catalysts: dict | None = None,
+    demographic_data: dict | None = None,
 ) -> dict:
     """Generate an enhanced area summary with all data sources."""
     condensed = _condense_reports(reports)
@@ -143,6 +152,10 @@ async def generate_enhanced_area_summary(
         sections.append(f"BLS CONSUMER PRICE INDEX (food prices):\n{json.dumps(bls_cpi_data)}")
     if usda_price_data:
         sections.append(f"USDA NASS COMMODITY PRICES (farm-gate prices):\n{json.dumps(usda_price_data)}")
+    if local_catalysts:
+        sections.append(f"LOCAL CATALYSTS (forward-looking signals):\n{json.dumps(local_catalysts)}")
+    if demographic_data:
+        sections.append(f"CENSUS/ACS DEMOGRAPHICS (authoritative):\n{json.dumps(demographic_data)}")
 
     prompt = "\n\n".join(sections)
 

@@ -98,6 +98,10 @@ class AgentVersions:
     SOCIAL_POST_GENERATOR = "3.0.0"  # MAJOR: CDN report links + social card images, reports via cdn.hephae.co
     BLOG_WRITER = "1.0.0"
 
+    # Research agents
+    LOCAL_CATALYST = "1.0.0"
+    DEMOGRAPHIC_EXPERT = "1.0.0"
+
     # Discovery Stage 4
     NEWS_DISCOVERY = "1.0.0"
     DISCOVERY_REVIEWER = "1.0.0"

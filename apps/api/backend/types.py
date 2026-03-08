@@ -388,6 +388,8 @@ class IndustryIntelligence(BaseModel):
     fdaData: FdaData | None = None
     blsCpiData: BlsCpiData | None = None
     usdaPriceData: UsdaPriceData | None = None
+    localCatalysts: dict[str, Any] | None = None
+    demographicData: dict[str, Any] | None = None
 
 
 class LocalSectorInsights(BaseModel):

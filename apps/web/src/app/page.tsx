@@ -60,6 +60,12 @@ export default function Home() {
     { id: '1', role: 'model', text: 'Hi! I am Hephae.\nSearch for your business to get started.', createdAt: Date.now() }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('hephae_session_id');
+    }
+    return null;
+  });
 
   // App States
   const [locatedBusiness, setLocatedBusiness] = useState<BaseIdentity | null>(null);
@@ -216,7 +222,8 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: newMessages,
+          messages: chatSessionId ? [newMessages[newMessages.length - 1]] : newMessages,
+          sessionId: chatSessionId,
           context: {
             businessName: locatedBusiness?.name,
             address: locatedBusiness?.address,
@@ -230,6 +237,12 @@ export default function Home() {
 
       if (!res.ok) throw new Error("Chat request failed");
       const data = await res.json();
+
+      // Persist session ID for future requests
+      if (data.sessionId && data.sessionId !== chatSessionId) {
+        setChatSessionId(data.sessionId);
+        localStorage.setItem('hephae_session_id', data.sessionId);
+      }
 
       setMessages(prev => [...prev, msg('model', data.text)]);
 

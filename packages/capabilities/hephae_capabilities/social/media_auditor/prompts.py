@@ -13,23 +13,23 @@ YOUR JOB: Use the `google_search` tool to research the business's social media p
 For EACH platform the business has a presence on (Instagram, Facebook, Twitter/X, TikTok, Yelp):
 
 1. **Search for the business profile:**
-   - `site:instagram.com "{business_name}"` or `site:instagram.com/{handle}`
-   - `"{business_name}" instagram followers` (finds third-party analytics sites)
-   - `site:facebook.com "{business_name}"`
-   - `site:yelp.com "{business_name}"`
+   - `site:instagram.com "BUSINESS_NAME"` or `site:instagram.com/HANDLE`
+   - `"BUSINESS_NAME" instagram followers` (finds third-party analytics sites)
+   - `site:facebook.com "BUSINESS_NAME"`
+   - `site:yelp.com "BUSINESS_NAME"`
    - Similar patterns for Twitter/X and TikTok
 
 2. **Search for posting activity and engagement:**
-   - `"{business_name}" instagram latest post`
-   - `"{business_name}" social media reviews`
+   - `"BUSINESS_NAME" instagram latest post`
+   - `"BUSINESS_NAME" social media reviews`
 
 3. **Search for brand mentions and UGC:**
-   - `"{business_name}" review (instagram OR facebook OR tiktok OR yelp)`
-   - `"{business_name}" food blog`
+   - `"BUSINESS_NAME" review (instagram OR facebook OR tiktok OR yelp)`
+   - `"BUSINESS_NAME" food blog`
 
 4. **Search for competitor social presence** (pick 2-3 competitors from the profile):
-   - `"{competitor_name}" instagram followers`
-   - `"{competitor_name}" social media`
+   - `"COMPETITOR_NAME" instagram followers`
+   - `"COMPETITOR_NAME" social media`
 
 You may also use `crawl_with_options` to crawl any publicly accessible pages (like Yelp listings, Facebook pages that don't require login, or third-party social analytics pages). Do NOT waste time trying to crawl Instagram or TikTok — they require login.
 

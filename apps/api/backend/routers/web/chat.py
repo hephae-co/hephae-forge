@@ -34,28 +34,32 @@ SYSTEM_INSTRUCTION = (
 )
 
 
-async def locate_business(query: str, tool_context: ToolContext) -> dict[str, Any]:
-    """Resolves a conversational query for a business into canonical identity details.
+def _make_locate_tool(result_holder: dict[str, Any]):
+    """Create a locate_business tool that captures its result in result_holder."""
 
-    Use this tool when the user mentions a specific business by name.
+    async def locate_business(query: str, tool_context: ToolContext) -> dict[str, Any]:
+        """Resolves a conversational query for a business into canonical identity details.
 
-    Args:
-        query: The search query (e.g. "Bosphorus Nutley").
+        Use this tool when the user mentions a specific business by name.
 
-    Returns:
-        A dict with name, address, officialUrl, and coordinates.
-    """
-    identity = await LocatorAgent.resolve(query)
-    # Persist in session state so the endpoint can read it back
-    tool_context.state["temp:located_business"] = json.dumps(identity)
-    return identity
+        Args:
+            query: The search query (e.g. "Bosphorus Nutley").
+
+        Returns:
+            A dict with name, address, officialUrl, and coordinates.
+        """
+        identity = await LocatorAgent.resolve(query)
+        result_holder["identity"] = identity
+        return identity
+
+    return locate_business
 
 
-def _build_chat_agent(context: dict[str, Any] | None = None) -> LlmAgent:
-    """Build an ADK LlmAgent for the chat conversation.
-
-    The system instruction is enriched with business context when available.
-    """
+def _build_chat_agent(
+    context: dict[str, Any] | None = None,
+    locate_tool: Any = None,
+) -> LlmAgent:
+    """Build an ADK LlmAgent for the chat conversation."""
     instruction = SYSTEM_INSTRUCTION
 
     if context:
@@ -89,11 +93,13 @@ def _build_chat_agent(context: dict[str, Any] | None = None) -> LlmAgent:
                 + "\n\n".join(parts)
             )
 
+    tools = [locate_tool] if locate_tool else []
+
     return LlmAgent(
         name="hephae_chat",
         model=AgentModels.PRIMARY_MODEL,
         instruction=instruction,
-        tools=[locate_business],
+        tools=tools,
     )
 
 
@@ -113,8 +119,12 @@ async def chat(request: Request):
         if not latest_text:
             return JSONResponse({"error": "Empty message"}, status_code=400)
 
+        # Closure dict to capture locate_business result
+        locate_result: dict[str, Any] = {}
+        locate_tool = _make_locate_tool(locate_result)
+
         # Build the agent (instruction depends on current context)
-        agent = _build_chat_agent(context)
+        agent = _build_chat_agent(context, locate_tool=locate_tool)
 
         # Get or create session
         session = None
@@ -126,7 +136,6 @@ async def chat(request: Request):
             )
 
         if session is None:
-            # Create new session — seed with history from client (migration support)
             session = await _session_service.create_session(
                 app_name=APP_NAME,
                 user_id=user_id,
@@ -174,14 +183,8 @@ async def chat(request: Request):
                     if getattr(part, "text", None):
                         response_text += part.text
 
-        # Check if locate_business was called (stored in temp state)
-        located_business = None
-        located_json = session.state.get("temp:located_business")
-        if located_json:
-            try:
-                located_business = json.loads(located_json)
-            except (json.JSONDecodeError, TypeError):
-                pass
+        # Check if locate_business was called via the closure
+        located_business = locate_result.get("identity")
 
         result: dict[str, Any] = {
             "role": "model",
@@ -190,6 +193,10 @@ async def chat(request: Request):
         }
 
         if located_business:
+            # Override text with the discovery message (matching old behavior)
+            biz_name = located_business.get("name", "the business")
+            biz_addr = located_business.get("address", "unknown address")
+            result["text"] = f"I found **{biz_name}** at {biz_addr}. What would you like to do next?"
             result["triggerCapabilityHandoff"] = True
             result["locatedBusiness"] = located_business
 

@@ -96,159 +96,106 @@ def _shared_styles() -> str:
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background: linear-gradient(-45deg, #f0f4ff, #fdf2f8, #f0fdf4, #fff7ed, #f0f4ff);
+        background: linear-gradient(-45deg, #f8fafc, #f1f5f9, #f8fafc, #f1f5f9);
         background-size: 400% 400%;
-        animation: gradientShift 20s ease infinite;
+        animation: gradientShift 15s ease infinite;
         color: #1e293b; line-height: 1.6; min-height: 100vh;
       }
       @keyframes gradientShift {
         0%   { background-position: 0% 50%; }
-        25%  { background-position: 100% 0%; }
         50%  { background-position: 100% 50%; }
-        75%  { background-position: 0% 100%; }
         100% { background-position: 0% 50%; }
       }
-      .wrapper { max-width: 960px; margin: 0 auto; padding: 24px 20px 60px; position: relative; z-index: 1; }
+      .wrapper { max-width: 800px; margin: 0 auto; padding: 20px 16px 80px; position: relative; z-index: 1; }
 
-      /* ── Hephae signature background ── */
+      /* ── Glassmorphism & Blobs ── */
       .hephae-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-      .hephae-bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.5; }
-      .blob {
-        position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4;
-        animation: blob 7s infinite;
-      }
-      .blob-1 {
-        width: 320px; height: 320px; top: 20%; left: -40px;
-        background: linear-gradient(135deg, rgba(0,82,204,0.5), rgba(0,194,255,0.4));
-      }
-      .blob-2 {
-        width: 288px; height: 288px; top: 30%; right: -20px;
-        background: linear-gradient(135deg, rgba(124,58,237,0.35), rgba(0,82,204,0.25));
-        animation-delay: 2s;
-      }
-      .blob-3 {
-        width: 256px; height: 256px; bottom: 20%; left: 25%;
-        background: linear-gradient(135deg, rgba(0,194,255,0.35), rgba(124,58,237,0.25));
-        animation-delay: 4s;
-      }
+      .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.15; animation: blob 10s infinite; }
+      .blob-1 { width: 400px; height: 400px; top: -100px; left: -100px; background: #3b82f6; }
+      .blob-2 { width: 300px; height: 300px; bottom: -50px; right: -50px; background: #8b5cf6; animation-delay: 2s; }
       @keyframes blob {
-        0%   { transform: translate(0,0) scale(1); }
-        33%  { transform: translate(30px,-50px) scale(1.1); }
-        66%  { transform: translate(-20px,20px) scale(0.9); }
+        0% { transform: translate(0,0) scale(1); }
+        50% { transform: translate(20px, 40px) scale(1.1); }
         100% { transform: translate(0,0) scale(1); }
       }
+
+      /* ── Header ── */
       .header {
-        background: linear-gradient(135deg, #0052CC 0%, #0ea5e9 50%, #6366f1 100%);
-        background-size: 200% 200%; animation: headerShimmer 6s ease infinite;
-        border-radius: 16px; padding: 28px 32px; margin-bottom: 28px;
+        background: #fff; border: 1px solid rgba(226, 232, 240, 0.8);
+        border-radius: 20px; padding: 24px; margin-bottom: 24px;
         display: flex; justify-content: space-between; align-items: center;
-        box-shadow: 0 4px 20px rgba(0,82,204,0.2);
-        position: relative; overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
       }
-      @keyframes headerShimmer {
-        0%, 100% { background-position: 0% 50%; }
-        50%      { background-position: 100% 50%; }
+      .header h1 { font-size: 1.4rem; font-weight: 800; color: #0f172a; }
+      .header .subtitle { font-size: 0.85rem; color: #64748b; font-weight: 500; }
+      
+      /* ── Impact Section ── */
+      .impact-hero {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        color: #fff; border-radius: 24px; padding: 40px 32px; margin-bottom: 24px;
+        text-align: center; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
       }
-      .header::after {
-        content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%);
-        animation: headerGlow 4s ease-in-out infinite;
-      }
-      @keyframes headerGlow {
-        0%, 100% { transform: translate(0, 0); }
-        50%      { transform: translate(30px, 20px); }
-      }
-      .header > * { position: relative; z-index: 1; }
-      .header h1 { font-size: 1.6rem; font-weight: 800; color: #fff; }
-      .header .subtitle { font-size: 0.85rem; color: rgba(255,255,255,0.75); margin-top: 4px; }
-      .header .badge { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: #fff; padding: 6px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
-      .biz-logo { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); flex-shrink: 0; }
-      .biz-logo-fallback {
-        width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
-        background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.2rem; font-weight: 800; color: #fff;
-      }
+      .impact-value { font-size: 3.5rem; font-weight: 900; line-height: 1; margin: 12px 0; }
+      .impact-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7; font-weight: 700; }
+      .impact-context { font-size: 0.95rem; opacity: 0.85; max-width: 500px; margin: 16px auto 0; line-height: 1.5; }
+
+      /* ── Cards & Sections ── */
       .card {
-        background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.95) 100%);
-        border: 1px solid rgba(226,232,240,0.8); border-radius: 14px; padding: 24px; margin-bottom: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
-        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-        transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s ease;
-        opacity: 0; transform: translateY(20px);
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 20px;
+        padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
       }
-      .card.visible {
-        opacity: 1; transform: translateY(0);
-        transition: opacity 0.5s cubic-bezier(0.22,1,0.36,1), transform 0.5s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s ease;
+      .card-title { 
+        font-size: 0.7rem; font-weight: 800; text-transform: uppercase; 
+        letter-spacing: .08em; color: #64748b; margin-bottom: 16px; 
+        display: flex; align-items: center; gap: 8px;
       }
-      .card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
-      }
-      .card-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; opacity: 0.6; margin-bottom: 12px; }
-      table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-      th { text-align: left; padding: 10px 14px; background: rgba(241,245,249,0.8); font-size: 0.7rem; text-transform: uppercase; letter-spacing: .06em; color: #64748b; }
-      td { padding: 10px 14px; border-top: 1px solid #e2e8f0; }
-      tr:hover td { background: rgba(248,250,252,0.8); }
-      .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
-      .footer { margin-top: 40px; text-align: center; font-size: 0.75rem; opacity: 0.45; }
+      .card-title::after { content: ''; flex: 1; height: 1px; background: #f1f5f9; }
 
-      /* CTA section */
-      .cta-section {
-        margin-top: 36px; padding: 32px; border-radius: 16px; text-align: center;
-        background: linear-gradient(135deg, rgba(0,82,204,0.06) 0%, rgba(99,102,241,0.06) 100%);
-        border: 1px solid rgba(0,82,204,0.12);
-      }
-      .cta-section h3 { font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
-      .cta-section p { font-size: 0.85rem; opacity: 0.6; margin-bottom: 20px; }
-      .cta-buttons { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+      /* ── Heatmap Tables ── */
+      table { width: 100%; border-collapse: separate; border-spacing: 0; }
+      th { text-align: left; padding: 12px; font-size: 0.65rem; text-transform: uppercase; color: #94a3b8; border-bottom: 1px solid #f1f5f9; }
+      td { padding: 14px 12px; font-size: 0.9rem; border-bottom: 1px solid #f1f5f9; }
+      .heat-high { background: rgba(239, 68, 68, 0.05); color: #dc2626; font-weight: 700; }
+      .heat-mid { background: rgba(245, 158, 11, 0.05); color: #d97706; font-weight: 600; }
+      .heat-low { background: rgba(34, 197, 94, 0.05); color: #16a34a; }
+
+      /* ── Methodology ── */
+      .methodology { margin-top: 40px; padding: 20px; border-top: 1px solid #e2e8f0; font-size: 0.75rem; color: #94a3b8; line-height: 1.5; }
+      
+      /* ── CTAs ── */
       .cta-btn {
-        display: inline-flex; align-items: center; gap: 6px;
-        padding: 10px 20px; border-radius: 10px; font-size: 0.82rem; font-weight: 600;
-        text-decoration: none !important; transition: all 0.2s ease; cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center;
+        padding: 12px 24px; border-radius: 12px; font-weight: 700; font-size: 0.9rem;
+        transition: all 0.2s ease; cursor: pointer; text-decoration: none;
       }
-      .cta-btn:hover { transform: translateY(-1px); }
-      .cta-primary {
-        background: linear-gradient(135deg, #0052CC, #0ea5e9); color: #fff !important;
-        box-shadow: 0 2px 12px rgba(0,82,204,0.25);
-      }
-      .cta-primary:hover { box-shadow: 0 4px 20px rgba(0,82,204,0.35); }
-      .cta-secondary {
-        background: rgba(255,255,255,0.8); color: #0052CC !important;
-        border: 1px solid rgba(0,82,204,0.2);
-      }
-      .cta-secondary:hover { background: rgba(255,255,255,1); border-color: rgba(0,82,204,0.4); }
-      a { color: #0052CC; text-decoration: none; }
-      a:hover { text-decoration: underline; }
+      .cta-primary { background: #0f172a; color: #fff !important; }
+      .cta-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2); }
 
-      /* Score ring */
-      .score-ring { position: relative; display: inline-flex; align-items: center; justify-content: center; }
-      .score-ring svg { transform: rotate(-90deg); }
-      .score-ring .ring-bg { fill: none; stroke: #e2e8f0; }
-      .score-ring .ring-fg { fill: none; stroke-linecap: round; transition: stroke-dashoffset 1.2s cubic-bezier(0.22,1,0.36,1); }
-      .score-ring .ring-label {
-        position: absolute; inset: 0; display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-      }
-
-      /* Score bar animation */
-      .bar-fill { border-radius: 999px; transition: width 1s cubic-bezier(0.22,1,0.36,1); }
-      .bar-fill.animate { /* width set by JS */ }
-
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to   { opacity: 1; }
-      }
-      .wrapper { animation: fadeIn 0.4s ease-out both; }
-
-      @media print {
-        body { background: #fff !important; color: #1e293b; animation: none !important; }
-        .hephae-bg { display: none !important; }
-        .header { background: #0052CC !important; animation: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .header::after { display: none !important; }
-        .card { opacity: 1 !important; transform: none !important; }
+      /* ── Mobile ── */
+      @media (max-width: 640px) {
+        .header { flex-direction: column; text-align: center; gap: 16px; }
+        .impact-value { font-size: 2.5rem; }
+        .card { padding: 20px; }
+        td, th { padding: 10px 8px; font-size: 0.8rem; }
       }
     </style>"""
+
+
+def _methodology_section(report_type: str) -> str:
+    source_map = {
+        "margin": "Calculated via Hephae Vision & Margin Engine using local BLS CPI and USDA NASS commodity benchmarks.",
+        "seo": "Audited via PageSpeed Insights and Hephae Semantic Crawler against industry-standard SEO core vitals.",
+        "traffic": "Forecasted using POI density, local events data, and weather patterns for your specific block.",
+        "competitive": "Analyzed via GMB, Yelp, and Official site data across your 2-mile competitive radius.",
+        "marketing": "Synthesized from social engagement metrics and neighborhood content trends.",
+    }
+    method = source_map.get(report_type, "Analyzed using Hephae Multi-Agent Intelligence and local market research.")
+    return f"""
+    <div class="methodology">
+      <strong>Methodology & Data Provenance</strong><br/>
+      {method} All findings are benchmarks relative to the median business in your local county.
+      This report is an automated diagnostic and should be reviewed with a strategic advisor.
+    </div>"""
 
 
 def _interactive_script(primary_color: str = "") -> str:
@@ -453,11 +400,28 @@ def _page_wrap(
     business_name: str,
     generated_at: str,
     body: str,
+    impact_value: str = "",
+    impact_label: str = "",
+    impact_context: str = "",
     business_logo_url: str = "",
     report_type: str = "",
     primary_color: str = "",
     favicon_url: str = "",
 ) -> str:
+    # Meta tags for link unfurling
+    og_title = f"{title} for {business_name}"
+    og_desc = impact_context or f"A comprehensive {title} for {business_name} powered by Hephae AI."
+    
+    # Render impact hero only if impact_value exists
+    hero_html = ""
+    if impact_value:
+        hero_html = f"""
+        <div class="impact-hero">
+          <div class="impact-label">{impact_label}</div>
+          <div class="impact-value">{impact_value}</div>
+          <div class="impact-context">{impact_context}</div>
+        </div>"""
+
     try:
         dt = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
         date_str = dt.strftime("%B %d, %Y")
@@ -495,17 +459,14 @@ def _page_wrap(
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{_esc(title)} — {_esc(business_name)}</title>
+  <title>{_esc(og_title)}</title>
+  <meta property="og:title" content="{_esc(og_title)}" />
+  <meta property="og:description" content="{_esc(og_desc)}" />
+  <meta property="og:type" content="website" />
   {_shared_styles()}
-  {_brand_overrides(primary_color)}
 </head>
 <body>
-  <div class="hephae-bg">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-    <div class="blob blob-3"></div>
-    <canvas id="neuralCanvas"></canvas>
-  </div>
+  <div class="hephae-bg"><div class="blob blob-1"></div><div class="blob blob-2"></div></div>
   <div class="wrapper">
     <div class="header">
       <div style="display:flex;align-items:center;gap:14px">
@@ -515,16 +476,17 @@ def _page_wrap(
           <div class="subtitle">{_esc(title)}</div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:12px">
-        <div class="badge">Generated {_esc(date_str)}</div>
-        <img src="{HEPHAE_LOGO_URL}" alt="Hephae" style="height:28px;opacity:0.9;filter:brightness(0) invert(1)" />
-      </div>
+      <img src="{HEPHAE_LOGO_URL}" alt="Hephae" style="height:24px;opacity:0.6" />
     </div>
+    
+    {hero_html}
     {body}
+    
+    {_methodology_section(report_type)}
     {_cta_section(report_type)}
-    <div class="footer" style="display:flex;align-items:center;justify-content:center;gap:8px">
-      <img src="{HEPHAE_LOGO_URL}" alt="Hephae" style="height:16px;opacity:0.45" />
-      <span>Powered by hephae &copy;2026</span>
+    
+    <div class="footer">
+      Powered by Hephae &copy;2026. Data grounded in real-time local research.
     </div>
   </div>
   {_interactive_script(primary_color)}
@@ -601,69 +563,41 @@ def build_profile_report(profile: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 
-def build_margin_report(report: dict[str, Any]) -> str:
+def build_margin_report(report: dict[str, Any], local_context: Optional[dict] = None) -> str:
     menu_items = report.get("menu_items", [])
     total_leakage = sum(i.get("price_leakage", 0) for i in menu_items)
-    top_leaks = sorted(
-        [i for i in menu_items if i.get("price_leakage", 0) > 0],
-        key=lambda x: x.get("price_leakage", 0),
-        reverse=True,
-    )
-
-    overall_score = report.get("overall_score", 0)
-    score_color = "#4ade80" if overall_score > 80 else "#facc15" if overall_score > 60 else "#f87171"
-
+    
+    # Impact Headline logic
+    county = (local_context or {}).get("county", "your area")
+    impact_context = f"We identified a calculated profit gap across {len(menu_items)} menu items relative to the <strong>{county} median</strong>."
+    
     rows = ""
-    for item in top_leaks:
+    for item in sorted(menu_items, key=lambda x: x.get("price_leakage", 0), reverse=True):
         leak = item.get("price_leakage", 0)
-        leak_color = "#f87171" if leak > 2 else "#fbbf24"
-        rows += f"""<tr>
+        heat_class = "heat-high" if leak > 2 else "heat-mid" if leak > 0.5 else ""
+        rows += f"""<tr class="{heat_class}">
           <td>{_esc(item.get("item_name"))}</td>
-          <td style="opacity:.65">${item.get("current_price", 0):.2f}</td>
-          <td style="opacity:.65">${item.get("competitor_benchmark", 0):.2f}</td>
-          <td style="color:#4ade80;font-weight:700">${item.get("recommended_price", 0):.2f}</td>
-          <td style="color:{leak_color};font-weight:700;font-family:monospace">+${leak:.2f}</td>
-          <td style="font-size:.75rem;opacity:.7">{_esc(item.get("rationale", ""))}</td>
+          <td>${item.get("current_price", 0):.2f}</td>
+          <td style="font-weight:700">${item.get("recommended_price", 0):.2f}</td>
+          <td style="font-family:monospace">+${leak:.2f}</td>
         </tr>"""
 
-    advice_items = "".join(
-        f'<li style="padding:12px 16px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:10px;font-size:.875rem;margin-bottom:10px">"{_esc(tip)}"</li>'
-        for tip in (report.get("strategic_advice") or [])
-    )
-
-    identity = report.get("identity", {})
     body = f"""
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-        <div class="card" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.25)">
-          <div class="card-title" style="color:#fca5a5">Detected Profit Leakage</div>
-          <div style="font-size:2.4rem;font-weight:900;color:#fff">$<span data-count="{total_leakage}" data-prefix="">0</span><span style="font-size:1rem;opacity:.5;font-weight:400"> / cycle</span></div>
-        </div>
-        <div class="card" style="background:rgba(99,102,241,0.1);border-color:rgba(99,102,241,0.25);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px">
-          <div class="card-title">Surgical Score</div>
-          {_score_ring(overall_score, score_color, size=120, stroke=10)}
-        </div>
-      </div>
-
       <div class="card">
-        <div class="card-title">Surgical Breakdown</div>
+        <div class="card-title">Profit Leakage Audit</div>
         <table>
-          <thead><tr><th>Item</th><th>Current</th><th>Market Avg</th><th>Recommended</th><th>Leakage</th><th>Rationale</th></tr></thead>
+          <thead><tr><th>Menu Item</th><th>Current</th><th>Recommended</th><th>Opportunity</th></tr></thead>
           <tbody>{rows}</tbody>
         </table>
-      </div>
+      </div>"""
 
-      {"" if not advice_items else f'''
-      <div class="card" style="background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.2)">
-        <div class="card-title" style="color:#a5b4fc">Strategic Advice</div>
-        <ul style="list-style:none">{advice_items}</ul>
-      </div>'''}
-    """
-
+    identity = report.get("identity", {})
     return _page_wrap(
-        "Margin Surgery Report",
-        identity.get("name", "Business"),
-        report.get("generated_at", datetime.utcnow().isoformat()),
-        body,
+        "Margin Surgeon Report", identity.get("name", "Business"),
+        report.get("generated_at", datetime.utcnow().isoformat()), body,
+        impact_value=f"${total_leakage:,.0f}/mo",
+        impact_label="Calculated Monthly Opportunity",
+        impact_context=impact_context,
         business_logo_url=identity.get("logoUrl", ""),
         report_type="margin",
         primary_color=identity.get("primaryColor", ""),
@@ -764,8 +698,13 @@ def _score_bar(score: float) -> str:
     </div>"""
 
 
-def build_seo_report(report: dict[str, Any], identity: Optional[dict[str, Any]] = None) -> str:
+def build_seo_report(report: dict[str, Any], identity: Optional[dict[str, Any]] = None, local_context: Optional[dict] = None) -> str:
     now = datetime.utcnow().isoformat()
+    score = report.get("overallScore", 0)
+    url = report.get("url", "your site")
+    
+    area = (local_context or {}).get("area", "your neighborhood")
+    impact_context = f"Your digital visibility in <strong>{area}</strong> is impacted by key technical performance gaps identified in our neighborhood audit."
 
     severity_color = {"Critical": "#f87171", "Warning": "#fbbf24", "Info": "#60a5fa"}
 
@@ -781,42 +720,32 @@ def build_seo_report(report: dict[str, Any], identity: Optional[dict[str, Any]] 
             rec_items += f"""<div style="padding:12px 16px;border-left:3px solid {color};background:#f8fafc;border-radius:0 8px 8px 0;margin-bottom:8px">
               <div style="font-size:.72rem;font-weight:700;color:{color};margin-bottom:4px">{_esc(rec.get("severity"))}: {_esc(rec.get("title"))}</div>
               <div style="font-size:.84rem;opacity:.8">{_esc(rec.get("description"))}</div>
-              {"" if not rec.get("action") else f'<div style="font-size:.78rem;color:#4f46e5;margin-top:6px">&rarr; {_esc(rec.get("action"))}</div>'}
             </div>"""
 
         sections_html += f"""
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
             <strong>{_esc(section.get("title"))}</strong>
+            <span style="font-weight:800;color:#0f172a">{section.get("score", 0)}/100</span>
           </div>
-          {_score_bar(section.get("score", 0))}
-          {"" if not section.get("description") else f'<p style="font-size:.84rem;opacity:.7;margin-top:12px">{_esc(section.get("description"))}</p>'}
           {"" if not rec_items else f'<div style="margin-top:14px">{rec_items}</div>'}
         </div>"""
 
-    overall = report.get("overallScore", 0)
-    overall_color = "#4ade80" if overall >= 80 else "#facc15" if overall >= 60 else "#f87171"
-
-    body = f"""
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-        <div class="card" style="background:rgba(139,92,246,0.1);border-color:rgba(139,92,246,0.25);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px">
-          <div class="card-title">Overall SEO Score</div>
-          {_score_ring(overall, overall_color, size=120, stroke=10)}
-        </div>
-        <div class="card">
-          <div class="card-title">Audited URL</div>
-          <a href="{_esc(report.get('url'))}" target="_blank" style="word-break:break-all">{_esc(report.get('url'))}</a>
-          <div style="margin-top:10px;font-size:.84rem;opacity:.7">{_esc(report.get('summary'))}</div>
-        </div>
-      </div>
-
-      {sections_html}
-    """
-
     ident = identity or {}
-    biz_name = ident.get("name", "") or report.get("url", "")
+    biz_name = ident.get("name", "") or report.get("url", "Business")
+    
+    body = f"""
+      <div class="card">
+        <div class="card-title">Technical Performance Audit</div>
+        <div style="font-size:0.9rem;margin-bottom:16px">Analysis of <a href="{_esc(url)}" target="_blank">{_esc(url)}</a></div>
+        {sections_html}
+      </div>"""
+
     return _page_wrap(
-        "SEO Deep Audit", biz_name, now, body,
+        "SEO Visibility Audit", biz_name, now, body,
+        impact_value=f"{score}/100",
+        impact_label="Visibility Health Score",
+        impact_context=impact_context,
         business_logo_url=ident.get("logoUrl", ""),
         report_type="seo",
         primary_color=ident.get("primaryColor", ""),

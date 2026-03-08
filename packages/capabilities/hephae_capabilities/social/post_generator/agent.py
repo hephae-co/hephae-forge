@@ -131,6 +131,8 @@ def _build_rich_context(
     latest_outputs: dict[str, Any],
     report_type: str = "",
     social_handles: dict[str, str] | None = None,
+    cdn_report_urls: dict[str, str] | None = None,
+    cdn_card_urls: dict[str, str] | None = None,
 ) -> str:
     """Build rich context from stored Firestore latestOutputs for the agents."""
     parts = [
@@ -213,6 +215,22 @@ def _build_rich_context(
             parts.append(f"Summary: {mk['summary']}")
         if mk.get("reportUrl"):
             parts.append(f"Full Report: {mk['reportUrl']}")
+
+    # --- CDN report links section ---
+    report_urls = cdn_report_urls or {}
+    if report_urls:
+        parts.append("\n## REPORT LINKS (use these in your output)")
+        for rtype, url in report_urls.items():
+            label = REPORT_TYPE_LABELS.get(rtype, rtype.replace("_", " ").title())
+            parts.append(f"- {label}: {url}")
+
+    # --- Social card image URLs section ---
+    card_urls = cdn_card_urls or {}
+    if card_urls:
+        parts.append("\n## SOCIAL CARD IMAGES (use these as post images)")
+        for rtype, url in card_urls.items():
+            label = REPORT_TYPE_LABELS.get(rtype, rtype.replace("_", " ").title())
+            parts.append(f"- {label} Card: {url}")
 
     # Focus instruction
     if report_type:
@@ -305,24 +323,31 @@ async def generate_social_posts(
     report_url: str = "",
     social_handles: dict[str, str] | None = None,
     latest_outputs: dict[str, Any] | None = None,
+    cdn_report_urls: dict[str, str] | None = None,
+    cdn_card_urls: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Generate Instagram + Facebook + X/Twitter + Email + Contact Form content in parallel.
 
     Args:
         latest_outputs: When provided, builds rich context from stored Firestore
             data instead of using the single summary string (data-enriched mode).
+        cdn_report_urls: Map of report_type -> CDN URL for report links.
+        cdn_card_urls: Map of report_type -> CDN URL for social card images.
 
     Returns:
         {
-            "instagram": {"caption": "..."},
-            "facebook": {"post": "..."},
-            "twitter": {"tweet": "..."},
+            "instagram": {"caption": "...", "reportLink": "...", "imageUrl": "..."},
+            "facebook": {"post": "...", "reportLink": "...", "imageUrl": "..."},
+            "twitter": {"tweet": "...", "reportLink": "...", "imageUrl": "..."},
             "email": {"subject": "...", "body": "..."},
             "contactForm": {"message": "..."},
         }
     """
     if latest_outputs:
-        context = _build_rich_context(business_name, latest_outputs, report_type, social_handles)
+        context = _build_rich_context(
+            business_name, latest_outputs, report_type, social_handles,
+            cdn_report_urls=cdn_report_urls, cdn_card_urls=cdn_card_urls,
+        )
     else:
         context = _build_context(business_name, report_type, summary, report_url, social_handles)
     logger.info(f"[SocialPostGen] Generating 5-channel content for {business_name} ({report_type})")
@@ -343,9 +368,21 @@ async def generate_social_posts(
         contact_data = _parse_json(contact_raw)
 
         result = {
-            "instagram": {"caption": ig_data.get("caption", "")},
-            "facebook": {"post": fb_data.get("post", "")},
-            "twitter": {"tweet": tw_data.get("tweet", "")},
+            "instagram": {
+                "caption": ig_data.get("caption", ""),
+                "reportLink": ig_data.get("reportLink", ""),
+                "imageUrl": ig_data.get("imageUrl", ""),
+            },
+            "facebook": {
+                "post": fb_data.get("post", ""),
+                "reportLink": fb_data.get("reportLink", ""),
+                "imageUrl": fb_data.get("imageUrl", ""),
+            },
+            "twitter": {
+                "tweet": tw_data.get("tweet", ""),
+                "reportLink": tw_data.get("reportLink", ""),
+                "imageUrl": tw_data.get("imageUrl", ""),
+            },
             "email": {
                 "subject": email_data.get("subject", ""),
                 "body": email_data.get("body", ""),

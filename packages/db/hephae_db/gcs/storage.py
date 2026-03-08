@@ -1,7 +1,10 @@
 """
 GCS bucket access — report/image uploads.
 
-No makePublic() calls — bucket uses uniform IAM (allUsers: Storage Object Viewer).
+No makePublic() calls — buckets use uniform IAM (allUsers: Storage Object Viewer).
+Two buckets:
+  - everything-hephae: legacy uploads (menu screenshots, menu HTML)
+  - hephae-co-dev-prod-cdn-assets: CDN bucket served via cdn.hephae.co (reports, social cards)
 """
 
 from __future__ import annotations
@@ -76,6 +79,14 @@ async def upload_menu_html(slug: str, html_content: str) -> str:
         return ""
 
 
+def _get_cdn_bucket():
+    """Get the CDN GCS bucket (hephae-co-dev-prod-cdn-assets)."""
+    from google.cloud import storage as gcs_storage
+
+    client = gcs_storage.Client()
+    return client.bucket(StorageConfig.CDN_BUCKET)
+
+
 async def upload_report(
     slug: str,
     report_type: ReportType,
@@ -83,23 +94,88 @@ async def upload_report(
     identity: Optional[dict] = None,
     summary: Optional[str] = None,
 ) -> str:
-    """Upload an HTML report to GCS and return the public URL."""
+    """Upload an HTML report to CDN bucket and return the cdn.hephae.co URL.
+
+    Reports are now served via cdn.hephae.co (CDN bucket).
+    """
     ts = int(time.time() * 1000)
     file_name = f"{report_type}-{ts}.html"
-    object_path = f"{slug}/{file_name}"
-    public_url = f"{StorageConfig.BASE_URL}/{object_path}"
+    object_path = f"reports/{slug}/{file_name}"
+    cdn_url = f"{StorageConfig.CDN_BASE_URL}/{object_path}"
 
     try:
-        from hephae_common.firebase import get_bucket
-
-        gcs_bucket = get_bucket()
-        blob = gcs_bucket.blob(object_path)
+        bucket = _get_cdn_bucket()
+        blob = bucket.blob(object_path)
         blob.upload_from_string(html_content, content_type="text/html; charset=utf-8")
         blob.cache_control = "public, max-age=3600"
         blob.patch()
 
-        logger.info(f"[GCS] Uploaded {object_path} -> {public_url}")
+        logger.info(f"[CDN] Uploaded {object_path} -> {cdn_url}")
+        return cdn_url
+    except Exception as err:
+        logger.warning(f"[CDN] Failed to upload {report_type} report for {slug}: {err}")
+        # Fallback to legacy bucket
+        legacy_path = f"{slug}/{file_name}"
+        legacy_url = f"{StorageConfig.BASE_URL}/{legacy_path}"
+        try:
+            from hephae_common.firebase import get_bucket
+            gcs_bucket = get_bucket()
+            blob = gcs_bucket.blob(legacy_path)
+            blob.upload_from_string(html_content, content_type="text/html; charset=utf-8")
+            blob.cache_control = "public, max-age=3600"
+            blob.patch()
+            logger.info(f"[GCS] Fallback uploaded {legacy_path} -> {legacy_url}")
+            return legacy_url
+        except Exception as fallback_err:
+            logger.warning(f"[GCS] Fallback also failed for {slug}: {fallback_err}")
+            return ""
+
+
+async def upload_report_to_cdn(
+    slug: str,
+    report_type: ReportType,
+    html_content: str,
+) -> str:
+    """Upload an HTML report to the CDN bucket and return the public URL."""
+    ts = int(time.time() * 1000)
+    file_name = f"{report_type}-{ts}.html"
+    object_path = f"reports/{slug}/{file_name}"
+    public_url = f"{StorageConfig.CDN_BASE_URL}/{object_path}"
+
+    try:
+        bucket = _get_cdn_bucket()
+        blob = bucket.blob(object_path)
+        blob.upload_from_string(html_content, content_type="text/html; charset=utf-8")
+        blob.cache_control = "public, max-age=3600"
+        blob.patch()
+
+        logger.info(f"[CDN] Uploaded {object_path} -> {public_url}")
         return public_url
     except Exception as err:
-        logger.warning(f"[GCS] Failed to upload {report_type} report for {slug}: {err}")
+        logger.warning(f"[CDN] Failed to upload {report_type} report for {slug}: {err}")
+        return ""
+
+
+async def upload_social_card_to_cdn(
+    slug: str,
+    report_type: str,
+    png_bytes: bytes,
+) -> str:
+    """Upload a social card PNG to the CDN bucket and return the public URL."""
+    ts = int(time.time() * 1000)
+    file_name = f"{report_type}-card-{ts}.png"
+    object_path = f"cards/{slug}/{file_name}"
+    public_url = f"{StorageConfig.CDN_BASE_URL}/{object_path}"
+
+    try:
+        bucket = _get_cdn_bucket()
+        blob = bucket.blob(object_path)
+        blob.upload_from_string(png_bytes, content_type="image/png")
+        blob.cache_control = "public, max-age=86400"
+        blob.patch()
+
+        logger.info(f"[CDN] Uploaded social card -> {public_url}")
+        return public_url
+    except Exception as err:
+        logger.warning(f"[CDN] Failed to upload social card for {slug}/{report_type}: {err}")
         return ""

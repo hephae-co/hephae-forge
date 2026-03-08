@@ -16,6 +16,8 @@ async def run_social_post_generation(
     report_url: str = "",
     social_handles: dict[str, str] | None = None,
     latest_outputs: dict[str, Any] | None = None,
+    cdn_report_urls: dict[str, str] | None = None,
+    cdn_card_urls: dict[str, str] | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Generate outreach content for Instagram, Facebook, X/Twitter, Email, and Contact Form.
@@ -28,12 +30,14 @@ async def run_social_post_generation(
         report_url: URL of the full report.
         social_handles: Known social handles.
         latest_outputs: Rich data from Firestore latestOutputs.
+        cdn_report_urls: Map of report_type -> CDN URL for report links.
+        cdn_card_urls: Map of report_type -> CDN URL for social card images.
 
     Returns:
         {
-            instagram: {caption},
-            facebook: {post},
-            twitter: {tweet},
+            instagram: {caption, reportLink, imageUrl},
+            facebook: {post, reportLink, imageUrl},
+            twitter: {tweet, reportLink, imageUrl},
             email: {subject, body},
             contactForm: {message}
         }
@@ -49,4 +53,6 @@ async def run_social_post_generation(
         report_url=report_url,
         social_handles=social_handles,
         latest_outputs=latest_outputs,
+        cdn_report_urls=cdn_report_urls,
+        cdn_card_urls=cdn_card_urls,
     )

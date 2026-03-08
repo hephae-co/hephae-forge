@@ -54,3 +54,7 @@ MODEL_FALLBACK_MAP: dict[str, str] = {
 class StorageConfig:
     BUCKET = "everything-hephae"
     BASE_URL = "https://storage.googleapis.com/everything-hephae"
+
+    # CDN bucket — public assets served via cdn.hephae.co
+    CDN_BUCKET = "hephae-co-dev-prod-cdn-assets"
+    CDN_BASE_URL = "https://cdn.hephae.co"

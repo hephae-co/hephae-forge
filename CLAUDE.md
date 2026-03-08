@@ -69,7 +69,7 @@ Model tiers are defined in `packages/common-python/hephae_common/model_config.py
 
 ### Database Rules (strictly enforced)
 
-1. **No blobs in Firestore or BigQuery** — upload binary assets to GCS (`everything-hephae` bucket), store only the resulting URL.
+1. **No blobs in Firestore or BigQuery** — upload binary assets to GCS (CDN bucket `hephae-co-dev-prod-cdn-assets` for reports/cards, legacy `everything-hephae` for menus), store only the resulting URL.
 2. **`zipCode` is first-class** — always a top-level field, never derived from address at query time.
 3. **No growing arrays in Firestore** — no `reports[]`, no `analyses[]`. Historical data goes to BigQuery. Firestore stores only current state.
 4. **Use `update()` with dotted paths** for nested Firestore fields. `set({merge:true})` only for new docs.
@@ -101,8 +101,10 @@ Note: Inter-service auth (admin→web HMAC) has been eliminated — capabilities
 | GCP Project | `hephae-co-dev` |
 | Firestore | Default (auto-initialized via ADC) |
 | BigQuery Dataset | `hephae-co-dev.hephae` |
-| GCS Bucket | `everything-hephae` |
-| GCS Public Base | `https://storage.googleapis.com/everything-hephae/` |
+| GCS Bucket (legacy) | `everything-hephae` |
+| GCS Legacy Base | `https://storage.googleapis.com/everything-hephae/` |
+| GCS CDN Bucket | `hephae-co-dev-prod-cdn-assets` |
+| CDN Public Base | `https://cdn.hephae.co/` |
 
 ### Evaluation Standards
 

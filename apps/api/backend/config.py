@@ -95,7 +95,7 @@ class AgentVersions:
     # Marketing / Social
     MARKETING_SWARM = "1.0.0"
     SOCIAL_MEDIA_AUDITOR = "1.0.0"
-    SOCIAL_POST_GENERATOR = "2.0.0"  # MAJOR: added email + contactForm channels
+    SOCIAL_POST_GENERATOR = "3.0.0"  # MAJOR: CDN report links + social card images, reports via cdn.hephae.co
     BLOG_WRITER = "1.0.0"
 
     # Discovery Stage 4

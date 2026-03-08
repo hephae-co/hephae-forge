@@ -19,6 +19,97 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/research", tags=["research"])
 
 
+# ---------------------------------------------------------------------------
+# CDN asset generation for outreach content
+# ---------------------------------------------------------------------------
+
+# Map from latestOutputs keys to report type slugs used by social_card + CDN
+_OUTPUT_KEY_TO_REPORT_TYPE = {
+    "margin_surgeon": "margin",
+    "seo_auditor": "seo",
+    "traffic_forecaster": "traffic",
+    "competitive_analyzer": "competitive",
+    "marketing_swarm": "marketing",
+}
+
+# Headlines for social card generation per report type
+_CARD_HEADLINES = {
+    "margin": lambda d: f"${float(d.get('totalLeakage', 0)):,.0f}/mo" if d.get("totalLeakage") else f"{d.get('score', '?')}/100",
+    "seo": lambda d: f"{d.get('score', '?')}/100",
+    "traffic": lambda d: str(d.get("peak_slot_score", "Analyzed")),
+    "competitive": lambda d: f"{d.get('competitor_count', '?')} Competitors",
+    "marketing": lambda d: "Insights Ready",
+}
+
+_CARD_SUBTITLES = {
+    "margin": "Profit Leakage Identified",
+    "seo": "SEO Health Score",
+    "traffic": "Peak Traffic Score",
+    "competitive": "Competitive Landscape",
+    "marketing": "Social Media Strategy",
+}
+
+
+async def _generate_cdn_assets(
+    business_name: str,
+    latest_outputs: dict,
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Generate social cards and upload existing reports to CDN bucket.
+
+    Returns (cdn_report_urls, cdn_card_urls) — both map report_type -> URL.
+    """
+    from hephae_db.gcs.storage import generate_slug, upload_social_card_to_cdn
+    from hephae_common.social_card import generate_universal_social_card
+
+    slug = generate_slug(business_name)
+    cdn_report_urls: dict[str, str] = {}
+    cdn_card_urls: dict[str, str] = {}
+
+    tasks = []
+    for output_key, report_type in _OUTPUT_KEY_TO_REPORT_TYPE.items():
+        data = latest_outputs.get(output_key)
+        if not data or not isinstance(data, dict):
+            continue
+
+        # Collect existing report URLs (already on GCS, just remap for context)
+        if data.get("reportUrl"):
+            cdn_report_urls[report_type] = data["reportUrl"]
+
+        # Generate social card for each available report
+        headline_fn = _CARD_HEADLINES.get(report_type, lambda d: "Report Ready")
+        try:
+            headline = headline_fn(data)
+        except (ValueError, TypeError):
+            headline = "Report Ready"
+        subtitle = _CARD_SUBTITLES.get(report_type, "Analysis Complete")
+        summary_text = str(data.get("summary", ""))[:80]
+
+        async def _gen_and_upload(rt=report_type, hl=headline, st=subtitle, hi=summary_text):
+            try:
+                png_bytes = await generate_universal_social_card(
+                    business_name=business_name,
+                    report_type=rt,
+                    headline=hl,
+                    subtitle=st,
+                    highlight=hi,
+                )
+                url = await upload_social_card_to_cdn(slug, rt, png_bytes)
+                return rt, url
+            except Exception as e:
+                logger.warning(f"[CDN] Failed to generate card for {slug}/{rt}: {e}")
+                return rt, ""
+
+        tasks.append(_gen_and_upload())
+
+    if tasks:
+        results = await asyncio.gather(*tasks)
+        for rt, url in results:
+            if url:
+                cdn_card_urls[rt] = url
+
+    return cdn_report_urls, cdn_card_urls
+
+
 class DiscoverRequest(BaseModel):
     zipCode: str
 
@@ -135,25 +226,43 @@ async def _execute_single_action(req: ActionRequest) -> dict:
             "twitter": (biz.get("socialLinks") or {}).get("twitter"),
             "facebook": (biz.get("socialLinks") or {}).get("facebook"),
         }
+        latest_outputs = biz.get("latestOutputs") or {}
+        business_name = identity.get("name", biz.get("name", ""))
+
+        # Generate social cards and upload reports + cards to CDN
+        cdn_report_urls, cdn_card_urls = await _generate_cdn_assets(
+            business_name, latest_outputs
+        )
+
         content = await run_social_post_generation(
             identity,
-            latest_outputs=biz.get("latestOutputs") or {},
+            latest_outputs=latest_outputs,
             social_handles=social_handles,
+            cdn_report_urls=cdn_report_urls,
+            cdn_card_urls=cdn_card_urls,
         )
-        # Persist originals to Firestore
+        # Persist originals + CDN URLs to Firestore
         db = get_db()
         from datetime import datetime
+        update_data = {
+            "outreachContent.instagram.original": content["instagram"]["caption"],
+            "outreachContent.instagram.reportLink": content["instagram"].get("reportLink", ""),
+            "outreachContent.instagram.imageUrl": content["instagram"].get("imageUrl", ""),
+            "outreachContent.facebook.original": content["facebook"]["post"],
+            "outreachContent.facebook.reportLink": content["facebook"].get("reportLink", ""),
+            "outreachContent.facebook.imageUrl": content["facebook"].get("imageUrl", ""),
+            "outreachContent.twitter.original": content["twitter"]["tweet"],
+            "outreachContent.twitter.reportLink": content["twitter"].get("reportLink", ""),
+            "outreachContent.twitter.imageUrl": content["twitter"].get("imageUrl", ""),
+            "outreachContent.email.original": content["email"]["body"],
+            "outreachContent.email.subject": content["email"]["subject"],
+            "outreachContent.contactForm.original": content["contactForm"]["message"],
+            "outreachContent.cdnReportUrls": cdn_report_urls,
+            "outreachContent.cdnCardUrls": cdn_card_urls,
+            "outreachContent.generatedAt": datetime.utcnow(),
+        }
         await asyncio.to_thread(
-            db.collection("businesses").document(biz_id).update,
-            {
-                "outreachContent.instagram.original": content["instagram"]["caption"],
-                "outreachContent.facebook.original": content["facebook"]["post"],
-                "outreachContent.twitter.original": content["twitter"]["tweet"],
-                "outreachContent.email.original": content["email"]["body"],
-                "outreachContent.email.subject": content["email"]["subject"],
-                "outreachContent.contactForm.original": content["contactForm"]["message"],
-                "outreachContent.generatedAt": datetime.utcnow(),
-            }
+            db.collection("businesses").document(biz_id).update, update_data
         )
         return {"success": True, "content": content}
 

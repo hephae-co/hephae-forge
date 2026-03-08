@@ -5,4 +5,6 @@ from hephae_db.gcs.storage import (  # noqa: F401
     upload_menu_screenshot,
     upload_menu_html,
     upload_report,
+    upload_report_to_cdn,
+    upload_social_card_to_cdn,
 )

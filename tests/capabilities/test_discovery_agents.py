@@ -16,6 +16,8 @@ from hephae_capabilities.discovery.agent import (
     discovery_reviewer_agent,
     social_profiler_agent,
     business_overview_agent,
+    challenges_agent,
+    entity_matcher_agent,
     _with_all_discovery_data,
 )
 
@@ -63,20 +65,28 @@ class TestDiscoveryReviewerAgentConfig:
 # Pipeline structure v4
 # ============================================================================
 
-class TestPipelineStructureV4:
-    def test_pipeline_is_four_stage(self):
+class TestPipelineStructureV5:
+    def test_pipeline_has_two_phases(self):
         subs = discovery_pipeline.sub_agents
-        assert len(subs) == 4, f"Expected 4 stages, got {len(subs)}"
+        assert len(subs) == 2, f"Expected 2 phases, got {len(subs)}"
+        assert subs[0].name == "DiscoveryPhase1"
+        assert subs[1].name == "DiscoveryPhase2"
 
-    def test_pipeline_stage_order(self):
-        subs = discovery_pipeline.sub_agents
-        assert subs[0].name == "SiteCrawlerAgent"
-        assert subs[1].name == "DiscoveryFanOut"
-        assert subs[2].name == "SocialProfilerAgent"
-        assert subs[3].name == "DiscoveryReviewerAgent"
+    def test_phase1_stages(self):
+        phase1 = discovery_pipeline.sub_agents[0]
+        assert len(phase1.sub_agents) == 2
+        assert phase1.sub_agents[0].name == "SiteCrawlerAgent"
+        assert phase1.sub_agents[1].name == "EntityMatcherAgent"
 
-    def test_fan_out_has_eight_agents(self):
-        assert len(discovery_fan_out.sub_agents) == 8
+    def test_phase2_stages(self):
+        phase2 = discovery_pipeline.sub_agents[1]
+        assert len(phase2.sub_agents) == 3
+        assert phase2.sub_agents[0].name == "DiscoveryFanOut"
+        assert phase2.sub_agents[1].name == "SocialProfilerAgent"
+        assert phase2.sub_agents[2].name == "DiscoveryReviewerAgent"
+
+    def test_fan_out_has_nine_agents(self):
+        assert len(discovery_fan_out.sub_agents) == 9
 
     def test_fan_out_includes_news_agent(self):
         names = [a.name for a in discovery_fan_out.sub_agents]
@@ -86,14 +96,40 @@ class TestPipelineStructureV4:
         names = [a.name for a in discovery_fan_out.sub_agents]
         assert "BusinessOverviewAgent" in names
 
+    def test_fan_out_includes_challenges_agent(self):
+        names = [a.name for a in discovery_fan_out.sub_agents]
+        assert "ChallengesAgent" in names
+
     def test_fan_out_agent_names(self):
         names = sorted([a.name for a in discovery_fan_out.sub_agents])
         expected = sorted([
             "ThemeAgent", "ContactAgent", "SocialMediaAgent",
             "MenuAgent", "MapsAgent", "CompetitorAgent", "NewsAgent",
-            "BusinessOverviewAgent",
+            "BusinessOverviewAgent", "ChallengesAgent",
         ])
         assert names == expected
+
+
+class TestEntityMatcherAgentConfig:
+    def test_agent_name(self):
+        assert entity_matcher_agent.name == "EntityMatcherAgent"
+
+    def test_agent_output_key(self):
+        assert entity_matcher_agent.output_key == "entityMatchResult"
+
+    def test_agent_has_no_tools(self):
+        assert entity_matcher_agent.tools == []
+
+
+class TestChallengesAgentConfig:
+    def test_agent_name(self):
+        assert challenges_agent.name == "ChallengesAgent"
+
+    def test_agent_output_key(self):
+        assert challenges_agent.output_key == "challengesData"
+
+    def test_agent_has_google_search_tool(self):
+        assert google_search_tool in challenges_agent.tools
 
 
 # ============================================================================

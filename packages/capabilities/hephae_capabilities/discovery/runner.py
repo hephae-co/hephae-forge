@@ -19,7 +19,7 @@ from google.adk.sessions import InMemorySessionService
 from hephae_common.model_config import AgentModels
 from hephae_common.adk_helpers import user_msg
 
-from hephae_capabilities.discovery.agent import discovery_pipeline
+from hephae_capabilities.discovery.agent import discovery_phase1, discovery_phase2
 
 logger = logging.getLogger(__name__)
 
@@ -68,12 +68,6 @@ async def run_discovery(
     logger.info(f"[Discovery Runner] Running for: {name}")
 
     session_service = InMemorySessionService()
-    runner = Runner(
-        app_name="hephae-hub",
-        agent=discovery_pipeline,
-        session_service=session_service,
-    )
-
     session_id = f"discovery-{int(time.time() * 1000)}"
     user_id = "hub-user"
 
@@ -88,10 +82,50 @@ async def run_discovery(
         URL: {identity.get("officialUrl", "")}
     """
 
-    async for _ in runner.run_async(
+    # --- Phase 1: Crawl + entity validation ---
+    phase1_runner = Runner(
+        app_name="hephae-hub",
+        agent=discovery_phase1,
+        session_service=session_service,
+    )
+    async for _ in phase1_runner.run_async(
         user_id=user_id,
         session_id=session_id,
         new_message=user_msg(prompt),
+    ):
+        pass
+
+    p1_session = await session_service.get_session(
+        app_name="hephae-hub", user_id=user_id, session_id=session_id
+    )
+    p1_state = p1_session.state if p1_session else {}
+
+    # P0.3: Check entity match — abort early on MISMATCH/AGGREGATOR (saves Stage 2-4 tokens)
+    entity_match = _safe_parse(p1_state.get("entityMatchResult"))
+    match_status = entity_match.get("status", "MATCH")
+    if match_status in ("MISMATCH", "AGGREGATOR"):
+        logger.warning(
+            f"[Discovery Runner] Entity mismatch for {name}: status={match_status}, "
+            f"reason={entity_match.get('reason', 'unknown')}"
+        )
+        return {
+            **identity,
+            "entityMatch": entity_match,
+            "discoveryAborted": True,
+            "discoveryAbortReason": f"Site does not match target business: {entity_match.get('reason', match_status)}",
+        }
+
+    # --- Phase 2: Full research (entity match passed) ---
+    logger.info(f"[Discovery Runner] Entity match passed ({match_status}). Running full research.")
+    phase2_runner = Runner(
+        app_name="hephae-hub",
+        agent=discovery_phase2,
+        session_service=session_service,
+    )
+    async for _ in phase2_runner.run_async(
+        user_id=user_id,
+        session_id=session_id,
+        new_message=user_msg("Continue with full discovery research."),
     ):
         pass
 
@@ -99,8 +133,6 @@ async def run_discovery(
         app_name="hephae-hub", user_id=user_id, session_id=session_id
     )
     state = final_session.state if final_session else {}
-
-    logger.info(f"[Discovery Runner] Pipeline Finished. State keys: {list(state.keys())}")
 
     # Parse each sub-agent output
     theme_data = _safe_parse(state.get("themeData"))
@@ -141,9 +173,10 @@ async def run_discovery(
     md = menu_data
     cd = contact_data
 
-    # Parse reviewer output (Stage 4) and news data (Stage 2)
+    # Parse reviewer output (Stage 4), news data (Stage 2), and challenges data (P0.2)
     reviewer_data = _safe_parse(state.get("reviewerData"))
     news_data = _safe_parse_array(state.get("newsData"))
+    challenges_data = _safe_parse(state.get("challengesData"))
 
     # If reviewer ran, use validated data as authoritative
     vs = reviewer_data.get("validatedSocialData", {}) if reviewer_data else {}
@@ -184,6 +217,8 @@ async def run_discovery(
         "persona": th.get("persona") or None,
         "socialProfileMetrics": social_profile_metrics or None,
         "aiOverview": ai_overview or None,
+        "challenges": challenges_data or None,
+        "entityMatch": entity_match or None,
         "validationReport": validation_report,
     }
 

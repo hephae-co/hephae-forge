@@ -17,10 +17,57 @@ from __future__ import annotations
 
 import base64
 import logging
+import re as _re
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Deterministic contact extraction helpers (P0.1)
+# ---------------------------------------------------------------------------
+
+# Robust email regex — catches standard emails, avoids image filenames
+_EMAIL_RE = _re.compile(
+    r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}",
+)
+_EMAIL_IGNORE = _re.compile(r"\.(png|jpg|jpeg|gif|svg|webp|ico|css|js)$", _re.I)
+
+# Phone regex — US numbers with various formats
+_PHONE_RE = _re.compile(
+    r"(?:\+?1[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\s]?\d{4}"
+)
+
+# Pages to auto-crawl for contact info
+_CONTACT_SLUGS = ("/contact", "/contact-us", "/about", "/about-us", "/get-in-touch", "/reach-us")
+
+
+def _extract_emails_from_text(text: str) -> list[str]:
+    """Extract valid-looking emails from raw text, filtering out image filenames."""
+    return [
+        m for m in _EMAIL_RE.findall(text)
+        if not _EMAIL_IGNORE.search(m)
+    ]
+
+
+def _extract_phones_from_text(text: str) -> list[str]:
+    """Extract US-format phone numbers from raw text."""
+    return _PHONE_RE.findall(text)
+
+
+def _find_contact_page_urls(all_links: list[dict], origin: str) -> list[str]:
+    """Find links that look like contact/about pages on the same domain."""
+    urls = []
+    for link in all_links:
+        href = link.get("href", "")
+        text = link.get("text", "").lower()
+        # Check if the link is on the same domain
+        if not href.startswith(origin):
+            continue
+        path = urlparse(href).path.lower().rstrip("/")
+        if path in _CONTACT_SLUGS or any(slug.lstrip("/") in text for slug in _CONTACT_SLUGS):
+            urls.append(href)
+    return list(dict.fromkeys(urls))  # dedupe preserving order
 
 
 async def crawl_web_page(
@@ -325,6 +372,57 @@ async def crawl_web_page(
             result.get("persona"),
             len(result.get("allLinks", [])),
         )
+
+        # ----- P0.1: Deterministic contact extraction -----
+        # Run regex on the body text for emails and phones the DOM parser may have missed
+        body_text = result.get("bodyTextSample", "")
+        regex_emails = _extract_emails_from_text(body_text)
+        regex_phones = _extract_phones_from_text(body_text)
+
+        if not result.get("email") and regex_emails:
+            result["email"] = regex_emails[0]
+        if not result.get("phone") and regex_phones:
+            result["phone"] = regex_phones[0]
+
+        # Auto-crawl /contact and /about pages if email is still missing
+        contact_page_urls = _find_contact_page_urls(result.get("allLinks", []), origin)
+        result["contactPages"] = contact_page_urls  # expose to downstream agents
+
+        if not result.get("email") and contact_page_urls:
+            for cp_url in contact_page_urls[:2]:  # try up to 2 pages
+                try:
+                    logger.info(f"[PlaywrightCrawlTool] Auto-crawling contact page: {cp_url}")
+                    await page.goto(cp_url, wait_until="domcontentloaded", timeout=15000)
+                    try:
+                        await page.wait_for_load_state("networkidle", timeout=5000)
+                    except Exception:
+                        pass
+                    cp_text = await page.evaluate("() => document.body.innerText.substring(0, 10000)")
+                    cp_html = await page.content()
+                    # Also check for mailto links on the contact page
+                    cp_mailto = await page.evaluate("""() => {
+                        const m = document.querySelector('a[href^="mailto:"]');
+                        return m ? m.href.replace('mailto:', '').trim() : null;
+                    }""")
+                    if cp_mailto:
+                        result["email"] = cp_mailto
+                        break
+                    cp_emails = _extract_emails_from_text(cp_text) + _extract_emails_from_text(cp_html)
+                    if cp_emails:
+                        result["email"] = cp_emails[0]
+                        break
+                    cp_phones = _extract_phones_from_text(cp_text)
+                    if not result.get("phone") and cp_phones:
+                        result["phone"] = cp_phones[0]
+                except Exception as cp_err:
+                    logger.warning(f"[PlaywrightCrawlTool] Contact page crawl failed for {cp_url}: {cp_err}")
+
+        # Flag deterministic extraction results
+        result["deterministicContact"] = {
+            "email": result.get("email") or None,
+            "phone": result.get("phone") or None,
+            "source": "playwright_regex",
+        }
 
         return result
 

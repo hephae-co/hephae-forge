@@ -153,6 +153,8 @@ function ContentStudioModal({ biz, onClose, onSend }: {
     const [generating, setGenerating] = useState(false);
     const [saving, setSaving] = useState<ContentChannel | null>(null);
     const [saved, setSaved] = useState<Record<ContentChannel, boolean>>({ instagram: false, facebook: false, twitter: false, email: false, contactForm: false });
+    const [sending, setSending] = useState(false);
+    const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
 
     const callAction = async (body: Record<string, unknown>): Promise<any | null> => {
         const res = await fetch('/api/research/actions', {
@@ -195,6 +197,24 @@ function ContentStudioModal({ biz, onClose, onSend }: {
         setTimeout(() => setSaved(prev => ({ ...prev, [channel]: false })), 2500);
     };
 
+    const handleSend = async (channel: string) => {
+        setSending(true);
+        setSendResult(null);
+        try {
+            const result = await callAction({ action: 'outreach', businessId: biz.id, channel });
+            if (result?.success) {
+                setSendResult({ ok: true, message: `Sent to ${result.sentTo}` });
+                onSend(channel).catch(() => {}); // refresh parent data in background
+            } else {
+                setSendResult({ ok: false, message: result?.error || 'Send failed' });
+            }
+        } catch {
+            setSendResult({ ok: false, message: 'Network error' });
+        } finally {
+            setSending(false);
+        }
+    };
+
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
     };
@@ -211,9 +231,9 @@ function ContentStudioModal({ biz, onClose, onSend }: {
             );
         } else if (channel === 'email' && biz.email) {
             return (
-                <button onClick={() => onSend('email')}
-                    className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition-colors">
-                    Send via Resend
+                <button onClick={() => handleSend('email')} disabled={sending}
+                    className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-1">
+                    {sending ? <><Loader2 className="w-3 h-3 animate-spin" /> Sending...</> : 'Send via Resend'}
                 </button>
             );
         } else if (channel === 'contactForm' && biz.contactFormUrl) {
@@ -310,6 +330,12 @@ function ContentStudioModal({ biz, onClose, onSend }: {
                             </button>
                             {getPlatformActionButton(activeTab)}
                         </div>
+
+                        {sendResult && (
+                            <div className={`mt-3 px-3 py-2 rounded-lg text-xs font-medium ${sendResult.ok ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                                {sendResult.ok ? 'Sent successfully' : `Error: ${sendResult.message}`}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

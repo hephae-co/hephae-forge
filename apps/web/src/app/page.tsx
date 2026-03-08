@@ -1576,6 +1576,13 @@ export default function Home() {
             facebook: (locatedBusiness as any)?.socialLinks?.facebook,
             twitter: (locatedBusiness as any)?.socialLinks?.twitter,
           }}
+          reportUrls={{
+            ...(marginReportUrl ? { margin: marginReportUrl } : {}),
+            ...(seoReportUrl ? { seo: seoReportUrl } : {}),
+            ...(trafficReportUrl ? { traffic: trafficReportUrl } : {}),
+            ...(competitiveReportUrl ? { competitive: competitiveReportUrl } : {}),
+            ...(marketingReportUrl ? { marketing: marketingReportUrl } : {}),
+          }}
           onClose={() => setShowSharePanel(false)}
         />
       )}

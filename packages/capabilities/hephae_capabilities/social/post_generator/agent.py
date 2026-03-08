@@ -106,6 +106,7 @@ def _build_context(
     summary: str,
     report_url: str,
     social_handles: dict[str, str] | None = None,
+    cdn_report_urls: dict[str, str] | None = None,
 ) -> str:
     """Build context string for the agents (legacy mode — single summary)."""
     label = REPORT_TYPE_LABELS.get(report_type, report_type.replace("_", " ").title())
@@ -113,7 +114,6 @@ def _build_context(
         f"Business: {business_name}",
         f"Report Type: {label}",
         f"Key Finding / Summary: {summary}",
-        f"Report URL: {report_url}",
         f"Hephae Website: https://hephae.co",
     ]
     if social_handles:
@@ -123,6 +123,19 @@ def _build_context(
             parts.append(f"Facebook Page: {social_handles['facebook']}")
         if social_handles.get("twitter"):
             parts.append(f"Twitter/X Handle: {social_handles['twitter']}")
+
+    # Report links section — use cdn_report_urls if available, else single report_url
+    all_urls = cdn_report_urls or {}
+    if report_url and report_type and report_type not in all_urls:
+        all_urls[report_type] = report_url
+    if all_urls:
+        parts.append("\n## REPORT LINKS (MUST include at least one in your output)")
+        for rtype, url in all_urls.items():
+            rlabel = REPORT_TYPE_LABELS.get(rtype, rtype.replace("_", " ").title())
+            parts.append(f"- {rlabel}: {url}")
+    elif report_url:
+        parts.append(f"\n## REPORT LINKS (MUST include in your output)\n- {label}: {report_url}")
+
     return "\n".join(parts)
 
 
@@ -219,7 +232,7 @@ def _build_rich_context(
     # --- CDN report links section ---
     report_urls = cdn_report_urls or {}
     if report_urls:
-        parts.append("\n## REPORT LINKS (use these in your output)")
+        parts.append("\n## REPORT LINKS (MUST include at least one in your output)")
         for rtype, url in report_urls.items():
             label = REPORT_TYPE_LABELS.get(rtype, rtype.replace("_", " ").title())
             parts.append(f"- {label}: {url}")
@@ -349,7 +362,7 @@ async def generate_social_posts(
             cdn_report_urls=cdn_report_urls, cdn_card_urls=cdn_card_urls,
         )
     else:
-        context = _build_context(business_name, report_type, summary, report_url, social_handles)
+        context = _build_context(business_name, report_type, summary, report_url, social_handles, cdn_report_urls)
     logger.info(f"[SocialPostGen] Generating 5-channel content for {business_name} ({report_type})")
 
     try:

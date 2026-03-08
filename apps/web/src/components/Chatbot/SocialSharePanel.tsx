@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Download,
   ImageIcon,
+  ExternalLink,
 } from "lucide-react";
 
 interface SocialSharePanelProps {
@@ -23,13 +24,22 @@ interface SocialSharePanelProps {
   headline?: string;
   subtitle?: string;
   highlight?: string;
+  reportUrls?: Record<string, string>;
   onClose: () => void;
 }
 
+interface PostData {
+  caption?: string;
+  post?: string;
+  tweet?: string;
+  reportLink?: string;
+  imageUrl?: string;
+}
+
 interface SocialPosts {
-  instagram: { caption: string };
-  facebook: { post: string };
-  twitter: { tweet: string };
+  instagram: PostData;
+  facebook: PostData;
+  twitter: PostData;
 }
 
 // X/Twitter logo SVG (the "𝕏" mark)
@@ -38,6 +48,37 @@ function XLogo({ size = 14 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
     </svg>
+  );
+}
+
+/** Renders a clickable report link badge below a post */
+function ReportLinkBadge({ url, label }: { url: string; label?: string }) {
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 text-xs font-semibold text-indigo-600 hover:bg-indigo-100 transition-colors"
+    >
+      <ExternalLink size={11} />
+      {label || "View Full Report"}
+    </a>
+  );
+}
+
+/** Renders a social card image preview if available */
+function CardPreview({ url }: { url?: string }) {
+  if (!url) return null;
+  return (
+    <div className="mt-2 rounded-lg overflow-hidden border border-gray-200">
+      <img
+        src={url}
+        alt="Social card"
+        className="w-full h-auto"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+      />
+    </div>
   );
 }
 
@@ -50,6 +91,7 @@ export default function SocialSharePanel({
   headline,
   subtitle,
   highlight,
+  reportUrls,
   onClose,
 }: SocialSharePanelProps) {
   const [posts, setPosts] = useState<SocialPosts | null>(null);
@@ -72,6 +114,7 @@ export default function SocialSharePanel({
           summary,
           reportUrl,
           socialHandles,
+          reportUrls: reportUrls || {},
         }),
       });
       if (!res.ok) throw new Error("Failed");
@@ -134,9 +177,9 @@ export default function SocialSharePanel({
   };
 
   const shareOnInstagram = () => {
-    // Instagram has no web intent — copy caption + download image
     if (posts?.instagram?.caption) {
-      navigator.clipboard.writeText(posts.instagram.caption);
+      const fullText = posts.instagram.caption + (posts.instagram.reportLink ? `\n\n${posts.instagram.reportLink}` : '');
+      navigator.clipboard.writeText(fullText);
     }
     downloadCard();
     setCopiedField("instagram-share");
@@ -144,22 +187,24 @@ export default function SocialSharePanel({
   };
 
   const shareOnFacebook = () => {
+    const shareUrl = posts?.facebook?.reportLink || reportUrl;
     const text = posts?.facebook?.post
       ? encodeURIComponent(posts.facebook.post)
       : "";
     window.open(
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(reportUrl)}&quote=${text}`,
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${text}`,
       "_blank",
       "width=600,height=400"
     );
   };
 
   const shareOnTwitter = () => {
+    const shareUrl = posts?.twitter?.reportLink || reportUrl;
     const text = posts?.twitter?.tweet
       ? encodeURIComponent(posts.twitter.tweet)
       : "";
     window.open(
-      `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(reportUrl)}`,
+      `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(shareUrl)}`,
       "_blank",
       "width=600,height=400"
     );
@@ -274,12 +319,15 @@ export default function SocialSharePanel({
                   <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                     {posts.instagram.caption}
                   </p>
+                  <ReportLinkBadge url={posts.instagram.reportLink || ""} />
+                  <CardPreview url={posts.instagram.imageUrl} />
                 </div>
                 <div className="flex gap-2 mt-2">
                   <button
-                    onClick={() =>
-                      copyText(posts.instagram.caption, "instagram")
-                    }
+                    onClick={() => {
+                      const full = (posts.instagram.caption || '') + (posts.instagram.reportLink ? `\n\n${posts.instagram.reportLink}` : '');
+                      copyText(full, "instagram");
+                    }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 text-xs font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 transition-all"
                   >
                     {copiedField === "instagram" ? (
@@ -290,7 +338,7 @@ export default function SocialSharePanel({
                     ) : (
                       <>
                         <Copy size={12} />
-                        Copy Caption
+                        Copy Caption + Link
                       </>
                     )}
                   </button>
@@ -328,13 +376,27 @@ export default function SocialSharePanel({
                     {posts.twitter.tweet}
                   </p>
                   <span className="text-[11px] text-gray-400 mt-1.5 block">
-                    {posts.twitter.tweet.length}/280 characters
+                    {(posts.twitter.tweet || '').length}/280 characters
                   </span>
+                  {posts.twitter.reportLink && (
+                    <div className="mt-2 p-2.5 rounded-lg border border-gray-200 bg-white">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                          <Link2 size={14} className="text-indigo-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold text-gray-800 truncate">Hephae Report</p>
+                          <p className="text-[10px] text-gray-400 truncate">{posts.twitter.reportLink}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <CardPreview url={posts.twitter.imageUrl} />
                 </div>
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={() =>
-                      copyText(posts.twitter.tweet, "twitter")
+                      copyText(posts.twitter.tweet || '', "twitter")
                     }
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-all"
                   >
@@ -374,12 +436,15 @@ export default function SocialSharePanel({
                   <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                     {posts.facebook.post}
                   </p>
+                  <ReportLinkBadge url={posts.facebook.reportLink || ""} />
+                  <CardPreview url={posts.facebook.imageUrl} />
                 </div>
                 <div className="flex gap-2 mt-2">
                   <button
-                    onClick={() =>
-                      copyText(posts.facebook.post, "facebook")
-                    }
+                    onClick={() => {
+                      const full = (posts.facebook.post || '') + (posts.facebook.reportLink ? `\n\n${posts.facebook.reportLink}` : '');
+                      copyText(full, "facebook");
+                    }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-all"
                   >
                     {copiedField === "facebook" ? (
@@ -390,7 +455,7 @@ export default function SocialSharePanel({
                     ) : (
                       <>
                         <Copy size={12} />
-                        Copy Post
+                        Copy Post + Link
                       </>
                     )}
                   </button>

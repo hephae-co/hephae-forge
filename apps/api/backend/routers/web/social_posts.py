@@ -70,6 +70,26 @@ async def social_posts_generate(request: Request):
                 status_code=400,
             )
 
+        # Build cdn_report_urls from client-provided reportUrls or latestOutputs
+        cdn_report_urls = body.get("reportUrls") or {}
+        if not cdn_report_urls and latest_outputs:
+            # Extract reportUrls from latestOutputs
+            agent_to_type = {
+                "margin_surgeon": "margin",
+                "seo_auditor": "seo",
+                "traffic_forecaster": "traffic",
+                "competitive_analyzer": "competitive",
+                "marketing_swarm": "marketing",
+            }
+            for agent_key, rtype in agent_to_type.items():
+                agent_data = latest_outputs.get(agent_key)
+                if isinstance(agent_data, dict) and agent_data.get("reportUrl"):
+                    cdn_report_urls[rtype] = agent_data["reportUrl"]
+
+        # Single reportUrl also goes into the dict
+        if report_url and report_type and report_type not in cdn_report_urls:
+            cdn_report_urls[report_type] = report_url
+
         result = await generate_social_posts(
             business_name=business_name,
             report_type=report_type,
@@ -77,6 +97,7 @@ async def social_posts_generate(request: Request):
             report_url=report_url,
             social_handles=social_handles,
             latest_outputs=latest_outputs,
+            cdn_report_urls=cdn_report_urls or None,
         )
 
         return JSONResponse(result)

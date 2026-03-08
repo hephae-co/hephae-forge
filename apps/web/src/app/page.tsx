@@ -219,6 +219,7 @@ export default function Home() {
         body: JSON.stringify({
           messages: chatSessionId ? [newMessages[newMessages.length - 1]] : newMessages,
           sessionId: chatSessionId,
+          businessLocated: !!locatedBusiness,
           context: {
             businessName: locatedBusiness?.name,
             address: locatedBusiness?.address,

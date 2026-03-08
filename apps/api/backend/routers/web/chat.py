@@ -111,6 +111,7 @@ async def chat(request: Request):
         context = body.get("context")
         session_id = body.get("sessionId")
         user_id = body.get("userId", "anonymous")
+        business_located = body.get("businessLocated", False)
 
         if not messages or not isinstance(messages, list):
             return JSONResponse({"error": "Invalid messages array"}, status_code=400)
@@ -119,9 +120,9 @@ async def chat(request: Request):
         if not latest_text:
             return JSONResponse({"error": "Empty message"}, status_code=400)
 
-        # Closure dict to capture locate_business result
+        # Only provide locate_business tool if no business is located yet
         locate_result: dict[str, Any] = {}
-        locate_tool = _make_locate_tool(locate_result)
+        locate_tool = None if business_located else _make_locate_tool(locate_result)
 
         # Build the agent (instruction depends on current context)
         agent = _build_chat_agent(context, locate_tool=locate_tool)

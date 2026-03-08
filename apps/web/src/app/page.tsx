@@ -1329,63 +1329,56 @@ export default function Home() {
             )}
 
             {!isDiscovering && !isTyping && (
-              <div className="absolute bottom-8 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:right-auto z-50 flex items-center gap-1 animate-fade-in-up pointer-events-auto bg-white/90 backdrop-blur-md p-1.5 rounded-2xl md:rounded-full shadow-2xl border border-gray-200/80 overflow-x-auto scrollbar-hide">
-                <button onClick={() => handleSelectCapability("surgery")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/80 transition-all group flex-shrink-0 whitespace-nowrap">
-                  <BarChart3 className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
-                  Margin Surgery
-                </button>
+              <div className="absolute bottom-6 left-4 right-4 z-50 animate-fade-in-up pointer-events-auto flex flex-col items-center gap-2">
+                {/* Capability icons — compact grid */}
+                <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md px-2 py-1.5 rounded-2xl shadow-lg border border-gray-200/80">
+                  {[
+                    { id: "surgery", icon: BarChart3, label: "Margin Surgery", color: "text-indigo-500", hoverBg: "hover:bg-indigo-50" },
+                    { id: "traffic", icon: Users, label: "Foot Traffic", color: "text-emerald-500", hoverBg: "hover:bg-emerald-50" },
+                    { id: "seo", icon: SearchIcon, label: "SEO Audit", color: "text-purple-500", hoverBg: "hover:bg-purple-50" },
+                    { id: "competitive", icon: Swords, label: "Competitive", color: "text-orange-500", hoverBg: "hover:bg-orange-50" },
+                    { id: "marketing", icon: Share2, label: "Social Audit", color: "text-pink-500", hoverBg: "hover:bg-pink-50" },
+                  ].map((cap) => {
+                    const Icon = cap.icon;
+                    return (
+                      <button
+                        key={cap.id}
+                        onClick={() => handleSelectCapability(cap.id)}
+                        className={`relative group w-9 h-9 rounded-xl ${cap.hoverBg} flex items-center justify-center transition-all hover:scale-110`}
+                        title={cap.label}
+                      >
+                        <Icon className={`w-4 h-4 ${cap.color}`} />
+                        {/* Tooltip */}
+                        <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg bg-gray-900 text-white text-[10px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+                          {cap.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                <div className="w-px h-4 bg-gray-200 mx-1 flex-shrink-0"></div>
+                {/* CTAs — always prominent */}
+                <div className="flex items-center gap-2">
+                  <a
+                    href="https://hephae.co/schedule"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/25 group whitespace-nowrap"
+                  >
+                    <Calendar className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                    Schedule Call
+                  </a>
 
-                <button onClick={() => handleSelectCapability("traffic")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-emerald-600 hover:bg-emerald-50/80 transition-all group flex-shrink-0 whitespace-nowrap">
-                  <Users className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-110 transition-transform" />
-                  Foot Traffic Forecast
-                </button>
-
-                <div className="w-px h-4 bg-gray-200 mx-1 flex-shrink-0"></div>
-
-                <button onClick={() => handleSelectCapability("seo")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-purple-600 hover:bg-purple-50/80 transition-all group flex-shrink-0 whitespace-nowrap">
-                  <SearchIcon className="w-3.5 h-3.5 text-purple-500 group-hover:scale-110 transition-transform" />
-                  SEO Deep Audit
-                </button>
-
-                <div className="w-px h-4 bg-gray-200 mx-1 flex-shrink-0"></div>
-
-                <button onClick={() => handleSelectCapability("competitive")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 transition-all group flex-shrink-0 whitespace-nowrap">
-                  <Swords className="w-3.5 h-3.5 text-orange-500 group-hover:scale-110 transition-transform" />
-                  Competitive Analysis
-                </button>
-
-                <div className="w-px h-4 bg-gray-200 mx-1 flex-shrink-0"></div>
-
-                <button onClick={() => handleSelectCapability("marketing")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-pink-600 hover:bg-pink-50/80 transition-all group flex-shrink-0 whitespace-nowrap">
-                  <Share2 className="w-3.5 h-3.5 text-pink-500 group-hover:scale-110 transition-transform" />
-                  Social Media Audit
-                </button>
-
-                <div className="w-px h-4 bg-gray-200 mx-1 flex-shrink-0"></div>
-                <a
-                  href="https://hephae.co/schedule"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all group flex-shrink-0 whitespace-nowrap border border-blue-200"
-                >
-                  <Calendar className="w-3.5 h-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
-                  Schedule Call
-                </a>
-
-                {activeReportUrl && (
-                  <>
-                    <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                  {activeReportUrl && (
                     <button
                       onClick={() => setShowSharePanel(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-all group border border-indigo-200 flex-shrink-0 whitespace-nowrap"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/25 group whitespace-nowrap"
                     >
-                      <Share2 className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
+                      <Share2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                       Share Report
                     </button>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
             )}
 

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+
+from backend.lib.auth import verify_admin_request
 
 from backend.workflows.agents.research.context_combiner import combine_research_context
 from hephae_db.firestore.combined_context import (
@@ -12,7 +14,7 @@ from hephae_db.firestore.combined_context import (
 from hephae_db.firestore.research import get_multiple_runs
 from backend.routers.admin import _serialize
 
-router = APIRouter(prefix="/api/combined-context", tags=["combined-context"])
+router = APIRouter(prefix="/api/combined-context", tags=["combined-context"], dependencies=[Depends(verify_admin_request)])
 
 
 class CreateCombinedContextRequest(BaseModel):

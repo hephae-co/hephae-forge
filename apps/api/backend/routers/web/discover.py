@@ -17,7 +17,7 @@ from google.adk.sessions import InMemorySessionService
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
-from backend.lib.auth import verify_request
+from backend.lib.auth import verify_request, optional_firebase_user
 
 from hephae_capabilities.discovery import discovery_pipeline
 from backend.config import AgentModels, AgentVersions
@@ -76,7 +76,7 @@ async def _capture_menu(menu_url: str, slug: str) -> tuple[str, str]:
 
 
 @router.post("/discover", response_model=EnrichedProfileModel, dependencies=[Depends(verify_request)])
-async def discover(request: Request):
+async def discover(request: Request, firebase_user: dict | None = Depends(optional_firebase_user)):
     try:
         body = await request.json()
         identity = body.get("identity")
@@ -233,6 +233,13 @@ async def discover(request: Request):
                 triggered_by="user",
             )
         )
+
+        # Link business to authenticated user (fire-and-forget)
+        if firebase_user and firebase_user.get("uid"):
+            from hephae_db.firestore.users import add_business_to_user
+            asyncio.create_task(
+                asyncio.to_thread(add_business_to_user, firebase_user["uid"], slug)
+            )
 
         # Write social profiler metrics as agent result (fire-and-forget)
         if social_profile_metrics:

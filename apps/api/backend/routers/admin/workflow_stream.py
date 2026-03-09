@@ -6,8 +6,10 @@ import asyncio
 import json
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from starlette.responses import StreamingResponse
+
+from backend.lib.auth import verify_admin_request
 
 from hephae_db.firestore.workflows import load_workflow
 from backend.types import WorkflowDocument, WorkflowPhase, ProgressEvent
@@ -15,7 +17,7 @@ from backend.workflows.engine import get_active_engine
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/workflows", tags=["workflow-stream"])
+router = APIRouter(prefix="/api/workflows", tags=["workflow-stream"], dependencies=[Depends(verify_admin_request)])
 
 TERMINAL_PHASES = {WorkflowPhase.COMPLETED, WorkflowPhase.FAILED, WorkflowPhase.APPROVAL}
 

@@ -5,15 +5,17 @@ from __future__ import annotations
 import asyncio
 import re
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
+from backend.lib.auth import verify_admin_request
 
 from hephae_db.firestore.workflows import create_workflow, list_workflows
 from backend.types import WorkflowDocument, WorkflowPhase, WorkflowProgress
 from backend.workflows.engine import start_workflow_engine
 from backend.workflows.agents.discovery.county_resolver import resolve_county_zip_codes
 
-router = APIRouter(prefix="/api/workflows", tags=["workflows"])
+router = APIRouter(prefix="/api/workflows", tags=["workflows"], dependencies=[Depends(verify_admin_request)])
 
 
 class CreateWorkflowRequest(BaseModel):

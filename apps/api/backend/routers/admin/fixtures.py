@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+
+from backend.lib.auth import verify_admin_request
 
 from hephae_db.firestore.fixtures import save_fixture, list_fixtures, get_fixture, delete_fixture
 from hephae_db.firestore.workflows import load_workflow
 from backend.types import WorkflowDocument
 from backend.routers.admin import _serialize
 
-router = APIRouter(prefix="/api/fixtures", tags=["fixtures"])
+router = APIRouter(prefix="/api/fixtures", tags=["fixtures"], dependencies=[Depends(verify_admin_request)])
 
 
 class CreateFixtureRequest(BaseModel):

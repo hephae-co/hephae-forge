@@ -6,10 +6,11 @@ import logging
 from datetime import datetime
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from pydantic import BaseModel
 
+from backend.lib.auth import verify_admin_request
 from backend.config import settings
 from hephae_db.firestore.content import (
     save_content_post,
@@ -32,7 +33,7 @@ from backend.routers.admin import _serialize
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/content", tags=["content"])
+router = APIRouter(prefix="/api/content", tags=["content"], dependencies=[Depends(verify_admin_request)])
 
 # Character limits per platform
 PLATFORM_LIMITS = {

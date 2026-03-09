@@ -5,8 +5,10 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
+from backend.lib.auth import verify_admin_request
 
 from hephae_db.firestore.research import load_sector_research, list_sector_research, get_sector_research_for_type
 from hephae_db.firestore.research import get_area_research_for_zip_code
@@ -15,7 +17,7 @@ from backend.routers.admin import _serialize
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/sector-research", tags=["sector-research"])
+router = APIRouter(prefix="/api/sector-research", tags=["sector-research"], dependencies=[Depends(verify_admin_request)])
 
 
 class CreateSectorResearchRequest(BaseModel):

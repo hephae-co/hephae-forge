@@ -10,9 +10,10 @@ from google.adk.agents import LlmAgent
 from google.adk.runners import Runner
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
+from backend.lib.auth import optional_firebase_user
 from hephae_capabilities.discovery import LocatorAgent
 from hephae_common.adk_helpers import user_msg
 from hephae_common.model_config import AgentModels
@@ -104,13 +105,14 @@ def _build_chat_agent(
 
 
 @router.post("/chat")
-async def chat(request: Request):
+async def chat(request: Request, firebase_user: dict | None = Depends(optional_firebase_user)):
     try:
         body = await request.json()
         messages = body.get("messages")
         context = body.get("context")
         session_id = body.get("sessionId")
-        user_id = body.get("userId", "anonymous")
+        # Use authenticated uid if available, fall back to body or "anonymous"
+        user_id = (firebase_user or {}).get("uid") or body.get("userId", "anonymous")
         business_located = body.get("businessLocated", False)
 
         if not messages or not isinstance(messages, list):

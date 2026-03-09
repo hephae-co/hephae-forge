@@ -37,6 +37,12 @@ async function proxyRequest(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  // Forward Firebase auth token from client
+  const firebaseToken = request.headers.get('X-Firebase-Token');
+  if (firebaseToken) {
+    headers.set('X-Firebase-Token', firebaseToken);
+  }
+
   const init: RequestInit & { duplex?: string } = {
     method: request.method,
     headers,

@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     FORGE_API_SECRET: str = os.getenv("FORGE_API_SECRET", "")
     FORGE_V1_API_KEY: str = os.getenv("FORGE_V1_API_KEY", "")
     CRON_SECRET: str = os.getenv("CRON_SECRET", "hephae_cron_secret")
+    ADMIN_EMAIL_ALLOWLIST: str = os.getenv("ADMIN_EMAIL_ALLOWLIST", "")
 
     # Email
     RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")

@@ -12,8 +12,10 @@ from __future__ import annotations
 import logging
 import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
+from backend.lib.auth import verify_admin_request
 
 from hephae_db.firestore.discovery_jobs import (
     create_discovery_job,
@@ -27,7 +29,7 @@ from hephae_db.firestore.discovery_jobs import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/admin/discovery-jobs", tags=["discovery-jobs"])
+router = APIRouter(prefix="/api/admin/discovery-jobs", tags=["discovery-jobs"], dependencies=[Depends(verify_admin_request)])
 
 
 class DiscoveryTargetInput(BaseModel):

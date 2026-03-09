@@ -14,11 +14,13 @@ import TestFixturesBrowser from '@/components/TestFixturesBrowser';
 import ContentStudio from '@/components/ContentStudio';
 import DashboardOverview from '@/components/DashboardOverview';
 import { RunSummary } from '@/lib/tester/storage';
-import { PlayCircle, RefreshCw, ServerCrash, Brain, Store, Workflow, FlaskConical, Users, PenSquare, LayoutDashboard, Settings, X } from 'lucide-react';
+import { PlayCircle, RefreshCw, ServerCrash, Brain, Store, Workflow, FlaskConical, Users, PenSquare, LayoutDashboard, Settings, X, LogOut } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Tab = 'dashboard' | 'research' | 'businesses' | 'workflows' | 'content';
 
 export default function HephaeAdminDashboard() {
+  const { user, signOut } = useAuth();
   const [activeTab, setActiveTabState] = useState<Tab>('dashboard');
   const setActiveTab = (tab: Tab) => {
     setActiveTabState(tab);
@@ -133,6 +135,15 @@ export default function HephaeAdminDashboard() {
             >
               <Settings className="w-4 h-4" />
             </button>
+            {user && (
+              <button
+                onClick={signOut}
+                className="p-2.5 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors shadow-sm"
+                title={`Sign out (${user.email})`}
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </header>
 

@@ -66,11 +66,21 @@ echo "  Service: ${WEB_SERVICE}"
 echo "  Image:   ${WEB_IMAGE}"
 echo ""
 
+FIREBASE_API_KEY="AIzaSyBP7pJuBVadYMfZ4RpXb4yIpgwUB_If56w"
+
 echo "── Building Next.js image..."
 cat > /tmp/cloudbuild-web.yaml <<YAML
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${WEB_IMAGE}', '-f', 'apps/web/infra/Dockerfile.nextjs', '.']
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_FIREBASE_API_KEY=${FIREBASE_API_KEY}'
+      - '-t'
+      - '${WEB_IMAGE}'
+      - '-f'
+      - 'apps/web/infra/Dockerfile.nextjs'
+      - '.'
 images: ['${WEB_IMAGE}']
 YAML
 gcloud builds submit \

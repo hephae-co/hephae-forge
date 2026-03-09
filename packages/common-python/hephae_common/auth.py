@@ -3,15 +3,19 @@ Shared authentication utilities for hephae apps.
 
 Web app uses: verify_hmac_request, verify_api_key (server-side verification)
 Admin app uses: generate_hmac_headers, generate_api_key_headers (client-side signing)
+Firebase auth: verify_firebase_token, verify_admin_request, optional_firebase_user
 """
 
 import hashlib
 import hmac
+import logging
 import os
 import time
 from typing import Optional
 
 from fastapi import Header, HTTPException
+
+logger = logging.getLogger(__name__)
 
 
 # ── Secrets (from environment) ────────────────────────────────────────────
@@ -93,6 +97,89 @@ def generate_hmac_headers(secret: str = "") -> dict[str, str]:
         "x-forge-timestamp": timestamp,
         "x-forge-signature": signature,
     }
+
+
+# ── Firebase token verification ──────────────────────────────────────────
+
+ADMIN_EMAIL_ALLOWLIST = [
+    e.strip()
+    for e in os.getenv("ADMIN_EMAIL_ALLOWLIST", "").split(",")
+    if e.strip()
+]
+
+
+def verify_firebase_token(
+    x_firebase_token: Optional[str] = Header(None),
+) -> dict:
+    """Verify a Firebase ID token and return the decoded user info.
+
+    Returns dict with uid, email, name, picture.
+    Raises 401 if token is missing or invalid.
+    """
+    if not x_firebase_token:
+        raise HTTPException(status_code=401, detail="Missing Firebase token")
+
+    try:
+        from firebase_admin import auth as firebase_auth
+
+        decoded = firebase_auth.verify_id_token(x_firebase_token)
+        return {
+            "uid": decoded["uid"],
+            "email": decoded.get("email"),
+            "name": decoded.get("name"),
+            "picture": decoded.get("picture"),
+        }
+    except Exception as e:
+        logger.warning(f"Firebase token verification failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid Firebase token")
+
+
+def verify_admin_request(
+    x_firebase_token: Optional[str] = Header(None),
+) -> dict:
+    """Verify Firebase token AND check email against admin allowlist.
+
+    Returns user dict. Raises 401 if token invalid, 403 if not allowlisted.
+    """
+    user = verify_firebase_token(x_firebase_token)
+
+    if not ADMIN_EMAIL_ALLOWLIST:
+        return user  # No allowlist configured — allow all authenticated users
+
+    if user.get("email") not in ADMIN_EMAIL_ALLOWLIST:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized for admin access",
+        )
+
+    return user
+
+
+def optional_firebase_user(
+    x_firebase_token: Optional[str] = Header(None),
+) -> Optional[dict]:
+    """Return user dict if valid Firebase token provided, None otherwise.
+
+    For guest-compatible routes — never raises.
+    """
+    if not x_firebase_token:
+        return None
+
+    try:
+        from firebase_admin import auth as firebase_auth
+
+        decoded = firebase_auth.verify_id_token(x_firebase_token)
+        return {
+            "uid": decoded["uid"],
+            "email": decoded.get("email"),
+            "name": decoded.get("name"),
+            "picture": decoded.get("picture"),
+        }
+    except Exception:
+        return None
+
+
+# ── Client-side signing (used by admin app) ───────────────────────────────
 
 
 def generate_api_key_headers(api_key: str = "") -> dict[str, str]:

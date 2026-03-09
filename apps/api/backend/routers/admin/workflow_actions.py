@@ -5,8 +5,10 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+
+from backend.lib.auth import verify_admin_request
 
 from hephae_db.firestore.workflows import load_workflow, save_workflow, delete_workflow
 from backend.types import WorkflowDocument, WorkflowPhase, BusinessPhase
@@ -14,7 +16,7 @@ from backend.workflows.engine import WorkflowEngine, start_workflow_engine
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/workflows", tags=["workflow-actions"])
+router = APIRouter(prefix="/api/workflows", tags=["workflow-actions"], dependencies=[Depends(verify_admin_request)])
 
 
 class ApproveRequest(BaseModel):

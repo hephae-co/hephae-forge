@@ -5,8 +5,10 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+
+from backend.lib.auth import verify_admin_request
 
 from backend.workflows.agents.discovery.zipcode_scanner import scan_zipcode
 from backend.workflows.agents.outreach.communicator import draft_and_send_outreach
@@ -16,7 +18,7 @@ from hephae_common.firebase import get_db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/research", tags=["research"])
+router = APIRouter(prefix="/api/research", tags=["research"], dependencies=[Depends(verify_admin_request)])
 
 
 # ---------------------------------------------------------------------------

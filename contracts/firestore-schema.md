@@ -150,6 +150,32 @@ Lead capture — logs every search query and email captures.
 
 ---
 
+## `users/{uid}`
+
+User accounts created on first Google sign-in. `uid` is the Firebase Auth UID.
+
+```typescript
+{
+  email: string;                         // "user@example.com"
+  displayName: string | null;            // Google display name
+  photoURL: string | null;               // Google profile picture URL
+  createdAt: Timestamp;                  // first login
+  lastLoginAt: Timestamp;               // updated every login
+  businesses: string[];                  // slugs of businesses they've searched
+}
+```
+
+## `businesses/{slug}` additions
+
+```typescript
+{
+  // ... existing fields ...
+  ownerUid: string | null;               // Firebase uid of first authenticated searcher
+}
+```
+
+---
+
 ## Admin-specific collections
 
 Written by `admin/` only. Web app does NOT read these.

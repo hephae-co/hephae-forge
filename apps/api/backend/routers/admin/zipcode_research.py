@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import re
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from backend.lib.auth import verify_admin_request
 
 from hephae_db.firestore.research import (
     get_zipcode_report, get_run, delete_run, list_zipcode_runs,
@@ -12,7 +14,7 @@ from hephae_db.firestore.research import (
 from backend.workflows.orchestrators.zipcode_research import research_zip_code
 from backend.routers.admin import _serialize
 
-router = APIRouter(prefix="/api/zipcode-research", tags=["zipcode-research"])
+router = APIRouter(prefix="/api/zipcode-research", tags=["zipcode-research"], dependencies=[Depends(verify_admin_request)])
 
 
 @router.get("")

@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from backend.lib.auth import verify_admin_request
 
 from backend.workflows.test_runner import test_runner
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/run-tests", tags=["test-runner"])
+router = APIRouter(prefix="/api/run-tests", tags=["test-runner"], dependencies=[Depends(verify_admin_request)])
 
 
 @router.post("")

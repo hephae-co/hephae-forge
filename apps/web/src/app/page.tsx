@@ -48,14 +48,21 @@ import { ChatMessage, ForecastResponse } from '@/components/Chatbot/types';
 import { BaseIdentity } from '@/types/api';
 import { NeuralBackground } from '@/components/Chatbot/NeuralBackground';
 import BlobBackground from '@/components/BlobBackground';
-import { EmailWall } from '@/components/Chatbot/EmailWall';
+import { AuthWall } from '@/components/Chatbot/AuthWall';
 import ResultsDashboard from '@/components/Chatbot/seo/ResultsDashboard';
+import { useAuth } from '@/contexts/AuthContext';
+import { useApiClient } from '@/hooks/useApiClient';
 // DiscoveryProgress import kept for ChatInterface/MapVisualizer; useRotatingMessage now used inside LoadingOverlay
 import { SeoReport } from '@/types/api';
 import LoadingOverlay from '@/components/Chatbot/LoadingExperience';
 import SocialSharePanel from '@/components/Chatbot/SocialSharePanel';
 
 export default function Home() {
+  const { user, signInWithGoogle } = useAuth();
+  const { apiFetch } = useApiClient();
+  const [hasSkippedAuth, setHasSkippedAuth] = useState(false);
+  const [showAuthWall, setShowAuthWall] = useState(false);
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: '1', role: 'model', text: 'Hi! I am Hephae.\nSearch for your business to get started.', createdAt: Date.now() }
   ]);
@@ -310,10 +317,7 @@ export default function Home() {
         // Add a discovery-complete message to chat
         setMessages(prev => [...prev, msg('model', `Discovery complete for **${enrichedProfile.name || identity.name}**! I've mapped out their digital presence, brand identity, social profiles, and competitive landscape. Pick any capability below to dive deeper.`)]);
 
-        // Show email wall after discovery completes (if not already provided)
-        if (!hasProvidedEmail) {
-          setShowEmailWall(true);
-        }
+        // Email wall removed — AuthWall triggers after first capability report
       } else {
         console.error("Discovery returned", res.status);
       }
@@ -379,15 +383,14 @@ export default function Home() {
 
   const handleSelectCapability = async (capId: string) => {
     if (!locatedBusiness) return;
-
-    if (!hasProvidedEmail) {
-      // Block UI with Email Wall and pause capability
-      setPendingCapability(capId);
-      setShowEmailWall(true);
-      return;
-    }
-
     executeCapability(capId);
+  };
+
+  // Show AuthWall after first capability report completes (not before)
+  const maybeShowAuthWall = () => {
+    if (!user && !hasSkippedAuth && !hasProvidedEmail) {
+      setShowAuthWall(true);
+    }
   };
 
   const sendReportEmailAsync = (reportType: string, reportUrl: string, businessName: string, summary: string) => {
@@ -451,6 +454,7 @@ export default function Home() {
           sendReportEmailAsync('margin', data.reportUrl, locatedBusiness!.name, `$${totalLeakage.toFixed(2)} total profit leakage detected across ${data.menu_items?.length || 0} menu items. Overall score: ${data.overall_score}/100.`);
         }
         setMessages(prev => [...prev, msg('model', "Surgery complete. The surgical dashboard has been rendered.\n\n[Schedule a call](https://hephae.co/schedule) to discuss your optimization strategy with our team.")]);
+        maybeShowAuthWall();
 
       } catch (e: any) {
         setMessages(prev => [...prev, msg('model', `Margin Surgery couldn't complete: ${e.message}\n\nThis can happen if the business website doesn't have a public menu page. Try one of the other analyses instead!`)]);
@@ -490,6 +494,7 @@ export default function Home() {
         }
 
         setMessages(prev => [...prev, msg('model', `Forecast complete!\n\n**Executive Summary**:\n${data.summary}\n\n[Schedule a call](https://hephae.co/schedule) to plan your staffing strategy with our team.`)]);
+        maybeShowAuthWall();
 
       } catch (e: any) {
         setMessages(prev => [...prev, msg('model', `Failed to execute Foot Traffic Forecast: ${e.message}`)]);
@@ -533,6 +538,7 @@ export default function Home() {
             sendReportEmailAsync('seo', data.reportUrl, locatedBusiness!.name, `SEO score: ${data.overallScore ?? 'N/A'}/100. ${sectionCount} categories analyzed. ${data.summary || ''}`);
           }
           setMessages(prev => [...prev, msg('model', `SEO Audit complete! Verified ${sectionCount} critical infrastructure categories.\n\n[Schedule a call](https://hephae.co/schedule) to improve your search rankings with our team.`)]);
+          maybeShowAuthWall();
         }
 
       } catch (e: any) {
@@ -568,6 +574,7 @@ export default function Home() {
 
         const platformCount = data.platforms?.length || 0;
         setMessages(prev => [...prev, msg('model', `**Social Media Audit** for **${locatedBusiness.name}** is complete! Score: **${data.overall_score ?? 'N/A'}/100** across ${platformCount} platform${platformCount !== 1 ? 's' : ''}.${data.summary ? `\n\n${data.summary}` : ''}\n\n[Schedule a call](https://hephae.co/schedule) to build your social strategy with our team.`)]);
+        maybeShowAuthWall();
 
       } catch (e: any) {
         setMessages(prev => [...prev, msg('model', `Failed to execute Social Media Audit: ${e.message}`)]);
@@ -600,6 +607,7 @@ export default function Home() {
           sendReportEmailAsync('competitive', data.reportUrl, locatedBusiness!.name, data.market_summary || 'Your competitive strategy report is ready.');
         }
         setMessages(prev => [...prev, msg('model', `Competitive Strategy complete! ${data.market_summary}\n\n[Schedule a call](https://hephae.co/schedule) to discuss your competitive positioning with our team.`)]);
+        maybeShowAuthWall();
 
       } catch (e: any) {
         setMessages(prev => [...prev, msg('model', `Failed to execute Competitive Analysis: ${e.message}`)]);
@@ -1549,7 +1557,22 @@ export default function Home() {
         </div>
       )}
 
-      <EmailWall isOpen={showEmailWall} onSubmit={handleEmailSubmit} />
+      <AuthWall
+        isOpen={showAuthWall}
+        onGoogleSignIn={async () => {
+          await signInWithGoogle();
+          setShowAuthWall(false);
+          setHasProvidedEmail(true);
+        }}
+        onEmailSubmit={async (email) => {
+          await handleEmailSubmit(email);
+          setShowAuthWall(false);
+        }}
+        onSkip={() => {
+          setHasSkippedAuth(true);
+          setShowAuthWall(false);
+        }}
+      />
 
       {/* Social Share Panel */}
       {showSharePanel && activeReportUrl && (

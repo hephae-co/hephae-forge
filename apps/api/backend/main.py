@@ -74,6 +74,7 @@ def _register_routers() -> None:
 
     # --- Web routers (serving web frontend) ---
     from backend.routers.web import (
+        auth,
         capabilities,
         discover,
         analyze,
@@ -86,6 +87,7 @@ def _register_routers() -> None:
         social_card,
     )
 
+    app.include_router(auth.router, prefix="/api")
     app.include_router(track.router, prefix="/api")
     app.include_router(places.router, prefix="/api")
     app.include_router(send_report_email.router, prefix="/api")

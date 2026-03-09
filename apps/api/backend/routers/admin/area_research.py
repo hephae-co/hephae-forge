@@ -6,8 +6,10 @@ import asyncio
 import json
 import logging
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+
+from backend.lib.auth import verify_admin_request
 from starlette.responses import StreamingResponse
 
 from hephae_db.firestore.research import load_area_research, list_area_research, delete_area_research
@@ -17,7 +19,7 @@ from backend.routers.admin import _serialize
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/area-research", tags=["area-research"])
+router = APIRouter(prefix="/api/area-research", tags=["area-research"], dependencies=[Depends(verify_admin_request)])
 
 TERMINAL_PHASES = {"completed", "failed"}
 

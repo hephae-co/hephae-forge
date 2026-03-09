@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+
+from backend.lib.auth import verify_admin_request
 
 from hephae_integrations.bls_client import query_bls_cpi
 from hephae_integrations.usda_client import query_usda_prices
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/food-prices", tags=["food-prices"])
+router = APIRouter(prefix="/api/food-prices", tags=["food-prices"], dependencies=[Depends(verify_admin_request)])
 
 
 @router.get("/cpi")

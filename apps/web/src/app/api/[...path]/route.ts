@@ -40,6 +40,12 @@ async function proxyRequest(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  // Forward Firebase auth token from client
+  const firebaseToken = request.headers.get('X-Firebase-Token');
+  if (firebaseToken) {
+    headers.set('X-Firebase-Token', firebaseToken);
+  }
+
   // HMAC request signing for backend auth
   if (FORGE_API_SECRET) {
     const timestamp = Math.floor(Date.now() / 1000).toString();

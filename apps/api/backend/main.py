@@ -85,6 +85,7 @@ def _register_routers() -> None:
         places,
         track,
         social_card,
+        heartbeat,
     )
 
     app.include_router(auth.router, prefix="/api")
@@ -98,6 +99,7 @@ def _register_routers() -> None:
     app.include_router(analyze.router, prefix="/api")
     app.include_router(capabilities.router, prefix="/api")
     app.include_router(blog.router, prefix="/api")
+    app.include_router(heartbeat.router, prefix="/api")
 
     # --- V1 backward-compat routers ---
     from backend.routers.v1 import (
@@ -130,6 +132,7 @@ def _register_routers() -> None:
         food_prices,
         content,
         discovery_jobs,
+        tasks,
     )
 
     app.include_router(workflows.router)
@@ -146,11 +149,13 @@ def _register_routers() -> None:
     app.include_router(food_prices.router)
     app.include_router(content.router)
     app.include_router(discovery_jobs.router)
+    app.include_router(tasks.router)
 
     # --- Batch / Cron routers ---
-    from backend.routers.batch import cron
+    from backend.routers.batch import cron, heartbeat_cron
 
     app.include_router(cron.router)
+    app.include_router(heartbeat_cron.router)
 
 
 _register_routers()

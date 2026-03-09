@@ -287,7 +287,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     // Collapsed sliver mode
     if (isCollapsed && !isCentered) {
         return (
-            <div className="flex flex-col h-full bg-gradient-to-b from-[#0052CC] to-[#0369a1] items-center justify-center w-full relative z-30 border-l border-white/10">
+            <div className="flex flex-col h-full bg-gradient-to-b from-slate-800 to-slate-900 items-center justify-center w-full relative z-30">
                 <button
                     onClick={onToggleCollapse}
                     className="p-3 text-white/70 hover:text-white hover:bg-white/15 rounded-xl transition-all group"
@@ -308,38 +308,35 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
 
     return (
-        <div className={`flex flex-col h-full relative z-30 transition-all duration-700 w-full ${!isCentered ? 'bg-white border-l border-gray-200 shadow-2xl' : 'bg-transparent justify-center items-center pointer-events-none'}`}>
+        <div className={`flex flex-col h-full relative z-30 transition-all duration-700 w-full ${!isCentered ? 'bg-white border-l border-gray-200/60' : 'bg-transparent justify-center items-center pointer-events-none'}`}>
 
             {/* Header - Hidden when centered */}
             {!isCentered && (
-                <div className="px-4 py-3 bg-gradient-to-r from-[#0052CC] to-[#0369a1] flex justify-between items-center z-10 shadow-lg flex-shrink-0">
-                    <div className="flex items-center gap-3">
+                <div className="px-4 py-3 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 flex justify-between items-center z-10 flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                        {onToggleCollapse && (
+                            <button
+                                onClick={onToggleCollapse}
+                                className="p-1.5 -ml-1 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                title="Hide Chat"
+                            >
+                                <PanelRightClose className="w-4 h-4" />
+                            </button>
+                        )}
                         <button
                             onClick={onReset}
-                            className="p-1.5 -ml-1 text-white/50 hover:text-white hover:bg-white/15 rounded-lg transition-colors"
+                            className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                             title="Start Over"
                         >
                             <RefreshCcw className="w-4 h-4" />
                         </button>
+                        <span className="w-px h-4 bg-white/15 block" />
                         <HephaeLogo size="sm" variant="white" />
-                        <span className="w-px h-4 bg-white/20 block" />
-                        <p className="text-[10px] text-white/60 font-semibold tracking-wider uppercase">AI Business Analyst</p>
+                        <p className="text-[10px] text-white/40 font-semibold tracking-wider uppercase hidden md:block">The Hephae Forge</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)] animate-pulse"></div>
-                            <span className="text-[10px] text-white/50 font-medium">Live</span>
-                        </div>
-                        {onToggleCollapse && (
-                            <button
-                                onClick={onToggleCollapse}
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-all text-[10px] font-semibold tracking-wide uppercase border border-white/10 hover:border-white/20"
-                                title="Hide Chat"
-                            >
-                                <PanelRightClose className="w-3.5 h-3.5" />
-                                Hide
-                            </button>
-                        )}
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)] animate-pulse"></div>
+                        <span className="text-[10px] text-white/40 font-medium">Live</span>
                     </div>
                 </div>
             )}
@@ -348,7 +345,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className={`relative overflow-y-auto p-4 flex flex-col w-full ${isCentered ? 'items-center max-w-3xl flex-none space-y-6 pointer-events-none' : 'flex-grow bg-gradient-to-b from-slate-50/80 to-white space-y-5 pointer-events-auto'}`}
+                className={`relative overflow-y-auto p-4 flex flex-col w-full ${isCentered ? 'items-center max-w-3xl flex-none space-y-6 pointer-events-none' : 'flex-grow bg-gradient-to-b from-gray-50/60 via-white to-white space-y-4 pointer-events-auto'}`}
             >
                 {!isCentered && <BlobBackground className="opacity-15" />}
                 {!isCentered && (isDiscovering || isTyping) && (
@@ -386,8 +383,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                 <div className={`group relative
                                     p-3.5 rounded-2xl
                                     ${msg.role === 'user'
-                                        ? 'max-w-[82%] bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-br-sm shadow-md shadow-indigo-200/50 ring-1 ring-white/10'
-                                        : 'max-w-[88%] bg-white text-gray-800 border border-gray-100/80 rounded-bl-sm shadow-[0_2px_12px_-2px_rgba(99,102,241,0.12)]'}
+                                        ? 'max-w-[82%] bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-br-md shadow-md shadow-indigo-200/40'
+                                        : 'max-w-[88%] bg-white text-gray-800 border border-gray-100 rounded-bl-md shadow-sm'}
                                     ${isWelcome ? 'text-2xl font-light text-center p-6 !bg-transparent !border-none !shadow-none !ring-0 text-gray-800 max-w-full' : ''}
                                 `}>
                                     {isWelcome ? (
@@ -491,7 +488,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center flex-shrink-0 mb-0.5 border border-indigo-200/60 shadow-sm">
                                 <Bot className="w-3.5 h-3.5 text-indigo-600" />
                             </div>
-                            <div className="bg-white border border-gray-100/80 px-4 py-3 rounded-2xl rounded-bl-sm shadow-md shadow-gray-100/80">
+                            <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl rounded-bl-md shadow-sm">
                                 <p className="text-sm text-gray-700 font-medium">Deep discovery in progress — watch the map for live updates.</p>
                             </div>
                         </div>
@@ -527,7 +524,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center flex-shrink-0 mb-0.5 border border-indigo-200/60 shadow-sm">
                                 <Bot className="w-3.5 h-3.5 text-indigo-600" />
                             </div>
-                            <div className="bg-white border border-gray-100/80 px-4 py-3.5 rounded-2xl rounded-bl-sm shadow-md shadow-gray-100/80 max-w-[82%]">
+                            <div className="bg-white border border-gray-100 px-4 py-3.5 rounded-2xl rounded-bl-md shadow-sm max-w-[82%]">
                                 <div className="flex items-center gap-1.5 mb-2.5">
                                     <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></span>
                                     <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></span>
@@ -558,7 +555,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </div>
 
             {/* Input Area */}
-            <div className={`flex flex-col flex-shrink-0 pointer-events-auto ${isCentered ? 'p-4 items-center mb-10 bg-transparent border-none w-full' : 'px-4 pt-3 pb-4 bg-white border-t border-gray-100 shadow-[0_-8px_30px_-8px_rgba(99,102,241,0.08)]'}`}>
+            <div className={`flex flex-col flex-shrink-0 pointer-events-auto ${isCentered ? 'p-4 items-center mb-10 bg-transparent border-none w-full' : 'px-4 pt-3 pb-4 bg-white/80 backdrop-blur-sm border-t border-gray-100/80'}`}>
                 <div className={`w-full ${isCentered ? 'max-w-3xl' : ''}`}>
                     {/* Centered mode: search example chips */}
                     {followUpChips.length > 0 && isCentered && (
@@ -674,7 +671,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         <input
                             ref={inputRef}
                             type="text"
-                            className={`w-full pl-5 pr-14 ${isCentered ? 'py-5 text-lg' : 'py-3.5 text-base md:text-sm'} rounded-2xl border text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all outline-none shadow-lg shadow-gray-100/80 ${isDiscovering ? 'bg-gray-50 border-amber-200/60' : 'bg-white border-gray-200'}`}
+                            className={`w-full pl-5 pr-14 ${isCentered ? 'py-5 text-lg' : 'py-3.5 text-base md:text-sm'} rounded-full border text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200/60 focus:border-indigo-300 transition-all outline-none shadow-sm ${isDiscovering ? 'bg-gray-50 border-amber-200/60' : 'bg-gray-50/80 border-gray-200 focus:bg-white'}`}
                             placeholder={isDiscovering ? "Discovery in progress — chat unlocks when done..." : isCentered ? "Search for a business by name or city..." : "Ask anything about this business..."}
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
@@ -698,7 +695,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isInputDisabled}
-                                className={`absolute right-2 top-2 p-3 md:p-2 bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-xl hover:from-indigo-400 hover:to-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md shadow-indigo-200/50 hover:shadow-indigo-200`}
+                                className={`absolute right-1.5 top-1.5 p-3 md:p-2.5 bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-full hover:from-indigo-400 hover:to-violet-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md shadow-indigo-200/50 hover:shadow-indigo-200 hover:scale-105`}
                             >
                                 <svg className="w-5 h-5 md:w-4 md:h-4 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
                             </button>

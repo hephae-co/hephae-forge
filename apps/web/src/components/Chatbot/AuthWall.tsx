@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Loader2, Calendar, ExternalLink, Mail, ArrowRight, X } from 'lucide-react';
+import { Shield, Loader2, Calendar, ExternalLink, Mail, ArrowRight, X, Activity, TrendingUp } from 'lucide-react';
 
 interface AuthWallProps {
   isOpen: boolean;
@@ -71,9 +71,34 @@ export function AuthWall({ isOpen, onGoogleSignIn, onEmailSubmit, onSkip }: Auth
               <h2 className="text-2xl font-bold text-white mb-2">
                 Save Your Report
               </h2>
-              <p className="text-slate-300 text-sm mb-8 leading-relaxed">
-                Sign in to save this report to your account, track changes over time, and access all your business analyses in one place.
+              <p className="text-slate-300 text-sm mb-4 leading-relaxed">
+                Create a free account to unlock powerful monitoring tools:
               </p>
+
+              {/* Benefit cards */}
+              <div className="space-y-2.5 mb-6 text-left">
+                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                  <Activity className="w-4.5 h-4.5 text-emerald-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-white text-sm font-medium">Weekly Heartbeat Monitoring</p>
+                    <p className="text-slate-400 text-xs leading-relaxed">Auto-track SEO, margins, traffic & competitors. Get emailed only when something changes.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                  <Shield className="w-4.5 h-4.5 text-blue-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-white text-sm font-medium">Save & Access Reports</p>
+                    <p className="text-slate-400 text-xs leading-relaxed">All your business analyses in one place. Access anytime from any device.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                  <TrendingUp className="w-4.5 h-4.5 text-purple-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-white text-sm font-medium">Track Changes Over Time</p>
+                    <p className="text-slate-400 text-xs leading-relaxed">See how your scores evolve week over week. Spot trends before they become problems.</p>
+                  </div>
+                </div>
+              </div>
 
               <div className="space-y-3">
                 {/* Google Sign-In Button */}

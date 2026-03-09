@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2, Zap, Shield, Eye, MessageCircle, Map, Sparkles, Calendar } from 'lucide-react';
+import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2, Zap, Shield, Eye, MessageCircle, Map, Sparkles, Calendar, LogIn, LogOut } from 'lucide-react';
 import { SurgicalReport } from '@/types/api';
 import { SuggestionChip } from '@/components/Chatbot/types';
 import { computeSuggestionChips, ACTION_CHIP_MAP } from '@/lib/suggestionChips';
@@ -49,6 +49,8 @@ import { BaseIdentity } from '@/types/api';
 import { NeuralBackground } from '@/components/Chatbot/NeuralBackground';
 import BlobBackground from '@/components/BlobBackground';
 import { AuthWall } from '@/components/Chatbot/AuthWall';
+import { HeartbeatSetup } from '@/components/Chatbot/HeartbeatSetup';
+import { HeartbeatBadge } from '@/components/Chatbot/HeartbeatBadge';
 import ResultsDashboard from '@/components/Chatbot/seo/ResultsDashboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiClient } from '@/hooks/useApiClient';
@@ -58,7 +60,8 @@ import LoadingOverlay from '@/components/Chatbot/LoadingExperience';
 import SocialSharePanel from '@/components/Chatbot/SocialSharePanel';
 
 export default function Home() {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, signInWithGoogle, signOut } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const { apiFetch } = useApiClient();
   const [hasSkippedAuth, setHasSkippedAuth] = useState(false);
   const [showAuthWall, setShowAuthWall] = useState(false);
@@ -89,6 +92,8 @@ export default function Home() {
   const [marketingReportUrl, setMarketingReportUrl] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState(false);
   const [showSharePanel, setShowSharePanel] = useState(false);
+  const [showHeartbeatSetup, setShowHeartbeatSetup] = useState(false);
+  const [activeHeartbeatId, setActiveHeartbeatId] = useState<string | null>(null);
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<'chat' | 'visualizer'>('chat');
 
@@ -424,7 +429,7 @@ export default function Home() {
     const { menuScreenshotBase64: _stripped, ...identityForApi } = locatedBusiness as any;
 
     if (capId === 'surgery') {
-      setMessages(prev => [...prev, msg('model', "Starting Margin Surgery. Deploying ProfilerAgent to crawl the website, this may take a moment to retrieve the menu screenshots and calculate commodity impacts... ⏱️")]);
+      setMessages(prev => [...prev, msg('model', "Starting Margin Surgery. Analyzing your menu prices against commodity costs and local market benchmarks... ⏱️")]);
       setIsTyping(true);
 
       try {
@@ -1327,6 +1332,70 @@ export default function Home() {
         </div>
       )}
 
+      {/* Auth buttons — only on home screen (centered), hidden when chat panel is active */}
+      {isCentered && (
+        <div className="fixed top-4 right-4 z-[100] animate-fade-in">
+          {user ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu((v) => !v)}
+                className="flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-2.5 py-1.5 rounded-full shadow-md border border-gray-200/80 hover:shadow-lg transition-all"
+              >
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-indigo-600">{user.displayName?.[0] || user.email?.[0] || '?'}</span>
+                  </div>
+                )}
+                <span className="text-xs font-medium text-gray-700 hidden md:block max-w-[100px] truncate">
+                  {user.displayName || user.email?.split('@')[0]}
+                </span>
+              </button>
+              {showUserMenu && (
+                <>
+                  <div className="fixed inset-0 z-[99]" onClick={() => setShowUserMenu(false)} />
+                  <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-[100]">
+                    <div className="px-3 py-1.5 border-b border-gray-100">
+                      <p className="text-xs font-medium text-gray-900 truncate">{user.displayName}</p>
+                      <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setShowUserMenu(false);
+                        await signOut();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Sign out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 hidden sm:inline">
+                Free weekly business monitoring
+              </span>
+              <button
+                onClick={signInWithGoogle}
+                className="px-3 py-1.5 rounded-full border border-gray-200/80 bg-white/90 backdrop-blur-md shadow-md hover:shadow-lg hover:bg-white transition-all text-xs font-medium text-gray-600"
+              >
+                Sign in
+              </button>
+              <button
+                onClick={signInWithGoogle}
+                className="px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 shadow-md hover:shadow-lg hover:from-indigo-400 hover:to-violet-500 transition-all text-xs font-medium text-white"
+              >
+                Register
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* LEFT VISUALIZER PANEL - Hidden when centered, fills remaining space when active */}
       <div className={`relative z-10 transition-all duration-500 ease-in-out flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden hidden md:flex' : isChatCollapsed ? 'md:w-[calc(100%-56px)] w-full opacity-100' : `md:w-[55%] w-full opacity-100 ${mobilePanel === 'chat' ? 'hidden md:flex' : 'flex'}`} ${!isCentered ? 'h-full' : ''}`}>
         {!isCentered && (
@@ -1388,6 +1457,20 @@ export default function Home() {
                       <Share2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                       Share Report
                     </button>
+                  )}
+
+                  {user && locatedBusiness && !activeHeartbeatId && (
+                    <button
+                      onClick={() => setShowHeartbeatSetup(true)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/25 group whitespace-nowrap"
+                    >
+                      <Activity className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                      Monitor Weekly
+                    </button>
+                  )}
+
+                  {activeHeartbeatId && (
+                    <HeartbeatBadge onClick={() => setShowHeartbeatSetup(true)} />
                   )}
                 </div>
               </div>
@@ -1505,7 +1588,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* RIGHT CHATBOT PANEL - Full screen when centered, narrow sidebar when active */}
+      {/* RIGHT CHATBOT PANEL - Full screen when centered, floating card when active */}
       {/* When centered: pointer-events-none on wrapper so neural background is interactive; children re-enable pointer-events-auto on inputs/buttons */}
       <div className={`relative z-20 flex-shrink-0 transition-all duration-700 ease-in-out h-full ${isCentered ? 'w-full max-w-none pointer-events-none' : isChatCollapsed ? 'md:w-14 hidden md:block' : `md:w-[45%] w-full ${mobilePanel === 'visualizer' ? 'hidden md:block' : 'block'}`}`}>
         <ChatInterface
@@ -1573,6 +1656,20 @@ export default function Home() {
           setShowAuthWall(false);
         }}
       />
+
+      {user && locatedBusiness && (
+        <HeartbeatSetup
+          isOpen={showHeartbeatSetup}
+          onClose={() => setShowHeartbeatSetup(false)}
+          businessName={locatedBusiness.name}
+          businessSlug={(locatedBusiness as any).slug || locatedBusiness.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}
+          userEmail={user.email || ''}
+          onCreated={(id) => {
+            setActiveHeartbeatId(id);
+            setMessages(prev => [...prev, msg('model', `Heartbeat activated for **${locatedBusiness!.name}**! You'll receive a weekly email digest every ${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][1]} with changes to your monitored capabilities.`)]);
+          }}
+        />
+      )}
 
       {/* Social Share Panel */}
       {showSharePanel && activeReportUrl && (

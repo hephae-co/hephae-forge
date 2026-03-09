@@ -17,7 +17,7 @@ const ACTIVITIES = [
   {
     id: "game" as const,
     icon: Gamepad2,
-    title: "Data Catcher",
+    title: "Play a Game",
     description: "Intercept data streams across 4 phases — earn combos for speed!",
     gradient: "from-indigo-500 to-purple-500",
     hoverBorder: "hover:border-indigo-300",

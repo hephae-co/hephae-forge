@@ -176,6 +176,41 @@ User accounts created on first Google sign-in. `uid` is the Firebase Auth UID.
 
 ---
 
+## `heartbeats/{autoId}`
+
+```typescript
+{
+  uid: string;                         // Firebase Auth uid
+  businessSlug: string;                // references businesses/{slug}
+  businessName: string;                // denormalized for email subjects
+
+  capabilities: string[];              // ["seo", "margin", "traffic", "competitive", "social"]
+  frequency: "weekly";                 // v1: weekly only
+  dayOfWeek: number;                   // 0=Sun..6=Sat (default 1=Monday)
+  active: boolean;                     // user can pause without deleting
+
+  createdAt: Timestamp;
+  lastRunAt: Timestamp | null;
+  nextRunAfter: Timestamp;             // computed: lastRunAt + 7 days
+
+  lastSnapshot: {
+    [capabilityKey: string]: {
+      score: number | null;
+      summary: string | null;
+      reportUrl: string | null;
+      runAt: Timestamp;
+    }
+  };
+
+  totalRuns: number;
+  consecutiveOks: number;              // cycles with no significant change
+}
+```
+
+One heartbeat per user per business. Cron job queries `active=true AND nextRunAfter <= now`.
+
+---
+
 ## Admin-specific collections
 
 Written by `admin/` only. Web app does NOT read these.

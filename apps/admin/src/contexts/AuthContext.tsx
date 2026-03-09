@@ -66,6 +66,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return auth.currentUser.getIdToken();
   }, []);
 
+  // Intercept fetch() to auto-attach Firebase token on /api/ requests
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
+      if (url.startsWith('/api/') && auth.currentUser) {
+        const token = await auth.currentUser.getIdToken();
+        const headers = new Headers(init?.headers);
+        if (!headers.has('X-Firebase-Token')) {
+          headers.set('X-Firebase-Token', token);
+        }
+        return originalFetch(input, { ...init, headers });
+      }
+      return originalFetch(input, init);
+    };
+    return () => { window.fetch = originalFetch; };
+  }, [user]);
+
   return (
     <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, getIdToken }}>
       {children}

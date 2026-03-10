@@ -136,13 +136,23 @@ export default function HephaeAdminDashboard() {
               <Settings className="w-4 h-4" />
             </button>
             {user && (
-              <button
-                onClick={signOut}
-                className="p-2.5 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors shadow-sm"
-                title={`Sign out (${user.email})`}
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-200">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                    {(user.email || '?')[0].toUpperCase()}
+                  </div>
+                )}
+                <span className="text-xs text-gray-500 hidden md:block max-w-[140px] truncate">{user.email}</span>
+                <button
+                  onClick={signOut}
+                  className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
           </div>
         </header>
@@ -176,14 +186,7 @@ export default function HephaeAdminDashboard() {
               onZipCodeSubmit={(zip) => setSelectedZip(zip)}
               onDiscoveryComplete={(zip) => { setSelectedZip(zip); setBrowserRefreshKey(k => k + 1); }}
             />
-            {selectedZip ? (
-              <BusinessBrowser key={browserRefreshKey} zipCode={selectedZip} />
-            ) : (
-              <div className="text-center py-20 border border-dashed border-gray-300 rounded-xl text-gray-400">
-                <Users className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                <p>Enter a zip code above to discover businesses.</p>
-              </div>
-            )}
+            <BusinessBrowser key={browserRefreshKey} zipCode={selectedZip} />
           </div>
         )}
 

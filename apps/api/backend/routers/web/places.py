@@ -26,7 +26,10 @@ async def places_autocomplete(input: str = Query(...), sessiontoken: str = Query
                 "https://places.googleapis.com/v1/places:autocomplete",
                 json={
                     "input": input,
-                    "includedPrimaryTypes": ["restaurant", "cafe", "bakery", "bar", "meal_takeaway"],
+                    "includedPrimaryTypes": [
+                        "restaurant", "cafe", "bakery", "bar", "meal_takeaway",
+                        "food", "establishment", "store", "point_of_interest"
+                    ],
                     "includedRegionCodes": ["us"],
                     "sessionToken": sessiontoken,
                 },
@@ -40,17 +43,17 @@ async def places_autocomplete(input: str = Query(...), sessiontoken: str = Query
             return JSONResponse({"error": f"Places API error: {res.status_code}"}, status_code=res.status_code)
 
         data = res.json()
-        suggestions = []
+        predictions = []
         for s in (data.get("suggestions") or [])[:5]:
             pred = s.get("placePrediction", {})
             structured = pred.get("structuredFormat", {})
-            suggestions.append({
+            predictions.append({
                 "mainText": structured.get("mainText", {}).get("text", ""),
                 "secondaryText": structured.get("secondaryText", {}).get("text", ""),
                 "placeId": pred.get("placeId", ""),
             })
 
-        return JSONResponse({"suggestions": suggestions})
+        return JSONResponse({"predictions": predictions})
 
     except Exception as e:
         logger.error(f"[API/Places] Autocomplete failed: {e}")

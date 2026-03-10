@@ -124,7 +124,7 @@ get_businesses_in_zipcode = get_businesses_by_zip
 
 
 def _get_businesses_paginated_sync(
-    zip_code: str,
+    zip_code: Optional[str] = None,
     page: int = 1,
     page_size: int = 25,
     category: Optional[str] = None,
@@ -134,7 +134,9 @@ def _get_businesses_paginated_sync(
 ) -> dict[str, Any]:
     try:
         db = get_db()
-        query = db.collection("businesses").where("zipCode", "==", zip_code)
+        query: Any = db.collection("businesses")
+        if zip_code:
+            query = query.where("zipCode", "==", zip_code)
         if category:
             query = query.where("category", "==", category)
         if status:
@@ -174,7 +176,7 @@ def _get_businesses_paginated_sync(
 
 
 async def get_businesses_paginated(
-    zip_code: str,
+    zip_code: Optional[str] = None,
     page: int = 1,
     page_size: int = 25,
     category: Optional[str] = None,

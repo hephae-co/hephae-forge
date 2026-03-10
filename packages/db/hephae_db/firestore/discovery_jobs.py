@@ -20,6 +20,8 @@ COLLECTION = "discovery_jobs"
 # Allowed status values
 STATUS_PENDING = "pending"
 STATUS_RUNNING = "running"
+STATUS_REVIEW_REQUIRED = "review_required"  # Paused for Admin approval
+STATUS_OUTREACH_PENDING = "outreach_pending" # Approved, waiting for queue
 STATUS_COMPLETED = "completed"
 STATUS_FAILED = "failed"
 STATUS_CANCELLED = "cancelled"

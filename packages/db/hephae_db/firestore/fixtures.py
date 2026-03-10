@@ -58,6 +58,7 @@ async def save_fixture_from_business(
     fixture_type: str,
     notes: str | None = None,
     agent_key: str | None = None,
+    is_gold_standard: bool = False,
 ) -> str:
     db = get_db()
     biz_doc = await asyncio.to_thread(db.collection("businesses").document(business_slug).get)
@@ -69,6 +70,7 @@ async def save_fixture_from_business(
 
     data = {
         "fixtureType": fixture_type,
+        "isGoldStandard": is_gold_standard,
         "sourceWorkflowId": "",
         "sourceZipCode": biz_data.get("zipCode"),
         "businessType": biz_data.get("businessType"),
@@ -95,6 +97,25 @@ async def save_fixture_from_business(
 
     doc_ref = db.collection(COLLECTION).document()
     await asyncio.to_thread(doc_ref.set, data)
+
+    # Track 2: Sync to Vertex AI Example Store if it's a Gold Standard example
+    if is_gold_standard and agent_key:
+        try:
+            from hephae_db.eval.example_store import example_store
+            store_id = f"{agent_key.replace('_', '-')}-store"
+            # Extract input/output for the example
+            input_text = f"Business: {biz_data.get('name')}, Category: {biz_data.get('category')}, Website: {biz_data.get('officialUrl')}"
+            output_text = str(latest_outputs.get(agent_key, ""))
+            
+            await example_store.create_example(
+                store_id=store_id,
+                input_text=input_text,
+                output_text=output_text,
+                metadata={"sector": biz_data.get("category", "General"), "agent": agent_key}
+            )
+        except Exception as e:
+            logger.warning(f"[Fixture] Failed to sync to Example Store: {e}")
+
     return doc_ref.id
 
 

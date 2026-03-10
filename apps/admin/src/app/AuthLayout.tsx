@@ -4,24 +4,34 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
-const PUBLIC_PATHS = ['/login'];
+/** Check if the current path is the login page (works with or without /admin prefix). */
+function isLoginPath(pathname: string): boolean {
+  return pathname === '/login' || pathname.endsWith('/login');
+}
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  const isPublicPath = PUBLIC_PATHS.includes(pathname);
+  const isPublicPath = isLoginPath(pathname);
 
   useEffect(() => {
     if (loading) return;
 
     if (!user && !isPublicPath) {
-      router.replace('/login');
+      // Detect if we're behind the /admin/ gateway prefix
+      const prefix = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin') ? '/admin' : '';
+      window.location.replace(`${prefix}/login`);
     }
   }, [user, loading, isPublicPath, router]);
 
-  // Show loading spinner while auth state resolves
+  // Always render public paths immediately (don't wait for Firebase)
+  if (isPublicPath) {
+    return <>{children}</>;
+  }
+
+  // Show loading spinner while auth state resolves (protected paths only)
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -31,11 +41,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
       </div>
     );
-  }
-
-  // Allow public paths (login) without auth
-  if (isPublicPath) {
-    return <>{children}</>;
   }
 
   // Block protected paths if not authenticated

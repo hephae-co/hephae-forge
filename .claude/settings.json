@@ -1,6 +1,23 @@
 {
   "allowedTools": [
     "Bash",
-    "Bash(dangerouslyDisableSandbox:true)"
+    "Bash(dangerouslyDisableSandbox:true)",
+    "Read",
+    "Write",
+    "Edit",
+    "Glob",
+    "Grep",
+    "Agent",
+    "WebFetch",
+    "WebSearch",
+    "Skill",
+    "ToolSearch",
+    "TaskCreate",
+    "TaskOutput",
+    "TaskGet",
+    "TaskList",
+    "TaskUpdate",
+    "TaskStop",
+    "NotebookEdit"
   ]
 }

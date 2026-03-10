@@ -73,6 +73,14 @@ interface PaginatedResponse {
     pageSize: number;
 }
 
+interface Task {
+    id: string;
+    businessId: string;
+    actionType: string;
+    status: 'queued' | 'running' | 'completed' | 'failed';
+    progress: number;
+}
+
 interface BusinessBrowserProps { zipCode: string; }
 
 // ── Agents config ─────────────────────────────────────────────────────────────
@@ -85,6 +93,17 @@ const AGENTS = [
 ] as const;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function TaskHeartbeat({ task }: { task?: Task }) {
+    if (!task) return null;
+    switch (task.status) {
+        case 'queued':    return <Clock className="w-3.5 h-3.5 text-gray-400" />;
+        case 'running':   return <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />;
+        case 'completed': return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />;
+        case 'failed':    return <AlertCircle className="w-3.5 h-3.5 text-red-500" />;
+        default:          return null;
+    }
+}
 
 function statusBadge(status?: DiscoveryStatus) {
     switch (status) {
@@ -1170,6 +1189,31 @@ export default function BusinessBrowser({ zipCode }: BusinessBrowserProps) {
     const [bulkLoading, setBulkLoading] = useState<string | null>(null);
     const [savedMap, setSavedMap] = useState<Record<string, SaveState>>({});
     const [outreachTarget, setOutreachTarget] = useState<Business | null>(null);
+    const [tasks, setTasks] = useState<Record<string, Task>>({});
+
+    const fetchTasks = useCallback(async () => {
+        if (!businesses.length) return;
+        try {
+            const ids = businesses.map(b => b.id).join(',');
+            const res = await fetch(`/api/research/tasks?businessIds=${ids}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const taskMap: Record<string, Task> = {};
+            data.tasks.forEach((t: Task) => {
+                // Keep only the most recent task for each business
+                if (!taskMap[t.businessId]) taskMap[t.businessId] = t;
+            });
+            setTasks(taskMap);
+        } catch (err) { console.error('[Tasks] fetch error:', err); }
+    }, [businesses]);
+
+    useEffect(() => {
+        if (businesses.length > 0) {
+            fetchTasks();
+            const interval = setInterval(fetchTasks, 5000);
+            return () => clearInterval(interval);
+        }
+    }, [businesses, fetchTasks]);
 
     // Filters
     const [filterCategory, setFilterCategory] = useState('');
@@ -1188,7 +1232,8 @@ export default function BusinessBrowser({ zipCode }: BusinessBrowserProps) {
     }, [filterName]);
 
     const buildQuery = useCallback((p: number) => {
-        const params = new URLSearchParams({ zipCode, page: String(p), pageSize: String(PAGE_SIZE) });
+        const params = new URLSearchParams({ page: String(p), pageSize: String(PAGE_SIZE) });
+        if (zipCode) params.set('zipCode', zipCode);
         if (filterCategory) params.set('category', filterCategory);
         if (filterStatus) params.set('status', filterStatus);
         if (filterHasEmail !== null) params.set('hasEmail', String(filterHasEmail));
@@ -1197,7 +1242,6 @@ export default function BusinessBrowser({ zipCode }: BusinessBrowserProps) {
     }, [zipCode, filterCategory, filterStatus, filterHasEmail, debouncedFilterName]);
 
     const fetchBusinesses = useCallback(async (p = page) => {
-        if (!zipCode) return;
         setIsLoading(true);
         try {
             const res = await fetch(`/api/research/businesses?${buildQuery(p)}`);
@@ -1268,9 +1312,28 @@ export default function BusinessBrowser({ zipCode }: BusinessBrowserProps) {
         if (!selectedList.length) return;
         setBulkLoading(loadingKey ?? bulkAction);
         try {
-            await callAction({ action: 'bulk', businessIds: selectedList.map(b => b.id), bulkAction, ...extra });
-            await fetchBusinesses(page);
-        } finally { setBulkLoading(null); }
+            const actionType = 
+                bulkAction === 'start-discovery' ? 'ENRICH' :
+                bulkAction === 'run-analysis' ? 'ANALYZE_FULL' : 
+                bulkAction.toUpperCase();
+
+            await fetch('/api/research/tasks/spawn', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    businessIds: selectedList.map(b => b.id),
+                    actionType,
+                    priority: 5
+                }),
+            });
+            
+            setTimeout(fetchTasks, 1000);
+            setSelectedIds(new Set());
+        } catch (err) {
+            console.error('[Bulk] Failed to spawn tasks:', err);
+        } finally {
+            setBulkLoading(null);
+        }
     };
 
     const toggleSelect = (id: string) => setSelectedIds(prev => {
@@ -1460,6 +1523,7 @@ export default function BusinessBrowser({ zipCode }: BusinessBrowserProps) {
                                     <h4 className="font-semibold text-gray-900 truncate">{biz.name}</h4>
                                     {statusBadge(biz.discoveryStatus)}
                                     {reviewer && <ReviewerBadge reviewer={reviewer} />}
+                                    <TaskHeartbeat task={tasks[biz.id]} />
                                     {biz.crm?.status === 'outreached' && (
                                         <span title="Outreached"><CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" /></span>
                                     )}

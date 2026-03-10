@@ -136,7 +136,7 @@ class ActionRequest(BaseModel):
 
 @router.get("/businesses")
 async def get_businesses(
-    zipCode: str = Query(...),
+    zipCode: str | None = Query(None),
     page: int = Query(1, ge=1),
     pageSize: int = Query(25, ge=1, le=100),
     category: str | None = Query(None),

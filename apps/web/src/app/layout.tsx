@@ -20,8 +20,11 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Hephae — AI-Powered Restaurant Intelligence",
+  title: "Hephae: Big AI for small businesses",
   description: "Find where your restaurant is losing money and fix it. Margin analysis, SEO audits, foot traffic forecasting, and competitive intel — all powered by AI agents.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

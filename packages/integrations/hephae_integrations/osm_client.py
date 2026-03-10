@@ -27,7 +27,26 @@ class OsmBusiness:
     website: str
 
 
-def _build_overpass_query(lat: float, lng: float, radius: int = _SEARCH_RADIUS_M) -> str:
+def _build_overpass_query(lat: float, lng: float, category: str | None = None, radius: int = _SEARCH_RADIUS_M) -> str:
+    if category:
+        # Map some common business types to OSM keys
+        cat = category.lower()
+        if cat in ("restaurant", "cafe", "bar", "pharmacy", "dentist", "bakery"):
+            query_filter = f'["amenity"~"{cat}"]'
+        elif cat in ("salon", "boutique", "supermarket", "florist"):
+            query_filter = f'["shop"~"{cat}"]'
+        else:
+            query_filter = f'["name"~"{cat}",i]'
+            
+        return f"""
+[out:json][timeout:25];
+(
+  node["name"]{query_filter}(around:{radius},{lat},{lng});
+  way["name"]{query_filter}(around:{radius},{lat},{lng});
+);
+out center tags 50;
+"""
+
     return f"""
 [out:json][timeout:25];
 (
@@ -90,8 +109,8 @@ async def _geocode_zipcode(zip_code: str, client: httpx.AsyncClient) -> tuple[fl
     return float(data[0]["lat"]), float(data[0]["lon"])
 
 
-async def _query_overpass(lat: float, lng: float, client: httpx.AsyncClient) -> list[dict]:
-    query = _build_overpass_query(lat, lng)
+async def _query_overpass(lat: float, lng: float, client: httpx.AsyncClient, category: str | None = None) -> list[dict]:
+    query = _build_overpass_query(lat, lng, category=category)
     resp = await client.post(
         _OVERPASS_URL,
         data={"data": query},
@@ -102,7 +121,7 @@ async def _query_overpass(lat: float, lng: float, client: httpx.AsyncClient) -> 
     return resp.json().get("elements", [])
 
 
-async def discover_businesses(zip_code: str) -> list[OsmBusiness]:
+async def discover_businesses(zip_code: str, category: str | None = None) -> list[OsmBusiness]:
     """Discover businesses in a zip code via OpenStreetMap."""
     async with httpx.AsyncClient(timeout=30) as client:
         coords = await _geocode_zipcode(zip_code, client)
@@ -110,8 +129,8 @@ async def discover_businesses(zip_code: str) -> list[OsmBusiness]:
             return []
 
         lat, lng = coords
-        logger.info(f"[OSM] Geocoded {zip_code} → ({lat:.4f}, {lng:.4f}), querying Overpass...")
-        elements = await _query_overpass(lat, lng, client)
+        logger.info(f"[OSM] Geocoded {zip_code} → ({lat:.4f}, {lng:.4f}), querying Overpass ({category or 'all'})...")
+        elements = await _query_overpass(lat, lng, client, category=category)
 
     results: list[OsmBusiness] = []
     seen_names: set[str] = set()

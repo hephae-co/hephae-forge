@@ -142,12 +142,30 @@ async def run_seo_audit(
 
     logger.info(f"[SEO Runner] Launching for {identity['officialUrl']}...")
 
+    # Track 2: Load semantic few-shot examples from Vertex AI Example Store
+    examples_context = ""
+    try:
+        from hephae_db.eval.example_store import example_store
+        examples = await example_store.retrieve_examples(
+            store_id="seo-auditor-store",
+            query=f"Business: {identity.get('name')}, Category: {identity.get('category')}"
+        )
+        if examples:
+            examples_context = "\n### REFERENCE GOLD-STANDARD EXAMPLES:\n"
+            for i, ex in enumerate(examples):
+                examples_context += f"Example {i+1}:\nInput: {ex['input']}\nOutput: {ex['output']}\n\n"
+    except Exception as e:
+        logger.warning(f"[SEO Runner] Failed to retrieve examples: {e}")
+
     # Load grounding memory from human-curated fixtures (few-shot examples)
     from hephae_db.eval.grounding import get_agent_memory_service
     memory_service = await get_agent_memory_service("seo_auditor")
 
+    # Inject examples into identity for the agent to see
+    identity_with_examples = {**identity, "examples_context": examples_context}
+
     # Primary run with ENHANCED model
-    report_data = await _run_seo_agent(seo_auditor_agent, identity, memory_service)
+    report_data = await _run_seo_agent(seo_auditor_agent, identity_with_examples, memory_service)
 
     # Fallback: if primary model returned empty/useless sections, retry with lite model
     if not _has_valid_sections(report_data):

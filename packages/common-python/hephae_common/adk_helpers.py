@@ -106,51 +106,68 @@ async def run_agent_to_json(
     state: dict | None = None,
     response_schema: type[BaseModel] | None = None,
 ) -> dict | list | BaseModel | None:
-    """Run an agent, extract text, parse JSON, and optionally validate against Pydantic schema.
+    """Run an agent and return structured JSON using Gemini's native JSON mode.
 
-    Args:
-        agent: The LlmAgent to run
-        prompt: The user prompt to pass to the agent
-        app_name: The app name for session management
-        state: Optional session state
-        response_schema: Optional Pydantic BaseModel class for native structured output.
-            If provided, ADK will use this schema to constrain the LLM output to valid JSON
-            matching the schema. The returned model instance will be automatically parsed
-            and validated, eliminating manual JSON parsing.
-
-    Returns:
-        If response_schema is provided: a validated instance of the schema class
-        Otherwise: a dict, list, or None (from manual JSON parsing)
-
-    Example:
-        # With native structured output:
-        from hephae_db.schemas import ZipcodeScannerOutput
-        result = await run_agent_to_json(
-            agent, prompt, response_schema=ZipcodeScannerOutput
-        )
-        # result is now a ZipcodeScannerOutput instance, validated by Gemini
-
-        # Without structured output (backward compatible):
-        result = await run_agent_to_json(agent, prompt)
-        # result is a dict parsed from JSON (old behavior)
+    Constrains the LLM output to valid JSON, eliminating the need for manual 
+    markdown fence stripping or regex hacks.
     """
-    if response_schema:
-        # Native structured output path
-        return await _run_agent_with_schema(agent, prompt, app_name, state, response_schema)
-    else:
-        # Backward-compatible JSON parsing path
-        raw = await run_agent_to_text(agent, prompt, app_name, state)
-        if not raw:
-            logger.warning(f"[ADK] Agent {agent.name} returned empty output")
-            return None
+    session_id = f"{agent.name}-{uuid.uuid4().hex[:8]}"
+    user_id = "system"
 
-        cleaned = _strip_markdown_fences(raw)
-        try:
-            return json.loads(cleaned)
-        except json.JSONDecodeError as e:
-            logger.error(f"[ADK] Failed to parse JSON from {agent.name}: {e}")
-            logger.debug(f"[ADK] Raw output: {raw[:500]}")
-            return None
+    # P1.2: Dynamic Few-Shot Injection (The Flywheel)
+    enriched_instruction = agent.instruction
+    try:
+        from hephae_db.eval.example_store import example_store
+        enriched_instruction = await example_store.inject_examples_to_instruction(
+            agent.name, prompt, agent.instruction
+        )
+    except Exception as e:
+        logger.warning(f"[ADK] Example injection skipped for {agent.name}: {e}")
+
+    # P0.3: Ensure Native JSON Mode is active
+    schema_agent = LlmAgent(
+        name=agent.name,
+        model=agent.model,
+        instruction=enriched_instruction,
+        tools=agent.tools if hasattr(agent, "tools") else [],
+        on_model_error_callback=agent.on_model_error_callback if hasattr(agent, "on_model_error_callback") else None,
+        response_schema=response_schema,
+        # Force native JSON mode even if no schema
+        generate_content_config={"response_mime_type": "application/json"} if not response_schema else None,
+    )
+
+    app = _get_or_create_app(schema_agent, app_name)
+
+    session = await _session_service.create_session(
+        app_name=app_name, session_id=session_id, user_id=user_id, state=state or {}
+    )
+
+    runner = Runner(app=app, session_service=_session_service)
+
+    last_text = ""
+    async for event in runner.run_async(
+        user_id=user_id,
+        session_id=session.id,
+        new_message=user_msg(prompt),
+    ):
+        if event.content and event.content.parts:
+            for part in event.content.parts:
+                if part.text:
+                    last_text = part.text
+
+    if not last_text:
+        return None
+
+    try:
+        # P0.3: No more markdown stripping needed. last_text IS the JSON.
+        parsed_json = json.loads(last_text)
+        if response_schema:
+            return response_schema(**parsed_json)
+        return parsed_json
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.error(f"[ADK] Native JSON Mode failed for {agent.name}: {e}")
+        logger.debug(f"[ADK] Raw output: {last_text[:500]}")
+        return None
 
 
 async def _run_agent_with_schema(

@@ -9,6 +9,9 @@ from datetime import datetime
 from typing import Any, Callable
 
 from backend.workflows.agents.discovery.county_resolver import resolve_county_zip_codes
+from backend.workflows.agents.discovery.municipal_hubs import find_municipal_hub
+from backend.workflows.agents.discovery.directory_parser import parse_directory_content
+from hephae_capabilities.shared_tools import crawl4ai_tool
 from backend.workflows.agents.research.area_summary import generate_area_summary, generate_enhanced_area_summary
 from backend.workflows.agents.research.intel_fan_out import gather_intelligence
 from backend.workflows.agents.research.local_sector_trends import analyze_local_sector_trends
@@ -182,6 +185,35 @@ class AreaResearchOrchestrator:
             await self._checkpoint()
             self._emit("area:completed", "Area research complete")
 
+            # Phase 6: Automatic Lead Discovery (The "Gift of Value")
+            leads = []
+            try:
+                self._emit("area:discovering_leads", f"Discovering official {self.doc.businessType} leads from municipal directories...")
+                leads = await self._discover_leads_from_hub()
+                if leads:
+                    self._emit("area:leads_found", f"Successfully discovered {len(leads)} high-trust leads for {self.doc.businessType}")
+            except Exception as e:
+                logger.warning(f"[AreaResearch] Automated lead discovery failed: {e}")
+
+            # Phase 7: Batch Supervision (The "Cliffnotes")
+            try:
+                from backend.workflows.agents.discovery.batch_supervisor import generate_batch_summary
+                self._emit("area:supervising", "Generating executive batch summary...")
+                
+                # Fetch businesses from the unified pool for this area run
+                from hephae_db.firestore.businesses import get_businesses_in_area_run
+                discovered_businesses = await get_businesses_in_area_run(self.doc.id)
+                
+                batch_summary = await generate_batch_summary(self.doc.area, discovered_businesses)
+                self.doc.summary.automatedBatchSummary = batch_summary
+                
+                # Final state update for Human-in-the-Loop
+                self.doc.phase = AreaResearchPhase.REVIEW_REQUIRED
+                await self._checkpoint()
+                self._emit("area:ready_for_review", "Batch processing complete. Ready for human approval.")
+            except Exception as e:
+                logger.warning(f"[AreaResearch] Batch supervision failed: {e}")
+
         except Exception as e:
             logger.error(f"[AreaResearch] Fatal error for {self.doc.id}: {e}")
             self.doc.phase = AreaResearchPhase.FAILED
@@ -244,6 +276,47 @@ class AreaResearchOrchestrator:
                 logger.error(f"[AreaResearch] Local sector analysis failed for {zip_code}: {e}")
 
         return {"trends": trends}
+
+    async def _discover_leads_from_hub(self) -> list[dict]:
+        """Find the municipal hub, crawl it, and save businesses to Firestore."""
+        city = self.doc.area.split(",")[0].strip() if "," in self.doc.area else self.doc.area
+        state = self.doc.resolvedState or ""
+        
+        # 1. Find the Hub
+        hub_url = await find_municipal_hub(city, state)
+        if not hub_url:
+            logger.info(f"[AreaResearch] No municipal hub found for {city}, {state}")
+            return []
+
+        # 2. Crawl it
+        try:
+            crawl_result = await crawl4ai_tool(hub_url)
+            content = crawl_result.get("markdown") or crawl_result.get("text", "")
+            if not content:
+                return []
+
+            # 3. Parse leads
+            raw_leads = await parse_directory_content(content, category=self.doc.businessType)
+            
+            # 4. Save to Firestore (Unified Lead Pool)
+            from hephae_db.firestore.businesses import save_business
+            from backend.workflows.phases.discovery import generate_slug
+            
+            final_leads = []
+            for lead in raw_leads:
+                slug = generate_slug(lead["name"])
+                await save_business(slug, {
+                    **lead,
+                    "discoveryStatus": "hub_scanned",
+                    "sourceAreaId": self.doc.id,
+                    "updatedAt": datetime.utcnow()
+                })
+                final_leads.append(lead)
+                
+            return final_leads
+        except Exception as e:
+            logger.error(f"[AreaResearch] Lead discovery crawl failed: {e}")
+            return []
 
     async def _fetch_zip_reports(self, zip_codes: list[str]) -> dict[str, dict]:
         reports = {}

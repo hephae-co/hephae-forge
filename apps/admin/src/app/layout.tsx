@@ -16,7 +16,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Hephae Admin | Agentic Control Center",
+  title: "Hephae: AI for small businesses",
   description: "Deep research, capability testing, and CRM automation for MarginSurgeon",
 };
 

@@ -99,8 +99,34 @@ async def run_discovery(
         app_name="hephae-hub", user_id=user_id, session_id=session_id
     )
     p1_state = p1_session.state if p1_session else {}
+    raw_content = p1_state.get("rawSiteData", "")
 
-    # P0.3: Check entity match — abort early on MISMATCH/AGGREGATOR (saves Stage 2-4 tokens)
+    # P0.1: Create Gemini Context Cache for Phase 2 (8 parallel agents)
+    cache_name = None
+    if raw_content and len(raw_content) > 2048:
+        try:
+            from hephae_common.gemini_cache import get_or_create_cache
+            class DiscoveryContext:
+                def __init__(self, slug, text):
+                    self.slug = slug
+                    self.text = text
+                def to_prompt_context(self): return self.text
+            
+            cache_ctx = DiscoveryContext(f"disc-{int(time.time())}", raw_content)
+            cache_name = await get_or_create_cache(cache_ctx, AgentModels.PRIMARY_MODEL)
+            if cache_name:
+                logger.info(f"[Discovery Runner] Context Cached: {cache_name}")
+                # Inject cache name into session state for ADK to pick up
+                await session_service.update_session(
+                    app_name="hephae-hub", 
+                    user_id=user_id, 
+                    session_id=session_id,
+                    state={"gemini_cache_name": cache_name}
+                )
+        except Exception as e:
+            logger.warning(f"[Discovery Runner] Caching failed: {e}")
+
+    # P0.3: Check entity match — abort early on MISMATCH/AGGREGATOR
     entity_match = _safe_parse(p1_state.get("entityMatchResult"))
     match_status = entity_match.get("status", "MATCH")
     if match_status in ("MISMATCH", "AGGREGATOR"):

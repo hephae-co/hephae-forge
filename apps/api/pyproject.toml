@@ -11,6 +11,7 @@ dependencies = [
     "firebase-admin>=6.6.0",
     "google-cloud-bigquery>=3.27.0",
     "google-cloud-storage>=2.18.0",
+    "google-cloud-tasks>=2.16.0",
     "playwright>=1.48.0",
     "httpx>=0.28.0",
     "pydantic>=2.10.0",

@@ -44,6 +44,23 @@ def _clean_json(text: str) -> str:
     return re.sub(r"```json\s*|\s*```", "", text).strip()
 
 
+_NON_MENU_DOMAINS = {
+    "facebook.com", "instagram.com", "twitter.com", "x.com",
+    "tiktok.com", "yelp.com", "tripadvisor.com", "doordash.com",
+    "ubereats.com", "grubhub.com", "seamless.com", "postmates.com",
+    "youtube.com", "linkedin.com",
+}
+
+
+def _is_menu_url(url: str | None) -> bool:
+    """Return True if the URL looks like an actual menu page (not social/delivery)."""
+    if not url:
+        return False
+    from urllib.parse import urlparse
+    host = urlparse(url).netloc.lower().removeprefix("www.")
+    return host not in _NON_MENU_DOMAINS
+
+
 async def _scrape_menu_screenshot(official_url: str) -> str | None:
     """Scrape a full-page JPEG screenshot of the menu page."""
     from hephae_capabilities.shared_tools import screenshot_page
@@ -85,6 +102,93 @@ async def _scrape_menu_text(url: str) -> str | None:
     except Exception as e:
         logger.warning(f"[API/Analyze] Text crawl failed for {url}: {e}")
     return None
+
+
+# Common menu page path patterns for restaurants
+_MENU_PATHS = [
+    "/menu", "/our-menu", "/food-menu", "/dinner-menu", "/lunch-menu",
+    "/food", "/dining", "/eat", "/menus", "/the-menu",
+    "/menu.html", "/menu.php", "/food-and-drink",
+]
+
+
+async def _find_menu_on_official_site(official_url: str) -> str | None:
+    """
+    Targeted menu discovery on the official website:
+    1. Probe common /menu paths directly
+    2. If none work, crawl the homepage and find menu links
+    3. Crawl the best menu page found
+    """
+    from urllib.parse import urljoin, urlparse
+    from hephae_capabilities.shared_tools.crawl4ai import crawl_with_options
+
+    base = official_url.rstrip("/")
+    parsed = urlparse(base)
+    domain = parsed.netloc.lower()
+
+    # --- Phase 1: Probe common menu paths ---
+    logger.info(f"[API/Analyze] Menu finder: probing common paths on {domain}")
+    import httpx
+    async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+        for path in _MENU_PATHS:
+            probe_url = f"{base}{path}"
+            try:
+                resp = await client.head(probe_url)
+                if resp.status_code == 200:
+                    logger.info(f"[API/Analyze] Menu finder: found menu page at {probe_url}")
+                    text = await _scrape_menu_text(probe_url)
+                    if text and _looks_like_menu(text):
+                        return text
+            except Exception:
+                continue
+
+    # --- Phase 2: Crawl homepage, look for menu links ---
+    logger.info(f"[API/Analyze] Menu finder: scanning homepage for menu links")
+    try:
+        result = await crawl_with_options(
+            url=official_url,
+            remove_overlays=True,
+        )
+        links = result.get("links", [])
+        menu_keywords = {"menu", "food", "dining", "eat", "lunch", "dinner", "drink", "catering"}
+
+        # Score links by how "menu-like" they are
+        scored = []
+        for link in links:
+            href = (link.get("href") or link.get("url") or "").lower()
+            text = (link.get("text") or link.get("title") or "").lower()
+            if not href:
+                continue
+            # Must be on the same domain or a relative path
+            full_url = urljoin(official_url, href)
+            link_domain = urlparse(full_url).netloc.lower()
+            if link_domain != domain:
+                continue
+            # Score based on keyword matches in URL path and link text
+            score = sum(1 for kw in menu_keywords if kw in href)
+            score += sum(2 for kw in menu_keywords if kw in text)
+            if score > 0:
+                scored.append((score, full_url))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+
+        # Try the top 3 most menu-like links
+        for _score, menu_link in scored[:3]:
+            logger.info(f"[API/Analyze] Menu finder: trying discovered link {menu_link}")
+            text = await _scrape_menu_text(menu_link)
+            if text and _looks_like_menu(text):
+                return text
+    except Exception as e:
+        logger.warning(f"[API/Analyze] Menu finder: homepage crawl failed: {e}")
+
+    return None
+
+
+def _looks_like_menu(text: str) -> bool:
+    """Quick heuristic: does the text contain price-like patterns ($X.XX)?"""
+    import re
+    price_pattern = re.findall(r'\$\d+\.?\d*', text)
+    return len(price_pattern) >= 3
 
 
 async def _search_menu_text(business_name: str) -> str | None:
@@ -211,11 +315,27 @@ async def analyze(request: Request):
 
             if not identity.get("menuScreenshotBase64"):
                 # Fallback: take a fresh screenshot with Playwright
-                target_url = identity.get("menuUrl") or identity["officialUrl"]
-                logger.info(f"[API/Analyze] Fast Path: Screenshotting {target_url}")
-                screenshot = await _scrape_menu_screenshot(target_url)
-                if screenshot:
-                    identity["menuScreenshotBase64"] = screenshot
+                # Try official site first, then delivery/third-party menu as fallback
+                menu_url = identity.get("menuUrl")
+                official_url = identity.get("officialUrl")
+
+                # 1st: real menu URL (not social/delivery)
+                # 2nd: official website
+                # 3rd: delivery site menu URL (Seamless, DoorDash, etc.)
+                targets = []
+                if _is_menu_url(menu_url):
+                    targets.append(menu_url)
+                if official_url:
+                    targets.append(official_url)
+                if menu_url and not _is_menu_url(menu_url):
+                    targets.append(menu_url)
+
+                for target_url in targets:
+                    logger.info(f"[API/Analyze] Fast Path: Screenshotting {target_url}")
+                    screenshot = await _scrape_menu_screenshot(target_url)
+                    if screenshot:
+                        identity["menuScreenshotBase64"] = screenshot
+                        break
 
             # Ensure colors/persona are populated
             identity.setdefault("primaryColor", "#0f172a")
@@ -288,17 +408,27 @@ async def analyze(request: Request):
             business_name = identity.get("name", "")
             logger.info(f"[API/Analyze] No screenshot menu — trying text-based extraction for {business_name}")
 
-            # Try crawling the menu URL or official URL
             menu_text = None
-            target_url = identity.get("menuUrl") or identity.get("officialUrl")
-            if target_url:
-                menu_text = await _scrape_menu_text(target_url)
+            menu_url = identity.get("menuUrl")
+            official_url = identity.get("officialUrl")
 
-            # If menu URL text was thin, also try the official URL
-            if not menu_text and identity.get("menuUrl") and identity.get("officialUrl"):
-                menu_text = await _scrape_menu_text(identity["officialUrl"])
+            # 1st: known first-party menu URL (not social/delivery)
+            if _is_menu_url(menu_url):
+                menu_text = await _scrape_menu_text(menu_url)
 
-            # Last resort: search Google for the menu
+            # 2nd: targeted menu discovery on official site
+            #   - probes /menu, /our-menu, /food-menu, etc.
+            #   - crawls homepage to find menu links
+            #   - validates results contain price patterns
+            if not menu_text and official_url:
+                menu_text = await _find_menu_on_official_site(official_url)
+
+            # 3rd: delivery site (Seamless, DoorDash, etc.) — has structured menus with prices
+            if not menu_text and menu_url and not _is_menu_url(menu_url):
+                logger.info(f"[API/Analyze] Trying delivery site menu: {menu_url}")
+                menu_text = await _scrape_menu_text(menu_url)
+
+            # 4th: Google search as last resort
             if not menu_text and business_name:
                 logger.info(f"[API/Analyze] Searching Google for {business_name} menu...")
                 menu_text = await _search_menu_text(business_name)

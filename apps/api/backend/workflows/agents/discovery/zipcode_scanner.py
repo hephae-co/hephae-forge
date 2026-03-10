@@ -79,15 +79,16 @@ def _normalize_name(name: str) -> str:
     return name
 
 
-async def scan_zipcode(zip_code: str, force: bool = False) -> list[DiscoveredBusiness]:
+async def scan_zipcode(zip_code: str, category: str | None = None, force: bool = False) -> list[DiscoveredBusiness]:
     """Discover businesses in a zip code using Google Search + OSM, then persist to Firestore.
 
+    If category is provided (e.g. 'Bakery'), discovery is much more targeted.
     Runs both sources in parallel, merges and deduplicates results.
     """
-    logger.info(f"[Scanner] Searching for businesses in {zip_code} (force={force})...")
+    logger.info(f"[Scanner] Searching for {category or 'all'} businesses in {zip_code} (force={force})...")
 
-    # 1. Check Firestore cache (skip if force=True)
-    if not force:
+    # 1. Check Firestore cache (skip if force=True or if searching specific category)
+    if not force and not category:
         existing = await get_businesses_in_zipcode(zip_code, limit=30)
         if existing:
             logger.info(f"[Scanner] Found {len(existing)} cached businesses in {zip_code}.")
@@ -101,9 +102,9 @@ async def scan_zipcode(zip_code: str, force: bool = False) -> list[DiscoveredBus
             ]
 
     # 2. Run both discovery sources in parallel
-    logger.info(f"[Scanner] Running Google Search agent + OSM for {zip_code}...")
-    osm_task = osm_discover(zip_code)
-    adk_task = _run_adk_discovery(zip_code)
+    logger.info(f"[Scanner] Running Google Search agent + OSM for {zip_code} ({category or 'general'})...")
+    osm_task = osm_discover(zip_code, category=category)
+    adk_task = _run_adk_discovery(zip_code, category=category)
     osm_results, adk_results = await asyncio.gather(osm_task, adk_task, return_exceptions=True)
 
     # Handle exceptions from either source gracefully
@@ -165,14 +166,20 @@ async def scan_zipcode(zip_code: str, force: bool = False) -> list[DiscoveredBus
     return results
 
 
-async def _run_adk_discovery(zip_code: str) -> list[dict]:
+async def _run_adk_discovery(zip_code: str, category: str | None = None) -> list[dict]:
     """Run the ADK agent with Google Search grounding to discover businesses."""
+    target = f"local {category} businesses" if category else "real local businesses"
+    query = (
+        f"Find {target} currently operating in zip code {zip_code}. "
+        f"Search for local business directories, {category if category else ''} associations, "
+        f"and chamber of commerce member lists for {zip_code}. "
+        f"Focus on independently owned local businesses only. Exclude all chains, franchises, banks, and national retailers."
+    )
+    
     try:
         result = await run_agent_to_json(
             ZipcodeScannerAgent,
-            f"Find real businesses currently operating in zip code {zip_code}. "
-            f"Search for local business directories, Yelp listings, and chamber of commerce for {zip_code}. "
-            f"Focus on independently owned local businesses only. Exclude all chains, franchises, banks, and national retailers.",
+            query,
             app_name="HephaeAdmin",
             response_schema=ZipcodeScannerOutput,
         )
@@ -182,7 +189,7 @@ async def _run_adk_discovery(zip_code: str) -> list[dict]:
                     "name": b.name,
                     "address": b.address,
                     "website": b.website,
-                    "category": b.category,
+                    "category": b.category or category,
                 }
                 for b in result.businesses
                 if b.name

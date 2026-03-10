@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import {
   User,
   onAuthStateChanged,
@@ -33,16 +33,47 @@ export function useAuth() {
 
 const googleProvider = new GoogleAuthProvider();
 
+// ── Module-level fetch interceptor ──────────────────────────
+// Installed once at import time so it's active before any useEffect fires.
+// This avoids the race condition where child components fetch data
+// before the parent AuthProvider's useEffect installs the interceptor.
+let _interceptorInstalled = false;
+if (typeof window !== 'undefined' && !_interceptorInstalled) {
+  _interceptorInstalled = true;
+  const _originalFetch = window.fetch;
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
+    if (url.startsWith('/api/') && auth.currentUser) {
+      const token = await auth.currentUser.getIdToken();
+      const headers = new Headers(init?.headers);
+      if (!headers.has('X-Firebase-Token')) {
+        headers.set('X-Firebase-Token', token);
+      }
+      return _originalFetch(input, { ...init, headers });
+    }
+    return _originalFetch(input, init);
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Failsafe: if Firebase never resolves, stop loading after 3s
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      clearTimeout(timeout);
       setUser(firebaseUser);
       setLoading(false);
     });
-    return unsubscribe;
+    return () => {
+      clearTimeout(timeout);
+      unsubscribe();
+    };
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
@@ -65,24 +96,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!auth.currentUser) return null;
     return auth.currentUser.getIdToken();
   }, []);
-
-  // Intercept fetch() to auto-attach Firebase token on /api/ requests
-  useEffect(() => {
-    const originalFetch = window.fetch;
-    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
-      if (url.startsWith('/api/') && auth.currentUser) {
-        const token = await auth.currentUser.getIdToken();
-        const headers = new Headers(init?.headers);
-        if (!headers.has('X-Firebase-Token')) {
-          headers.set('X-Firebase-Token', token);
-        }
-        return originalFetch(input, { ...init, headers });
-      }
-      return originalFetch(input, init);
-    };
-    return () => { window.fetch = originalFetch; };
-  }, [user]);
 
   return (
     <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, getIdToken }}>

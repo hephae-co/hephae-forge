@@ -26,7 +26,8 @@ async def places_autocomplete(input: str = Query(...), sessiontoken: str = Query
                     "input": input,
                     "includedPrimaryTypes": [
                         "restaurant", "cafe", "bakery", "bar", "meal_takeaway",
-                        "food", "establishment", "store", "point_of_interest"
+                        "meal_delivery", "grocery_store", "supermarket",
+                        "liquor_store", "convenience_store",
                     ],
                     "includedRegionCodes": ["us"],
                 }
@@ -43,6 +44,7 @@ async def places_autocomplete(input: str = Query(...), sessiontoken: str = Query
             )
 
         if res.status_code != 200:
+            logger.warning(f"[API/Places] Autocomplete {res.status_code}: {res.text[:300]}")
             return JSONResponse({"error": f"Places API error: {res.status_code}"}, status_code=res.status_code)
 
         data = res.json()

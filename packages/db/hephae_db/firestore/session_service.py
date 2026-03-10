@@ -43,9 +43,9 @@ class FirestoreSessionService(BaseSessionService):
         delete_at = now + timedelta(days=ttl_days)
 
         session = Session(
-            app_name=app_name,
-            user_id=user_id,
-            session_id=sid,
+            id=sid,
+            appName=app_name,
+            userId=user_id,
             state=state,
         )
 
@@ -72,9 +72,9 @@ class FirestoreSessionService(BaseSessionService):
 
         data = doc.to_dict()
         return Session(
-            app_name=data["appName"],
-            user_id=data["userId"],
-            session_id=session_id,
+            id=session_id,
+            appName=data["appName"],
+            userId=data["userId"],
             state=data.get("state", {}),
         )
 
@@ -91,9 +91,9 @@ class FirestoreSessionService(BaseSessionService):
         for doc in docs:
             data = doc.to_dict()
             sessions.append(Session(
-                app_name=data["appName"],
-                user_id=data["userId"],
-                session_id=doc.id,
+                id=doc.id,
+                appName=data["appName"],
+                userId=data["userId"],
                 state=data.get("state", {}),
             ))
         return ListSessionsResponse(sessions=sessions)

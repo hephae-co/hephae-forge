@@ -22,17 +22,20 @@ async def places_autocomplete(input: str = Query(...), sessiontoken: str = Query
             return JSONResponse({"error": "Google Maps API key not configured"}, status_code=500)
 
         async with httpx.AsyncClient(timeout=10.0) as client:
-            res = await client.post(
-                "https://places.googleapis.com/v1/places:autocomplete",
-                json={
+            body: dict = {
                     "input": input,
                     "includedPrimaryTypes": [
                         "restaurant", "cafe", "bakery", "bar", "meal_takeaway",
                         "food", "establishment", "store", "point_of_interest"
                     ],
                     "includedRegionCodes": ["us"],
-                    "sessionToken": sessiontoken,
-                },
+                }
+            if sessiontoken:
+                body["sessionToken"] = sessiontoken
+
+            res = await client.post(
+                "https://places.googleapis.com/v1/places:autocomplete",
+                json=body,
                 headers={
                     "Content-Type": "application/json",
                     "X-Goog-Api-Key": api_key,

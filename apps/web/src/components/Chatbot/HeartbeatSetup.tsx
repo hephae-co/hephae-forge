@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, X, Loader2, Check, Calendar, Mail, ChevronDown } from 'lucide-react';
 
 const CAPABILITIES = [
-  { id: 'seo', label: 'SEO Deep Audit', description: 'Track search ranking changes weekly', color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
-  { id: 'margin', label: 'Margin Surgery', description: 'Monitor food cost fluctuations', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+  { id: 'seo', label: 'Google Presence Check', description: 'Track search ranking changes weekly', color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+  { id: 'margin', label: 'Price Optimization', description: 'Monitor food cost fluctuations', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
   { id: 'traffic', label: 'Foot Traffic Forecast', description: 'Weekly foot traffic patterns', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-  { id: 'competitive', label: 'Competitive Analysis', description: 'Track competitor movements', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
-  { id: 'social', label: 'Social Media Audit', description: 'Monitor social presence health', color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
+  { id: 'competitive', label: 'Competitor Tracking', description: 'Track competitor movements', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+  { id: 'social', label: 'Social Media Health', description: 'Monitor social presence health', color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
 ];
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

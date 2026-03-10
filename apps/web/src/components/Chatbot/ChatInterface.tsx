@@ -432,11 +432,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
                                 {([
-                                    { icon: <BarChart3 className="w-3.5 h-3.5" />, label: "Margin Surgery", cls: "bg-indigo-50 text-indigo-600" },
-                                    { icon: <Users className="w-3.5 h-3.5" />, label: "Foot Traffic Forecast", cls: "bg-emerald-50 text-emerald-600" },
-                                    { icon: <SearchIcon className="w-3.5 h-3.5" />, label: "SEO Deep Audit", cls: "bg-purple-50 text-purple-600" },
-                                    { icon: <Swords className="w-3.5 h-3.5" />, label: "Competitive Analysis", cls: "bg-orange-50 text-orange-600" },
-                                    { icon: <Share2 className="w-3.5 h-3.5" />, label: "Social Media Insights", cls: "bg-pink-50 text-pink-600" },
+                                    { icon: <BarChart3 className="w-3.5 h-3.5" />, label: "Optimize My Prices", cls: "bg-indigo-50 text-indigo-600" },
+                                    { icon: <Users className="w-3.5 h-3.5" />, label: "Predict Foot Traffic", cls: "bg-emerald-50 text-emerald-600" },
+                                    { icon: <SearchIcon className="w-3.5 h-3.5" />, label: "Check My Google Presence", cls: "bg-purple-50 text-purple-600" },
+                                    { icon: <Swords className="w-3.5 h-3.5" />, label: "Compare to Competitors", cls: "bg-orange-50 text-orange-600" },
+                                    { icon: <Share2 className="w-3.5 h-3.5" />, label: "Audit My Social Media", cls: "bg-pink-50 text-pink-600" },
                                 ] as const).map(({ icon, label, cls }) => (
                                     <div key={label}
                                         className="bg-white/80 border border-gray-100 px-3 py-2.5 rounded-xl shadow-sm backdrop-blur-xl flex items-center gap-2.5 text-left">

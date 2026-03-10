@@ -92,12 +92,12 @@ export default function ExplainerModal({ isOpen, onClose }: ExplainerModalProps)
                     </section>
 
 
-                    {/* Margin Surgery Swarm */}
+                    {/* Price Optimization Swarm */}
                     <section className="relative">
                         <div className="absolute left-6 top-0 bottom-0 w-px bg-rose-100"></div>
                         <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-3 relative z-10">
                             <span className="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center text-lg shadow-lg shadow-rose-500/20">Phase 2</span>
-                            Execute Playbook: Menu Margins
+                            Price Optimization
                         </h3>
                         <div className="ml-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div className="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm">

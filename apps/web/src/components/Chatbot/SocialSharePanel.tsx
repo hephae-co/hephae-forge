@@ -211,11 +211,11 @@ export default function SocialSharePanel({
   };
 
   const REPORT_LABELS: Record<string, string> = {
-    margin: "Margin Surgery",
-    traffic: "Traffic Forecast",
-    seo: "SEO Deep Audit",
+    margin: "Price Optimization",
+    traffic: "Foot Traffic Forecast",
+    seo: "Google Presence Check",
     competitive: "Competitive Analysis",
-    marketing: "Social Media Insights",
+    marketing: "Social Media Health Check",
     profile: "Business Profile",
   };
 

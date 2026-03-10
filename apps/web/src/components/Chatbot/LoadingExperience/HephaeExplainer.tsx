@@ -48,7 +48,7 @@ const PIPELINE_STEPS = [
   {
     icon: Zap,
     title: "Capabilities Unlocked",
-    description: "Once complete, you can run Margin Surgery, Traffic Forecasts, SEO Deep Audits, Competitive Analysis, and Social Media Insights.",
+    description: "Once complete, you can optimize prices, forecast foot traffic, check your Google presence, analyze competitors, and audit social media.",
     color: "from-amber-500 to-orange-500",
     borderColor: "border-amber-200",
     bgColor: "bg-amber-50",

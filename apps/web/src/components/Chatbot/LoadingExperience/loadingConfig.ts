@@ -47,7 +47,7 @@ const DISCOVERY_CONFIG: CapabilityConfig = {
 
 const SURGERY_CONFIG: CapabilityConfig = {
   id: "surgery",
-  label: "Margin Surgery",
+  label: "Price Optimization",
   accentHex: "#6366f1",
   estimatedDurationMs: 90_000,
   stages: [
@@ -94,7 +94,7 @@ const TRAFFIC_CONFIG: CapabilityConfig = {
 
 const SEO_CONFIG: CapabilityConfig = {
   id: "seo",
-  label: "SEO Deep Audit",
+  label: "Google Presence Check",
   accentHex: "#8b5cf6",
   estimatedDurationMs: 75_000,
   stages: [
@@ -140,7 +140,7 @@ const COMPETITIVE_CONFIG: CapabilityConfig = {
 
 const MARKETING_CONFIG: CapabilityConfig = {
   id: "marketing",
-  label: "Social Media Audit",
+  label: "Social Media Health Check",
   accentHex: "#ec4899",
   estimatedDurationMs: 90_000,
   stages: [

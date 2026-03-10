@@ -294,6 +294,7 @@ export default function Home() {
     ];
     const progressTimers: ReturnType<typeof setTimeout>[] = [];
     let discoveryDone = false;
+    let enrichedProfile: any = null;
 
     for (const pm of progressMessages) {
       progressTimers.push(setTimeout(() => {
@@ -313,7 +314,7 @@ export default function Home() {
       progressTimers.forEach(clearTimeout);
 
       if (res.ok) {
-        const enrichedProfile = await res.json();
+        enrichedProfile = await res.json();
         if (enrichedProfile.reportUrl) {
           setProfileReportUrl(enrichedProfile.reportUrl);
           sendReportEmailAsync('profile', enrichedProfile.reportUrl, enrichedProfile.name || identity.name, `Business profile for ${enrichedProfile.name || identity.name} has been compiled.`);
@@ -332,13 +333,21 @@ export default function Home() {
       console.error("Discovery failed", e);
     } finally {
       // Always unlock capabilities — even if discovery failed, users can still run analyses
-      setCapabilities([
-        { id: 'surgery', label: 'Margin Surgery' },
-        { id: 'traffic', label: 'Foot Traffic Forecast' },
-        { id: 'seo', label: 'SEO Deep Audit' },
-        { id: 'competitive', label: 'Competitive Analysis' },
-        { id: 'marketing', label: 'Social Media Insights' },
-      ]);
+      // Build capability list — hide menu pricing if no menu data found
+      const profile = enrichedProfile || identity;
+      const hasMenuData = !!(
+        profile?.menuUrl ||
+        profile?.menuScreenshotUrl ||
+        profile?.menuItems?.length
+      );
+      const caps = [
+        ...(hasMenuData ? [{ id: 'surgery', label: 'Am I undercharging for something?' }] : []),
+        { id: 'traffic', label: 'When is my busiest time of day?' },
+        { id: 'seo', label: 'Can people find me on Google?' },
+        { id: 'competitive', label: 'How do I stack up against competitors?' },
+        { id: 'marketing', label: 'How strong is my social media?' },
+      ];
+      setCapabilities(caps);
       setIsDiscovering(false);
       setActiveCapability(null);
       setCapabilityStartTime(null);
@@ -429,7 +438,7 @@ export default function Home() {
     const { menuScreenshotBase64: _stripped, ...identityForApi } = locatedBusiness as any;
 
     if (capId === 'surgery') {
-      setMessages(prev => [...prev, msg('model', "Starting Margin Surgery. Analyzing your menu prices against commodity costs and local market benchmarks... ⏱️")]);
+      setMessages(prev => [...prev, msg('model', "Checking your menu prices against commodity costs and local competitors... ⏱️")]);
       setIsTyping(true);
 
       try {
@@ -458,18 +467,18 @@ export default function Home() {
           const totalLeakage = data.menu_items?.reduce((s: number, i: { price_leakage: number }) => s + i.price_leakage, 0) || 0;
           sendReportEmailAsync('margin', data.reportUrl, locatedBusiness!.name, `$${totalLeakage.toFixed(2)} total profit leakage detected across ${data.menu_items?.length || 0} menu items. Overall score: ${data.overall_score}/100.`);
         }
-        setMessages(prev => [...prev, msg('model', "Surgery complete. The surgical dashboard has been rendered.\n\n[Schedule a call](https://hephae.co/schedule) to discuss your optimization strategy with our team.")]);
+        setMessages(prev => [...prev, msg('model', "Price analysis complete! Your optimization dashboard is ready.\n\n[Schedule a call](https://hephae.co/schedule) to discuss your pricing strategy with our team.")]);
         maybeShowAuthWall();
 
       } catch (e: any) {
-        setMessages(prev => [...prev, msg('model', `Margin Surgery couldn't complete: ${e.message}\n\nThis can happen if the business website doesn't have a public menu page. Try one of the other analyses instead!`)]);
+        setMessages(prev => [...prev, msg('model', `Price analysis couldn't complete: ${e.message}\n\nThis can happen if the business website doesn't have a public menu page. Try one of the other analyses instead!`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
         setCapabilityStartTime(null);
       }
     } else if (capId === 'traffic') {
-      setMessages(prev => [...prev, msg('model', "Starting Foot Traffic Forecast. Deploying ForecasterAgent to analyze local events, weather, and compute traffic models... ⏱️")]);
+      setMessages(prev => [...prev, msg('model', "Predicting your foot traffic patterns — analyzing local events, weather, and historical trends... ⏱️")]);
       setIsTyping(true);
 
       try {
@@ -509,7 +518,7 @@ export default function Home() {
         setCapabilityStartTime(null);
       }
     } else if (capId === 'seo') {
-      setMessages(prev => [...prev, msg('model', "Deploying SEO Auditor to analyze indexing, web vitals, and content hierarchy... ⏱️")]);
+      setMessages(prev => [...prev, msg('model', "Checking how visible you are on Google — analyzing search rankings, website speed, and content quality... ⏱️")]);
       setIsTyping(true);
 
       try {
@@ -534,7 +543,7 @@ export default function Home() {
           setMessages(prev => [...prev, msg('model', `The SEO Auditor completed but returned incomplete data${scoreNote}. ${data.summary || 'The model may have hit a rate limit or timed out.'}\n\nYou can try running the audit again from the action bar.`)]);
           // Re-enable capabilities so user can retry
           setCapabilities(prev => prev.length > 0 ? prev : [
-            { id: 'seo', label: 'Retry SEO Audit', icon: undefined },
+            { id: 'seo', label: 'Retry Google Presence Check', icon: undefined },
           ]);
         } else {
           setSeoReport(data);
@@ -547,14 +556,14 @@ export default function Home() {
         }
 
       } catch (e: any) {
-        setMessages(prev => [...prev, msg('model', `Failed to execute SEO Deep Audit: ${e.message}`)]);
+        setMessages(prev => [...prev, msg('model', `Google presence check failed: ${e.message}`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
         setCapabilityStartTime(null);
       }
     } else if (capId === 'marketing') {
-      setMessages(prev => [...prev, msg('model', "Deploying Social Media Auditor to research your social presence across all platforms... ⏱️")]);
+      setMessages(prev => [...prev, msg('model', "Checking your social media presence across all platforms... ⏱️")]);
       setIsTyping(true);
 
       try {
@@ -565,7 +574,7 @@ export default function Home() {
         });
 
         if (!res.ok) {
-          let errMsg = "Social Media Audit Failed";
+          let errMsg = "Social media check failed";
           try { const err = await res.json(); errMsg = err.error || errMsg; } catch { errMsg = `Server error (${res.status})`; }
           throw new Error(errMsg);
         }
@@ -578,18 +587,18 @@ export default function Home() {
         }
 
         const platformCount = data.platforms?.length || 0;
-        setMessages(prev => [...prev, msg('model', `**Social Media Audit** for **${locatedBusiness.name}** is complete! Score: **${data.overall_score ?? 'N/A'}/100** across ${platformCount} platform${platformCount !== 1 ? 's' : ''}.${data.summary ? `\n\n${data.summary}` : ''}\n\n[Schedule a call](https://hephae.co/schedule) to build your social strategy with our team.`)]);
+        setMessages(prev => [...prev, msg('model', `**Social media check** for **${locatedBusiness.name}** is complete! Score: **${data.overall_score ?? 'N/A'}/100** across ${platformCount} platform${platformCount !== 1 ? 's' : ''}.${data.summary ? `\n\n${data.summary}` : ''}\n\n[Schedule a call](https://hephae.co/schedule) to build your social strategy with our team.`)]);
         maybeShowAuthWall();
 
       } catch (e: any) {
-        setMessages(prev => [...prev, msg('model', `Failed to execute Social Media Audit: ${e.message}`)]);
+        setMessages(prev => [...prev, msg('model', `Social media check failed: ${e.message}`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
         setCapabilityStartTime(null);
       }
     } else if (capId === 'competitive') {
-      setMessages(prev => [...prev, msg('model', "Deploying Competitive Analyzer to compare your business against exactly 3 local rivals... ⏱️")]);
+      setMessages(prev => [...prev, msg('model', "Analyzing how you stack up against your closest local competitors... ⏱️")]);
       setIsTyping(true);
 
       try {
@@ -615,7 +624,7 @@ export default function Home() {
         maybeShowAuthWall();
 
       } catch (e: any) {
-        setMessages(prev => [...prev, msg('model', `Failed to execute Competitive Analysis: ${e.message}`)]);
+        setMessages(prev => [...prev, msg('model', `Competitive analysis failed: ${e.message}`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
@@ -740,7 +749,7 @@ export default function Home() {
                 )}
                 <div className="min-w-0">
                   <h1 className="text-lg md:text-xl font-bold text-white truncate">{identity.name}</h1>
-                  <p className="text-indigo-100 text-xs md:text-sm">Margin Surgery Report</p>
+                  <p className="text-indigo-100 text-xs md:text-sm">Price Optimization Report</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
@@ -1094,7 +1103,7 @@ export default function Home() {
                 )}
                 <div className="min-w-0">
                   <h1 className="text-lg md:text-xl font-bold text-white truncate">{locatedBusiness?.name || 'Business'}</h1>
-                  <p className="text-pink-100 text-xs md:text-sm">Social Media Audit</p>
+                  <p className="text-pink-100 text-xs md:text-sm">Social Media Health Check</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
@@ -1413,11 +1422,13 @@ export default function Home() {
                 {/* Capability icons — compact grid */}
                 <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md px-2 py-1.5 rounded-2xl shadow-lg border border-gray-200/80">
                   {[
-                    { id: "surgery", icon: BarChart3, label: "Margin Surgery", color: "text-indigo-500", hoverBg: "hover:bg-indigo-50" },
+                    ...(locatedBusiness && ((locatedBusiness as any).menuUrl || (locatedBusiness as any).menuScreenshotUrl)
+                      ? [{ id: "surgery", icon: BarChart3, label: "Optimize Prices", color: "text-indigo-500", hoverBg: "hover:bg-indigo-50" }]
+                      : []),
                     { id: "traffic", icon: Users, label: "Foot Traffic", color: "text-emerald-500", hoverBg: "hover:bg-emerald-50" },
-                    { id: "seo", icon: SearchIcon, label: "SEO Audit", color: "text-purple-500", hoverBg: "hover:bg-purple-50" },
-                    { id: "competitive", icon: Swords, label: "Competitive", color: "text-orange-500", hoverBg: "hover:bg-orange-50" },
-                    { id: "marketing", icon: Share2, label: "Social Audit", color: "text-pink-500", hoverBg: "hover:bg-pink-50" },
+                    { id: "seo", icon: SearchIcon, label: "Find Me Online", color: "text-purple-500", hoverBg: "hover:bg-purple-50" },
+                    { id: "competitive", icon: Swords, label: "Competitors", color: "text-orange-500", hoverBg: "hover:bg-orange-50" },
+                    { id: "marketing", icon: Share2, label: "Social Media", color: "text-pink-500", hoverBg: "hover:bg-pink-50" },
                   ].map((cap) => {
                     const Icon = cap.icon;
                     return (
@@ -1553,7 +1564,7 @@ export default function Home() {
                         )}
                         <div className="min-w-0">
                           <h1 className="text-lg md:text-xl font-bold text-white truncate">{locatedBusiness?.name || 'Business'}</h1>
-                          <p className="text-purple-100 text-sm">SEO Deep Audit</p>
+                          <p className="text-purple-100 text-sm">Google Presence Check</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">

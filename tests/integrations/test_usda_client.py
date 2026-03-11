@@ -13,7 +13,6 @@ from hephae_integrations.usda_client import (
     INDUSTRY_COMMODITIES,
     DEFAULT_FOOD_COMMODITIES,
 )
-from backend.types import UsdaPriceData, UsdaCommodityPrice
 
 
 # ---------------------------------------------------------------------------
@@ -61,10 +60,10 @@ class TestParseRecords:
         ]
         result = _parse_records(records)
         assert len(result) == 1
-        assert result[0].commodity == "WHEAT"
-        assert result[0].year == 2024
-        assert result[0].value == 7.5
-        assert result[0].unit == "$ / BU"
+        assert result[0]["commodity"] == "WHEAT"
+        assert result[0]["year"] == 2024
+        assert result[0]["value"] == 7.5
+        assert result[0]["unit"] == "$ / BU"
 
     def test_withheld_values_skipped(self):
         records = [
@@ -87,7 +86,7 @@ class TestParseRecords:
             },
         ]
         result = _parse_records(records)
-        assert result[0].value == pytest.approx(1234.56)
+        assert result[0]["value"] == pytest.approx(1234.56)
 
     def test_sorted_by_commodity_then_year(self):
         records = [
@@ -96,7 +95,7 @@ class TestParseRecords:
             {"commodity_desc": "MILK", "year": "2024", "Value": "19.0", "unit_desc": "CWT"},
         ]
         result = _parse_records(records)
-        commodities_years = [(p.commodity, p.year) for p in result]
+        commodities_years = [(p["commodity"], p["year"]) for p in result]
         assert commodities_years == [("EGGS", 2024), ("MILK", 2024), ("MILK", 2025)]
 
     def test_empty_value_skipped(self):
@@ -122,8 +121,8 @@ class TestParseRecords:
 class TestGenerateHighlights:
     def test_yoy_change(self):
         prices = [
-            UsdaCommodityPrice(commodity="WHEAT", year=2023, value=7.00, unit="$ / BU", state="US"),
-            UsdaCommodityPrice(commodity="WHEAT", year=2024, value=7.70, unit="$ / BU", state="US"),
+            {"commodity": "WHEAT", "year": 2023, "value": 7.00, "unit": "$ / BU", "state": "US"},
+            {"commodity": "WHEAT", "year": 2024, "value": 7.70, "unit": "$ / BU", "state": "US"},
         ]
         highlights = _generate_highlights(prices)
         assert len(highlights) == 1
@@ -133,7 +132,7 @@ class TestGenerateHighlights:
 
     def test_single_year_fallback(self):
         prices = [
-            UsdaCommodityPrice(commodity="MILK", year=2024, value=20.5, unit="CWT", state="US"),
+            {"commodity": "MILK", "year": 2024, "value": 20.5, "unit": "CWT", "state": "US"},
         ]
         highlights = _generate_highlights(prices)
         assert len(highlights) == 1
@@ -142,8 +141,8 @@ class TestGenerateHighlights:
 
     def test_decline(self):
         prices = [
-            UsdaCommodityPrice(commodity="EGGS", year=2023, value=3.00, unit="DOZ", state="US"),
-            UsdaCommodityPrice(commodity="EGGS", year=2024, value=2.40, unit="DOZ", state="US"),
+            {"commodity": "EGGS", "year": 2023, "value": 3.00, "unit": "DOZ", "state": "US"},
+            {"commodity": "EGGS", "year": 2024, "value": 2.40, "unit": "DOZ", "state": "US"},
         ]
         highlights = _generate_highlights(prices)
         assert "down" in highlights[0]
@@ -151,8 +150,8 @@ class TestGenerateHighlights:
 
     def test_zero_prev_value(self):
         prices = [
-            UsdaCommodityPrice(commodity="X", year=2023, value=0.0, unit="U", state="US"),
-            UsdaCommodityPrice(commodity="X", year=2024, value=5.0, unit="U", state="US"),
+            {"commodity": "X", "year": 2023, "value": 0.0, "unit": "U", "state": "US"},
+            {"commodity": "X", "year": 2024, "value": 5.0, "unit": "U", "state": "US"},
         ]
         highlights = _generate_highlights(prices)
         # Cannot compute pct change — should just show latest value
@@ -160,9 +159,9 @@ class TestGenerateHighlights:
 
     def test_multiple_commodities(self):
         prices = [
-            UsdaCommodityPrice(commodity="A", year=2023, value=10.0, unit="U", state="US"),
-            UsdaCommodityPrice(commodity="A", year=2024, value=12.0, unit="U", state="US"),
-            UsdaCommodityPrice(commodity="B", year=2024, value=5.0, unit="U", state="US"),
+            {"commodity": "A", "year": 2023, "value": 10.0, "unit": "U", "state": "US"},
+            {"commodity": "A", "year": 2024, "value": 12.0, "unit": "U", "state": "US"},
+            {"commodity": "B", "year": 2024, "value": 5.0, "unit": "U", "state": "US"},
         ]
         highlights = _generate_highlights(prices)
         assert len(highlights) == 2
@@ -195,25 +194,20 @@ class TestQueryUsdaPrices:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("hephae_integrations.usda_client.settings") as mock_settings, \
-             patch("hephae_integrations.usda_client.httpx.AsyncClient", return_value=mock_client), \
-             patch("hephae_integrations.usda_client.get_cached_food_prices", new_callable=AsyncMock, return_value=None), \
-             patch("hephae_integrations.usda_client.save_food_prices_cache", new_callable=AsyncMock):
-            mock_settings.USDA_NASS_API_KEY = "test-key"
-            result = await query_usda_prices("bakeries", state="NJ")
+        with patch("hephae_integrations.usda_client.httpx.AsyncClient", return_value=mock_client):
+            result = await query_usda_prices("bakeries", state="NJ", api_key="test-key")
 
-        assert isinstance(result, UsdaPriceData)
-        assert len(result.commodities) > 0
-        assert result.commodities[0].commodity == "WHEAT"
+        assert isinstance(result, dict)
+        assert len(result["commodities"]) > 0
+        assert result["commodities"][0]["commodity"] == "WHEAT"
 
     @pytest.mark.asyncio
     async def test_empty_api_key_returns_empty(self):
-        with patch("hephae_integrations.usda_client.settings") as mock_settings:
-            mock_settings.USDA_NASS_API_KEY = ""
-            result = await query_usda_prices("pizza")
+        with patch.dict("os.environ", {"USDA_NASS_API_KEY": ""}, clear=False):
+            result = await query_usda_prices("pizza", api_key="")
 
-        assert isinstance(result, UsdaPriceData)
-        assert result.commodities == []
+        assert isinstance(result, dict)
+        assert result["commodities"] == []
 
     @pytest.mark.asyncio
     async def test_mixed_success_and_failure(self):
@@ -242,21 +236,17 @@ class TestQueryUsdaPrices:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("hephae_integrations.usda_client.settings") as mock_settings, \
-             patch("hephae_integrations.usda_client.httpx.AsyncClient", return_value=mock_client), \
-             patch("hephae_integrations.usda_client._get_commodities_for_industry") as mock_get_comms, \
-             patch("hephae_integrations.usda_client.get_cached_food_prices", new_callable=AsyncMock, return_value=None), \
-             patch("hephae_integrations.usda_client.save_food_prices_cache", new_callable=AsyncMock):
-            mock_settings.USDA_NASS_API_KEY = "test-key"
+        with patch("hephae_integrations.usda_client.httpx.AsyncClient", return_value=mock_client), \
+             patch("hephae_integrations.usda_client._get_commodities_for_industry") as mock_get_comms:
             mock_get_comms.return_value = [
                 {"commodity_desc": "WHEAT", "statisticcat_desc": "PRICE RECEIVED"},
                 {"commodity_desc": "CATFISH", "statisticcat_desc": "PRICE RECEIVED"},
             ]
-            result = await query_usda_prices("bakeries")
+            result = await query_usda_prices("bakeries", api_key="test-key")
 
         # Should have the wheat record but not catfish
-        assert len(result.commodities) == 1
-        assert result.commodities[0].commodity == "WHEAT"
+        assert len(result["commodities"]) == 1
+        assert result["commodities"][0]["commodity"] == "WHEAT"
 
     @pytest.mark.asyncio
     async def test_cache_hit_skips_api_call(self):
@@ -267,12 +257,11 @@ class TestQueryUsdaPrices:
             "highlights": ["WHEAT: $7.50/$ / BU (2024)"],
         }
 
-        with patch("hephae_integrations.usda_client.settings") as mock_settings, \
-             patch("hephae_integrations.usda_client.get_cached_food_prices", new_callable=AsyncMock, return_value=cached_data), \
-             patch("hephae_integrations.usda_client.httpx.AsyncClient") as mock_http:
-            mock_settings.USDA_NASS_API_KEY = "test-key"
-            result = await query_usda_prices("bakeries", state="NJ")
+        cache_reader = AsyncMock(return_value=cached_data)
 
-        assert isinstance(result, UsdaPriceData)
-        assert len(result.commodities) == 1
+        with patch("hephae_integrations.usda_client.httpx.AsyncClient") as mock_http:
+            result = await query_usda_prices("bakeries", state="NJ", api_key="test-key", cache_reader=cache_reader)
+
+        assert isinstance(result, dict)
+        assert len(result["commodities"]) == 1
         mock_http.assert_not_called()

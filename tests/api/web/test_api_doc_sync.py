@@ -29,13 +29,34 @@ class TestOpenApiHasResponseModels:
         "/api/optimize/ai-cost",
         "/api/optimize/cloud-cost",
         "/api/optimize/performance",
+        "/api/chat",              # StreamingResponse, not JSON model
+        "/api/auth/me",           # Returns JSONResponse directly
+        "/api/heartbeat",         # Returns JSONResponse directly
     }
+
+    # Admin/internal route prefixes — these intentionally return JSONResponse
+    EXEMPT_PREFIXES = (
+        "/api/workflows",
+        "/api/research",
+        "/api/zipcode-research",
+        "/api/area-research",
+        "/api/sector-research",
+        "/api/combined-context",
+        "/api/fixtures",
+        "/api/run-tests",
+        "/api/content",
+        "/api/admin/",
+        "/api/food-prices",
+        "/api/stats",
+    )
 
     def test_post_routes_have_response_schemas(self, openapi_spec):
         paths = openapi_spec.get("paths", {})
         missing = []
         for path, methods in paths.items():
             if path in self.EXEMPT_ROUTES:
+                continue
+            if any(path.startswith(p) for p in self.EXEMPT_PREFIXES):
                 continue
             for method in ("post",):
                 op = methods.get(method)
@@ -59,7 +80,6 @@ class TestResponseModelsPresent:
     EXPECTED_MODELS = [
         "EnrichedProfile",
         "SurgicalReport",
-        "ChatResponse",
         "SeoReport",
         "ForecastResponse",
         "CompetitiveReport",

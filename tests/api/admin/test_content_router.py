@@ -12,37 +12,42 @@ from backend.types import ContentPost, ContentStatus, ContentPlatform, ContentTy
 
 @pytest.fixture
 def client():
-    """Create a test client with mocked Firebase."""
+    """Create a test client with mocked Firebase and bypassed admin auth."""
     with patch("hephae_common.firebase.get_db"):
         from backend.main import app
-        return TestClient(app)
+        from backend.lib.auth import verify_admin_request
+
+        app.dependency_overrides[verify_admin_request] = lambda: {"uid": "test-admin", "email": "admin@test.com"}
+        yield TestClient(app)
+        app.dependency_overrides.pop(verify_admin_request, None)
 
 
-def _make_draft(**overrides) -> ContentPost:
+def _make_draft(**overrides) -> dict:
+    """Return a draft post as a plain dict (matching Firestore return shape)."""
     defaults = dict(
         id="post-123",
-        type=ContentType.SOCIAL,
-        platform=ContentPlatform.X,
-        status=ContentStatus.DRAFT,
-        sourceType=ContentSourceType.ZIPCODE_RESEARCH,
+        type=ContentType.SOCIAL.value,
+        platform=ContentPlatform.X.value,
+        status=ContentStatus.DRAFT.value,
+        sourceType=ContentSourceType.ZIPCODE_RESEARCH.value,
         sourceId="run-1",
         sourceLabel="Zip 07110",
         content="Test post content",
         hashtags=["local", "marketing"],
     )
     defaults.update(overrides)
-    return ContentPost(**defaults)
+    return defaults
 
 
 class TestGenerateContent:
     """POST /api/content/generate"""
 
     def test_generate_success(self, client):
-        mock_run = AsyncMock()
-        mock_run.return_value = type("Run", (), {
-            "report": type("Report", (), {"model_dump": lambda self, **kw: {"summary": "test"}})(),
+        # get_run returns a dict with "report" and "zipCode"
+        mock_run_data = {
+            "report": {"summary": "test"},
             "zipCode": "07110",
-        })()
+        }
 
         forge_response = {
             "success": True,
@@ -59,7 +64,7 @@ class TestGenerateContent:
         mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_instance.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("backend.routers.admin.content.get_run", mock_run), \
+        with patch("backend.routers.admin.content.get_run", new_callable=AsyncMock, return_value=mock_run_data), \
              patch("backend.routers.admin.content.save_content_post", new_callable=AsyncMock, return_value="new-id"), \
              patch("backend.routers.admin.content.httpx.AsyncClient", return_value=mock_client_instance):
 
@@ -141,7 +146,7 @@ class TestEditPost:
         assert response.json()["content"] == "Updated content"
 
     def test_edit_published_post_rejected(self, client):
-        published = _make_draft(status=ContentStatus.PUBLISHED)
+        published = _make_draft(status=ContentStatus.PUBLISHED.value)
         with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=published):
             response = client.patch("/api/content/post-123", json={"content": "New"})
         assert response.status_code == 400
@@ -152,8 +157,8 @@ class TestPublishPost:
     """POST /api/content/{id}/publish"""
 
     def test_publish_blog(self, client):
-        blog_draft = _make_draft(platform=ContentPlatform.BLOG, type=ContentType.BLOG)
-        published = _make_draft(platform=ContentPlatform.BLOG, status=ContentStatus.PUBLISHED)
+        blog_draft = _make_draft(platform=ContentPlatform.BLOG.value, type=ContentType.BLOG.value)
+        published = _make_draft(platform=ContentPlatform.BLOG.value, status=ContentStatus.PUBLISHED.value)
         with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, side_effect=[blog_draft, published]), \
              patch("backend.routers.admin.content.update_content_post", new_callable=AsyncMock):
             response = client.post("/api/content/post-123/publish")
@@ -162,7 +167,7 @@ class TestPublishPost:
         assert response.json()["success"] is True
 
     def test_publish_already_published_rejected(self, client):
-        published = _make_draft(status=ContentStatus.PUBLISHED)
+        published = _make_draft(status=ContentStatus.PUBLISHED.value)
         with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=published):
             response = client.post("/api/content/post-123/publish")
         assert response.status_code == 400
@@ -185,7 +190,7 @@ class TestDeletePost:
         assert response.json()["success"] is True
 
     def test_delete_published_rejected(self, client):
-        published = _make_draft(status=ContentStatus.PUBLISHED)
+        published = _make_draft(status=ContentStatus.PUBLISHED.value)
         with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=published):
             response = client.delete("/api/content/post-123")
         assert response.status_code == 400

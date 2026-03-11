@@ -562,10 +562,10 @@ class TestBlogRouterHappyPath:
                 return_value={"outputs": SAMPLE_LATEST_OUTPUTS, "socialLinks": {}},
             ),
             patch("hephae_db.firestore.businesses.read_business", return_value={"primaryColor": "#FF0000"}),
-            patch("hephae_common.firebase.gcs_bucket") as mock_bucket,
+            patch("hephae_common.firebase.get_bucket") as mock_bucket,
         ):
             mock_blob = MagicMock()
-            mock_bucket.blob.return_value = mock_blob
+            mock_bucket.return_value.blob.return_value = mock_blob
 
             res = await blog_client.post(
                 "/api/blog/generate", json={"businessName": "Bosphorus Kitchen"}
@@ -580,10 +580,10 @@ class TestBlogRouterHappyPath:
                 return_value={"outputs": SAMPLE_LATEST_OUTPUTS, "socialLinks": {}},
             ),
             patch("hephae_db.firestore.businesses.read_business", return_value={}),
-            patch("hephae_common.firebase.gcs_bucket") as mock_bucket,
+            patch("hephae_common.firebase.get_bucket") as mock_bucket,
         ):
             mock_blob = MagicMock()
-            mock_bucket.blob.return_value = mock_blob
+            mock_bucket.return_value.blob.return_value = mock_blob
 
             res = await blog_client.post(
                 "/api/blog/generate", json={"businessName": "Test Biz"}
@@ -604,10 +604,10 @@ class TestBlogRouterHappyPath:
                 return_value={"outputs": SAMPLE_LATEST_OUTPUTS, "socialLinks": {}},
             ),
             patch("hephae_db.firestore.businesses.read_business", return_value={}),
-            patch("hephae_common.firebase.gcs_bucket") as mock_bucket,
+            patch("hephae_common.firebase.get_bucket") as mock_bucket,
         ):
             mock_blob = MagicMock()
-            mock_bucket.blob.return_value = mock_blob
+            mock_bucket.return_value.blob.return_value = mock_blob
 
             res = await blog_client.post(
                 "/api/blog/generate", json={"businessName": "Biz"}
@@ -622,10 +622,10 @@ class TestBlogRouterHappyPath:
                 return_value={"outputs": SAMPLE_LATEST_OUTPUTS, "socialLinks": {}},
             ),
             patch("hephae_db.firestore.businesses.read_business", return_value={}),
-            patch("hephae_common.firebase.gcs_bucket") as mock_bucket,
+            patch("hephae_common.firebase.get_bucket") as mock_bucket,
         ):
             mock_blob = MagicMock()
-            mock_bucket.blob.return_value = mock_blob
+            mock_bucket.return_value.blob.return_value = mock_blob
 
             res = await blog_client.post(
                 "/api/blog/generate", json={"businessName": "Biz"}
@@ -640,10 +640,10 @@ class TestBlogRouterHappyPath:
                 return_value={"outputs": SAMPLE_LATEST_OUTPUTS, "socialLinks": {}},
             ),
             patch("hephae_db.firestore.businesses.read_business", return_value={}),
-            patch("hephae_common.firebase.gcs_bucket") as mock_bucket,
+            patch("hephae_common.firebase.get_bucket") as mock_bucket,
         ):
             mock_blob = MagicMock()
-            mock_bucket.blob.return_value = mock_blob
+            mock_bucket.return_value.blob.return_value = mock_blob
 
             await blog_client.post(
                 "/api/blog/generate", json={"businessName": "Biz"}
@@ -658,10 +658,10 @@ class TestBlogRouterHappyPath:
                 return_value={"outputs": SAMPLE_LATEST_OUTPUTS, "socialLinks": {}},
             ),
             patch("hephae_db.firestore.businesses.read_business", return_value={}),
-            patch("hephae_common.firebase.gcs_bucket") as mock_bucket,
+            patch("hephae_common.firebase.get_bucket") as mock_bucket,
         ):
             mock_blob = MagicMock()
-            mock_bucket.blob.return_value = mock_blob
+            mock_bucket.return_value.blob.return_value = mock_blob
 
             await blog_client.post(
                 "/api/blog/generate", json={"businessName": "Biz"}
@@ -728,7 +728,8 @@ class TestBuildBlogReport:
             business_name="Biz",
             hero_image_url="",
         )
-        assert "hero" not in html.lower() or "<img" not in html.split("<article")[0]
+        # When hero_image_url is empty, no hero image <img> should appear (CSS classes may still use "hero")
+        assert 'src=""' not in html and 'hero-image' not in html.lower().split("<article")[0]
 
     def test_uses_title_in_page(self):
         from hephae_common.report_templates import build_blog_report

@@ -139,7 +139,7 @@ menu_agent = LlmAgent(
     name="MenuAgent",
     model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(MENU_AGENT_INSTRUCTION),
-    tools=[playwright_tool, crawl4ai_advanced_tool, crawl4ai_deep_tool],
+    tools=[google_search_tool, playwright_tool, crawl4ai_advanced_tool, crawl4ai_deep_tool],
     output_key="menuData",
     on_model_error_callback=fallback_on_error,
 )

@@ -86,13 +86,15 @@ async def _fetch_local_context(zip_code: str | None) -> dict[str, Any] | None:
 async def run_discovery(
     identity: dict[str, Any],
     business_context: Any | None = None,
+    stages: list[int] | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Run the full discovery pipeline.
+    """Run the full discovery pipeline with optional stage filtering.
 
     Args:
         identity: Base identity dict (must have officialUrl).
         business_context: Unused.
+        stages: Optional list of phases to run (e.g. [1] for Phase 1 only).
 
     Returns:
         Enriched profile dict with socialLinks, competitors, theme, etc.
@@ -101,9 +103,10 @@ async def run_discovery(
         raise ValueError("Missing officialUrl for discovery")
 
     name = identity.get("name", "Unknown")
-    logger.info(f"[Discovery Runner] Running for: {name}")
+    logger.info(f"[Discovery Runner] Running for: {name} (Stages: {stages or 'ALL'})")
 
-    session_service = InMemorySessionService()
+    from hephae_db.firestore.session_service import FirestoreSessionService
+    session_service = FirestoreSessionService()
     session_id = f"discovery-{int(time.time() * 1000)}"
     user_id = "hub-user"
 
@@ -145,6 +148,12 @@ async def run_discovery(
         app_name="hephae-hub", user_id=user_id, session_id=session_id
     )
     p1_state = p1_session.state if p1_session else {}
+
+    # JIT: If only Phase 1 was requested, return early
+    if stages is not None and 2 not in stages:
+        logger.info("[Discovery Runner] JIT Early Exit: Phase 1 complete.")
+        return {**identity, "identity": p1_state}
+
     raw_content = p1_state.get("rawSiteData", "")
 
     # P0.1: Create Gemini Context Cache for Phase 2 (8 parallel agents)

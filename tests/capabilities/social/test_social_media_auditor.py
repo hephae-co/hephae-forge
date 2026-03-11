@@ -96,7 +96,7 @@ def _empty_stream(*a, **kw):
 class TestAgentConfig:
     def test_researcher_has_tools(self):
         from hephae_capabilities.social.media_auditor.agent import social_researcher_agent
-        tool_names = [t.name for t in social_researcher_agent.tools]
+        tool_names = [getattr(t, '__name__', None) or getattr(t, 'name', str(t)) for t in social_researcher_agent.tools]
         assert "google_search" in tool_names
         assert "crawl_with_options" in tool_names
 

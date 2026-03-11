@@ -61,7 +61,7 @@ class TestGetZipcodeReport:
         doc = _mock_doc({"report": report, "zipCode": "07110"})
         mock_db = _mock_firestore_query([doc])
 
-        with patch("hephae_common.firebase.db", mock_db):
+        with patch("hephae_common.firebase.get_db", return_value=mock_db):
             result = await get_zipcode_report("07110")
             assert result == report
 
@@ -69,7 +69,7 @@ class TestGetZipcodeReport:
     async def test_returns_none_when_no_docs(self):
         mock_db = _mock_firestore_query([])
 
-        with patch("hephae_common.firebase.db", mock_db):
+        with patch("hephae_common.firebase.get_db", return_value=mock_db):
             result = await get_zipcode_report("99999")
             assert result is None
 
@@ -78,7 +78,7 @@ class TestGetZipcodeReport:
         mock_db = MagicMock()
         mock_db.collection.side_effect = Exception("Firestore unavailable")
 
-        with patch("hephae_common.firebase.db", mock_db):
+        with patch("hephae_common.firebase.get_db", return_value=mock_db):
             result = await get_zipcode_report("07110")
             assert result is None
 
@@ -99,7 +99,7 @@ class TestGetAreaResearch:
         doc = _mock_doc({"summary": summary, "phase": "completed"})
         mock_db = _mock_firestore_query([doc])
 
-        with patch("hephae_common.firebase.db", mock_db):
+        with patch("hephae_common.firebase.get_db", return_value=mock_db):
             result = await get_area_research_for_zip("07110")
             assert result == summary
 
@@ -107,7 +107,7 @@ class TestGetAreaResearch:
     async def test_returns_none_when_no_docs(self):
         mock_db = _mock_firestore_query([])
 
-        with patch("hephae_common.firebase.db", mock_db):
+        with patch("hephae_common.firebase.get_db", return_value=mock_db):
             result = await get_area_research_for_zip("99999")
             assert result is None
 
@@ -116,6 +116,6 @@ class TestGetAreaResearch:
         mock_db = MagicMock()
         mock_db.collection.side_effect = Exception("Firestore down")
 
-        with patch("hephae_common.firebase.db", mock_db):
+        with patch("hephae_common.firebase.get_db", return_value=mock_db):
             result = await get_area_research_for_zip("07110")
             assert result is None

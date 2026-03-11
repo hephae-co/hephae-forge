@@ -298,7 +298,7 @@ def _fallback_posts(
         },
         "contactForm": {
             "message": (
-                f"Hi, Hephae here. We ran a {label} on your business and found that {short_summary}. "
+                f"Hi {business_name}, Hephae here. We ran a {label} on your business and found that {short_summary}. "
                 f"We help businesses like yours optimize with AI-powered insights. "
                 f"Check us out at hephae.co"
             )

@@ -31,7 +31,10 @@ def client():
 
     with patch("hephae_common.firebase.get_db"):
         from backend.main import app
+        from backend.lib.auth import verify_admin_request
+        app.dependency_overrides[verify_admin_request] = lambda: {"uid": "test-admin", "email": "admin@test.com"}
         yield TestClient(app)
+        app.dependency_overrides.pop(verify_admin_request, None)
 
 
 class TestDiscoverBusinesses:
@@ -105,7 +108,7 @@ class TestGetBusinesses:
         assert response.status_code == 200
         mock_fn.assert_called_once_with(
             zip_code="07110", page=2, page_size=10,
-            category=None, status=None, has_email=None,
+            category=None, status=None, has_email=None, name=None,
         )
 
     def test_get_businesses_filter_params_forwarded(self, client):
@@ -119,11 +122,14 @@ class TestGetBusinesses:
         assert response.status_code == 200
         mock_fn.assert_called_once_with(
             zip_code="07110", page=1, page_size=25,
-            category="restaurant", status="analyzed", has_email=True,
+            category="restaurant", status="analyzed", has_email=True, name=None,
         )
 
-    def test_get_businesses_missing_zipcode_returns_422(self, client):
-        assert client.get("/api/research/businesses").status_code == 422
+    def test_get_businesses_no_zipcode_returns_200(self, client):
+        """zipCode is now optional — returns 200 with empty results."""
+        mock_fn = AsyncMock(return_value=_PAGINATED_RESPONSE)
+        with patch("backend.routers.admin.research_businesses.get_businesses_paginated", mock_fn):
+            assert client.get("/api/research/businesses").status_code == 200
 
     def test_page_must_be_positive(self, client):
         with patch(

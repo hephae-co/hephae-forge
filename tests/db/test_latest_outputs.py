@@ -39,7 +39,7 @@ class TestFetchLatestOutputs:
     """Test fetch_latest_outputs() function."""
 
     def test_returns_outputs_for_valid_business(self):
-        with patch("hephae_db.firestore.businesses.read_business", return_value=SAMPLE_BUSINESS_DOC):
+        with patch("hephae_db.context.latest_outputs.read_business", return_value=SAMPLE_BUSINESS_DOC):
             from hephae_db.context.latest_outputs import fetch_latest_outputs
 
             result = fetch_latest_outputs("Bosphorus Kitchen")
@@ -51,7 +51,7 @@ class TestFetchLatestOutputs:
         assert result["outputs"]["margin_surgeon"]["score"] == 62
 
     def test_returns_social_links(self):
-        with patch("hephae_db.firestore.businesses.read_business", return_value=SAMPLE_BUSINESS_DOC):
+        with patch("hephae_db.context.latest_outputs.read_business", return_value=SAMPLE_BUSINESS_DOC):
             from hephae_db.context.latest_outputs import fetch_latest_outputs
 
             result = fetch_latest_outputs("Bosphorus Kitchen")
@@ -60,7 +60,7 @@ class TestFetchLatestOutputs:
         assert "twitter" in result["socialLinks"]
 
     def test_returns_empty_for_missing_business(self):
-        with patch("hephae_db.firestore.businesses.read_business", return_value=None):
+        with patch("hephae_db.context.latest_outputs.read_business", return_value=None):
             from hephae_db.context.latest_outputs import fetch_latest_outputs
 
             result = fetch_latest_outputs("Nonexistent Cafe")
@@ -76,7 +76,7 @@ class TestFetchLatestOutputs:
 
     def test_returns_empty_for_business_without_outputs(self):
         doc_no_outputs = {"name": "New Biz"}
-        with patch("hephae_db.firestore.businesses.read_business", return_value=doc_no_outputs):
+        with patch("hephae_db.context.latest_outputs.read_business", return_value=doc_no_outputs):
             from hephae_db.context.latest_outputs import fetch_latest_outputs
 
             result = fetch_latest_outputs("New Biz")
@@ -85,7 +85,7 @@ class TestFetchLatestOutputs:
 
     def test_handles_exception_gracefully(self):
         with patch(
-            "hephae_db.firestore.businesses.read_business",
+            "hephae_db.context.latest_outputs.read_business",
             side_effect=Exception("Firestore down"),
         ):
             from hephae_db.context.latest_outputs import fetch_latest_outputs
@@ -95,7 +95,7 @@ class TestFetchLatestOutputs:
         assert result["outputs"] == {}
 
     def test_uses_slug_for_lookup(self):
-        with patch("hephae_db.firestore.businesses.read_business", return_value=None) as mock_read:
+        with patch("hephae_db.context.latest_outputs.read_business", return_value=None) as mock_read:
             from hephae_db.context.latest_outputs import fetch_latest_outputs
 
             fetch_latest_outputs("Café L'Artiste")

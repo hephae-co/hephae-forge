@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="optimize router removed")
+
 from unittest.mock import AsyncMock, patch
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 

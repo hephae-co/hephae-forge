@@ -126,7 +126,7 @@ async def test_discover_leads_from_hub_implementation():
     with patch("backend.workflows.orchestrators.area_research.find_municipal_hub", new_callable=AsyncMock) as mock_find, \
          patch("backend.workflows.orchestrators.area_research.crawl4ai_tool", new_callable=AsyncMock) as mock_crawl, \
          patch("backend.workflows.orchestrators.area_research.parse_directory_content", new_callable=AsyncMock) as mock_parse, \
-         patch("backend.workflows.orchestrators.area_research.save_business", new_callable=AsyncMock) as mock_save:
+         patch("hephae_db.firestore.businesses.save_business", new_callable=AsyncMock) as mock_save:
         
         mock_find.return_value = "http://hub.com"
         mock_crawl.return_value = {"markdown": "Raw Directory Data"}

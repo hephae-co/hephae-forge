@@ -12,10 +12,14 @@ from backend.types import BlsCpiData, BlsCpiSeries, BlsCpiDataPoint, UsdaPriceDa
 
 @pytest.fixture
 def client():
-    """Create a test client with mocked Firebase."""
+    """Create a test client with mocked Firebase and bypassed admin auth."""
     with patch("hephae_common.firebase.get_db"):
         from backend.main import app
-        return TestClient(app)
+        from backend.lib.auth import verify_admin_request
+
+        app.dependency_overrides[verify_admin_request] = lambda: {"uid": "test-admin", "email": "admin@test.com"}
+        yield TestClient(app)
+        app.dependency_overrides.pop(verify_admin_request, None)
 
 
 class TestCpiEndpoint:
@@ -74,22 +78,16 @@ class TestCommoditiesEndpoint:
 
 class TestSummaryEndpoint:
     def test_get_summary(self, client):
-        bls_data = BlsCpiData(
-            series=[
-                BlsCpiSeries(
-                    seriesId="CUUR0000SAF1", label="Food (all items)",
-                    data=[BlsCpiDataPoint(year=2025, month=3, period="2025-03", indexValue=310.5, yoyPctChange=2.5)],
-                ),
-            ],
-            latestMonth="2025-03",
-            highlights=["Food (all items): 2.5% up"],
-        )
-        usda_data = UsdaPriceData(
-            commodities=[
-                UsdaCommodityPrice(commodity="WHEAT", year=2024, value=7.5, unit="$ / BU", state="US"),
-            ],
-            highlights=["WHEAT: $7.50"],
-        )
+        # Router uses .get() — pass dicts, not Pydantic models
+        bls_data = {
+            "series": [{"seriesId": "CUUR0000SAF1", "label": "Food (all items)", "data": []}],
+            "latestMonth": "2025-03",
+            "highlights": ["Food (all items): 2.5% up"],
+        }
+        usda_data = {
+            "commodities": [{"commodity": "WHEAT", "year": 2024, "value": 7.5, "unit": "$ / BU", "state": "US"}],
+            "highlights": ["WHEAT: $7.50"],
+        }
 
         with patch("backend.routers.admin.food_prices.query_bls_cpi", new_callable=AsyncMock, return_value=bls_data), \
              patch("backend.routers.admin.food_prices.query_usda_prices", new_callable=AsyncMock, return_value=usda_data):
@@ -104,8 +102,8 @@ class TestSummaryEndpoint:
         assert data["usdaNass"] is not None
 
     def test_summary_with_empty_data(self, client):
-        with patch("backend.routers.admin.food_prices.query_bls_cpi", new_callable=AsyncMock, return_value=BlsCpiData()), \
-             patch("backend.routers.admin.food_prices.query_usda_prices", new_callable=AsyncMock, return_value=UsdaPriceData()):
+        with patch("backend.routers.admin.food_prices.query_bls_cpi", new_callable=AsyncMock, return_value={"series": [], "highlights": []}), \
+             patch("backend.routers.admin.food_prices.query_usda_prices", new_callable=AsyncMock, return_value={"commodities": [], "highlights": []}):
             response = client.get("/api/food-prices/summary")
 
         assert response.status_code == 200

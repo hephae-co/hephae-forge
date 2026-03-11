@@ -13,7 +13,6 @@ from hephae_integrations.bls_client import (
     FOOD_CPI_SERIES,
     DETAILED_SERIES,
 )
-from backend.types import BlsCpiData, BlsCpiSeries, BlsCpiDataPoint
 
 
 # ---------------------------------------------------------------------------
@@ -75,12 +74,12 @@ class TestParseSeriesData:
             ],
         }
         result = _parse_series_data(raw)
-        assert result.seriesId == "CUUR0000SAF1"
-        assert result.label == "Food (all items)"
-        assert len(result.data) == 2
+        assert result["seriesId"] == "CUUR0000SAF1"
+        assert result["label"] == "Food (all items)"
+        assert len(result["data"]) == 2
         # Should be sorted chronologically (Feb before Mar)
-        assert result.data[0].month == 2
-        assert result.data[1].month == 3
+        assert result["data"][0]["month"] == 2
+        assert result["data"][1]["month"] == 3
 
     def test_m13_annual_avg_skipped(self):
         raw = {
@@ -91,8 +90,8 @@ class TestParseSeriesData:
             ],
         }
         result = _parse_series_data(raw)
-        assert len(result.data) == 1
-        assert result.data[0].month == 1
+        assert len(result["data"]) == 1
+        assert result["data"][0]["month"] == 1
 
     def test_yoy_extraction(self):
         raw = {
@@ -107,7 +106,7 @@ class TestParseSeriesData:
             ],
         }
         result = _parse_series_data(raw)
-        assert result.data[0].yoyPctChange == pytest.approx(-1.2)
+        assert result["data"][0]["yoyPctChange"] == pytest.approx(-1.2)
 
     def test_missing_yoy_is_none(self):
         raw = {
@@ -117,7 +116,7 @@ class TestParseSeriesData:
             ],
         }
         result = _parse_series_data(raw)
-        assert result.data[0].yoyPctChange is None
+        assert result["data"][0]["yoyPctChange"] is None
 
     def test_chronological_sort(self):
         raw = {
@@ -129,7 +128,7 @@ class TestParseSeriesData:
             ],
         }
         result = _parse_series_data(raw)
-        periods = [(d.year, d.month) for d in result.data]
+        periods = [(d["year"], d["month"]) for d in result["data"]]
         assert periods == [(2024, 6), (2025, 1), (2025, 12)]
 
     def test_unknown_series_id_uses_id_as_label(self):
@@ -138,7 +137,7 @@ class TestParseSeriesData:
             "data": [{"year": "2025", "period": "M01", "value": "100.0", "calculations": {}}],
         }
         result = _parse_series_data(raw)
-        assert result.label == "UNKNOWN123"
+        assert result["label"] == "UNKNOWN123"
 
 
 # ---------------------------------------------------------------------------
@@ -148,11 +147,11 @@ class TestParseSeriesData:
 class TestGenerateHighlights:
     def test_basic_highlight(self):
         series_list = [
-            BlsCpiSeries(
-                seriesId="CUUR0000SAF1",
-                label="Food (all items)",
-                data=[BlsCpiDataPoint(year=2025, month=3, period="2025-03", indexValue=310.5, yoyPctChange=2.5)],
-            ),
+            {
+                "seriesId": "CUUR0000SAF1",
+                "label": "Food (all items)",
+                "data": [{"year": 2025, "month": 3, "period": "2025-03", "indexValue": 310.5, "yoyPctChange": 2.5}],
+            },
         ]
         highlights = _generate_highlights(series_list)
         assert len(highlights) == 1
@@ -162,11 +161,11 @@ class TestGenerateHighlights:
 
     def test_negative_change_says_down(self):
         series_list = [
-            BlsCpiSeries(
-                seriesId="X",
-                label="Eggs",
-                data=[BlsCpiDataPoint(year=2025, month=1, period="2025-01", indexValue=200.0, yoyPctChange=-3.1)],
-            ),
+            {
+                "seriesId": "X",
+                "label": "Eggs",
+                "data": [{"year": 2025, "month": 1, "period": "2025-01", "indexValue": 200.0, "yoyPctChange": -3.1}],
+            },
         ]
         highlights = _generate_highlights(series_list)
         assert "down" in highlights[0]
@@ -174,18 +173,18 @@ class TestGenerateHighlights:
 
     def test_sorted_by_biggest_movers(self):
         series_list = [
-            BlsCpiSeries(
-                seriesId="A", label="Small",
-                data=[BlsCpiDataPoint(year=2025, month=1, period="2025-01", indexValue=100.0, yoyPctChange=0.5)],
-            ),
-            BlsCpiSeries(
-                seriesId="B", label="Big",
-                data=[BlsCpiDataPoint(year=2025, month=1, period="2025-01", indexValue=100.0, yoyPctChange=-8.0)],
-            ),
-            BlsCpiSeries(
-                seriesId="C", label="Medium",
-                data=[BlsCpiDataPoint(year=2025, month=1, period="2025-01", indexValue=100.0, yoyPctChange=3.0)],
-            ),
+            {
+                "seriesId": "A", "label": "Small",
+                "data": [{"year": 2025, "month": 1, "period": "2025-01", "indexValue": 100.0, "yoyPctChange": 0.5}],
+            },
+            {
+                "seriesId": "B", "label": "Big",
+                "data": [{"year": 2025, "month": 1, "period": "2025-01", "indexValue": 100.0, "yoyPctChange": -8.0}],
+            },
+            {
+                "seriesId": "C", "label": "Medium",
+                "data": [{"year": 2025, "month": 1, "period": "2025-01", "indexValue": 100.0, "yoyPctChange": 3.0}],
+            },
         ]
         highlights = _generate_highlights(series_list)
         assert "Big" in highlights[0]
@@ -194,10 +193,10 @@ class TestGenerateHighlights:
 
     def test_max_10_highlights(self):
         series_list = [
-            BlsCpiSeries(
-                seriesId=f"S{i}", label=f"Item{i}",
-                data=[BlsCpiDataPoint(year=2025, month=1, period="2025-01", indexValue=100.0, yoyPctChange=float(i))],
-            )
+            {
+                "seriesId": f"S{i}", "label": f"Item{i}",
+                "data": [{"year": 2025, "month": 1, "period": "2025-01", "indexValue": 100.0, "yoyPctChange": float(i)}],
+            }
             for i in range(15)
         ]
         highlights = _generate_highlights(series_list)
@@ -205,17 +204,17 @@ class TestGenerateHighlights:
 
     def test_no_yoy_skipped(self):
         series_list = [
-            BlsCpiSeries(
-                seriesId="X", label="NoYoY",
-                data=[BlsCpiDataPoint(year=2025, month=1, period="2025-01", indexValue=100.0, yoyPctChange=None)],
-            ),
+            {
+                "seriesId": "X", "label": "NoYoY",
+                "data": [{"year": 2025, "month": 1, "period": "2025-01", "indexValue": 100.0, "yoyPctChange": None}],
+            },
         ]
         highlights = _generate_highlights(series_list)
         assert len(highlights) == 0
 
     def test_empty_series_skipped(self):
         series_list = [
-            BlsCpiSeries(seriesId="X", label="Empty", data=[]),
+            {"seriesId": "X", "label": "Empty", "data": []},
         ]
         highlights = _generate_highlights(series_list)
         assert len(highlights) == 0
@@ -254,28 +253,22 @@ class TestQueryBlsCpi:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("hephae_integrations.bls_client.settings") as mock_settings, \
-             patch("hephae_integrations.bls_client.httpx.AsyncClient", return_value=mock_client), \
-             patch("hephae_integrations.bls_client.get_cached_food_prices", new_callable=AsyncMock, return_value=None), \
-             patch("hephae_integrations.bls_client.save_food_prices_cache", new_callable=AsyncMock):
-            mock_settings.BLS_API_KEY = "test-key"
+        with patch("hephae_integrations.bls_client.httpx.AsyncClient", return_value=mock_client):
+            result = await query_bls_cpi("pizza", api_key="test-key")
 
-            result = await query_bls_cpi("pizza")
-
-        assert isinstance(result, BlsCpiData)
-        assert len(result.series) == 1
-        assert result.latestMonth == "2025-03"
-        assert len(result.highlights) > 0
+        assert isinstance(result, dict)
+        assert len(result["series"]) == 1
+        assert result["latestMonth"] == "2025-03"
+        assert len(result["highlights"]) > 0
 
     @pytest.mark.asyncio
     async def test_empty_api_key_returns_empty(self):
-        with patch("hephae_integrations.bls_client.settings") as mock_settings:
-            mock_settings.BLS_API_KEY = ""
-            result = await query_bls_cpi("pizza")
+        with patch.dict("os.environ", {"BLS_API_KEY": ""}, clear=False):
+            result = await query_bls_cpi("pizza", api_key="")
 
-        assert isinstance(result, BlsCpiData)
-        assert result.series == []
-        assert result.highlights == []
+        assert isinstance(result, dict)
+        assert result["series"] == []
+        assert result["highlights"] == []
 
     @pytest.mark.asyncio
     async def test_http_error_returns_empty(self):
@@ -287,14 +280,10 @@ class TestQueryBlsCpi:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("hephae_integrations.bls_client.settings") as mock_settings, \
-             patch("hephae_integrations.bls_client.httpx.AsyncClient", return_value=mock_client), \
-             patch("hephae_integrations.bls_client.get_cached_food_prices", new_callable=AsyncMock, return_value=None), \
-             patch("hephae_integrations.bls_client.save_food_prices_cache", new_callable=AsyncMock):
-            mock_settings.BLS_API_KEY = "test-key"
-            result = await query_bls_cpi("pizza")
+        with patch("hephae_integrations.bls_client.httpx.AsyncClient", return_value=mock_client):
+            result = await query_bls_cpi("pizza", api_key="test-key")
 
-        assert result.series == []
+        assert result["series"] == []
 
     @pytest.mark.asyncio
     async def test_api_status_not_succeeded_returns_empty(self):
@@ -310,14 +299,10 @@ class TestQueryBlsCpi:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("hephae_integrations.bls_client.settings") as mock_settings, \
-             patch("hephae_integrations.bls_client.httpx.AsyncClient", return_value=mock_client), \
-             patch("hephae_integrations.bls_client.get_cached_food_prices", new_callable=AsyncMock, return_value=None), \
-             patch("hephae_integrations.bls_client.save_food_prices_cache", new_callable=AsyncMock):
-            mock_settings.BLS_API_KEY = "test-key"
-            result = await query_bls_cpi("pizza")
+        with patch("hephae_integrations.bls_client.httpx.AsyncClient", return_value=mock_client):
+            result = await query_bls_cpi("pizza", api_key="test-key")
 
-        assert result.series == []
+        assert result["series"] == []
 
     @pytest.mark.asyncio
     async def test_cache_hit_skips_api_call(self):
@@ -333,13 +318,12 @@ class TestQueryBlsCpi:
             "highlights": ["Food (all items): 2.5% up year-over-year (index 310.5, 2025-03)"],
         }
 
-        with patch("hephae_integrations.bls_client.settings") as mock_settings, \
-             patch("hephae_integrations.bls_client.get_cached_food_prices", new_callable=AsyncMock, return_value=cached_data), \
-             patch("hephae_integrations.bls_client.httpx.AsyncClient") as mock_http:
-            mock_settings.BLS_API_KEY = "test-key"
-            result = await query_bls_cpi("pizza")
+        cache_reader = AsyncMock(return_value=cached_data)
 
-        assert isinstance(result, BlsCpiData)
-        assert result.latestMonth == "2025-03"
+        with patch("hephae_integrations.bls_client.httpx.AsyncClient") as mock_http:
+            result = await query_bls_cpi("pizza", api_key="test-key", cache_reader=cache_reader)
+
+        assert isinstance(result, dict)
+        assert result["latestMonth"] == "2025-03"
         # httpx should NOT have been called
         mock_http.assert_not_called()

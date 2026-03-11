@@ -131,6 +131,7 @@ async def client():
     mock_extract_items = AsyncMock(return_value=[])
 
     with (
+        patch("hephae_common.firebase.get_db", return_value=MagicMock()),
         patch("backend.routers.web.analyze.InMemorySessionService", return_value=mock_session_svc),
         patch("backend.routers.web.analyze.Runner", side_effect=_make_runner) as mock_runner_cls,
         patch("backend.routers.web.analyze.upload_report", new_callable=AsyncMock, return_value="https://storage.googleapis.com/test/margin.html"),
@@ -181,6 +182,7 @@ async def text_fallback_client():
 
     # Text fallback mocks — configured per test via client attributes
     mock_scrape_text = AsyncMock(return_value=None)
+    mock_find_menu = AsyncMock(return_value=None)
     mock_search_text = AsyncMock(return_value=None)
     mock_extract_items = AsyncMock(return_value=[])
 
@@ -199,6 +201,7 @@ async def text_fallback_client():
     mock_ctx.commodity_prices = None
 
     with (
+        patch("hephae_common.firebase.get_db", return_value=MagicMock()),
         patch("backend.routers.web.analyze.InMemorySessionService", return_value=mock_session_svc),
         patch("backend.routers.web.analyze.Runner", side_effect=_make_runner) as mock_runner_cls,
         patch("backend.routers.web.analyze.upload_report", new_callable=AsyncMock, return_value="https://cdn.hephae.co/reports/test/margin.html"),
@@ -212,6 +215,7 @@ async def text_fallback_client():
         patch("backend.routers.web.analyze._download_screenshot_as_base64", new_callable=AsyncMock, return_value=None),
         # Text fallback mocks — accessible via client attributes
         patch("backend.routers.web.analyze._scrape_menu_text", mock_scrape_text),
+        patch("backend.routers.web.analyze._find_menu_on_official_site", mock_find_menu),
         patch("backend.routers.web.analyze._search_menu_text", mock_search_text),
         patch("backend.routers.web.analyze._extract_menu_items_from_text", mock_extract_items),
         patch("backend.routers.web.analyze.LocatorAgent") as mock_locator,
@@ -231,6 +235,7 @@ async def text_fallback_client():
             ac._runners_list = runners_list  # type: ignore[attr-defined]
             ac._mock_runner_cls = mock_runner_cls  # type: ignore[attr-defined]
             ac._mock_scrape_text = mock_scrape_text  # type: ignore[attr-defined]
+            ac._mock_find_menu = mock_find_menu  # type: ignore[attr-defined]
             ac._mock_search_text = mock_search_text  # type: ignore[attr-defined]
             ac._mock_extract_items = mock_extract_items  # type: ignore[attr-defined]
             yield ac
@@ -317,12 +322,15 @@ def _configure_text_path_runners(client, surgeon_events=None, advisor_events=Non
 
 class TestInputValidation:
     @pytest.mark.asyncio
-    async def test_422_no_screenshot_no_url(self, client):
-        """When no officialUrl, menuUrl, or screenshot is provided, slow path triggers -> 422."""
+    async def test_menu_not_found_no_screenshot_no_url(self, client):
+        """When no officialUrl, menuUrl, or screenshot is provided, slow path triggers -> menuNotFound."""
         profile = {**ENRICHED_PROFILE, "menuScreenshotBase64": None, "menuUrl": None, "officialUrl": None}
         res = await client.post("/api/analyze", json={"enrichedProfile": profile})
-        # No officialUrl -> falls to slow path. All mocks return nothing -> 422
-        assert res.status_code == 422
+        # No officialUrl -> falls to slow path. All mocks return nothing -> menuNotFound
+        assert res.status_code == 200
+        data = res.json()
+        assert data["menuNotFound"] is True
+        assert "message" in data
 
     @pytest.mark.asyncio
     async def test_fast_path_screenshots_official_url(self, client):
@@ -330,14 +338,19 @@ class TestInputValidation:
         profile = {**ENRICHED_PROFILE, "menuScreenshotBase64": None, "menuUrl": None}
         res = await client.post("/api/analyze", json={"enrichedProfile": profile})
         # Screenshot succeeds (mock returns base64) but Vision returns nothing,
-        # and text fallbacks also return nothing -> 422
-        assert res.status_code == 422
+        # and text fallbacks also return nothing -> menuNotFound
+        assert res.status_code == 200
+        data = res.json()
+        assert data["menuNotFound"] is True
+        assert "message" in data
 
     @pytest.mark.asyncio
-    async def test_422_no_menu_items_parsed(self, client):
-        """Vision returns empty (no parsedMenuItems), text fallbacks all return nothing -> 422."""
+    async def test_menu_not_found_no_menu_items_parsed(self, client):
+        """Vision returns empty (no parsedMenuItems), text fallbacks all return nothing -> menuNotFound."""
         res = await client.post("/api/analyze", json={"enrichedProfile": ENRICHED_PROFILE})
-        assert res.status_code == 422
+        assert res.status_code == 200
+        data = res.json()
+        assert data["menuNotFound"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -425,12 +438,14 @@ class TestTextFallbackMenuCrawl:
         assert "testbistro.com/menu" in first_call_url
 
     @pytest.mark.asyncio
-    async def test_text_crawl_falls_through_to_official_url(self, text_fallback_client):
-        """menuUrl crawl returns None, but officialUrl crawl succeeds."""
+    async def test_text_crawl_falls_through_to_official_site_menu_finder(self, text_fallback_client):
+        """menuUrl crawl returns None, but _find_menu_on_official_site succeeds."""
         client = text_fallback_client
 
-        # First call (menuUrl) returns None, second call (officialUrl) returns text
-        client._mock_scrape_text.side_effect = [None, SAMPLE_MENU_MARKDOWN]
+        # menuUrl crawl returns None
+        client._mock_scrape_text.return_value = None
+        # _find_menu_on_official_site returns menu text
+        client._mock_find_menu.return_value = SAMPLE_MENU_MARKDOWN
         client._mock_extract_items.return_value = MENU_ITEMS
 
         surgeon_events = [_make_fn_response_event("perform_margin_surgery", MENU_ANALYSIS)]
@@ -440,8 +455,9 @@ class TestTextFallbackMenuCrawl:
         res = await client.post("/api/analyze", json={"enrichedProfile": NO_SCREENSHOT_PROFILE})
         assert res.status_code == 200
 
-        # Should have been called twice — once for menuUrl, once for officialUrl
-        assert client._mock_scrape_text.call_count == 2
+        # _scrape_menu_text called once for menuUrl, _find_menu_on_official_site called for officialUrl
+        client._mock_scrape_text.assert_called_once()
+        client._mock_find_menu.assert_called_once_with("https://testbistro.com")
 
     @pytest.mark.asyncio
     async def test_text_crawl_returns_thin_content(self, text_fallback_client):
@@ -450,12 +466,15 @@ class TestTextFallbackMenuCrawl:
 
         # Both crawl attempts return None (content too thin is filtered in the real function)
         client._mock_scrape_text.return_value = None
+        client._mock_find_menu.return_value = None
         # Google search also returns None
         client._mock_search_text.return_value = None
 
         res = await client.post("/api/analyze", json={"enrichedProfile": NO_SCREENSHOT_PROFILE})
-        assert res.status_code == 422
-        assert "Could not find menu items" in res.json()["error"]
+        assert res.status_code == 200
+        data = res.json()
+        assert data["menuNotFound"] is True
+        assert "message" in data
 
 
 # ---------------------------------------------------------------------------
@@ -488,17 +507,18 @@ class TestTextFallbackGoogleSearch:
 
     @pytest.mark.asyncio
     async def test_google_search_fails_all_exhausted(self, text_fallback_client):
-        """All fallback paths fail — returns 422."""
+        """All fallback paths fail — returns menuNotFound."""
         client = text_fallback_client
 
         client._mock_scrape_text.return_value = None
+        client._mock_find_menu.return_value = None
         client._mock_search_text.return_value = None
 
         res = await client.post("/api/analyze", json={"enrichedProfile": NO_SCREENSHOT_PROFILE})
-        assert res.status_code == 422
+        assert res.status_code == 200
         data = res.json()
-        assert "Could not find menu items" in data["error"]
-        assert "third-party sites" in data["error"]
+        assert data["menuNotFound"] is True
+        assert "message" in data
 
 
 # ---------------------------------------------------------------------------
@@ -508,14 +528,16 @@ class TestTextFallbackGoogleSearch:
 class TestTextFallbackExtractionFails:
     @pytest.mark.asyncio
     async def test_crawl_succeeds_but_extraction_empty(self, text_fallback_client):
-        """Text is found but LLM can't extract items (e.g. non-menu page) → 422."""
+        """Text is found but LLM can't extract items (e.g. non-menu page) → menuNotFound."""
         client = text_fallback_client
 
         client._mock_scrape_text.return_value = "Some random page content with no menu items"
         client._mock_extract_items.return_value = []  # LLM found nothing
 
         res = await client.post("/api/analyze", json={"enrichedProfile": NO_SCREENSHOT_PROFILE})
-        assert res.status_code == 422
+        assert res.status_code == 200
+        data = res.json()
+        assert data["menuNotFound"] is True
 
     @pytest.mark.asyncio
     async def test_extraction_called_with_business_name(self, text_fallback_client):

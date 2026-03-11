@@ -7,33 +7,32 @@ DispatcherAgent to manage capabilities as a list of dynamic tools.
 
 from __future__ import annotations
 
-from google.adk.agents import AgentTool
+from google.adk.tools import FunctionTool
 from backend.workflows.capabilities.registry import get_capability
 
-def get_capability_tool(name: str) -> AgentTool | None:
-    """Wrap a registered capability into an ADK AgentTool."""
+def get_capability_tool(name: str) -> FunctionTool | None:
+    """Wrap a registered capability into an ADK FunctionTool."""
     cap = get_capability(name)
     if not cap:
         return None
-        
+
     async def _tool_fn(business_id: str) -> dict:
         """The actual function called by the LLM."""
         from hephae_db.firestore.businesses import get_business
         biz = await get_business(business_id)
         identity = biz.get("identity", {})
-        
+
         # Execute the runner
         raw_result = await cap.runner(identity)
         # Adapt for Firestore/UI consistency
         return cap.response_adapter(raw_result)
 
-    return AgentTool(
-        name=f"run_{cap.name}_analysis",
-        description=f"Executes a detailed {cap.display_name} for the business.",
-        fn=_tool_fn
-    )
+    _tool_fn.__name__ = f"run_{cap.name}_analysis"
+    _tool_fn.__doc__ = f"Executes a detailed {cap.display_name} for the business."
 
-def get_all_capability_tools() -> list[AgentTool]:
+    return FunctionTool(func=_tool_fn)
+
+def get_all_capability_tools() -> list[FunctionTool]:
     """Returns a list of all enabled capability tools."""
     from backend.workflows.capabilities.registry import get_enabled_capabilities
     tools = []

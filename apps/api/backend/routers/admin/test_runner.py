@@ -1,13 +1,16 @@
-"""Test runner endpoints — POST/GET /api/run-tests."""
+"""Test runner endpoints — POST/GET /api/run-tests.
+
+POST: Runs the full QA suite (4 capabilities × evaluators), persists to Firestore.
+GET:  Returns historical test runs (newest first, 7-day TTL auto-cleanup).
+"""
 
 from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.lib.auth import verify_admin_request
-
 from backend.workflows.test_runner import test_runner
 
 logger = logging.getLogger(__name__)
@@ -26,6 +29,12 @@ async def run_tests():
 
 
 @router.get("")
-async def get_test_runs():
-    # Historical test runs
-    return []
+async def get_test_runs(limit: int = Query(20, ge=1, le=100)):
+    """Return historical test runs from Firestore (auto-cleaned after 7 days)."""
+    try:
+        from hephae_db.firestore.test_runs import list_test_runs
+        runs = await list_test_runs(limit=limit)
+        return runs
+    except Exception as e:
+        logger.warning(f"[TestRunner] Failed to fetch history: {e}")
+        return []

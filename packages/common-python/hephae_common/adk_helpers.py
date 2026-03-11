@@ -131,7 +131,7 @@ async def run_agent_to_json(
         instruction=enriched_instruction,
         tools=agent.tools if hasattr(agent, "tools") else [],
         on_model_error_callback=agent.on_model_error_callback if hasattr(agent, "on_model_error_callback") else None,
-        response_schema=response_schema,
+        output_schema=response_schema,
         # Force native JSON mode even if no schema
         generate_content_config={"response_mime_type": "application/json"} if not response_schema else None,
     )
@@ -193,7 +193,7 @@ async def _run_agent_with_schema(
         instruction=agent.instruction,
         tools=agent.tools if hasattr(agent, "tools") else [],
         on_model_error_callback=agent.on_model_error_callback if hasattr(agent, "on_model_error_callback") else None,
-        response_schema=response_schema,  # Native structured output
+        output_schema=response_schema,  # Native structured output
     )
 
     app = _get_or_create_app(schema_agent, app_name)

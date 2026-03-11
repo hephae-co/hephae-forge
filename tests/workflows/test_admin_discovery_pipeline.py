@@ -1,25 +1,36 @@
-"""Tests for the grounded business discovery pipeline."""
+"""Tests for the grounded business discovery pipeline.
+
+NOTE: These tests reference the old admin discovery pipeline (BusinessItem,
+ConfidenceScorer, CategoryProgressChecker, DiscoveryAccumulator, etc.) which
+was removed during the monorepo refactor. The discovery module now uses a
+2-phase runner pattern (discovery_phase1 / discovery_phase2). These tests are
+skipped until they are rewritten against the new API.
+"""
 
 import json
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
-from google.adk.tools import google_search
-
-from backend.config import AgentModels
-from hephae_capabilities.discovery import (
-    BusinessItem,
-    ConfidenceScorer,
-    CategoryProgressChecker,
-    DiscoveryAccumulator,
-    _classify_source,
-    _generate_slug,
-    scan_zipcode,
-    category_planner,
-    category_scanner,
-    business_verifier,
-    business_discovery_pipeline,
+pytestmark = pytest.mark.skip(
+    reason="Old admin discovery pipeline removed — BusinessItem, ConfidenceScorer, "
+    "CategoryProgressChecker, DiscoveryAccumulator, scan_zipcode etc. no longer exist "
+    "in hephae_capabilities.discovery. Tests need rewrite for 2-phase runner pattern."
 )
+
+# These imports are kept for reference but will not execute due to pytestmark skip.
+google_search = None
+AgentModels = None
+BusinessItem = None
+ConfidenceScorer = None
+CategoryProgressChecker = None
+DiscoveryAccumulator = None
+_classify_source = None
+_generate_slug = None
+scan_zipcode = None
+category_planner = None
+category_scanner = None
+business_verifier = None
+business_discovery_pipeline = None
 
 
 # ---------------------------------------------------------------------------
@@ -356,7 +367,7 @@ class TestAgentSetup:
         ]
 
     def test_loop_agent_sub_agents(self):
-        from hephae_capabilities.discovery import category_discovery_loop
+        category_discovery_loop = None  # was: from hephae_capabilities.discovery import category_discovery_loop
         names = [a.name for a in category_discovery_loop.sub_agents]
         assert names == [
             "category_scanner",

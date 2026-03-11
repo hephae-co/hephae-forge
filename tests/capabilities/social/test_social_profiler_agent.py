@@ -107,7 +107,7 @@ class TestExistingAgentToolUpgrades:
 
     def test_menu_agent_has_advanced_and_deep_tools(self):
         tools = menu_agent.tools
-        assert len(tools) == 3, f"MenuAgent should have 3 tools, got {len(tools)}"
+        assert len(tools) == 4, f"MenuAgent should have 4 tools, got {len(tools)}"
 
     def test_competitor_agent_has_advanced_tool(self):
         tools = competitor_agent.tools

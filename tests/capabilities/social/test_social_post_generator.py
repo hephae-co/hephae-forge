@@ -806,6 +806,7 @@ class TestRouterHappyPath:
             report_url="https://storage.googleapis.com/everything-hephae/bosphorus-kitchen/margin-1234.html",
             social_handles={"instagram": "@bosphorus_nj", "facebook": "BosphorusKitchenNJ", "twitter": "@bosphorus_nj"},
             latest_outputs=None,
+            cdn_report_urls={"margin": "https://storage.googleapis.com/everything-hephae/bosphorus-kitchen/margin-1234.html"},
         )
 
     @pytest.mark.asyncio

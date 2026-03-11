@@ -2,9 +2,9 @@
 GCS bucket access — report/image uploads.
 
 No makePublic() calls — buckets use uniform IAM (allUsers: Storage Object Viewer).
-Two buckets:
-  - everything-hephae: legacy uploads (menu screenshots, menu HTML)
-  - hephae-co-dev-prod-cdn-assets: CDN bucket served via cdn.hephae.co (reports, social cards)
+Two buckets (configured via env vars GCS_BUCKET and GCS_CDN_BUCKET):
+  - Legacy bucket: menu screenshots, menu HTML
+  - CDN bucket: reports, social cards (served via CDN)
 """
 
 from __future__ import annotations

@@ -5,6 +5,8 @@ Centralizes model strings, thinking presets, and fallback maps.
 Both web/ and admin/ import from here.
 """
 
+import os
+
 from google.genai.types import GenerateContentConfig, ThinkingConfig
 
 
@@ -52,9 +54,9 @@ MODEL_FALLBACK_MAP: dict[str, str] = {
 
 
 class StorageConfig:
-    BUCKET = "everything-hephae"
-    BASE_URL = "https://storage.googleapis.com/everything-hephae"
+    BUCKET = os.getenv("GCS_BUCKET", "")
+    BASE_URL = os.getenv("GCS_BASE_URL", "")
 
-    # CDN bucket — public assets served via cdn.hephae.co
-    CDN_BUCKET = "hephae-co-dev-prod-cdn-assets"
-    CDN_BASE_URL = "https://cdn.hephae.co"
+    # CDN bucket — public assets served via CDN
+    CDN_BUCKET = os.getenv("GCS_CDN_BUCKET", "")
+    CDN_BASE_URL = os.getenv("CDN_BASE_URL", "")

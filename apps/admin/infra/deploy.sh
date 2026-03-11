@@ -9,7 +9,7 @@ set -euo pipefail
 #   bash apps/admin/infra/deploy.sh --skip-checks
 # ─────────────────────────────────────────────────────────────
 
-PROJECT_ID="hephae-co-dev"
+PROJECT_ID="${GCP_PROJECT_ID:?Set GCP_PROJECT_ID env var}"
 REGION="us-central1"
 BUILD_REGION="us-east1"
 REPO="cloud-run-source-deploy"
@@ -67,7 +67,7 @@ echo "  Service: ${ADMIN_SERVICE}"
 echo "  Image:   ${ADMIN_IMAGE}"
 echo ""
 
-FIREBASE_API_KEY="AIzaSyBP7pJuBVadYMfZ4RpXb4yIpgwUB_If56w"
+FIREBASE_API_KEY="${FIREBASE_API_KEY:?Set FIREBASE_API_KEY env var}"
 
 echo "── Building Next.js image..."
 cat > /tmp/cloudbuild-admin-web.yaml <<YAML

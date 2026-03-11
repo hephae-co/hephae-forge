@@ -26,14 +26,14 @@ class Settings(BaseSettings):
     PORT: int = int(os.getenv("PORT", "8080"))
 
     # Firebase / GCP
-    FIREBASE_PROJECT_ID: str = os.getenv("FIREBASE_PROJECT_ID", "hephae-co")
-    BIGQUERY_PROJECT_ID: str = os.getenv("BIGQUERY_PROJECT_ID", "hephae-co-dev")
-    GOOGLE_CLOUD_PROJECT: str = os.getenv("GOOGLE_CLOUD_PROJECT", "hephae-co-dev")
+    FIREBASE_PROJECT_ID: str = os.getenv("FIREBASE_PROJECT_ID", "")
+    BIGQUERY_PROJECT_ID: str = os.getenv("BIGQUERY_PROJECT_ID", "")
+    GOOGLE_CLOUD_PROJECT: str = os.getenv("GOOGLE_CLOUD_PROJECT", "")
 
     # Auth
     FORGE_API_SECRET: str = os.getenv("FORGE_API_SECRET", "")
     FORGE_V1_API_KEY: str = os.getenv("FORGE_V1_API_KEY", "")
-    CRON_SECRET: str = os.getenv("CRON_SECRET", "hephae_cron_secret")
+    CRON_SECRET: str = os.getenv("CRON_SECRET", "")
     ADMIN_EMAIL_ALLOWLIST: str = os.getenv("ADMIN_EMAIL_ALLOWLIST", "")
 
     # Email

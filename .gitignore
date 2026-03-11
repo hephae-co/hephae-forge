@@ -23,6 +23,9 @@ build/
 .vscode/
 .idea/
 
+# Claude Code local settings
+.claude/settings.local.json
+
 # Generated
 tsconfig.tsbuildinfo
 next-env.d.ts

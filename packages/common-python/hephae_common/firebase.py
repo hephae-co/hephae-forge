@@ -8,9 +8,11 @@ Both web/ and admin/ import from here.
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
 
+import os
+
 from hephae_common.model_config import StorageConfig
 
-_PROJECT_ID = "hephae-co-dev"
+_PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", os.getenv("FIREBASE_PROJECT_ID", ""))
 _app = None
 _db = None
 _bucket = None

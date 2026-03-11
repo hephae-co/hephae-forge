@@ -9,7 +9,7 @@ set -euo pipefail
 #   bash apps/api/infra/deploy.sh --skip-checks
 # ─────────────────────────────────────────────────────────────
 
-PROJECT_ID="hephae-co-dev"
+PROJECT_ID="${GCP_PROJECT_ID:?Set GCP_PROJECT_ID env var}"
 REGION="us-east1"
 BUILD_REGION="us-east1"
 REPO="cloud-run-source-deploy"

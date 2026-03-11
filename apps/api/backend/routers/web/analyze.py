@@ -84,8 +84,54 @@ async def _download_screenshot_as_base64(url: str) -> str | None:
     return None
 
 
+async def _extract_pdf_text(url: str) -> str | None:
+    """Download a PDF and extract text via pdfplumber."""
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            resp = await client.get(url)
+            if resp.status_code != 200 or len(resp.content) < 500:
+                return None
+            content_type = resp.headers.get("content-type", "")
+            if "pdf" not in content_type and not url.lower().endswith(".pdf"):
+                return None
+
+        # pdfplumber is sync — run in thread
+        import pdfplumber
+        import io
+
+        def _extract():
+            text_parts = []
+            with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+                for page in pdf.pages[:20]:  # Cap at 20 pages
+                    page_text = page.extract_text()
+                    if page_text:
+                        text_parts.append(page_text)
+            return "\n".join(text_parts)
+
+        text = await asyncio.to_thread(_extract)
+        if text and len(text) > 100:
+            logger.info(f"[API/Analyze] Extracted {len(text)} chars of PDF text from {url}")
+            return text[:15000]
+    except ImportError:
+        logger.warning("[API/Analyze] pdfplumber not installed — skipping PDF extraction")
+    except Exception as e:
+        logger.warning(f"[API/Analyze] PDF extraction failed for {url}: {e}")
+    return None
+
+
 async def _scrape_menu_text(url: str) -> str | None:
-    """Crawl a menu page and return its text/markdown content."""
+    """Crawl a menu page and return its text/markdown content.
+
+    Handles PDFs (via pdfplumber) and regular HTML pages (via crawl4ai).
+    """
+    # Check if URL is a PDF — extract text directly instead of crawling
+    if url.lower().endswith(".pdf") or "pdf" in url.lower().split("?")[0][-10:]:
+        pdf_text = await _extract_pdf_text(url)
+        if pdf_text:
+            return pdf_text
+
     from hephae_capabilities.shared_tools.crawl4ai import crawl_with_options
 
     try:
@@ -99,8 +145,19 @@ async def _scrape_menu_text(url: str) -> str | None:
         if markdown and len(markdown) > 100:
             logger.info(f"[API/Analyze] Got {len(markdown)} chars of menu text from {url}")
             return markdown[:15000]  # Cap to prevent excessive tokens
+
+        # If crawl returned little content, the URL might be serving a PDF
+        # (some servers don't put .pdf in the URL path)
+        if not markdown or len(markdown) < 100:
+            pdf_text = await _extract_pdf_text(url)
+            if pdf_text:
+                return pdf_text
     except Exception as e:
         logger.warning(f"[API/Analyze] Text crawl failed for {url}: {e}")
+        # Last attempt: maybe it's a PDF that crawl4ai can't handle
+        pdf_text = await _extract_pdf_text(url)
+        if pdf_text:
+            return pdf_text
     return None
 
 
@@ -296,10 +353,17 @@ async def analyze(request: Request):
         url = body.get("url")
         enriched_profile = body.get("enrichedProfile")
         advanced_mode = body.get("advancedMode", False)
+        user_menu_url = body.get("menuUrl")  # P2b: user-provided menu URL override
 
         # FAST PATH: We already ran the Parallel Discovery Subagents
         if enriched_profile and enriched_profile.get("officialUrl"):
             logger.info(f"[API/Analyze] Fast Path: Bypassing Profiler for {enriched_profile.get('name')}")
+
+            # P2b: If user provided a menu URL, inject it into the profile
+            if user_menu_url:
+                enriched_profile["menuUrl"] = user_menu_url
+                logger.info(f"[API/Analyze] Using user-provided menuUrl: {user_menu_url}")
+
             ctx = await build_business_context({**enriched_profile}, capabilities=["margin"])
             identity = ctx.identity
 
@@ -403,6 +467,14 @@ async def analyze(request: Request):
             except (json.JSONDecodeError, ValueError):
                 logger.warning("[API/Analyze] Vision parse failed, will try text fallback")
 
+            # P2: Validate vision actually produced items — don't propagate empty
+            # arrays through all 5 stages (surgeon would compute $0 leakage)
+            if not menu_items:
+                logger.warning(
+                    "[API/Analyze] Vision extraction returned 0 items — "
+                    "falling through to text-based extraction"
+                )
+
         # FALLBACK: Text-based menu extraction
         if not menu_items:
             business_name = identity.get("name", "")
@@ -411,6 +483,7 @@ async def analyze(request: Request):
             menu_text = None
             menu_url = identity.get("menuUrl")
             official_url = identity.get("officialUrl")
+            social_links = identity.get("socialLinks") or {}
 
             # 1st: known first-party menu URL (not social/delivery)
             if _is_menu_url(menu_url):
@@ -424,9 +497,23 @@ async def analyze(request: Request):
                 menu_text = await _find_menu_on_official_site(official_url)
 
             # 3rd: delivery site (Seamless, DoorDash, etc.) — has structured menus with prices
-            if not menu_text and menu_url and not _is_menu_url(menu_url):
-                logger.info(f"[API/Analyze] Trying delivery site menu: {menu_url}")
-                menu_text = await _scrape_menu_text(menu_url)
+            # P3: Use pre-discovered delivery URLs from discovery before searching from scratch
+            if not menu_text:
+                delivery_urls = []
+                # Prefer menuUrl if it's a delivery site
+                if menu_url and not _is_menu_url(menu_url):
+                    delivery_urls.append(menu_url)
+                # Add delivery URLs from socialLinks (discovered by MenuAgent)
+                for platform in ("grubhub", "doordash", "ubereats", "seamless", "toasttab"):
+                    purl = social_links.get(platform)
+                    if purl and purl not in delivery_urls:
+                        delivery_urls.append(purl)
+
+                for delivery_url in delivery_urls:
+                    logger.info(f"[API/Analyze] Trying pre-discovered delivery menu: {delivery_url}")
+                    menu_text = await _scrape_menu_text(delivery_url)
+                    if menu_text:
+                        break
 
             # 4th: Google search as last resort
             if not menu_text and business_name:
@@ -438,10 +525,18 @@ async def analyze(request: Request):
                 if menu_items:
                     menu_items_prompt = json.dumps(menu_items)
 
+        # P2b: Return menuNotFound flag instead of a hard 422 error so the
+        # frontend can prompt the user to provide a menu URL
         if not menu_items:
+            logger.warning(f"[API/Analyze] All menu fallback paths failed for {identity.get('name')}")
             return JSONResponse(
-                {"error": "Could not find menu items. The business website may not have a public menu, and no menu was found on third-party sites."},
-                status_code=422,
+                {
+                    "menuNotFound": True,
+                    "message": "I couldn't find a menu online for this business. "
+                               "If you have a link to the menu (website page, PDF, or delivery platform), "
+                               "paste it and I'll analyze it.",
+                },
+                status_code=200,
             )
 
         if not menu_items_prompt:

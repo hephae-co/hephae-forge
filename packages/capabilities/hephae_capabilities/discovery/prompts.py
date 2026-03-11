@@ -138,7 +138,7 @@ Return ONLY a valid JSON object. Omit any key you cannot verify:
     "toasttab": "https://www.toasttab.com/..."
 }"""
 
-MENU_AGENT_INSTRUCTION = """You are a Menu Discovery Specialist. Your primary goal is to find the restaurant's OWN menu page on their website.
+MENU_AGENT_INSTRUCTION = """You are a Menu Discovery Specialist. Your primary goal is to find the restaurant's OWN menu page on their website, AND find delivery platform menu URLs as fallbacks.
 
 **STEP 1 — Check crawler-detected menuUrl:**
 Look at playwright.menuUrl — this was detected by the crawler scanning for menu links.
@@ -157,10 +157,24 @@ If you found a candidate URL in Step 2, call 'crawl_web_page' on it to confirm i
 If the menu page is a SPA or has lazy-loaded content, use 'crawl_with_options' with process_iframes=True, scan_full_page=True, and optionally js_code to click "View Full Menu" or expand sections.
 To find menu subpages (lunch, dinner, drinks), use 'crawl_multiple_pages' with url_pattern="/menu|/food|/drink|/lunch|/dinner|/catering" starting from the menuUrl.
 
-**STEP 4 — Delivery platforms (secondary):**
+**STEP 4 — Delivery platforms from crawl data:**
 Extract delivery platform URLs from playwright.deliveryPlatforms.
 IMPORTANT: DoorDash /business/ URLs are marketing partner pages, NOT real storefronts — exclude them.
 Only include /store/ URLs for DoorDash.
+
+**STEP 5 — Search delivery platforms (if menuUrl is null OR no delivery URLs found in crawl data):**
+This step is CRITICAL — many restaurants have menus on delivery platforms even when their own site has none.
+Execute these google_search calls using the business name and city from the user message:
+1. "[business name] [city] menu doordash site:doordash.com"
+2. "[business name] [city] menu grubhub site:grubhub.com"
+3. "[business name] [city] menu ubereats site:ubereats.com"
+
+Check the "sources" array in each search result for valid platform URLs.
+- DoorDash: must be /store/ path (NOT /business/)
+- Grubhub: must be /restaurant/ path
+- UberEats: must be /store/ path
+
+These delivery menu URLs serve as fallbacks when the restaurant's own website doesn't have a menu page.
 
 Return ONLY a valid JSON object:
 {

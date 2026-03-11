@@ -5,6 +5,7 @@ Runs the full discovery pipeline and returns an enriched profile dict.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -47,6 +48,41 @@ def _safe_parse_array(value) -> list:
         return []
 
 
+def _extract_zip_code(identity: dict[str, Any]) -> str | None:
+    """Extract zip code from identity.zipCode or parse from address."""
+    zc = identity.get("zipCode") or identity.get("zip_code") or identity.get("zip")
+    if zc:
+        return str(zc).strip()[:5]
+    addr = identity.get("address", "")
+    if addr:
+        m = re.search(r"\b(\d{5})(?:-\d{4})?\b", addr)
+        if m:
+            return m.group(1)
+    return None
+
+
+async def _fetch_local_context(zip_code: str | None) -> dict[str, Any] | None:
+    """Fetch area and zipcode research for a zip code. Returns None if unavailable."""
+    if not zip_code:
+        return None
+    try:
+        from hephae_db.context.admin_data import get_area_research_for_zip, get_zipcode_report
+
+        area_res, zip_res = await asyncio.gather(
+            get_area_research_for_zip(zip_code),
+            get_zipcode_report(zip_code),
+        )
+        if area_res or zip_res:
+            logger.info(f"[Discovery Runner] Local context found for {zip_code}")
+            return {
+                "areaResearch": area_res,
+                "zipcodeResearch": zip_res,
+            }
+    except Exception as e:
+        logger.warning(f"[Discovery Runner] Local context fetch failed for {zip_code}: {e}")
+    return None
+
+
 async def run_discovery(
     identity: dict[str, Any],
     business_context: Any | None = None,
@@ -82,18 +118,28 @@ async def run_discovery(
         URL: {identity.get("officialUrl", "")}
     """
 
-    # --- Phase 1: Crawl + entity validation ---
-    phase1_runner = Runner(
-        app_name="hephae-hub",
-        agent=discovery_phase1,
-        session_service=session_service,
+    # --- Phase 1: Crawl + entity validation (parallel with local context fetch) ---
+    zip_code = _extract_zip_code(identity)
+
+    async def _run_phase1():
+        phase1_runner = Runner(
+            app_name="hephae-hub",
+            agent=discovery_phase1,
+            session_service=session_service,
+        )
+        async for _ in phase1_runner.run_async(
+            user_id=user_id,
+            session_id=session_id,
+            new_message=user_msg(prompt),
+        ):
+            pass
+
+    # Fire Phase 1 crawl and local context fetch in parallel — context fetch
+    # (~200ms Firestore read) is hidden behind the crawl's 5-15s network I/O
+    _, local_context = await asyncio.gather(
+        _run_phase1(),
+        _fetch_local_context(zip_code),
     )
-    async for _ in phase1_runner.run_async(
-        user_id=user_id,
-        session_id=session_id,
-        new_message=user_msg(prompt),
-    ):
-        pass
 
     p1_session = await session_service.get_session(
         app_name="hephae-hub", user_id=user_id, session_id=session_id
@@ -246,6 +292,7 @@ async def run_discovery(
         "challenges": challenges_data or None,
         "entityMatch": entity_match or None,
         "validationReport": validation_report,
+        "localContext": local_context,
     }
 
     return enriched_profile

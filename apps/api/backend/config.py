@@ -74,12 +74,12 @@ class AgentVersions:
     """Agent version registry — merged web + admin versions."""
 
     # Discovery pipeline
-    DISCOVERY_PIPELINE = "5.0.0"
+    DISCOVERY_PIPELINE = "5.1.0"  # MINOR: parallel local context fetch, enhanced MenuAgent delivery search
     SITE_CRAWLER = "1.1.0"
     CONTACT_DISCOVERY = "1.0.0"
     CONTACT_AGENT = "2.0.0"  # MAJOR: added emailStatus, contactFormUrl, contactFormStatus fields
     QUALITY_GATE_AGENT = "1.0.1"  # PATCH: added banks and dollar stores to exclusion examples
-    MENU_DISCOVERY = "2.1.0"
+    MENU_DISCOVERY = "3.0.0"  # MAJOR: searches delivery platforms (DoorDash/Grubhub/UberEats) when no menu found
     SOCIAL_DISCOVERY = "2.0.0"
     SOCIAL_PROFILER = "2.0.0"
     MAPS_DISCOVERY = "2.0.0"
@@ -88,7 +88,7 @@ class AgentVersions:
     BUSINESS_OVERVIEW = "1.0.0"
 
     # Analysis agents
-    MARGIN_SURGEON = "1.0.0"
+    MARGIN_SURGEON = "1.1.0"  # MINOR: PDF extraction, menuNotFound flow, pre-discovered delivery URLs
     SEO_AUDITOR = "1.0.0"
     TRAFFIC_FORECASTER = "1.0.0"
     COMPETITIVE_ANALYZER = "1.0.0"

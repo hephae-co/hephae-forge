@@ -105,6 +105,9 @@ export default function Home() {
   const [activeCapability, setActiveCapability] = useState<string | null>(null);
   const [capabilityStartTime, setCapabilityStartTime] = useState<number | null>(null);
 
+  // Menu URL prompt: when margin analysis can't find a menu, we ask the user
+  const [awaitingMenuUrl, setAwaitingMenuUrl] = useState(false);
+
   // Unique message ID generator
   const msgIdCounter = useRef(0);
   const nextMsgId = () => `msg-${Date.now()}-${++msgIdCounter.current}`;
@@ -189,7 +192,65 @@ export default function Home() {
 
   // ACTION_CHIP_MAP imported from @/lib/suggestionChips
 
+  // Re-run margin surgery with a user-provided menu URL
+  const executeCapabilityWithMenuUrl = async (menuUrl: string) => {
+    if (!locatedBusiness) return;
+    setIsTyping(true);
+    setActiveCapability('surgery');
+    setCapabilityStartTime(Date.now());
+    setMessages(prev => [...prev, msg('model', "Got it! Analyzing your menu now... ⏱️")]);
+
+    try {
+      const { menuScreenshotBase64: _stripped, ...identityForApi } = locatedBusiness as any;
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: locatedBusiness.officialUrl,
+          enrichedProfile: identityForApi,
+          menuUrl,
+          advancedMode: false,
+        }),
+      });
+
+      if (!res.ok) {
+        let errMsg = "Analysis Failed";
+        try { const err = await res.json(); errMsg = err.error || errMsg; } catch { errMsg = `Server error (${res.status})`; }
+        throw new Error(errMsg);
+      }
+
+      const data = await res.json();
+      if (data.menuNotFound) {
+        setMessages(prev => [...prev, msg('model', "I still couldn't extract menu items from that URL. Make sure it's a direct link to the menu page with prices listed.")]);
+        setAwaitingMenuUrl(true);
+        return;
+      }
+
+      setReport(data);
+      if (data.reportUrl) {
+        setMarginReportUrl(data.reportUrl);
+        const totalLeakage = data.menu_items?.reduce((s: number, i: { price_leakage: number }) => s + i.price_leakage, 0) || 0;
+        sendReportEmailAsync('margin', data.reportUrl, locatedBusiness.name, `$${totalLeakage.toFixed(2)} total profit leakage detected across ${data.menu_items?.length || 0} menu items. Overall score: ${data.overall_score}/100.`);
+      }
+      setMessages(prev => [...prev, msg('model', "Price analysis complete! Your optimization dashboard is ready.\n\n[Schedule a call](https://hephae.co/schedule) to discuss your pricing strategy with our team.")]);
+    } catch (e: any) {
+      setMessages(prev => [...prev, msg('model', `Price analysis couldn't complete: ${e.message}`)]);
+    } finally {
+      setIsTyping(false);
+      setActiveCapability(null);
+      setCapabilityStartTime(null);
+    }
+  };
+
   const sendMessage = async (text: string) => {
+    // Intercept: if we're waiting for a menu URL from the user, retry surgery
+    if (awaitingMenuUrl && locatedBusiness && /^https?:\/\//i.test(text.trim())) {
+      setAwaitingMenuUrl(false);
+      setMessages(prev => [...prev, msg('user', text)]);
+      executeCapabilityWithMenuUrl(text.trim());
+      return;
+    }
+
     // Route action chips directly to executeCapability
     const mappedCapability = ACTION_CHIP_MAP[text];
     if (mappedCapability && locatedBusiness) {
@@ -461,6 +522,14 @@ export default function Home() {
         }
 
         const data = await res.json();
+
+        // P2b: Handle menuNotFound — ask user for a menu URL
+        if (data.menuNotFound) {
+          setAwaitingMenuUrl(true);
+          setMessages(prev => [...prev, msg('model', "I couldn't find a menu online for this business. Paste a link to the menu (website page, PDF, or delivery platform like DoorDash/Grubhub) and I'll analyze it.")]);
+          return;
+        }
+
         setReport(data);
         if (data.reportUrl) {
           setMarginReportUrl(data.reportUrl);

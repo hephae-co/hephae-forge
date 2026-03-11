@@ -6,10 +6,13 @@ Each test evaluates one agent using AgentEvaluator.evaluate(), which:
   3. Runs the agent against each test case
   4. Asserts metric scores meet thresholds
 
-Run all:  pytest tests/evals/ -v
+These tests require GEMINI_API_KEY to call the Gemini API.
+
+Run all:  pytest tests/evals/ -v -m integration
 Run one:  pytest tests/evals/test_agent_evals.py::test_county_resolver -v
 """
 
+import os
 from pathlib import Path
 
 import pytest
@@ -17,6 +20,15 @@ from google.adk.evaluation import AgentEvaluator
 
 # Resolve the evals root directory
 EVALS_DIR = Path(__file__).resolve().parent
+
+# Skip all tests in this module if GEMINI_API_KEY is not set
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        not os.environ.get("GEMINI_API_KEY"),
+        reason="GEMINI_API_KEY not set — eval tests require a real Gemini API key",
+    ),
+]
 
 
 # ---------------------------------------------------------------------------

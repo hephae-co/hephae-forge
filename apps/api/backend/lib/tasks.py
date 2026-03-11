@@ -24,7 +24,7 @@ def enqueue_agent_task(
     
     project = os.environ.get("GOOGLE_CLOUD_PROJECT", "hephae-co-dev")
     queue = "hephae-agent-queue"
-    location = os.environ.get("CLOUD_RUN_REGION", "us-east1")
+    location = os.environ.get("CLOUD_RUN_REGION", "us-central1")
     url = f"{settings.API_BASE_URL}/api/research/tasks/execute"
 
     # Use client from environment

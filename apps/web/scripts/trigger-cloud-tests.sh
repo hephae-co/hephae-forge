@@ -12,8 +12,8 @@
 # ──────────────────────────────────────────────────────────────
 set -euo pipefail
 
-PROJECT_ID="hephae-co-dev"
-REGION="us-east1"
+PROJECT_ID="${GCP_PROJECT_ID:?Set GCP_PROJECT_ID env var}"
+REGION="us-central1"
 JOB_NAME="integration-tests"
 BUCKET="everything-hephae"
 
@@ -91,7 +91,7 @@ fi
 # Update image to latest (pick up newly deployed code)
 # ──────────────────────────────────────────────────────────────
 TAG=$(git rev-parse --short HEAD)
-IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/hephae-forge-api:${TAG}"
+IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/hephae-forge-api:${TAG}"
 info "Updating job image to ${TAG}..."
 gcloud run jobs update "$JOB_NAME" \
     --image "$IMAGE" \

@@ -103,7 +103,7 @@ async def run_job_now(job_id: str):
 
     # Trigger the Cloud Run Job via gcloud CLI (available in Cloud Run environment)
     project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "hephae-co-dev")
-    region = os.environ.get("CLOUD_RUN_REGION", "us-east1")
+    region = os.environ.get("CLOUD_RUN_REGION", "us-central1")
     job_name = "discovery-batch"
 
     import asyncio

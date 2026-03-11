@@ -10,14 +10,14 @@ set -euo pipefail
 # ─────────────────────────────────────────────────────────────
 
 PROJECT_ID="${GCP_PROJECT_ID:?Set GCP_PROJECT_ID env var}"
-REGION="us-east1"
-BUILD_REGION="us-east1"
+REGION="us-central1"
+BUILD_REGION="us-central1"
 REPO="cloud-run-source-deploy"
 TAG=$(git rev-parse --short HEAD)
 SERVICE_ACCOUNT="hephae-forge@${PROJECT_ID}.iam.gserviceaccount.com"
 
 API_SERVICE="hephae-forge-api"
-API_IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${API_SERVICE}:${TAG}"
+API_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${API_SERVICE}:${TAG}"
 
 CRAWL4AI_SERVICE="hephae-crawl4ai"
 

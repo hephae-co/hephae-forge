@@ -103,13 +103,13 @@ export default function HephaeAdminDashboard() {
       {/* Accent gradient bar */}
       <div className="h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
 
-      <div className="max-w-5xl mx-auto px-8 py-8">
+      <div className="max-w-[90rem] mx-auto px-6 py-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 shrink-0">
             <Image src="/hephae_logo_blue.png" alt="Hephae" width={44} height={44} className="rounded-lg" />
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-3xl font-extrabold text-gray-900">Hephae</h1>
+                <h1 className="text-3xl font-extrabold text-gray-900 whitespace-nowrap">Hephae</h1>
                 <span className="text-[10px] font-bold uppercase tracking-widest bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-200">Admin</span>
               </div>
               <p className="text-gray-500 mt-0.5 text-sm">Agentic Control Center</p>

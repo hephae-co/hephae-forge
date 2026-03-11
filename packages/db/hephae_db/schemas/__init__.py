@@ -30,6 +30,19 @@ from hephae_db.schemas.agent_outputs import (
     ZipcodeReportSections,
     ZipcodeReportComposerOutput,
     InsightsOutput,
+    # Capability runner outputs
+    TrafficSlot,
+    ForecastDay,
+    NearbyPOI,
+    ForecastBusiness,
+    TrafficForecastOutput,
+    CompetitorEntry,
+    SourceRef,
+    CompetitiveAnalysisOutput,
+    SeoMethodology,
+    SeoRecommendation,
+    SeoSection,
+    SeoAuditorOutput,
 )
 
 __all__ = [
@@ -62,4 +75,17 @@ __all__ = [
     "ZipcodeReportSections",
     "ZipcodeReportComposerOutput",
     "InsightsOutput",
+    # Capability runner outputs
+    "TrafficSlot",
+    "ForecastDay",
+    "NearbyPOI",
+    "ForecastBusiness",
+    "TrafficForecastOutput",
+    "CompetitorEntry",
+    "SourceRef",
+    "CompetitiveAnalysisOutput",
+    "SeoMethodology",
+    "SeoRecommendation",
+    "SeoSection",
+    "SeoAuditorOutput",
 ]

@@ -96,15 +96,17 @@ Note: Inter-service auth (admin→web HMAC) has been eliminated — capabilities
 
 ### GCP Infrastructure
 
+All services deploy to `us-central1`. Run `bash infra/setup.sh` to bootstrap a fresh project.
+
 | Component | Value |
 |-----------|-------|
-| GCP Project | `hephae-co-dev` |
+| Region | `us-central1` (all services, builds, jobs) |
+| GCP Project | Set via `GCP_PROJECT_ID` env var |
 | Firestore | Default (auto-initialized via ADC) |
-| BigQuery Dataset | `hephae-co-dev.hephae` |
-| GCS Bucket (legacy) | `everything-hephae` |
-| GCS Legacy Base | `https://storage.googleapis.com/everything-hephae/` |
-| GCS CDN Bucket | `hephae-co-dev-prod-cdn-assets` |
-| CDN Public Base | `https://cdn.hephae.co/` |
+| BigQuery Dataset | `$GCP_PROJECT_ID.hephae` |
+| GCS Bucket (legacy) | Set via `GCS_BUCKET` env var |
+| GCS CDN Bucket | Set via `GCS_CDN_BUCKET` env var |
+| CDN Public Base | Set via `CDN_BASE_URL` env var |
 
 ### Evaluation Standards
 
@@ -126,6 +128,9 @@ See `contracts/` for shared documentation:
 ## Commands
 
 ```bash
+# First-time GCP setup (idempotent — safe to re-run)
+bash infra/setup.sh
+
 # Unified API
 cd apps/api && pip install -e . && uvicorn backend.main:app --reload --port 8080
 
@@ -141,8 +146,10 @@ pip install -e packages/common-python -e packages/db -e packages/integrations -e
 # Run tests
 python -m pytest tests/
 
-# Deploy unified API
-bash apps/api/infra/deploy.sh
+# Deploy (all to us-central1)
+bash apps/api/infra/deploy.sh       # Unified API
+bash apps/web/infra/deploy.sh       # Web frontend
+bash apps/admin/infra/deploy.sh     # Admin frontend
 ```
 
 ## Working in This Repo

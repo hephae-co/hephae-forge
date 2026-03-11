@@ -2,7 +2,7 @@
 set -e
 
 # Configuration
-PROJECT_ID="hephae-co-dev"
+PROJECT_ID="${GCP_PROJECT_ID:?Set GCP_PROJECT_ID env var}"
 REGION="us-central1"
 SERVICE_NAME="hephae-admin"
 REPO="${REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy"

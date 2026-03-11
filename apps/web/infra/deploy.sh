@@ -10,14 +10,14 @@ set -euo pipefail
 # ─────────────────────────────────────────────────────────────
 
 PROJECT_ID="${GCP_PROJECT_ID:?Set GCP_PROJECT_ID env var}"
-REGION="us-east1"
+REGION="us-central1"
 REPO="cloud-run-source-deploy"
 TAG=$(git rev-parse --short HEAD)
 SERVICE_ACCOUNT="hephae-forge@${PROJECT_ID}.iam.gserviceaccount.com"
 
 WEB_SERVICE="hephae-forge-web"
 API_SERVICE="hephae-forge-api"
-WEB_IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${WEB_SERVICE}:${TAG}"
+WEB_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${WEB_SERVICE}:${TAG}"
 
 # Resolve repo root (build context must be monorepo root)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -86,7 +86,7 @@ YAML
 gcloud builds submit \
   --config /tmp/cloudbuild-web.yaml \
   --project "$PROJECT_ID" \
-  --region "$REGION" \
+  --region "${BUILD_REGION:-$REGION}" \
   --timeout=600 "$REPO_ROOT"
 
 # ─────────────────────────────────────────────────────────────

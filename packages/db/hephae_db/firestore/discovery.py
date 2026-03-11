@@ -42,9 +42,23 @@ async def write_discovery(
     zip_code: Optional[str] = None,
     agent_version: str = "5.0.0",
 ) -> None:
-    """Write discovery result to Firestore + BigQuery."""
+    """Write discovery result to Firestore + BigQuery.
+
+    Validates the profile dict against the EnrichedProfile Pydantic model
+    before writing. Invalid fields are logged and stripped; the write still
+    proceeds with valid data so discovery is never lost.
+    """
     from hephae_common.firebase import get_db
+    from hephae_common.models import EnrichedProfile
     from hephae_db.bigquery.writer import bq_insert
+
+    # Validate against Pydantic model — coerce and strip unknown fields
+    try:
+        validated = EnrichedProfile.model_validate(profile)
+        profile = validated.model_dump(by_alias=True, exclude_none=False)
+    except Exception as err:
+        logger.warning(f"[DB] Profile validation warning for {profile.get('name')}: {err}")
+        # Proceed with raw dict — better to write imperfect data than lose it
 
     db = get_db()
     run_at = datetime.now(timezone.utc)

@@ -29,6 +29,7 @@ from hephae_capabilities.traffic_forecaster.prompts import (
 )
 from hephae_capabilities.traffic_forecaster.tools import weather_tool
 from hephae_common.adk_helpers import user_msg
+from hephae_db.schemas.agent_outputs import TrafficForecastOutput
 
 logger = logging.getLogger(__name__)
 
@@ -222,6 +223,7 @@ class ForecasterAgent:
             config=genai_types.GenerateContentConfig(
                 system_instruction="You are an expert Local Foot Traffic Forecaster generating strict JSON based on Intelligence Data.",
                 response_mime_type="application/json",
+                response_schema=TrafficForecastOutput,
                 temperature=0.2,
             ),
         )

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Loader2, Calendar, ExternalLink, Mail, ArrowRight, X, Activity, TrendingUp } from 'lucide-react';
+import { Shield, Loader2, Calendar, ExternalLink, Mail, ArrowRight, X, Activity, TrendingUp, MessageSquare, Zap } from 'lucide-react';
 
 interface AuthWallProps {
   isOpen: boolean;
@@ -69,33 +69,43 @@ export function AuthWall({ isOpen, onGoogleSignIn, onEmailSubmit, onSkip }: Auth
               </div>
 
               <h2 className="text-2xl font-bold text-white mb-2">
-                Save Your Report
+                Your Analysis is Ready
               </h2>
-              <p className="text-slate-300 text-sm mb-4 leading-relaxed">
-                Create a free account to unlock powerful monitoring tools:
+              <p className="text-slate-300 text-sm mb-1 leading-relaxed">
+                Sign in to keep it &mdash; and unlock free weekly monitoring:
+              </p>
+              <p className="text-emerald-400/80 text-xs font-medium mb-4">
+                100% free. No credit card. Cancel anytime.
               </p>
 
               {/* Benefit cards */}
               <div className="space-y-2.5 mb-6 text-left">
-                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15">
                   <Activity className="w-4.5 h-4.5 text-emerald-400 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-white text-sm font-medium">Weekly Heartbeat Monitoring</p>
-                    <p className="text-slate-400 text-xs leading-relaxed">Auto-track SEO, margins, traffic & competitors. Get emailed only when something changes.</p>
+                    <p className="text-slate-400 text-xs leading-relaxed">We re-run SEO, margin, traffic & competitor checks every week. You get emailed <span className="text-emerald-400">only when scores change</span>.</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
-                  <Shield className="w-4.5 h-4.5 text-blue-400 mt-0.5 shrink-0" />
+                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-blue-500/[0.06] border border-blue-500/15">
+                  <MessageSquare className="w-4.5 h-4.5 text-blue-400 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-white text-sm font-medium">Save & Access Reports</p>
-                    <p className="text-slate-400 text-xs leading-relaxed">All your business analyses in one place. Access anytime from any device.</p>
+                    <p className="text-white text-sm font-medium">Smarter Conversations</p>
+                    <p className="text-slate-400 text-xs leading-relaxed">Chat remembers your business context across sessions. Ask follow-up questions days later &mdash; no repeating yourself.</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-purple-500/[0.06] border border-purple-500/15">
                   <TrendingUp className="w-4.5 h-4.5 text-purple-400 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-white text-sm font-medium">Track Changes Over Time</p>
-                    <p className="text-slate-400 text-xs leading-relaxed">See how your scores evolve week over week. Spot trends before they become problems.</p>
+                    <p className="text-white text-sm font-medium">Track Scores Over Time</p>
+                    <p className="text-slate-400 text-xs leading-relaxed">See how SEO, margins, and traffic evolve week-to-week. Spot drops before they hurt revenue.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-2.5 rounded-xl bg-amber-500/[0.06] border border-amber-500/15">
+                  <Zap className="w-4.5 h-4.5 text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-white text-sm font-medium">All Reports in One Place</p>
+                    <p className="text-slate-400 text-xs leading-relaxed">Access every analysis from any device. Share reports with your team or accountant.</p>
                   </div>
                 </div>
               </div>

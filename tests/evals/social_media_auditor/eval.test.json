@@ -7,12 +7,10 @@
       "conversation": [
         {
           "invocation_id": "turn_1",
-          "user_content": [
-            {
+          "user_content": {
               "parts": [{"text": "Audit the social media presence for Mario's Pizzeria located at 123 Main St, Nutley, NJ 07110. Research all social media platforms they may be present on (Facebook, Instagram, X/Twitter, Yelp, Google Business). Evaluate their content strategy, engagement, and growth opportunities."}],
               "role": "user"
-            }
-          ],
+          },
           "final_response": {
             "parts": [{"text": "{\"overall_score\": 32, \"summary\": \"Mario's Pizzeria has a minimal social media presence with a Facebook page that hasn't been updated in 14 months and no Instagram account. Their Yelp listing has 47 reviews averaging 4.2 stars but lacks owner responses. The business is missing significant opportunities to engage their loyal customer base online and attract new customers through social discovery.\", \"platforms\": [{\"platform\": \"facebook\", \"exists\": true, \"followers\": 312, \"last_post_days_ago\": 420, \"score\": 15, \"notes\": \"Page exists but completely dormant — last post was over a year ago\"}, {\"platform\": \"instagram\", \"exists\": false, \"score\": 0, \"notes\": \"No Instagram account found\"}, {\"platform\": \"yelp\", \"exists\": true, \"reviews\": 47, \"avg_rating\": 4.2, \"score\": 60, \"notes\": \"Good organic reviews but zero owner responses\"}, {\"platform\": \"google_business\", \"exists\": true, \"reviews\": 89, \"avg_rating\": 4.3, \"score\": 45, \"notes\": \"Profile claimed but no posts or updates in 6 months\"}], \"platform_count\": 2, \"recommendations\": [\"Create an Instagram account immediately — pizza is highly visual and drives discovery\", \"Post 3x per week on Instagram: pizza photos, kitchen videos, specials\", \"Reactivate Facebook with a weekly post schedule\", \"Respond to all Yelp reviews (positive and negative) — owner responses boost trust\", \"Post to Google Business weekly to improve local search ranking\", \"Run a 'tag us for a free cannoli' Instagram launch campaign to build following\"]}"}],
             "role": "model"
@@ -37,12 +35,10 @@
       "conversation": [
         {
           "invocation_id": "turn_1",
-          "user_content": [
-            {
+          "user_content": {
               "parts": [{"text": "Audit the social media presence for Glow Salon & Spa located at 456 Oak Ave, Montclair, NJ 07042. Research all social media platforms they may be present on (Facebook, Instagram, X/Twitter, Yelp, Google Business). Evaluate their content strategy, engagement, and growth opportunities."}],
               "role": "user"
-            }
-          ],
+          },
           "final_response": {
             "parts": [{"text": "{\"overall_score\": 58, \"summary\": \"Glow Salon & Spa has a moderate social media presence with an active Instagram (847 followers, posts 2x/week) and a Facebook page. Their content is primarily before/after hair transformations which perform well. They're missing a TikTok presence where their competitors are growing rapidly, and their Google Business Profile needs more frequent posting to improve local SEO.\", \"platforms\": [{\"platform\": \"instagram\", \"exists\": true, \"followers\": 847, \"posts_per_week\": 2, \"avg_likes\": 45, \"score\": 62, \"notes\": \"Active account with good hair transformation content; could improve Reels frequency\"}, {\"platform\": \"facebook\", \"exists\": true, \"followers\": 523, \"last_post_days_ago\": 12, \"score\": 55, \"notes\": \"Regular posting but low engagement — content not optimized for Facebook algorithm\"}, {\"platform\": \"tiktok\", \"exists\": false, \"score\": 0, \"notes\": \"No TikTok account — missing high-growth platform for salon content\"}, {\"platform\": \"google_business\", \"exists\": true, \"reviews\": 134, \"avg_rating\": 4.6, \"score\": 70, \"notes\": \"Strong review count and rating; last Google post was 3 weeks ago\"}], \"platform_count\": 2, \"recommendations\": [\"Launch TikTok with 3-5 transformation videos per week — salon content performs extremely well\", \"Increase Instagram Reels to capture algorithmic boost\", \"Post to Google Business 2x per week — directly impacts local search ranking\", \"Run an Instagram giveaway (free blowout) to cross-promote TikTok launch\", \"Add booking link to all social bios to convert followers to appointments\"]}"}],
             "role": "model"

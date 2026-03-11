@@ -1,0 +1,13 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+pythonpath = [".", "apps/api"]
+markers = [
+    "integration: real API integration tests (requires GEMINI_API_KEY)",
+    "needs_browser: tests that need Playwright/crawl4ai (skip on Cloud Run)",
+    "human_curated: human-curated eval tests (requires Firestore + fixtures)",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120

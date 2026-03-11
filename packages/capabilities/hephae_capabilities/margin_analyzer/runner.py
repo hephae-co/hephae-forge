@@ -18,7 +18,7 @@ from typing import Any
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from hephae_common.adk_helpers import user_msg, user_msg_with_image
+from hephae_common.adk_helpers import user_msg, user_msg_with_image, _strip_markdown_fences
 
 from hephae_capabilities.margin_analyzer.agent import (
     vision_intake_agent,
@@ -31,8 +31,16 @@ from hephae_capabilities.margin_analyzer.agent import (
 logger = logging.getLogger(__name__)
 
 
-def _clean_json(text: str) -> str:
-    return re.sub(r"```json\s*|\s*```", "", text).strip()
+def _parse_json_safe(text: str) -> Any:
+    """Parse JSON from agent output, stripping markdown fences if needed."""
+    if not text:
+        return None
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        clean = _strip_markdown_fences(text)
+        return json.loads(clean)
 
 
 async def run_margin_analysis(
@@ -103,8 +111,10 @@ async def run_margin_analysis(
 
     try:
         logger.info(f"[Margin Runner] Raw Vision Output: {menu_items_prompt[:200]}")
-        menu_items_prompt = _clean_json(menu_items_prompt)
-        menu_items = json.loads(menu_items_prompt)
+        parsed = _parse_json_safe(menu_items_prompt)
+        if parsed is not None:
+            menu_items = parsed if isinstance(parsed, list) else []
+            menu_items_prompt = json.dumps(parsed)
     except (json.JSONDecodeError, ValueError):
         logger.warning("Vision parse failed")
 
@@ -135,7 +145,7 @@ async def run_margin_analysis(
                     if isinstance(delta, dict) and delta.get("competitorBenchmarks"):
                         val = delta["competitorBenchmarks"]
                         result = val if isinstance(val, str) else json.dumps(val)
-            return _clean_json(result)
+            return result.strip()
 
         async def _run_commodity_watchdog():
             result = "[]"
@@ -151,7 +161,7 @@ async def run_margin_analysis(
                     if isinstance(delta, dict) and delta.get("commodityTrends"):
                         val = delta["commodityTrends"]
                         result = val if isinstance(val, str) else json.dumps(val)
-            return _clean_json(result)
+            return result.strip()
 
         benchmark_prompt, commodity_prompt = await asyncio.gather(
             _run_benchmarker(),
@@ -216,9 +226,8 @@ async def run_margin_analysis(
                 surgeon_prompt = val if isinstance(val, str) else json.dumps(val)
 
     if not menu_analysis and surgeon_prompt:
-        surgeon_prompt = _clean_json(surgeon_prompt)
         try:
-            parsed = json.loads(surgeon_prompt)
+            parsed = _parse_json_safe(surgeon_prompt)
             if isinstance(parsed, list):
                 menu_analysis = parsed
             elif isinstance(parsed, dict):
@@ -246,7 +255,9 @@ async def run_margin_analysis(
                 val = delta["strategicAdvice"]
                 raw_adv = val if isinstance(val, str) else json.dumps(val)
                 try:
-                    strategic_advice = json.loads(_clean_json(raw_adv))
+                    strategic_advice = _parse_json_safe(raw_adv)
+                    if not isinstance(strategic_advice, list):
+                        strategic_advice = []
                 except (json.JSONDecodeError, ValueError):
                     pass
 

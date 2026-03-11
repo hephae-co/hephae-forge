@@ -11,14 +11,14 @@ set -euo pipefail
 
 PROJECT_ID="${GCP_PROJECT_ID:?Set GCP_PROJECT_ID env var}"
 REGION="us-central1"
-BUILD_REGION="us-east1"
+BUILD_REGION="us-central1"
 REPO="cloud-run-source-deploy"
 TAG=$(git rev-parse --short HEAD)
 SERVICE_ACCOUNT="hephae-forge@${PROJECT_ID}.iam.gserviceaccount.com"
 
 ADMIN_SERVICE="hephae-admin-web"
 API_SERVICE="hephae-forge-api"
-ADMIN_IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/${REPO}/${ADMIN_SERVICE}:${TAG}"
+ADMIN_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${ADMIN_SERVICE}:${TAG}"
 
 # Resolve repo root (build context must be monorepo root)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -91,10 +91,10 @@ gcloud builds submit \
   --timeout=600 "$REPO_ROOT"
 
 # ─────────────────────────────────────────────────────────────
-# Get API URL from existing service (API is in us-east1)
+# Get API URL from existing service
 # ─────────────────────────────────────────────────────────────
 API_URL=$(gcloud run services describe "$API_SERVICE" \
-  --region "us-east1" --project "$PROJECT_ID" \
+  --region "$REGION" --project "$PROJECT_ID" \
   --format="value(status.url)")
 echo "   ✓ API URL: ${API_URL}"
 

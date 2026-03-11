@@ -8,21 +8,40 @@ from __future__ import annotations
 
 import logging
 import os
+import uuid
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.config import settings
 
 load_dotenv(".env.local")
 load_dotenv()
 
+# ── Request trace ID ──────────────────────────────────────────────────────
+# Each request gets a unique trace ID for log correlation across modules.
+# Access from anywhere: from backend.main import trace_id; trace_id.get()
+trace_id: ContextVar[str] = ContextVar("trace_id", default="-")
+
+
+class _TraceFilter(logging.Filter):
+    """Injects trace_id into every log record."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.trace_id = trace_id.get()  # type: ignore[attr-defined]
+        return True
+
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    format="%(asctime)s [%(name)s] %(levelname)s [%(trace_id)s] %(message)s",
 )
+# Add the filter to the root logger so all child loggers inherit it
+logging.getLogger().addFilter(_TraceFilter())
 logger = logging.getLogger(__name__)
 
 
@@ -53,6 +72,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class TraceMiddleware(BaseHTTPMiddleware):
+    """Assign a short trace ID to every request for log correlation."""
+
+    async def dispatch(self, request: Request, call_next):
+        rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:12]
+        token = trace_id.set(rid)
+        response = await call_next(request)
+        response.headers["x-trace-id"] = rid
+        trace_id.reset(token)
+        return response
+
+
+app.add_middleware(TraceMiddleware)
 
 
 @app.get("/api/health")

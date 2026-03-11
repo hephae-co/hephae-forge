@@ -13,6 +13,7 @@ from hephae_capabilities.competitive_analysis.prompts import (
     COMPETITOR_PROFILER_INSTRUCTION,
     MARKET_POSITIONING_INSTRUCTION,
 )
+from hephae_db.schemas.agent_outputs import CompetitiveAnalysisOutput
 
 competitor_profiler_agent = LlmAgent(
     name="CompetitorProfilerAgent",
@@ -27,5 +28,6 @@ market_positioning_agent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     generate_content_config=ThinkingPresets.HIGH,
     instruction=MARKET_POSITIONING_INSTRUCTION,
+    output_schema=CompetitiveAnalysisOutput,
     on_model_error_callback=fallback_on_error,
 )

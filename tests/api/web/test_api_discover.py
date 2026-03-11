@@ -552,3 +552,92 @@ class TestChallenges:
         data = res.json()
         assert data["challenges"] is not None
         assert "Low Yelp rating" in data["challenges"]["reputationRisks"]
+
+
+# ---------------------------------------------------------------------------
+# User-business linking (authenticated discover)
+# ---------------------------------------------------------------------------
+
+MOCK_AUTH_USER = {"uid": "auth-user-1", "email": "user@example.com", "name": "Auth User", "picture": None}
+
+
+@pytest_asyncio.fixture
+async def authed_client():
+    """Client with run_discovery mocked AND authenticated user."""
+    mock_run_discovery = AsyncMock(return_value=_base_enriched())
+
+    with (
+        patch("backend.routers.web.discover.run_discovery", mock_run_discovery),
+        patch("backend.routers.web.discover.upload_report", new_callable=AsyncMock, return_value="https://cdn.test/report.html"),
+        patch("backend.routers.web.discover.build_profile_report", return_value="<html/>"),
+        patch("backend.routers.web.discover.generate_slug", side_effect=lambda n: n.lower().replace(" ", "-")),
+        patch("backend.routers.web.discover.write_discovery", AsyncMock()),
+        patch("backend.routers.web.discover.write_agent_result", AsyncMock()),
+        patch("backend.routers.web.discover._capture_menu", new_callable=AsyncMock, return_value=("", "")),
+        patch("hephae_db.firestore.users.add_business_to_user") as mock_add_biz,
+    ):
+        from backend.main import app
+        from backend.lib.auth import optional_firebase_user
+
+        app.dependency_overrides[optional_firebase_user] = lambda: MOCK_AUTH_USER
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            ac._mock_add_biz = mock_add_biz  # type: ignore[attr-defined]
+            yield ac
+
+        app.dependency_overrides.pop(optional_firebase_user, None)
+
+
+@pytest_asyncio.fixture
+async def guest_discover_client():
+    """Client with run_discovery mocked and NO auth (guest)."""
+    mock_run_discovery = AsyncMock(return_value=_base_enriched())
+
+    with (
+        patch("backend.routers.web.discover.run_discovery", mock_run_discovery),
+        patch("backend.routers.web.discover.upload_report", new_callable=AsyncMock, return_value="https://cdn.test/report.html"),
+        patch("backend.routers.web.discover.build_profile_report", return_value="<html/>"),
+        patch("backend.routers.web.discover.generate_slug", side_effect=lambda n: n.lower().replace(" ", "-")),
+        patch("backend.routers.web.discover.write_discovery", AsyncMock()),
+        patch("backend.routers.web.discover.write_agent_result", AsyncMock()),
+        patch("backend.routers.web.discover._capture_menu", new_callable=AsyncMock, return_value=("", "")),
+        patch("hephae_db.firestore.users.add_business_to_user") as mock_add_biz,
+    ):
+        from backend.main import app
+        from backend.lib.auth import optional_firebase_user
+
+        app.dependency_overrides[optional_firebase_user] = lambda: None
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            ac._mock_add_biz = mock_add_biz  # type: ignore[attr-defined]
+            yield ac
+
+        app.dependency_overrides.pop(optional_firebase_user, None)
+
+
+class TestUserBusinessLinking:
+    @pytest.mark.asyncio
+    async def test_links_business_to_authenticated_user(self, authed_client):
+        """Authenticated discover should call add_business_to_user with uid and slug."""
+        res = await authed_client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        assert res.status_code == 200
+
+        # Give fire-and-forget task time to schedule
+        import asyncio
+        await asyncio.sleep(0.1)
+
+        # add_business_to_user is called via asyncio.to_thread, so check it was invoked
+        authed_client._mock_add_biz.assert_called_once_with("auth-user-1", "bosphorus-restaurant")
+
+    @pytest.mark.asyncio
+    async def test_guest_discover_does_not_link(self, guest_discover_client):
+        """Guest discover should NOT call add_business_to_user."""
+        res = await guest_discover_client.post("/api/discover", json={"identity": BASE_IDENTITY})
+        assert res.status_code == 200
+
+        import asyncio
+        await asyncio.sleep(0.1)
+
+        guest_discover_client._mock_add_biz.assert_not_called()

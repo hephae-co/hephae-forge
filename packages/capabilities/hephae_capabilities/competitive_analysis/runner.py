@@ -1,14 +1,13 @@
 """Competitive Analysis runner — stateless 2-stage pipeline.
 
 Stage 1: Competitor Profiler — researches competitors
-Stage 2: Market Positioning — synthesizes competitive strategy JSON
+Stage 2: Market Positioning — synthesizes competitive strategy JSON (native structured output)
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import re
 import time
 from typing import Any
 
@@ -144,14 +143,20 @@ async def run_competitive_analysis(
                 if getattr(part, "text", None):
                     strategy_buffer += part.text
 
-    # Robust JSON extraction
-    clean_json_str = re.sub(r"```json\s*", "", strategy_buffer)
-    clean_json_str = re.sub(r"```\s*", "", clean_json_str).strip()
-    fb = clean_json_str.find("{")
-    lb = clean_json_str.rfind("}")
-    if fb != -1 and lb > fb:
-        clean_json_str = clean_json_str[fb : lb + 1]
-    payload = json.loads(clean_json_str)
+    # Native structured output — market_positioning_agent has output_schema=CompetitiveAnalysisOutput
+    # so the text is guaranteed valid JSON by Gemini's schema enforcement
+    try:
+        payload = json.loads(strategy_buffer)
+    except json.JSONDecodeError:
+        logger.warning("[Competitive Runner] Native JSON parse failed, attempting fallback extraction")
+        # Fallback: strip markdown fences if model didn't honor output_schema
+        from hephae_common.adk_helpers import _strip_markdown_fences
+        clean = _strip_markdown_fences(strategy_buffer)
+        fb = clean.find("{")
+        lb = clean.rfind("}")
+        if fb != -1 and lb > fb:
+            clean = clean[fb : lb + 1]
+        payload = json.loads(clean)
 
     logger.info(f"[Competitive Runner] Success: {list(payload.keys())}")
     return payload

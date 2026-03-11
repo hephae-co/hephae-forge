@@ -1,6 +1,6 @@
 """SEO Auditor runner — stateless async function.
 
-Runs the SEO auditor agent with fallback model support.
+Runs the SEO auditor agent with native structured output (output_schema).
 Returns the parsed SEO report dict.
 """
 
@@ -18,31 +18,37 @@ from google.adk.sessions import InMemorySessionService
 
 from hephae_common.model_config import AgentModels
 from hephae_common.model_fallback import fallback_on_error
-from hephae_common.adk_helpers import user_msg
+from hephae_common.adk_helpers import user_msg, _strip_markdown_fences
 
 from hephae_capabilities.seo_auditor.agent import seo_auditor_agent
 from hephae_capabilities.seo_auditor.prompt import SEO_AUDITOR_INSTRUCTION
 from hephae_capabilities.seo_auditor.tools import pagespeed_tool
 from hephae_capabilities.shared_tools import google_search_tool
+from hephae_db.schemas.agent_outputs import SeoAuditorOutput
 
 logger = logging.getLogger(__name__)
 
 
-def _try_extract_json(source: str, label: str) -> dict | None:
+def _try_parse_json(source: str) -> dict | None:
+    """Parse JSON from agent output, with fallback for markdown fences."""
     if not source:
         return None
-    raw = re.sub(r"```json\s*", "", source)
-    raw = re.sub(r"```\s*", "", raw).strip()
-    fb = raw.find("{")
-    lb = raw.rfind("}")
+    try:
+        return json.loads(source)
+    except json.JSONDecodeError:
+        pass
+    # Fallback: strip markdown fences if model didn't honor output_schema
+    clean = _strip_markdown_fences(source)
+    fb = clean.find("{")
+    lb = clean.rfind("}")
     if fb == -1 or lb <= fb:
         return None
-    raw = raw[fb : lb + 1]
+    clean = clean[fb : lb + 1]
     try:
-        return json.loads(raw)
+        return json.loads(clean)
     except json.JSONDecodeError:
         try:
-            return json.loads(re.sub(r",\s*([\]}])", r"\1", raw))
+            return json.loads(re.sub(r",\s*([\]}])", r"\1", clean))
         except json.JSONDecodeError:
             return None
 
@@ -115,10 +121,11 @@ async def _run_seo_agent(agent, identity: dict, memory_service=None) -> dict:
         f"finalResponse={len(final_response_text)} chars, thought={len(thought_buffer)} chars"
     )
 
+    # With output_schema on the agent, the final response should be valid JSON
     return (
-        _try_extract_json(final_response_text, "finalResponse")
-        or _try_extract_json(text_buffer, "textBuffer")
-        or _try_extract_json(thought_buffer, "thoughtBuffer")
+        _try_parse_json(final_response_text)
+        or _try_parse_json(text_buffer)
+        or _try_parse_json(thought_buffer)
         or {}
     )
 
@@ -180,6 +187,7 @@ async def run_seo_audit(
             instruction=SEO_AUDITOR_INSTRUCTION,
             model=AgentModels.ENHANCED_FALLBACK,
             tools=[google_search_tool, pagespeed_tool, load_memory_tool],
+            output_schema=SeoAuditorOutput,
             on_model_error_callback=fallback_on_error,
         )
         fallback_data = await _run_seo_agent(fallback_agent, identity, memory_service)

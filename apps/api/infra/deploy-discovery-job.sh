@@ -16,19 +16,19 @@
 #   To change frequency later without redeploying:
 #     gcloud scheduler jobs update http discovery-batch-trigger \
 #       --schedule "0 2 * * 0" \   # weekly (Sunday 2am)
-#       --project hephae-co-dev
+#       --project $GCP_PROJECT_ID
 #
 # Trigger manually:
-#   gcloud run jobs execute discovery-batch --region us-east1 --project hephae-co-dev --wait
+#   gcloud run jobs execute discovery-batch --region us-central1 --project $GCP_PROJECT_ID --wait
 # ──────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-PROJECT_ID="hephae-co-dev"
-REGION="us-east1"
+PROJECT_ID="${GCP_PROJECT_ID:?Set GCP_PROJECT_ID env var}"
+REGION="us-central1"
 JOB_NAME="discovery-batch"
 SCHEDULER_JOB_NAME="${JOB_NAME}-trigger"
 TAG=$(git rev-parse --short HEAD)
-IMAGE="us-east1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/hephae-forge-api:${TAG}"
+IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/hephae-forge-api:${TAG}"
 SERVICE_ACCOUNT="hephae-forge@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # Cost-optimized: minimal resources, sequential processing

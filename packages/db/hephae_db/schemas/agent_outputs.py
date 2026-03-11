@@ -283,3 +283,114 @@ class InsightsOutput(BaseModel):
     keyFindings: list[str] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)
     generatedAt: str = ""
+
+
+# ── Capability Runner Outputs ─────────────────────────────────────────────
+
+
+class TrafficSlot(BaseModel):
+    """A single time-slot forecast entry."""
+
+    label: str
+    score: int = 0
+    level: str = "Low"
+    reason: str = ""
+
+
+class ForecastDay(BaseModel):
+    """One day of traffic forecast."""
+
+    date: str
+    dayOfWeek: str = ""
+    localEvents: list[str] = Field(default_factory=list)
+    weatherNote: str = ""
+    slots: list[TrafficSlot] = Field(default_factory=list)
+
+
+class NearbyPOI(BaseModel):
+    """A nearby point of interest."""
+
+    name: str
+    lat: float = 0
+    lng: float = 0
+    type: str = ""
+
+
+class ForecastBusiness(BaseModel):
+    """Business info embedded in traffic forecast."""
+
+    name: str
+    address: str = ""
+    coordinates: dict[str, float] = Field(default_factory=dict)
+    type: str = ""
+    nearbyPOIs: list[NearbyPOI] = Field(default_factory=list)
+
+
+class TrafficForecastOutput(BaseModel):
+    """Output from ForecasterAgent (3-day foot traffic forecast)."""
+
+    business: ForecastBusiness
+    summary: str = ""
+    forecast: list[ForecastDay] = Field(default_factory=list)
+
+
+class CompetitorEntry(BaseModel):
+    """A single competitor analysis entry."""
+
+    name: str
+    key_strength: str = ""
+    key_weakness: str = ""
+    threat_level: int = 5
+
+
+class SourceRef(BaseModel):
+    """A source reference with URL and title."""
+
+    url: str = ""
+    title: str = ""
+
+
+class CompetitiveAnalysisOutput(BaseModel):
+    """Output from MarketPositioningAgent (competitive strategy JSON)."""
+
+    market_summary: str = ""
+    competitor_analysis: list[CompetitorEntry] = Field(default_factory=list)
+    strategic_advantages: list[str] = Field(default_factory=list)
+    sources: list[SourceRef] = Field(default_factory=list)
+
+
+class SeoMethodology(BaseModel):
+    """Methodology details for an SEO section audit."""
+
+    reasoningSteps: list[str] = Field(default_factory=list)
+    toolsUsed: list[str] = Field(default_factory=list)
+    searchQueries: list[str] = Field(default_factory=list)
+    sourcesUsed: list[SourceRef] = Field(default_factory=list)
+
+
+class SeoRecommendation(BaseModel):
+    """A single SEO recommendation."""
+
+    title: str = ""
+    description: str = ""
+    priority: str = ""
+    impact: str = ""
+
+
+class SeoSection(BaseModel):
+    """A single section of the SEO audit report."""
+
+    id: str
+    title: str
+    score: int = 0
+    description: str = ""
+    recommendations: list[SeoRecommendation] = Field(default_factory=list)
+    methodology: SeoMethodology = Field(default_factory=SeoMethodology)
+
+
+class SeoAuditorOutput(BaseModel):
+    """Output from SeoAuditorAgent (comprehensive SEO audit)."""
+
+    overallScore: int = 0
+    summary: str = ""
+    sections: list[SeoSection] = Field(default_factory=list)

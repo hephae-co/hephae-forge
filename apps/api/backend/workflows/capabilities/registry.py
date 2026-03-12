@@ -174,7 +174,7 @@ CAPABILITY_REGISTRY: list[FullCapabilityDefinition] = [
         firestore_output_key="seo_auditor",
         response_adapter=_seo_adapter,
         runner=_run_seo,
-        evaluator=EvaluatorConfig(_lazy_seo_evaluator, _seo_eval_prompt, "wf-seo-eval"),
+        evaluator=EvaluatorConfig(_lazy_seo_evaluator, _seo_eval_prompt, "wf_seo_eval"),
         enabled=True,
         should_run=lambda biz: bool(biz.get("officialUrl")),
     ),
@@ -184,7 +184,7 @@ CAPABILITY_REGISTRY: list[FullCapabilityDefinition] = [
         firestore_output_key="traffic_forecaster",
         response_adapter=_traffic_adapter,
         runner=_run_traffic,
-        evaluator=EvaluatorConfig(_lazy_traffic_evaluator, _traffic_eval_prompt, "wf-traffic-eval"),
+        evaluator=EvaluatorConfig(_lazy_traffic_evaluator, _traffic_eval_prompt, "wf_traffic_eval"),
         enabled=True,
     ),
     FullCapabilityDefinition(
@@ -193,7 +193,7 @@ CAPABILITY_REGISTRY: list[FullCapabilityDefinition] = [
         firestore_output_key="competitive_analyzer",
         response_adapter=_competitive_adapter,
         runner=_run_competitive,
-        evaluator=EvaluatorConfig(_lazy_competitive_evaluator, _competitive_eval_prompt, "wf-comp-eval"),
+        evaluator=EvaluatorConfig(_lazy_competitive_evaluator, _competitive_eval_prompt, "wf_comp_eval"),
         enabled=True,
     ),
     FullCapabilityDefinition(
@@ -202,7 +202,7 @@ CAPABILITY_REGISTRY: list[FullCapabilityDefinition] = [
         firestore_output_key="margin_surgeon",
         response_adapter=_margin_surgeon_adapter,
         runner=_run_margin,
-        evaluator=EvaluatorConfig(_lazy_margin_evaluator, _margin_eval_prompt, "wf-margin-eval"),
+        evaluator=EvaluatorConfig(_lazy_margin_evaluator, _margin_eval_prompt, "wf_margin_eval"),
         enabled=True,
     ),
     FullCapabilityDefinition(

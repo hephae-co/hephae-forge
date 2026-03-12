@@ -672,6 +672,14 @@ export default function WorkflowDashboard() {
                                             )}
                                         </div>
                                         <div className="text-xs text-gray-500 mt-0.5">{biz.address}</div>
+                                        {!biz.officialUrl && biz.phase !== 'pending' && (
+                                            <div className="text-[10px] text-amber-600 mt-0.5">No website — only social capability ran</div>
+                                        )}
+                                        {biz.lastError && (
+                                            <div className="text-[10px] text-red-500 mt-0.5 truncate max-w-md" title={biz.lastError}>
+                                                Error: {biz.lastError.length > 100 ? biz.lastError.slice(0, 100) + '…' : biz.lastError}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Capability dots */}

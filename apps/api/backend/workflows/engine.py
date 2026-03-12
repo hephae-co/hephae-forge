@@ -46,7 +46,7 @@ class WorkflowEngine:
         self._listeners.discard(listener)
 
     def _emit(self, event_type: str, message: str, business_slug: str | None = None):
-        recompute_progress(self.workflow, phase_enum=WorkflowPhase, progress_model=WorkflowProgress)
+        recompute_progress(self.workflow, phase_enum=BusinessPhase, progress_model=WorkflowProgress)
         event = ProgressEvent(
             type=event_type,
             workflowId=self.workflow.id,
@@ -64,7 +64,7 @@ class WorkflowEngine:
                 pass
 
     async def _checkpoint(self):
-        recompute_progress(self.workflow, phase_enum=WorkflowPhase, progress_model=WorkflowProgress)
+        recompute_progress(self.workflow, phase_enum=BusinessPhase, progress_model=WorkflowProgress)
         await save_workflow(self.workflow)
 
     async def run(self):

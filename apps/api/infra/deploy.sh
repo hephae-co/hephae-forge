@@ -112,7 +112,15 @@ CRAWL4AI_URL=$(gcloud run services describe "$CRAWL4AI_SERVICE" \
 # ─────────────────────────────────────────────────────────────
 echo "── Deploying API service (${API_SERVICE})..."
 
+# Resolve the API's own URL for Cloud Tasks callbacks
+EXISTING_API_URL=$(gcloud run services describe "$API_SERVICE" \
+  --region "$REGION" --project "$PROJECT_ID" \
+  --format="value(status.url)" 2>/dev/null || echo "")
+
 ENV_VARS="PYTHONUNBUFFERED=1"
+if [ -n "$EXISTING_API_URL" ]; then
+  ENV_VARS="${ENV_VARS},API_BASE_URL=${EXISTING_API_URL}"
+fi
 if [ -n "$CRAWL4AI_URL" ]; then
   ENV_VARS="${ENV_VARS},CRAWL4AI_URL=${CRAWL4AI_URL}"
 fi

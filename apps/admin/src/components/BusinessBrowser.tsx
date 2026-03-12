@@ -1317,7 +1317,7 @@ export default function BusinessBrowser({ zipCode }: BusinessBrowserProps) {
                 bulkAction === 'run-analysis' ? 'ANALYZE_FULL' : 
                 bulkAction.toUpperCase();
 
-            await fetch('/api/research/tasks/spawn', {
+            const res = await fetch('/api/research/tasks/spawn', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1326,11 +1326,24 @@ export default function BusinessBrowser({ zipCode }: BusinessBrowserProps) {
                     priority: 5
                 }),
             });
-            
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
+                console.error('[Bulk] Spawn failed:', err);
+                alert(`Failed to spawn tasks: ${err.detail || res.statusText}`);
+                return;
+            }
+
+            const data = await res.json();
+            if (data.enqueueFailed > 0) {
+                console.warn(`[Bulk] ${data.enqueueFailed}/${data.count} tasks failed to enqueue`);
+            }
+
             setTimeout(fetchTasks, 1000);
             setSelectedIds(new Set());
         } catch (err) {
             console.error('[Bulk] Failed to spawn tasks:', err);
+            alert('Failed to spawn tasks — check console for details');
         } finally {
             setBulkLoading(null);
         }

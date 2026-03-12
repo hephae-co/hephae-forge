@@ -358,7 +358,31 @@ fi
 echo ""
 
 # ─────────────────────────────────────────────────────────────
-# 7. BigQuery Dataset
+# 7. Cloud Tasks Queue
+# ─────────────────────────────────────────────────────────────
+echo "── Cloud Tasks ───────────────────────────────"
+
+TASK_QUEUE="hephae-agent-queue"
+if gcloud tasks queues describe "$TASK_QUEUE" --location="$REGION" --project="$PROJECT_ID" &>/dev/null; then
+  check_pass "Queue: ${TASK_QUEUE} (${REGION})"
+else
+  if $CHECK_ONLY; then
+    check_fail "Queue: ${TASK_QUEUE} (does not exist in ${REGION})"
+  else
+    gcloud tasks queues create "$TASK_QUEUE" \
+      --location="$REGION" \
+      --project="$PROJECT_ID" \
+      --max-dispatches-per-second=10 \
+      --max-concurrent-dispatches=5 \
+      --max-attempts=3 --quiet
+    check_pass "Queue: ${TASK_QUEUE} (just created in ${REGION})"
+    CREATED=$((CREATED + 1))
+  fi
+fi
+echo ""
+
+# ─────────────────────────────────────────────────────────────
+# 8. BigQuery Dataset
 # ─────────────────────────────────────────────────────────────
 echo "── BigQuery ──────────────────────────────────"
 

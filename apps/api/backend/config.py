@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     INSTAGRAM_ACCESS_TOKEN: str = os.getenv("INSTAGRAM_ACCESS_TOKEN", "")
     INSTAGRAM_BUSINESS_ACCOUNT_ID: str = os.getenv("INSTAGRAM_BUSINESS_ACCOUNT_ID", "")
 
+    # Cloud Tasks / internal service URL
+    API_BASE_URL: str = os.getenv("API_BASE_URL", "")
+
     # CORS
     ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "*")
 

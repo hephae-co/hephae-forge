@@ -44,15 +44,30 @@ async def list_tasks(businessIds: str = Query(...)):
 async def spawn_tasks(req: SpawnTasksRequest):
     """Bulk spawn tasks into the Cloud Tasks queue."""
     task_ids = []
+    enqueue_failures = 0
     for biz_id in req.businessIds:
         # 1. Create Ledger Entry
         task_id = await create_task(biz_id, req.actionType, priority=req.priority)
-        
+
         # 2. Enqueue in Cloud Tasks
-        enqueue_agent_task(biz_id, req.actionType, task_id, req.priority)
+        result = enqueue_agent_task(biz_id, req.actionType, task_id, req.priority)
+        if result is None:
+            enqueue_failures += 1
+            await update_task(task_id, {"status": STATUS_FAILED, "error": "Failed to enqueue to Cloud Tasks"})
         task_ids.append(task_id)
-        
-    return {"success": True, "count": len(task_ids), "taskIds": task_ids}
+
+    if enqueue_failures == len(req.businessIds):
+        raise HTTPException(
+            status_code=503,
+            detail="Cloud Tasks queue unavailable — no tasks could be enqueued",
+        )
+
+    return {
+        "success": True,
+        "count": len(task_ids),
+        "taskIds": task_ids,
+        "enqueueFailed": enqueue_failures,
+    }
 
 @router.post("/execute")
 async def execute_task(req: ExecuteTaskRequest):

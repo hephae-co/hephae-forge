@@ -264,22 +264,24 @@ async def _run_adk_discovery(zip_code: str, category: str | None = None) -> list
         )
     
     try:
+        # Note: google_search tool cannot be combined with response_schema (function calling),
+        # so we parse the JSON from text output instead.
         result = await run_agent_to_json(
             ZipcodeScannerAgent,
             query,
             app_name="HephaeAdmin",
-            response_schema=ZipcodeScannerOutput,
         )
-        if result and isinstance(result, ZipcodeScannerOutput):
+        if result:
+            raw_businesses = result.get("businesses", []) if isinstance(result, dict) else []
             businesses = [
                 {
-                    "name": b.name,
-                    "address": b.address,
-                    "website": b.website,
-                    "category": b.category or category,
+                    "name": b.get("name", ""),
+                    "address": b.get("address", ""),
+                    "website": b.get("website", ""),
+                    "category": b.get("category") or category,
                 }
-                for b in result.businesses
-                if b.name
+                for b in raw_businesses
+                if b.get("name")
             ]
             return businesses
     except Exception as e:

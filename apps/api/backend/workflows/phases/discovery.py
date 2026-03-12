@@ -1,4 +1,4 @@
-"""Discovery phase — finds businesses via direct runner call or ADK fallback."""
+"""Discovery phase — finds businesses via scan_zipcode (Google Search + OSM)."""
 
 from __future__ import annotations
 
@@ -27,54 +27,20 @@ def _dedup_key(name: str, address: str) -> str:
 async def run_discovery_phase(
     zip_code: str, business_type: str = "Restaurants"
 ) -> list[dict]:
-    """Discover businesses in a single zip code via direct runner call."""
+    """Discover businesses in a single zip code via scan_zipcode.
+
+    Uses the same code path as the Businesses tab — Google Search + OSM
+    parallel discovery with dedup and Firestore persistence.
+    """
     logger.info(f"[Workflow:Discovery] Discovering {business_type} in {zip_code}")
-
-    # Try discovery runner directly (in-process, no HTTP)
-    try:
-        from hephae_capabilities.discovery.runner import run_discovery
-
-        identity = {"query": f"{business_type} in {zip_code}"}
-        result = await run_discovery(identity)
-
-        if result and result.get("success"):
-            data = result.get("data")
-
-            if isinstance(data, list):
-                return [
-                    {
-                        "slug": generate_slug(biz.get("name", "")),
-                        "name": biz.get("name", ""),
-                        "address": biz.get("address", ""),
-                        "officialUrl": biz.get("officialUrl") or biz.get("website"),
-                        "sourceZipCode": zip_code,
-                        "businessType": business_type,
-                    }
-                    for biz in data
-                    if biz.get("name")
-                ]
-
-            if data:
-                return [{
-                    "slug": generate_slug(data.get("name", "")),
-                    "name": data.get("name", ""),
-                    "address": data.get("address", ""),
-                    "officialUrl": data.get("officialUrl") or data.get("website"),
-                    "sourceZipCode": zip_code,
-                    "businessType": business_type,
-                }]
-    except Exception as e:
-        logger.error(f"[Workflow:Discovery] Runner call failed: {e}")
-
-    # Fallback to scanZipcode agent
-    logger.info("[Workflow:Discovery] Falling back to scanZipcode agent")
-    results = await scan_zipcode(zip_code)
+    results = await scan_zipcode(zip_code, force=True)
 
     return [
         {
             "slug": biz.docId or generate_slug(biz.name),
             "name": biz.name,
             "address": biz.address,
+            "officialUrl": getattr(biz, "website", None),
             "sourceZipCode": zip_code,
             "businessType": business_type,
         }

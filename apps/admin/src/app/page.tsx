@@ -3,21 +3,18 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Scorecard from '@/components/Scorecard';
-import ResearchInput from '@/components/ResearchInput';
 import BusinessDiscovery from '@/components/BusinessDiscovery';
-import ZipCodeResearchBrowser from '@/components/ZipCodeResearchBrowser';
-import AreaResearchBrowser from '@/components/AreaResearchBrowser';
-import CombinedContextList from '@/components/CombinedContextList';
 import BusinessBrowser from '@/components/BusinessBrowser';
+import MarketResearchSection from '@/components/MarketResearchSection';
 import WorkflowDashboard from '@/components/WorkflowDashboard';
 import TestFixturesBrowser from '@/components/TestFixturesBrowser';
 import ContentStudio from '@/components/ContentStudio';
 import DashboardOverview from '@/components/DashboardOverview';
 import { RunSummary } from '@/lib/tester/storage';
-import { PlayCircle, RefreshCw, ServerCrash, Brain, Store, Workflow, FlaskConical, Users, PenSquare, LayoutDashboard, Settings, X, LogOut } from 'lucide-react';
+import { PlayCircle, RefreshCw, ServerCrash, Store, Workflow, FlaskConical, Users, PenSquare, LayoutDashboard, Settings, X, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-type Tab = 'dashboard' | 'research' | 'businesses' | 'workflows' | 'content';
+type Tab = 'dashboard' | 'businesses' | 'workflows' | 'content';
 
 export default function HephaeAdminDashboard() {
   const { user, signOut } = useAuth();
@@ -29,8 +26,9 @@ export default function HephaeAdminDashboard() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('hephae_active_tab') as Tab | null;
-      if (saved) setActiveTabState(saved);
+      let saved = localStorage.getItem('hephae_active_tab') as string | null;
+      if (saved === 'research') saved = 'businesses';
+      if (saved) setActiveTabState(saved as Tab);
     }
   }, []);
   const [qaOpen, setQaOpen] = useState(false);
@@ -51,8 +49,6 @@ export default function HephaeAdminDashboard() {
       if (saved) setSelectedZipState(saved);
     }
   }, []);
-  const [researchRefreshKey, setResearchRefreshKey] = useState(0);
-
   const fetchRuns = async () => {
     try {
       const res = await fetch('/api/run-tests');
@@ -92,7 +88,6 @@ export default function HephaeAdminDashboard() {
 
   const tabs: { key: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { key: 'research', label: 'Market Research', icon: Brain },
     { key: 'businesses', label: 'Businesses', icon: Store },
     { key: 'workflows', label: 'Workflows', icon: Workflow },
     { key: 'content', label: 'Content', icon: PenSquare },
@@ -171,17 +166,9 @@ export default function HephaeAdminDashboard() {
           <DashboardOverview />
         )}
 
-        {activeTab === 'research' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
-            <ResearchInput onResearchComplete={() => setResearchRefreshKey(k => k + 1)} />
-            <ZipCodeResearchBrowser refreshKey={researchRefreshKey} />
-            <AreaResearchBrowser />
-            <CombinedContextList />
-          </div>
-        )}
-
         {activeTab === 'businesses' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+            <MarketResearchSection />
             <BusinessDiscovery
               onZipCodeSubmit={(zip) => setSelectedZip(zip)}
               onDiscoveryComplete={(zip) => { setSelectedZip(zip); setBrowserRefreshKey(k => k + 1); }}

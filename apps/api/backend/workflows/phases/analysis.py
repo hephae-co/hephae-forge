@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 from backend.workflows.agents.insights.insights_agent import generate_insights
 from hephae_db.firestore.businesses import get_business
+from hephae_db.firestore.tasks import create_task, update_task, STATUS_QUEUED, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED
 from hephae_common.firebase import get_db
 from backend.types import BusinessWorkflowState, BusinessPhase
 from backend.workflows.capabilities.registry import (
@@ -166,8 +167,14 @@ async def run_analysis_phase(
         async def _process_business(biz: BusinessWorkflowState):
             db = get_db()
 
-            # Step 1: Enrichment
+            # Step 1: Enrichment (with task record)
             biz.phase = BusinessPhase.ENRICHING
+            enrich_task_id = None
+            try:
+                enrich_task_id = await create_task(biz.slug, "ENRICH", triggered_by="workflow")
+                await update_task(enrich_task_id, {"status": STATUS_RUNNING, "startedAt": datetime.utcnow()})
+            except Exception:
+                pass
             try:
                 enriched = await enrich_business_profile(biz.name, biz.address, biz.slug)
                 if enriched:
@@ -180,10 +187,17 @@ async def run_analysis_phase(
                         )
                     except Exception:
                         pass
+                if enrich_task_id:
+                    await update_task(enrich_task_id, {"status": STATUS_COMPLETED, "completedAt": datetime.utcnow()})
                 if callbacks.get("onEnrichmentDone"):
                     callbacks["onEnrichmentDone"](biz.slug, bool(enriched))
             except Exception as e:
                 logger.error(f"[Analysis] Enrichment error for {biz.slug}: {e}")
+                if enrich_task_id:
+                    try:
+                        await update_task(enrich_task_id, {"status": STATUS_FAILED, "completedAt": datetime.utcnow(), "error": str(e)})
+                    except Exception:
+                        pass
                 if callbacks.get("onEnrichmentDone"):
                     callbacks["onEnrichmentDone"](biz.slug, False)
 
@@ -283,12 +297,28 @@ async def run_analysis_phase(
             latest_outputs: dict[str, Any] = {}
 
             async def _run_cap(cap_def: FullCapabilityDefinition):
+                task_id = None
+                try:
+                    task_id = await create_task(biz.slug, cap_def.name, triggered_by="workflow")
+                    await update_task(task_id, {"status": STATUS_RUNNING, "startedAt": datetime.utcnow()})
+                except Exception:
+                    pass
                 raw = await _run_capability(biz.slug, cap_def, identity)
                 if raw:
                     biz.capabilitiesCompleted.append(cap_def.name)
                     latest_outputs[cap_def.firestore_output_key] = cap_def.response_adapter(raw)
+                    if task_id:
+                        try:
+                            await update_task(task_id, {"status": STATUS_COMPLETED, "completedAt": datetime.utcnow()})
+                        except Exception:
+                            pass
                 else:
                     biz.capabilitiesFailed.append(cap_def.name)
+                    if task_id:
+                        try:
+                            await update_task(task_id, {"status": STATUS_FAILED, "completedAt": datetime.utcnow(), "error": f"{cap_def.name} returned no result"})
+                        except Exception:
+                            pass
                 callbacks["onCapabilityDone"](biz.slug, cap_def.name, raw is not None)
 
             await asyncio.gather(*[_run_cap(c) for c in caps_to_run], return_exceptions=True)

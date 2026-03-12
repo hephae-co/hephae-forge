@@ -196,6 +196,7 @@ class WorkflowEngine:
                 ),
                 "onBusinessDone": self._on_business_analysis_done,
             },
+            workflow_id=self.workflow.id,
         )
 
     async def _on_business_analysis_done(self, slug: str):

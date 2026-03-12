@@ -1,4 +1,4 @@
-"""Zip code business scanner — discovers businesses via Google Search grounding + OpenStreetMap."""
+"""Zip code business scanner — discovers businesses via Google Search + OSM + Municipal Hub crawling."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import logging
 import re
 import unicodedata
 
+import httpx
 from google.adk.agents import LlmAgent
 from google.adk.tools import google_search
 
@@ -79,11 +80,69 @@ def _normalize_name(name: str) -> str:
     return name
 
 
-async def scan_zipcode(zip_code: str, category: str | None = None, force: bool = False) -> list[DiscoveredBusiness]:
-    """Discover businesses in a zip code using Google Search + OSM, then persist to Firestore.
+async def _resolve_city_state(zip_code: str) -> tuple[str, str] | None:
+    """Resolve city and state from a zip code via Nominatim."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={
+                    "postalcode": zip_code,
+                    "country": "US",
+                    "format": "json",
+                    "limit": 1,
+                    "addressdetails": 1,
+                },
+                headers={"User-Agent": "hephae-admin/1.0 (business-discovery)"},
+            )
+        if resp.status_code != 200 or not resp.json():
+            return None
+        addr = resp.json()[0].get("address", {})
+        city = addr.get("city") or addr.get("town") or addr.get("village") or ""
+        state = addr.get("state", "")
+        if city:
+            return city, state
+    except Exception as e:
+        logger.warning(f"[Scanner] Nominatim city/state lookup failed for {zip_code}: {e}")
+    return None
 
-    If category is provided (e.g. 'Bakery'), discovery is much more targeted.
-    Runs both sources in parallel, merges and deduplicates results.
+
+async def _run_hub_discovery(zip_code: str, category: str | None = None) -> list[dict]:
+    """Find municipal hub / chamber of commerce directory, crawl it, and extract businesses."""
+    from backend.workflows.agents.discovery.municipal_hubs import find_municipal_hub
+    from backend.workflows.agents.discovery.directory_parser import parse_directory_content
+    from hephae_capabilities.shared_tools.crawl4ai import crawl_for_content
+
+    location = await _resolve_city_state(zip_code)
+    if not location:
+        logger.info(f"[Scanner] Could not resolve city/state for {zip_code}, skipping hub discovery")
+        return []
+
+    city, state = location
+    logger.info(f"[Scanner] Hub discovery: looking for directory in {city}, {state}...")
+
+    hub_url = await find_municipal_hub(city, state)
+    if not hub_url:
+        logger.info(f"[Scanner] No municipal hub found for {city}, {state}")
+        return []
+
+    logger.info(f"[Scanner] Found hub: {hub_url}, crawling...")
+    crawl_result = await crawl_for_content(hub_url)
+    content = crawl_result.get("markdown") or crawl_result.get("text", "")
+    if not content:
+        logger.warning(f"[Scanner] Hub crawl returned no content for {hub_url}")
+        return []
+
+    businesses = await parse_directory_content(content, category=category)
+    logger.info(f"[Scanner] Hub discovery found {len(businesses)} businesses from {hub_url}")
+    return businesses
+
+
+async def scan_zipcode(zip_code: str, category: str | None = None, force: bool = False) -> list[DiscoveredBusiness]:
+    """Discover businesses in a zip code using 3 sources: Google Search + OSM + Municipal Hub.
+
+    If category is provided (e.g. 'Bakeries'), discovery is much more targeted.
+    Runs all three sources in parallel, merges and deduplicates results.
     """
     logger.info(f"[Scanner] Searching for {category or 'all'} businesses in {zip_code} (force={force})...")
 
@@ -101,26 +160,32 @@ async def scan_zipcode(zip_code: str, category: str | None = None, force: bool =
                 for b in existing
             ]
 
-    # 2. Run both discovery sources in parallel
-    logger.info(f"[Scanner] Running Google Search agent + OSM for {zip_code} ({category or 'general'})...")
+    # 2. Run all three discovery sources in parallel
+    logger.info(f"[Scanner] Running ADK + OSM + Hub for {zip_code} ({category or 'general'})...")
     osm_task = osm_discover(zip_code, category=category)
     adk_task = _run_adk_discovery(zip_code, category=category)
-    osm_results, adk_results = await asyncio.gather(osm_task, adk_task, return_exceptions=True)
+    hub_task = _run_hub_discovery(zip_code, category=category)
+    osm_results, adk_results, hub_results = await asyncio.gather(
+        osm_task, adk_task, hub_task, return_exceptions=True,
+    )
 
-    # Handle exceptions from either source gracefully
+    # Handle exceptions from any source gracefully
     if isinstance(osm_results, BaseException):
         logger.error(f"[Scanner] OSM discovery failed: {osm_results}")
         osm_results = []
     if isinstance(adk_results, BaseException):
         logger.error(f"[Scanner] ADK discovery failed: {adk_results}")
         adk_results = []
+    if isinstance(hub_results, BaseException):
+        logger.error(f"[Scanner] Hub discovery failed: {hub_results}")
+        hub_results = []
 
-    # 3. Merge and deduplicate
+    # 3. Merge and deduplicate (priority: Hub > ADK > OSM)
     seen: dict[str, DiscoveredBusiness] = {}
 
-    # ADK results first (Google Search grounding = higher quality)
-    for biz in adk_results:
-        name_key = _normalize_name(biz["name"])
+    # Hub results first (highest trust — official directories)
+    for biz in hub_results:
+        name_key = _normalize_name(biz.get("name", ""))
         if not name_key:
             continue
         slug = _generate_slug(biz["name"])
@@ -132,24 +197,38 @@ async def scan_zipcode(zip_code: str, category: str | None = None, force: bool =
             docId=slug,
         )
 
-    # OSM results fill gaps
+    # ADK results (Google Search grounding)
+    for biz in adk_results:
+        name_key = _normalize_name(biz["name"])
+        if not name_key or name_key in seen:
+            continue
+        slug = _generate_slug(biz["name"])
+        seen[name_key] = DiscoveredBusiness(
+            name=biz["name"],
+            address=biz.get("address", ""),
+            category=biz.get("category", ""),
+            website=biz.get("website", ""),
+            docId=slug,
+        )
+
+    # OSM results fill remaining gaps
     for osm_biz in osm_results:
         name_key = _normalize_name(osm_biz.name)
         if not name_key or name_key in seen:
             continue
         slug = _generate_slug(osm_biz.name)
         address = osm_biz.address or ""
-        category = getattr(osm_biz, "category", "") or ""
+        biz_category = getattr(osm_biz, "category", "") or ""
         seen[name_key] = DiscoveredBusiness(
             name=osm_biz.name,
             address=address,
-            category=category,
+            category=biz_category,
             docId=slug,
         )
 
     results = list(seen.values())
     logger.info(
-        f"[Scanner] Merged: {len(adk_results)} ADK + {len(osm_results)} OSM → {len(results)} unique businesses"
+        f"[Scanner] Merged: {len(hub_results)} Hub + {len(adk_results)} ADK + {len(osm_results)} OSM → {len(results)} unique"
     )
 
     # 4. Persist each business to Firestore
@@ -168,13 +247,21 @@ async def scan_zipcode(zip_code: str, category: str | None = None, force: bool =
 
 async def _run_adk_discovery(zip_code: str, category: str | None = None) -> list[dict]:
     """Run the ADK agent with Google Search grounding to discover businesses."""
-    target = f"local {category} businesses" if category else "real local businesses"
-    query = (
-        f"Find {target} currently operating in zip code {zip_code}. "
-        f"Search for local business directories, {category if category else ''} associations, "
-        f"and chamber of commerce member lists for {zip_code}. "
-        f"Focus on independently owned local businesses only. Exclude all chains, franchises, banks, and national retailers."
-    )
+    if category:
+        target = category.lower().rstrip("s")  # "Bakeries" → "bakery"
+        query = (
+            f"Find independently owned {category.lower()} currently operating in zip code {zip_code}. "
+            f"Search for '{target} near {zip_code}', '{target} in {zip_code}', "
+            f"local {target} directories, Yelp and Google Maps listings. "
+            f"Only include local, independently owned {category.lower()}. "
+            f"Exclude all chains, franchises, and national brands."
+        )
+    else:
+        query = (
+            f"Find real local businesses currently operating in zip code {zip_code}. "
+            f"Search for local business directories, chamber of commerce member lists for {zip_code}. "
+            f"Focus on independently owned local businesses only. Exclude all chains, franchises, banks, and national retailers."
+        )
     
     try:
         result = await run_agent_to_json(

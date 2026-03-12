@@ -37,7 +37,9 @@ def enqueue_agent_task(
     business_id: str,
     action_type: str,
     task_id: str,
-    priority: int = 5
+    priority: int = 5,
+    metadata: dict[str, Any] | None = None,
+    dispatch_deadline_seconds: int | None = None,
 ) -> str | None:
     """Push a task into the Cloud Tasks queue for background execution."""
 
@@ -56,13 +58,15 @@ def enqueue_agent_task(
         client = tasks_v2.CloudTasksClient()
         parent = client.queue_path(project, location, queue)
 
-        payload = {
+        payload: dict[str, Any] = {
             "businessId": business_id,
             "actionType": action_type,
-            "taskId": task_id
+            "taskId": task_id,
         }
+        if metadata:
+            payload["metadata"] = metadata
 
-        task = {
+        task: dict[str, Any] = {
             "http_request": {
                 "http_method": tasks_v2.HttpMethod.POST,
                 "url": url,
@@ -74,6 +78,10 @@ def enqueue_agent_task(
         # Add OIDC token for secure internal Cloud Run calls
         service_account_email = f"hephae-forge@{project}.iam.gserviceaccount.com"
         task["http_request"]["oidc_token"] = {"service_account_email": service_account_email}
+
+        # Set dispatch deadline (default Cloud Tasks is 10 min, analysis can take longer)
+        if dispatch_deadline_seconds:
+            task["dispatch_deadline"] = {"seconds": dispatch_deadline_seconds}
 
         response = client.create_task(request={"parent": parent, "task": task})
         logger.info(f"[Tasks] Enqueued {action_type} for {business_id} as {response.name}")

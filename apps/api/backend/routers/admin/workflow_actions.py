@@ -31,6 +31,42 @@ async def get_workflow(workflow_id: str):
     return workflow.model_dump(mode="json")
 
 
+@router.get("/{workflow_id}/research")
+async def get_workflow_research(workflow_id: str):
+    """Fetch zip code and area research produced during a workflow run."""
+    workflow = await load_workflow(workflow_id, model_class=WorkflowDocument)
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    from hephae_db.firestore.research import get_zipcode_report, get_area_research_for_zip_code
+
+    zip_codes = workflow.zipCodes or ([workflow.zipCode] if workflow.zipCode else [])
+    research: dict = {"zipReports": {}, "areaResearch": {}}
+
+    for zc in zip_codes:
+        try:
+            zip_doc = await get_zipcode_report(zc)
+            if zip_doc and zip_doc.report:
+                report = zip_doc.report
+                research["zipReports"][zc] = report.model_dump(mode="json") if hasattr(report, "model_dump") else report
+        except Exception:
+            pass
+
+        try:
+            area_doc = await get_area_research_for_zip_code(zc)
+            if area_doc and area_doc.summary:
+                summary = area_doc.summary
+                research["areaResearch"][zc] = {
+                    "area": area_doc.area,
+                    "businessType": area_doc.businessType,
+                    "summary": summary.model_dump(mode="json") if hasattr(summary, "model_dump") else summary,
+                }
+        except Exception:
+            pass
+
+    return research
+
+
 @router.patch("/{workflow_id}")
 async def force_stop_workflow(workflow_id: str):
     """Force-stop a running workflow by marking it as failed."""

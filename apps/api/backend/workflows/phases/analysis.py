@@ -1,4 +1,4 @@
-"""Analysis phase — runs capabilities via direct runner calls (no HTTP)."""
+"""Analysis phase — enqueues Cloud Tasks per business and polls for completion."""
 
 from __future__ import annotations
 
@@ -7,19 +7,23 @@ import logging
 from datetime import datetime
 from typing import Any, Callable
 
+_sleep = asyncio.sleep  # indirection for testability
+
 from backend.workflows.agents.insights.insights_agent import generate_insights
 from hephae_db.firestore.businesses import get_business
-from hephae_db.firestore.tasks import create_task, update_task, STATUS_QUEUED, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED
+from hephae_db.firestore.tasks import (
+    create_task, update_task, get_tasks_by_ids,
+    STATUS_COMPLETED, STATUS_FAILED,
+)
 from hephae_common.firebase import get_db
 from backend.types import BusinessWorkflowState, BusinessPhase
 from backend.workflows.capabilities.registry import (
     get_enabled_capabilities, FullCapabilityDefinition,
 )
-from backend.workflows.phases.enrichment import enrich_business_profile
 
 logger = logging.getLogger(__name__)
 
-BATCH_CONCURRENCY = 3
+POLL_INTERVAL_SECONDS = 3
 
 PROMOTE_KEYS = [
     "phone", "email", "emailStatus", "contactFormUrl", "contactFormStatus", "hours", "googleMapsUrl", "socialLinks",
@@ -156,196 +160,100 @@ async def run_single_business_analysis(slug: str) -> dict:
 async def run_analysis_phase(
     businesses: list[BusinessWorkflowState],
     callbacks: dict[str, Callable],
+    workflow_id: str = "",
 ) -> None:
-    """Run analysis phase on all pending businesses."""
+    """Enqueue Cloud Tasks per business and poll Firestore for completion."""
+    from backend.lib.tasks import enqueue_agent_task
+
     pending = [b for b in businesses if b.phase in (BusinessPhase.PENDING, BusinessPhase.ENRICHING, BusinessPhase.ANALYZING)]
-    enabled_capabilities = get_enabled_capabilities()
+    if not pending:
+        return
 
-    for i in range(0, len(pending), BATCH_CONCURRENCY):
-        batch = pending[i : i + BATCH_CONCURRENCY]
+    biz_by_slug: dict[str, BusinessWorkflowState] = {b.slug: b for b in pending}
 
-        async def _process_business(biz: BusinessWorkflowState):
-            db = get_db()
-
-            # Step 1: Enrichment (with task record)
-            biz.phase = BusinessPhase.ENRICHING
-            enrich_task_id = None
-            try:
-                enrich_task_id = await create_task(biz.slug, "ENRICH", triggered_by="workflow")
-                await update_task(enrich_task_id, {"status": STATUS_RUNNING, "startedAt": datetime.utcnow()})
-            except Exception:
-                pass
-            try:
-                enriched = await enrich_business_profile(biz.name, biz.address, biz.slug)
-                if enriched:
-                    biz.enrichedProfile = enriched
-                    try:
-                        top_level = {k: enriched[k] for k in PROMOTE_KEYS if k in enriched}
-                        await asyncio.to_thread(
-                            db.collection("businesses").document(biz.slug).update,
-                            {**top_level, "identity": {**enriched, "docId": biz.slug}, "updatedAt": datetime.utcnow()},
-                        )
-                    except Exception:
-                        pass
-                if enrich_task_id:
-                    await update_task(enrich_task_id, {"status": STATUS_COMPLETED, "completedAt": datetime.utcnow()})
-                if callbacks.get("onEnrichmentDone"):
-                    callbacks["onEnrichmentDone"](biz.slug, bool(enriched))
-            except Exception as e:
-                logger.error(f"[Analysis] Enrichment error for {biz.slug}: {e}")
-                if enrich_task_id:
-                    try:
-                        await update_task(enrich_task_id, {"status": STATUS_FAILED, "completedAt": datetime.utcnow(), "error": str(e)})
-                    except Exception:
-                        pass
-                if callbacks.get("onEnrichmentDone"):
-                    callbacks["onEnrichmentDone"](biz.slug, False)
-
-            # Step 2: Build identity
-            biz.phase = BusinessPhase.ANALYZING
-            identity: dict[str, Any] = {"name": biz.name, "address": biz.address, "docId": biz.slug}
-            try:
-                biz_data = await get_business(biz.slug)
-                if biz_data:
-                    identity = biz_data.get("identity", {**biz_data, "docId": biz.slug})
-            except Exception:
-                pass
-
-            # Step 2b: Look up research context
-            if biz.sourceZipCode:
-                try:
-                    from hephae_db.firestore.research import get_area_research_for_zip_code
-                    area_doc = await get_area_research_for_zip_code(biz.sourceZipCode)
-                    if area_doc and area_doc.summary:
-                        summary = area_doc.summary
-                        identity["areaResearchContext"] = {
-                            "areaName": area_doc.area,
-                            "businessType": area_doc.businessType,
-                            "resolvedState": area_doc.resolvedState or "",
-                            "summary": summary.model_dump(mode="json") if hasattr(summary, "model_dump") else summary,
-                        }
-                except Exception:
-                    pass
-
-                if "areaResearchContext" not in identity:
-                    try:
-                        from hephae_db.firestore.research import get_zipcode_report
-                        zip_doc = await get_zipcode_report(biz.sourceZipCode)
-                        if zip_doc and zip_doc.report:
-                            report = zip_doc.report
-                            sections = report.sections if hasattr(report, "sections") else None
-                            if sections:
-                                identity["zipCodeResearchContext"] = {
-                                    "zipCode": biz.sourceZipCode,
-                                    "summary": report.summary if hasattr(report, "summary") else "",
-                                    "events": getattr(sections.events, "content", "") if sections.events else "",
-                                    "weather": getattr(sections.seasonal_weather, "content", "") if sections.seasonal_weather else "",
-                                    "demographics": getattr(sections.demographics, "content", "") if hasattr(sections, "demographics") else "",
-                                }
-                    except Exception:
-                        pass
-
-            if biz.businessType:
-                try:
-                    from hephae_db.firestore.research import get_sector_research_for_type
-                    sector_doc = await get_sector_research_for_type(biz.businessType)
-                    if sector_doc and sector_doc.summary:
-                        summary = sector_doc.summary
-                        summary_dict = summary.model_dump(mode="json") if hasattr(summary, "model_dump") else summary
-                        identity["sectorResearchContext"] = {
-                            "sector": sector_doc.sector,
-                            "synthesis": summary_dict.get("synthesis", {}),
-                            "industryAnalysis": summary_dict.get("industryAnalysis", {}),
-                        }
-                except Exception:
-                    pass
-
-            # Step 2c: Inject food pricing context for food-related businesses
-            if biz.businessType:
-                try:
-                    from hephae_integrations.fda_client import is_food_related_industry
-                    if is_food_related_industry(biz.businessType):
-                        from hephae_integrations.bls_client import query_bls_cpi
-                        from hephae_integrations.usda_client import query_usda_prices
-
-                        state = ""
-                        area_ctx = identity.get("areaResearchContext")
-                        if isinstance(area_ctx, dict):
-                            state = area_ctx.get("resolvedState", "")
-
-                        bls, usda = await asyncio.gather(
-                            query_bls_cpi(biz.businessType),
-                            query_usda_prices(biz.businessType, state),
-                        )
-
-                        identity["foodPricingContext"] = {
-                            "blsHighlights": bls.highlights,
-                            "usdaHighlights": usda.highlights,
-                            "latestMonth": bls.latestMonth,
-                            "source": "BLS Consumer Price Index + USDA NASS QuickStats",
-                        }
-                except Exception as e:
-                    logger.warning(f"[Analysis] Food pricing context error for {biz.slug}: {e}")
-
-            # Step 3: Run capabilities (direct runner calls, no HTTP)
-            caps_to_run = [
-                c for c in enabled_capabilities
-                if c.name not in biz.capabilitiesCompleted
-                and (not c.should_run or c.should_run({"officialUrl": biz.officialUrl, **identity}))
-            ]
-
-            latest_outputs: dict[str, Any] = {}
-
-            async def _run_cap(cap_def: FullCapabilityDefinition):
-                task_id = None
-                try:
-                    task_id = await create_task(biz.slug, cap_def.name, triggered_by="workflow")
-                    await update_task(task_id, {"status": STATUS_RUNNING, "startedAt": datetime.utcnow()})
-                except Exception:
-                    pass
-                raw = await _run_capability(biz.slug, cap_def, identity)
-                if raw:
-                    biz.capabilitiesCompleted.append(cap_def.name)
-                    latest_outputs[cap_def.firestore_output_key] = cap_def.response_adapter(raw)
-                    if task_id:
-                        try:
-                            await update_task(task_id, {"status": STATUS_COMPLETED, "completedAt": datetime.utcnow()})
-                        except Exception:
-                            pass
-                else:
-                    biz.capabilitiesFailed.append(cap_def.name)
-                    if task_id:
-                        try:
-                            await update_task(task_id, {"status": STATUS_FAILED, "completedAt": datetime.utcnow(), "error": f"{cap_def.name} returned no result"})
-                        except Exception:
-                            pass
-                callbacks["onCapabilityDone"](biz.slug, cap_def.name, raw is not None)
-
-            await asyncio.gather(*[_run_cap(c) for c in caps_to_run], return_exceptions=True)
-
-            if latest_outputs:
-                try:
-                    await asyncio.to_thread(
-                        db.collection("businesses").document(biz.slug).update,
-                        {"latestOutputs": latest_outputs, "updatedAt": datetime.utcnow()},
-                    )
-                except Exception as e:
-                    logger.error(f"[Analysis] Firestore persist error for {biz.slug}: {e}")
-
-            # Step 4: Generate insights
-            try:
-                insights = await generate_insights(biz.slug)
-                if insights:
-                    biz.insights = insights
-                if callbacks.get("onInsightsDone"):
-                    callbacks["onInsightsDone"](biz.slug, bool(insights))
-            except Exception as e:
-                logger.error(f"[Analysis] Insights error for {biz.slug}: {e}")
-                if callbacks.get("onInsightsDone"):
-                    callbacks["onInsightsDone"](biz.slug, False)
-
+    # 1. Enqueue one WORKFLOW_ANALYZE Cloud Task per business
+    task_map: dict[str, str] = {}  # task_id → slug
+    for biz in pending:
+        biz.phase = BusinessPhase.ENRICHING
+        metadata = {
+            "workflowId": workflow_id,
+            "sourceZipCode": biz.sourceZipCode or "",
+            "businessType": biz.businessType or "",
+        }
+        task_id = await create_task(
+            biz.slug, "WORKFLOW_ANALYZE", triggered_by="workflow", metadata=metadata,
+        )
+        result = enqueue_agent_task(
+            biz.slug, "WORKFLOW_ANALYZE", task_id,
+            metadata=metadata,
+            dispatch_deadline_seconds=1800,  # 30 min
+        )
+        if result is None:
+            logger.error(f"[Analysis] Failed to enqueue Cloud Task for {biz.slug}")
+            await update_task(task_id, {"status": STATUS_FAILED, "error": "Failed to enqueue to Cloud Tasks"})
             biz.phase = BusinessPhase.ANALYSIS_DONE
             if callbacks.get("onBusinessDone"):
                 await callbacks["onBusinessDone"](biz.slug)
+            continue
+        task_map[task_id] = biz.slug
 
-        await asyncio.gather(*[_process_business(b) for b in batch], return_exceptions=True)
+    if not task_map:
+        return
+
+    # 2. Poll loop — check all tasks every POLL_INTERVAL_SECONDS
+    task_ids = list(task_map.keys())
+    last_substep: dict[str, str] = {tid: "" for tid in task_ids}
+    terminal_statuses = {STATUS_COMPLETED, STATUS_FAILED}
+
+    while True:
+        await _sleep(POLL_INTERVAL_SECONDS)
+
+        tasks = await get_tasks_by_ids(task_ids)
+        tasks_by_id = {t["id"]: t for t in tasks}
+
+        all_terminal = True
+        for tid in task_ids:
+            task = tasks_by_id.get(tid)
+            if not task:
+                continue
+
+            slug = task_map[tid]
+            biz = biz_by_slug[slug]
+            status = task.get("status", "")
+            meta = task.get("metadata", {})
+            substep = meta.get("substep", "")
+
+            if status not in terminal_statuses:
+                all_terminal = False
+
+            # Detect substep transitions and fire callbacks
+            prev = last_substep.get(tid, "")
+            if substep != prev:
+                last_substep[tid] = substep
+
+                if substep == "enrichment_done" and prev != "enrichment_done":
+                    biz.phase = BusinessPhase.ANALYZING
+                    if callbacks.get("onEnrichmentDone"):
+                        callbacks["onEnrichmentDone"](slug, True)
+                elif substep.startswith("capability_done:"):
+                    cap_name = substep.split(":", 1)[1]
+                    biz.capabilitiesCompleted = meta.get("capabilitiesCompleted", [])
+                    if callbacks.get("onCapabilityDone"):
+                        callbacks["onCapabilityDone"](slug, cap_name, True)
+                elif substep == "insights_done":
+                    if callbacks.get("onInsightsDone"):
+                        callbacks["onInsightsDone"](slug, True)
+
+            # Detect terminal status
+            if status == STATUS_COMPLETED and biz.phase != BusinessPhase.ANALYSIS_DONE:
+                biz.phase = BusinessPhase.ANALYSIS_DONE
+                if callbacks.get("onBusinessDone"):
+                    await callbacks["onBusinessDone"](slug)
+            elif status == STATUS_FAILED and biz.phase != BusinessPhase.ANALYSIS_DONE:
+                biz.lastError = task.get("error", "Unknown error")
+                biz.phase = BusinessPhase.ANALYSIS_DONE
+                if callbacks.get("onBusinessDone"):
+                    await callbacks["onBusinessDone"](slug)
+
+        if all_terminal:
+            break

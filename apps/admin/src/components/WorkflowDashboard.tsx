@@ -7,7 +7,7 @@ import { FixtureType } from '@/lib/fixtures/types';
 import { CAPABILITY_DISPLAY_INFO } from '@/lib/capabilities/display';
 import {
     Rocket, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Loader2,
-    ChevronRight, ThumbsUp, ThumbsDown, Send, RotateCcw, Trash2, MapPin, BookmarkPlus,
+    ChevronRight, ChevronDown, ThumbsUp, ThumbsDown, Send, RotateCcw, Trash2, MapPin, BookmarkPlus, FileText,
 } from 'lucide-react';
 
 const PHASE_STEPS: WorkflowPhase[] = ['discovery', 'analysis', 'evaluation', 'approval', 'outreach', 'completed'];
@@ -44,6 +44,24 @@ function capabilityDot(biz: BusinessWorkflowState, cap: string) {
 
 type LaunchMode = 'single' | 'county';
 
+const BUSINESS_TYPES = [
+    'Restaurants',
+    'Bakeries',
+    'Barbershops',
+    'Hair Salons',
+    'Nail Salons',
+    'Coffee Shops',
+    'Dentists',
+    'Auto Repair',
+    'Gyms',
+    'Florists',
+    'Pet Groomers',
+    'Dry Cleaners',
+    'Pizza Shops',
+    'Delis',
+    'Spas',
+];
+
 export default function WorkflowDashboard() {
     const [launchMode, setLaunchMode] = useState<LaunchMode>('single');
     const [zipCode, setZipCode] = useState('');
@@ -64,6 +82,9 @@ export default function WorkflowDashboard() {
     const [confirmDeleteActive, setConfirmDeleteActive] = useState(false);
     const [savingFixture, setSavingFixture] = useState<Record<string, boolean>>({});
     const [savedFixtures, setSavedFixtures] = useState<Record<string, FixtureType>>({});
+    const [research, setResearch] = useState<{ zipReports: Record<string, any>; areaResearch: Record<string, any> } | null>(null);
+    const [researchOpen, setResearchOpen] = useState(false);
+    const [researchLoading, setResearchLoading] = useState(false);
 
     const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -87,6 +108,18 @@ export default function WorkflowDashboard() {
             }
         } catch { /* silent */ }
         return null;
+    }, []);
+
+    const fetchResearch = useCallback(async (id: string) => {
+        setResearchLoading(true);
+        try {
+            const res = await fetch(`/api/workflows/${id}/research`);
+            if (res.ok) {
+                const data = await res.json();
+                setResearch(data);
+            }
+        } catch { /* silent */ }
+        finally { setResearchLoading(false); }
     }, []);
 
     // Poll for active workflow state when not streaming
@@ -154,10 +187,6 @@ export default function WorkflowDashboard() {
                 return;
             }
         } else {
-            if (!businessType.trim()) {
-                setError('Enter a business type (e.g. Bakery, Restaurant)');
-                return;
-            }
             if (!county.trim()) {
                 setError('Enter a county (e.g. Essex County NJ)');
                 return;
@@ -170,18 +199,19 @@ export default function WorkflowDashboard() {
         try {
             let res: Response;
 
+            const resolvedType = businessType.trim() || 'Restaurants';
+
             if (launchMode === 'county') {
                 res = await fetch('/api/workflows/county', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        businessType: businessType.trim(),
+                        businessType: resolvedType,
                         county: county.trim(),
                     }),
                 });
             } else {
-                const body: Record<string, string> = { zipCode };
-                if (businessType.trim()) body.businessType = businessType.trim();
+                const body: Record<string, string> = { zipCode, businessType: resolvedType };
                 res = await fetch('/api/workflows', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -324,6 +354,8 @@ export default function WorkflowDashboard() {
     const handleSelectWorkflow = async (id: string) => {
         setApprovals({});
         setSavedFixtures({});
+        setResearch(null);
+        setResearchOpen(false);
         await fetchWorkflow(id);
     };
 
@@ -379,80 +411,66 @@ export default function WorkflowDashboard() {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Launch Bar */}
-            <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm">
-                <div className="flex items-center justify-between gap-4 mb-4">
-                    <div>
-                        <h3 className="text-xl font-bold text-gray-900">Research Pipeline</h3>
-                        <p className="text-sm text-gray-500 mt-1">Discover, analyze, evaluate, and outreach businesses</p>
-                    </div>
-                    <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+            <div className="bg-white border border-gray-200 px-4 py-3 rounded-xl shadow-sm">
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center bg-gray-100 rounded-md p-0.5">
                         <button
                             onClick={() => setLaunchMode('single')}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                            className={`px-2 py-1 text-[11px] font-medium rounded transition-all ${
                                 launchMode === 'single' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                             }`}
                         >
-                            Single Zip
+                            Zip
                         </button>
                         <button
                             onClick={() => setLaunchMode('county')}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${
+                            className={`px-2 py-1 text-[11px] font-medium rounded transition-all flex items-center gap-0.5 ${
                                 launchMode === 'county' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                             }`}
                         >
-                            <MapPin className="w-3 h-3" /> County Research
+                            <MapPin className="w-2.5 h-2.5" /> County
                         </button>
                     </div>
-                </div>
 
-                <div className="flex items-center gap-3">
                     {launchMode === 'single' ? (
-                        <>
-                            <input
-                                type="text"
-                                value={zipCode}
-                                onChange={e => setZipCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                                placeholder="07110"
-                                className="w-28 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-center font-mono text-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
-                                maxLength={5}
-                                onKeyDown={e => e.key === 'Enter' && handleLaunch()}
-                            />
-                            <input
-                                type="text"
-                                value={businessType}
-                                onChange={e => setBusinessType(e.target.value)}
-                                placeholder="Restaurants (optional)"
-                                className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
-                                onKeyDown={e => e.key === 'Enter' && handleLaunch()}
-                            />
-                        </>
+                        <input
+                            type="text"
+                            value={zipCode}
+                            onChange={e => setZipCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                            placeholder="07110"
+                            className="w-24 px-2 py-1.5 bg-gray-50 border border-gray-300 rounded-md text-center font-mono text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                            maxLength={5}
+                            onKeyDown={e => e.key === 'Enter' && handleLaunch()}
+                        />
                     ) : (
-                        <>
-                            <input
-                                type="text"
-                                value={businessType}
-                                onChange={e => setBusinessType(e.target.value)}
-                                placeholder="Business type (e.g. Bakery)"
-                                className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
-                                onKeyDown={e => e.key === 'Enter' && handleLaunch()}
-                            />
-                            <input
-                                type="text"
-                                value={county}
-                                onChange={e => setCounty(e.target.value)}
-                                placeholder="County (e.g. Essex County NJ)"
-                                className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
-                                onKeyDown={e => e.key === 'Enter' && handleLaunch()}
-                            />
-                        </>
+                        <input
+                            type="text"
+                            value={county}
+                            onChange={e => setCounty(e.target.value)}
+                            placeholder="Essex County NJ"
+                            className="w-40 px-2 py-1.5 bg-gray-50 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                            onKeyDown={e => e.key === 'Enter' && handleLaunch()}
+                        />
                     )}
+
+                    <select
+                        value={businessType}
+                        onChange={e => setBusinessType(e.target.value)}
+                        className="w-36 px-2 py-1.5 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
+                    >
+                        <option value="">Restaurants</option>
+                        {BUSINESS_TYPES.filter(t => t !== 'Restaurants').map(t => (
+                            <option key={t} value={t}>{t}</option>
+                        ))}
+                    </select>
+
                     <button
                         onClick={handleLaunch}
                         disabled={isLaunching}
-                        className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md transition-all"
+                        className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-md hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm transition-all"
                     >
-                        {isLaunching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
-                        {isLaunching ? 'Launching...' : 'Launch Pipeline'}
+                        {isLaunching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Rocket className="w-3.5 h-3.5" />}
+                        {isLaunching ? 'Launching...' : 'Launch'}
                     </button>
                 </div>
             </div>
@@ -553,6 +571,93 @@ export default function WorkflowDashboard() {
                         </div>
                     </div>
 
+                    {/* Market Research */}
+                    {activeWorkflow.zipCodes && activeWorkflow.zipCodes.length > 0 || activeWorkflow.zipCode ? (
+                        <div className="border-b border-gray-200">
+                            <button
+                                onClick={() => {
+                                    if (!researchOpen && !research) {
+                                        fetchResearch(activeWorkflow.id);
+                                    }
+                                    setResearchOpen(!researchOpen);
+                                }}
+                                className="w-full px-4 py-2.5 flex items-center gap-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                            >
+                                <FileText className="w-4 h-4 text-indigo-500" />
+                                Market Research
+                                {researchLoading ? (
+                                    <Loader2 className="w-3 h-3 animate-spin ml-1" />
+                                ) : researchOpen ? (
+                                    <ChevronDown className="w-3.5 h-3.5 ml-1" />
+                                ) : (
+                                    <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                                )}
+                            </button>
+                            {researchOpen && research && (
+                                <div className="px-4 pb-4 space-y-4 max-h-[500px] overflow-y-auto">
+                                    {Object.keys(research.zipReports).length === 0 && Object.keys(research.areaResearch).length === 0 && (
+                                        <p className="text-xs text-gray-400 italic">No research data generated yet for this workflow.</p>
+                                    )}
+
+                                    {Object.entries(research.zipReports).map(([zip, report]: [string, any]) => (
+                                        <div key={`zip-${zip}`} className="bg-indigo-50/50 rounded-lg p-3 border border-indigo-100">
+                                            <h5 className="text-xs font-semibold text-indigo-700 mb-1.5">Zip Code Report: {zip}</h5>
+                                            {report.summary && (
+                                                <p className="text-xs text-gray-600 mb-2">{report.summary}</p>
+                                            )}
+                                            {report.sections && (
+                                                <div className="space-y-2">
+                                                    {Object.entries(report.sections)
+                                                        .filter(([, section]: [string, any]) => section && section.content)
+                                                        .map(([key, section]: [string, any]) => (
+                                                            <details key={key} className="group">
+                                                                <summary className="text-[11px] font-medium text-indigo-600 cursor-pointer hover:text-indigo-800 transition-colors">
+                                                                    {key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                                                </summary>
+                                                                <p className="text-[11px] text-gray-600 mt-1 pl-2 border-l-2 border-indigo-200 whitespace-pre-line leading-relaxed">
+                                                                    {section.content}
+                                                                </p>
+                                                            </details>
+                                                        ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {Object.entries(research.areaResearch).map(([zip, areaData]: [string, any]) => (
+                                        <div key={`area-${zip}`} className="bg-emerald-50/50 rounded-lg p-3 border border-emerald-100">
+                                            <h5 className="text-xs font-semibold text-emerald-700 mb-1">
+                                                Area Research: {areaData.area || zip}
+                                                {areaData.businessType && (
+                                                    <span className="ml-1.5 font-normal text-emerald-500">({areaData.businessType})</span>
+                                                )}
+                                            </h5>
+                                            {areaData.summary && (
+                                                <div className="space-y-2">
+                                                    {areaData.summary.synthesis && (
+                                                        <p className="text-[11px] text-gray-600">{typeof areaData.summary.synthesis === 'string' ? areaData.summary.synthesis : JSON.stringify(areaData.summary.synthesis)}</p>
+                                                    )}
+                                                    {areaData.summary.sections && Object.entries(areaData.summary.sections)
+                                                        .filter(([, v]: [string, any]) => v)
+                                                        .map(([key, val]: [string, any]) => (
+                                                            <details key={key} className="group">
+                                                                <summary className="text-[11px] font-medium text-emerald-600 cursor-pointer hover:text-emerald-800 transition-colors">
+                                                                    {key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                                                </summary>
+                                                                <p className="text-[11px] text-gray-600 mt-1 pl-2 border-l-2 border-emerald-200 whitespace-pre-line leading-relaxed">
+                                                                    {typeof val === 'string' ? val : JSON.stringify(val, null, 2)}
+                                                                </p>
+                                                            </details>
+                                                        ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : null}
+
                     {/* Business Cards */}
                     {activeWorkflow.businesses && activeWorkflow.businesses.length > 0 && (
                         <div className="p-4 space-y-2">
@@ -592,8 +697,13 @@ export default function WorkflowDashboard() {
                                     )}
 
                                     {/* Phase badge / Approval toggle */}
-                                    {activeWorkflow.phase === 'approval' && biz.qualityPassed && biz.phase === 'evaluation_done' ? (
-                                        <div className="flex items-center gap-1">
+                                    {activeWorkflow.phase === 'approval' && biz.phase === 'evaluation_done' ? (
+                                        <div className="flex items-center gap-2">
+                                            {!biz.qualityPassed && (
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200" title="Did not pass automated QA">
+                                                    Low QA
+                                                </span>
+                                            )}
                                             <button
                                                 onClick={() => setApprovals(prev => ({ ...prev, [biz.slug]: 'approve' }))}
                                                 className={`p-1.5 rounded transition-colors ${
@@ -775,7 +885,7 @@ export default function WorkflowDashboard() {
                                 </span>
                             )}
                             <button
-                                onClick={() => { setActiveWorkflow(null); setApprovals({}); setConfirmDeleteActive(false); setConfirmStop(false); }}
+                                onClick={() => { setActiveWorkflow(null); setApprovals({}); setResearch(null); setResearchOpen(false); setConfirmDeleteActive(false); setConfirmStop(false); }}
                                 className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
                             >
                                 Close

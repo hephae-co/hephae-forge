@@ -65,6 +65,22 @@ async def get_task(task_id: str) -> dict[str, Any] | None:
     data["id"] = doc.id
     return data
 
+async def get_tasks_by_ids(task_ids: list[str]) -> list[dict[str, Any]]:
+    """Fetch multiple task documents by their IDs."""
+    if not task_ids:
+        return []
+
+    db = get_db()
+    tasks = []
+    for tid in task_ids:
+        doc = await asyncio.to_thread(db.collection(COLLECTION).document(tid).get)
+        if doc.exists:
+            data = doc.to_dict()
+            data["id"] = doc.id
+            tasks.append(data)
+    return tasks
+
+
 async def list_active_tasks_for_businesses(business_ids: list[str]) -> list[dict[str, Any]]:
     """Fetch the most recent active tasks for a set of businesses."""
     if not business_ids:

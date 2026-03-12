@@ -27,15 +27,56 @@ class OsmBusiness:
     website: str
 
 
+_CATEGORY_TO_OSM: dict[str, tuple[str, str]] = {
+    # amenity-based
+    "restaurant": ("amenity", "restaurant"),
+    "restaurants": ("amenity", "restaurant"),
+    "cafe": ("amenity", "cafe"),
+    "coffee shop": ("amenity", "cafe"),
+    "coffee shops": ("amenity", "cafe"),
+    "bar": ("amenity", "bar"),
+    "pharmacy": ("amenity", "pharmacy"),
+    "dentist": ("amenity", "dentist"),
+    "dentists": ("amenity", "dentist"),
+    "bakery": ("amenity", "bakery"),
+    "bakeries": ("amenity", "bakery"),
+    "gym": ("amenity", "gym"),
+    "gyms": ("amenity", "gym"),
+    "auto repair": ("shop", "car_repair"),
+    "spa": ("amenity", "spa"),
+    "spas": ("amenity", "spa"),
+    # shop-based
+    "salon": ("shop", "hairdresser"),
+    "hair salon": ("shop", "hairdresser"),
+    "hair salons": ("shop", "hairdresser"),
+    "barbershop": ("shop", "hairdresser"),
+    "barbershops": ("shop", "hairdresser"),
+    "nail salon": ("shop", "beauty"),
+    "nail salons": ("shop", "beauty"),
+    "boutique": ("shop", "boutique"),
+    "supermarket": ("shop", "supermarket"),
+    "florist": ("shop", "florist"),
+    "florists": ("shop", "florist"),
+    "pet groomer": ("shop", "pet_grooming"),
+    "pet groomers": ("shop", "pet_grooming"),
+    "dry cleaner": ("shop", "dry_cleaning"),
+    "dry cleaners": ("shop", "dry_cleaning"),
+    "deli": ("shop", "deli"),
+    "delis": ("shop", "deli"),
+    "pizza shop": ("amenity", "restaurant"),
+    "pizza shops": ("amenity", "restaurant"),
+}
+
+
 def _build_overpass_query(lat: float, lng: float, category: str | None = None, radius: int = _SEARCH_RADIUS_M) -> str:
     if category:
-        # Map some common business types to OSM keys
-        cat = category.lower()
-        if cat in ("restaurant", "cafe", "bar", "pharmacy", "dentist", "bakery"):
-            query_filter = f'["amenity"~"{cat}"]'
-        elif cat in ("salon", "boutique", "supermarket", "florist"):
-            query_filter = f'["shop"~"{cat}"]'
+        cat = category.lower().strip()
+        osm_mapping = _CATEGORY_TO_OSM.get(cat)
+        if osm_mapping:
+            osm_key, osm_val = osm_mapping
+            query_filter = f'["{osm_key}"="{osm_val}"]'
         else:
+            # Fallback: fuzzy name match
             query_filter = f'["name"~"{cat}",i]'
             
         return f"""

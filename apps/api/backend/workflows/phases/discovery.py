@@ -33,7 +33,7 @@ async def run_discovery_phase(
     parallel discovery with dedup and Firestore persistence.
     """
     logger.info(f"[Workflow:Discovery] Discovering {business_type} in {zip_code}")
-    results = await scan_zipcode(zip_code, force=True)
+    results = await scan_zipcode(zip_code, category=business_type, force=True)
 
     return [
         {

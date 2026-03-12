@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/research/tasks", tags=["tasks"])
 
 PROMOTE_KEYS = [
-    "phone", "email", "emailStatus", "contactFormUrl", "contactFormStatus", "hours", "googleMapsUrl", "socialLinks",
+    "officialUrl", "phone", "email", "emailStatus", "contactFormUrl", "contactFormStatus", "hours", "googleMapsUrl", "socialLinks",
     "logoUrl", "favicon", "primaryColor", "secondaryColor",
     "persona", "menuUrl", "competitors", "news", "validationReport",
 ]
@@ -176,7 +176,7 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
 
     # Step 2: Build identity from Firestore (refreshed after enrichment)
     biz_data = await get_business(slug)
-    official_url = (biz_data or {}).get("officialUrl", "")
+    official_url = (biz_data or {}).get("officialUrl") or (biz_data or {}).get("identity", {}).get("officialUrl") or ""
     await _update_substep("enrichment_done", {"officialUrl": official_url})
     identity: dict[str, Any] = biz_data.get("identity", {
         "name": name, "address": address, "docId": slug,

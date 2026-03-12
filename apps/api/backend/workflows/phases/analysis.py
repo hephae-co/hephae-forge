@@ -233,6 +233,9 @@ async def run_analysis_phase(
 
                 if substep == "enrichment_done" and prev != "enrichment_done":
                     biz.phase = BusinessPhase.ANALYZING
+                    # Sync officialUrl from task metadata (set during enrichment)
+                    if meta.get("officialUrl"):
+                        biz.officialUrl = meta["officialUrl"]
                     if callbacks.get("onEnrichmentDone"):
                         callbacks["onEnrichmentDone"](slug, True)
                 elif substep.startswith("capability_done:"):

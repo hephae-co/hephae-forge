@@ -174,10 +174,10 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
     except Exception as e:
         logger.error(f"[WorkflowAnalyze] Enrichment error for {slug}: {e}")
 
-    await _update_substep("enrichment_done")
-
     # Step 2: Build identity from Firestore (refreshed after enrichment)
     biz_data = await get_business(slug)
+    official_url = (biz_data or {}).get("officialUrl", "")
+    await _update_substep("enrichment_done", {"officialUrl": official_url})
     identity: dict[str, Any] = biz_data.get("identity", {
         "name": name, "address": address, "docId": slug,
     }) if biz_data else {"name": name, "address": address, "docId": slug}

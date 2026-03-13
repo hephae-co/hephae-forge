@@ -158,8 +158,14 @@ class TestInputValidation:
         assert "missing" in res.json()["error"].lower() or "identity" in res.json()["error"].lower()
 
     @pytest.mark.asyncio
-    async def test_400_when_identity_has_no_url(self, client):
+    async def test_200_when_identity_has_no_url(self, client):
+        """No-website businesses should still be discoverable."""
         res = await client.post("/api/discover", json={"identity": {"name": "Test", "address": "123 Main"}})
+        assert res.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_400_when_identity_has_no_name(self, client):
+        res = await client.post("/api/discover", json={"identity": {"address": "123 Main"}})
         assert res.status_code == 400
 
     @pytest.mark.asyncio

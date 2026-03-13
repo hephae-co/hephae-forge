@@ -6,6 +6,9 @@ markers = [
     "integration: real API integration tests (requires GEMINI_API_KEY)",
     "needs_browser: tests that need Playwright/crawl4ai (skip on Cloud Run)",
     "human_curated: human-curated eval tests (requires Firestore + fixtures)",
+    "tier1: fast unit tests with mocked dependencies (CI, every commit)",
+    "tier2: integration tests with real APIs and Firestore (nightly)",
+    "tier3: full E2E tests with frontend + backend (pre-release)",
 ]
 
 [tool.ruff]

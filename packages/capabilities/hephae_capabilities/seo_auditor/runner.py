@@ -72,9 +72,9 @@ def _has_valid_sections(report_data: dict) -> bool:
     return any(isinstance(s, dict) and s.get("score", 0) > 0 for s in sections)
 
 
-async def _run_seo_agent(agent, identity: dict, memory_service=None) -> dict:
+async def _run_seo_agent(agent, identity: dict, memory_service=None, session_service=None) -> dict:
     """Run an SEO auditor agent and return the parsed report data (or {})."""
-    session_service = InMemorySessionService()
+    session_service = session_service or InMemorySessionService()
     runner = Runner(
         app_name="hephae-hub",
         agent=agent,
@@ -172,7 +172,8 @@ async def run_seo_audit(
     identity_with_examples = {**identity, "examples_context": examples_context}
 
     # Primary run with ENHANCED model
-    report_data = await _run_seo_agent(seo_auditor_agent, identity_with_examples, memory_service)
+    ext_session_service = kwargs.get("session_service")
+    report_data = await _run_seo_agent(seo_auditor_agent, identity_with_examples, memory_service, session_service=ext_session_service)
 
     # Fallback: if primary model returned empty/useless sections, retry with lite model
     if not _has_valid_sections(report_data):
@@ -190,7 +191,7 @@ async def run_seo_audit(
             output_schema=SeoAuditorOutput,
             on_model_error_callback=fallback_on_error,
         )
-        fallback_data = await _run_seo_agent(fallback_agent, identity, memory_service)
+        fallback_data = await _run_seo_agent(fallback_agent, identity, memory_service, session_service=ext_session_service)
         if _has_valid_sections(fallback_data):
             report_data = fallback_data
             logger.info("[SEO Runner] Fallback model produced valid sections.")

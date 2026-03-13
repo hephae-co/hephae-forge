@@ -1,26 +1,33 @@
 """
-Social post generator agents — Instagram + Facebook + X/Twitter posts from report data.
+Social post generator agents — 5-channel parallel generation via ParallelAgent.
 
-Runs three agents in parallel to generate platform-specific social posts
-highlighting key findings from business reports.
+Generates Instagram + Facebook + X/Twitter + Email + Contact Form content
+from report data using ADK ParallelAgent orchestration.
 """
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import re
 import time
 from typing import Any
 
-from google.adk.agents import LlmAgent
+from google.adk.agents import LlmAgent, ParallelAgent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
 from hephae_common.model_config import AgentModels
 from hephae_common.model_fallback import fallback_on_error
 from hephae_common.adk_helpers import user_msg
+from hephae_common.adk_callbacks import log_agent_start, log_agent_complete
+from hephae_db.schemas.agent_outputs import (
+    InstagramPostOutput,
+    FacebookPostOutput,
+    TwitterPostOutput,
+    EmailOutreachOutput,
+    ContactFormOutput,
+)
 from hephae_capabilities.social.post_generator.prompts import (
     INSTAGRAM_POST_INSTRUCTION,
     FACEBOOK_POST_INSTRUCTION,
@@ -32,7 +39,7 @@ from hephae_capabilities.social.post_generator.prompts import (
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Agent definitions
+# Agent definitions — all use output_key for session state storage
 # ---------------------------------------------------------------------------
 
 instagram_post_agent = LlmAgent(
@@ -40,6 +47,7 @@ instagram_post_agent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     instruction=INSTAGRAM_POST_INSTRUCTION,
     output_key="instagramPost",
+    output_schema=InstagramPostOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -48,6 +56,7 @@ facebook_post_agent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     instruction=FACEBOOK_POST_INSTRUCTION,
     output_key="facebookPost",
+    output_schema=FacebookPostOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -56,6 +65,7 @@ twitter_post_agent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     instruction=TWITTER_POST_INSTRUCTION,
     output_key="twitterPost",
+    output_schema=TwitterPostOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -64,6 +74,7 @@ email_outreach_agent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     instruction=EMAIL_OUTREACH_INSTRUCTION,
     output_key="emailOutreach",
+    output_schema=EmailOutreachOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -72,7 +83,26 @@ contact_form_agent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     instruction=CONTACT_FORM_INSTRUCTION,
     output_key="contactFormDraft",
+    output_schema=ContactFormOutput,
     on_model_error_callback=fallback_on_error,
+)
+
+# ---------------------------------------------------------------------------
+# ParallelAgent orchestrator — runs all 5 channel agents concurrently
+# ---------------------------------------------------------------------------
+
+social_post_parallel = ParallelAgent(
+    name="SocialPostParallel",
+    description="Generate content for 5 outreach channels in parallel: Instagram, Facebook, Twitter, Email, Contact Form.",
+    before_agent_callback=log_agent_start,
+    after_agent_callback=log_agent_complete,
+    sub_agents=[
+        instagram_post_agent,
+        facebook_post_agent,
+        twitter_post_agent,
+        email_outreach_agent,
+        contact_form_agent,
+    ],
 )
 
 # ---------------------------------------------------------------------------
@@ -124,7 +154,6 @@ def _build_context(
         if social_handles.get("twitter"):
             parts.append(f"Twitter/X Handle: {social_handles['twitter']}")
 
-    # Report links section — use cdn_report_urls if available, else single report_url
     all_urls = cdn_report_urls or {}
     if report_url and report_type and report_type not in all_urls:
         all_urls[report_type] = report_url
@@ -160,8 +189,6 @@ def _build_rich_context(
             parts.append(f"Facebook Page: {social_handles['facebook']}")
         if social_handles.get("twitter"):
             parts.append(f"Twitter/X Handle: {social_handles['twitter']}")
-
-    # --- Per-agent data sections ---
 
     m = latest_outputs.get("margin_surgeon")
     if m and isinstance(m, dict):
@@ -229,7 +256,6 @@ def _build_rich_context(
         if mk.get("reportUrl"):
             parts.append(f"Full Report: {mk['reportUrl']}")
 
-    # --- CDN report links section ---
     report_urls = cdn_report_urls or {}
     if report_urls:
         parts.append("\n## REPORT LINKS (MUST include at least one in your output)")
@@ -237,7 +263,6 @@ def _build_rich_context(
             label = REPORT_TYPE_LABELS.get(rtype, rtype.replace("_", " ").title())
             parts.append(f"- {label}: {url}")
 
-    # --- Social card image URLs section ---
     card_urls = cdn_card_urls or {}
     if card_urls:
         parts.append("\n## SOCIAL CARD IMAGES (use these as post images)")
@@ -245,7 +270,6 @@ def _build_rich_context(
             label = REPORT_TYPE_LABELS.get(rtype, rtype.replace("_", " ").title())
             parts.append(f"- {label} Card: {url}")
 
-    # Focus instruction
     if report_type:
         label = REPORT_TYPE_LABELS.get(report_type, report_type.replace("_", " ").title())
         parts.append(f"\nFOCUS: This post should primarily highlight the {label} findings.")
@@ -306,29 +330,6 @@ def _fallback_posts(
     }
 
 
-async def _run_agent(agent: LlmAgent, output_key: str, prompt: str) -> str:
-    """Run a single agent and return its output."""
-    session_service = InMemorySessionService()
-    session_id = f"social-{output_key}-{int(time.time() * 1000)}"
-    runner = Runner(
-        app_name="hephae-hub",
-        agent=agent,
-        session_service=session_service,
-    )
-    await session_service.create_session(
-        app_name="hephae-hub", session_id=session_id, user_id="sys", state={}
-    )
-    async for _ in runner.run_async(
-        session_id=session_id, user_id="sys", new_message=user_msg(prompt),
-    ):
-        pass
-
-    session = await session_service.get_session(
-        app_name="hephae-hub", session_id=session_id, user_id="sys"
-    )
-    return (session.state or {}).get(output_key, "{}")
-
-
 async def generate_social_posts(
     business_name: str,
     report_type: str = "",
@@ -339,13 +340,7 @@ async def generate_social_posts(
     cdn_report_urls: dict[str, str] | None = None,
     cdn_card_urls: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Generate Instagram + Facebook + X/Twitter + Email + Contact Form content in parallel.
-
-    Args:
-        latest_outputs: When provided, builds rich context from stored Firestore
-            data instead of using the single summary string (data-enriched mode).
-        cdn_report_urls: Map of report_type -> CDN URL for report links.
-        cdn_card_urls: Map of report_type -> CDN URL for social card images.
+    """Generate 5-channel content via ParallelAgent orchestration.
 
     Returns:
         {
@@ -366,19 +361,35 @@ async def generate_social_posts(
     logger.info(f"[SocialPostGen] Generating 5-channel content for {business_name} ({report_type})")
 
     try:
-        ig_raw, fb_raw, tw_raw, email_raw, contact_raw = await asyncio.gather(
-            _run_agent(instagram_post_agent, "instagramPost", context),
-            _run_agent(facebook_post_agent, "facebookPost", context),
-            _run_agent(twitter_post_agent, "twitterPost", context),
-            _run_agent(email_outreach_agent, "emailOutreach", context),
-            _run_agent(contact_form_agent, "contactFormDraft", context),
+        session_service = InMemorySessionService()
+        session_id = f"social-posts-{int(time.time() * 1000)}"
+
+        await session_service.create_session(
+            app_name="hephae-hub", session_id=session_id, user_id="sys", state={}
         )
 
-        ig_data = _parse_json(ig_raw)
-        fb_data = _parse_json(fb_raw)
-        tw_data = _parse_json(tw_raw)
-        email_data = _parse_json(email_raw)
-        contact_data = _parse_json(contact_raw)
+        runner = Runner(
+            app_name="hephae-hub",
+            agent=social_post_parallel,
+            session_service=session_service,
+        )
+
+        async for _ in runner.run_async(
+            session_id=session_id, user_id="sys", new_message=user_msg(context),
+        ):
+            pass
+
+        # Read all outputs from session state
+        session = await session_service.get_session(
+            app_name="hephae-hub", session_id=session_id, user_id="sys"
+        )
+        state = session.state or {}
+
+        ig_data = _parse_json(state.get("instagramPost", "{}"))
+        fb_data = _parse_json(state.get("facebookPost", "{}"))
+        tw_data = _parse_json(state.get("twitterPost", "{}"))
+        email_data = _parse_json(state.get("emailOutreach", "{}"))
+        contact_data = _parse_json(state.get("contactFormDraft", "{}"))
 
         result = {
             "instagram": {

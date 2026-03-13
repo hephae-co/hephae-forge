@@ -63,7 +63,6 @@ export default function Home() {
   const { user, signInWithGoogle, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { apiFetch } = useApiClient();
-  const [hasSkippedAuth, setHasSkippedAuth] = useState(false);
   const [showAuthWall, setShowAuthWall] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -152,7 +151,7 @@ export default function Home() {
     // If no tracking doc exists yet, create one on the fly
     if (!docId) {
       try {
-        const trackRes = await fetch('/api/track', {
+        const trackRes = await apiFetch('/api/track', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: locatedBusiness?.name || 'unknown' })
@@ -167,7 +166,7 @@ export default function Home() {
 
     // Save email to tracking doc if available
     if (docId) {
-      const res = await fetch('/api/track', {
+      const res = await apiFetch('/api/track', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: docId, email })
@@ -202,7 +201,7 @@ export default function Home() {
 
     try {
       const { menuScreenshotBase64: _stripped, ...identityForApi } = locatedBusiness as any;
-      const res = await fetch('/api/analyze', {
+      const res = await apiFetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -267,7 +266,7 @@ export default function Home() {
     // Lead Capture Interception: Always silently track the first query
     if (!hasProvidedEmail && !searchDocId) {
       try {
-        const trackRes = await fetch('/api/track', {
+        const trackRes = await apiFetch('/api/track', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: text })
         });
@@ -278,14 +277,14 @@ export default function Home() {
       } catch (e) { console.error("Tracking failed", e); }
     } else if (hasProvidedEmail) {
       // Just log subsequent queries silently in the background
-      fetch('/api/track', {
+      apiFetch('/api/track', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: text })
       }).catch(() => { }); // fire and forget
     }
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await apiFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -366,7 +365,7 @@ export default function Home() {
     }
 
     try {
-      const res = await fetch('/api/discover', {
+      const res = await apiFetch('/api/discover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identity })
@@ -420,7 +419,7 @@ export default function Home() {
     // Track for lead capture
     if (!hasProvidedEmail && !searchDocId) {
       try {
-        const trackRes = await fetch('/api/track', {
+        const trackRes = await apiFetch('/api/track', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: identity.name })
         });
@@ -461,16 +460,18 @@ export default function Home() {
     executeCapability(capId);
   };
 
-  // Show AuthWall after first capability report completes (not before)
+  // Show save-report banner after each capability report completes
   const maybeShowAuthWall = () => {
-    if (!user && !hasSkippedAuth && !hasProvidedEmail) {
+    if (!user && !hasProvidedEmail) {
       setShowAuthWall(true);
+      // Auto-dismiss after 10s if not interacted with
+      setTimeout(() => setShowAuthWall(false), 10000);
     }
   };
 
   const sendReportEmailAsync = (reportType: string, reportUrl: string, businessName: string, summary: string) => {
     if (!userEmail || !reportUrl) return;
-    fetch('/api/send-report-email', {
+    apiFetch('/api/send-report-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: userEmail, reportUrl, reportType, businessName, summary }),
@@ -509,7 +510,7 @@ export default function Home() {
           enrichedProfile: identityForApi,
           advancedMode: false
         };
-        const res = await fetch('/api/analyze', {
+        const res = await apiFetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -551,7 +552,7 @@ export default function Home() {
       setIsTyping(true);
 
       try {
-        const res = await fetch('/api/capabilities/traffic', {
+        const res = await apiFetch('/api/capabilities/traffic', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identity: identityForApi }),
@@ -591,7 +592,7 @@ export default function Home() {
       setIsTyping(true);
 
       try {
-        const res = await fetch('/api/capabilities/seo', {
+        const res = await apiFetch('/api/capabilities/seo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identity: identityForApi }),
@@ -636,7 +637,7 @@ export default function Home() {
       setIsTyping(true);
 
       try {
-        const res = await fetch('/api/capabilities/marketing', {
+        const res = await apiFetch('/api/capabilities/marketing', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identity: identityForApi }),
@@ -671,7 +672,7 @@ export default function Home() {
       setIsTyping(true);
 
       try {
-        const res = await fetch('/api/capabilities/competitive', {
+        const res = await apiFetch('/api/capabilities/competitive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identity: identityForApi }),
@@ -766,8 +767,9 @@ export default function Home() {
     const topLeak = report.menu_items.sort((a, b) => b.price_leakage - a.price_leakage)[0];
     const totalLeakage = report.menu_items.reduce((s, i) => s + i.price_leakage, 0);
 
-    const res = await fetch('/api/social-card', {
+    const res = await apiFetch('/api/social-card', {
       method: "POST",
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         businessName: report.identity.name,
         totalLeakage,
@@ -1731,10 +1733,7 @@ export default function Home() {
           await handleEmailSubmit(email);
           setShowAuthWall(false);
         }}
-        onSkip={() => {
-          setHasSkippedAuth(true);
-          setShowAuthWall(false);
-        }}
+        onDismiss={() => setShowAuthWall(false)}
       />
 
       {user && locatedBusiness && (

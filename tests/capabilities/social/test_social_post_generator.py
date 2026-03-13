@@ -436,17 +436,9 @@ class TestGenerateSocialPostsFiveChannels:
             patch("hephae_capabilities.social.post_generator.agent.InMemorySessionService") as mock_svc_cls,
             patch("hephae_capabilities.social.post_generator.agent.Runner") as mock_runner_cls,
         ):
-            # Capture the prompt passed to agents
+            # Capture the prompt passed to the ParallelAgent runner
             captured_prompts = []
-            original_run_agent = None
 
-            async def mock_run_agent(agent, output_key, prompt):
-                captured_prompts.append(prompt)
-                session = MagicMock()
-                session.state = {"placeholder": ""}
-                return "{}"
-
-            call_count = {"n": 0}
             def _make_svc():
                 svc = MagicMock()
                 svc.create_session = AsyncMock(return_value=None)
@@ -455,17 +447,26 @@ class TestGenerateSocialPostsFiveChannels:
                 svc.get_session = AsyncMock(return_value=session)
                 return svc
 
-            mock_svc_cls.side_effect = _make_svc
+            mock_svc_cls.return_value = _make_svc()
+
+            async def _capture_stream(*a, **kw):
+                msg = kw.get("new_message")
+                if msg and hasattr(msg, "parts"):
+                    for part in msg.parts:
+                        if hasattr(part, "text") and part.text:
+                            captured_prompts.append(part.text)
+                return
+                yield
+
             runner = MagicMock()
-            runner.run_async = MagicMock(side_effect=_empty_stream)
+            runner.run_async = MagicMock(side_effect=_capture_stream)
             mock_runner_cls.return_value = runner
 
-            from hephae_capabilities.social.post_generator import agent as agent_module
-            with patch.object(agent_module, "_run_agent", side_effect=mock_run_agent):
-                result = await agent_module.generate_social_posts(
-                    business_name="Test",
-                    latest_outputs={"margin_surgeon": {"score": 50, "summary": "Test"}},
-                )
+            from hephae_capabilities.social.post_generator.agent import generate_social_posts
+            result = await generate_social_posts(
+                business_name="Test",
+                latest_outputs={"margin_surgeon": {"score": 50, "summary": "Test"}},
+            )
 
             # Check that rich context was used (contains specific section header)
             assert any("Margin Surgery" in p for p in captured_prompts) or len(result) > 0

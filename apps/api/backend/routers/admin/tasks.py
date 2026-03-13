@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import datetime
 from typing import Any
 
@@ -139,6 +140,7 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
     """Full analysis pipeline for a single business within a workflow Cloud Task."""
     from hephae_common.firebase import get_db
     from hephae_db.firestore.businesses import get_business
+    from hephae_db.firestore.session_service import FirestoreSessionService
     from backend.workflows.phases.enrichment import enrich_business_profile
     from backend.workflows.capabilities.registry import get_enabled_capabilities, FullCapabilityDefinition
     from backend.workflows.phases.analysis import _run_capability
@@ -158,6 +160,10 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
             for k, v in extra.items():
                 updates[f"metadata.{k}"] = v
         await update_task(task_id, updates)
+
+    # Store session prefix in task metadata for post-mortem debugging
+    session_prefix = f"wf-{slug}-{int(time.time())}"
+    await _update_substep("started", {"sessionPrefix": session_prefix})
 
     # Step 1: Enrichment
     name = biz_data.get("name", "")
@@ -263,23 +269,32 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
     # Step 3: Run capabilities
     enabled_capabilities = get_enabled_capabilities()
     official_url = (biz_data or {}).get("officialUrl") or identity.get("officialUrl")
+    should_run_ctx = {**(biz_data or {}), **identity, "officialUrl": official_url}
     caps_to_run = [
         c for c in enabled_capabilities
-        if not c.should_run or c.should_run({"officialUrl": official_url, **identity})
+        if not c.should_run or c.should_run(should_run_ctx)
     ]
+
+    skipped = [c.name for c in enabled_capabilities if c not in caps_to_run]
+    if skipped:
+        logger.info(f"[WorkflowAnalyze] Skipping capabilities for {slug}: {skipped}")
+        await _update_substep("capabilities_skipped", {"capabilitiesSkipped": skipped})
 
     latest_outputs: dict[str, Any] = {}
     completed: list[str] = []
     failed: list[str] = []
 
+    # Shared Firestore session service for all capabilities — persists state for debugging
+    wf_session_service = FirestoreSessionService()
+
     async def _run_cap(cap_def: FullCapabilityDefinition):
-        raw = await _run_capability(slug, cap_def, identity)
+        raw = await _run_capability(slug, cap_def, identity, session_service=wf_session_service)
         if raw:
             completed.append(cap_def.name)
             latest_outputs[cap_def.firestore_output_key] = cap_def.response_adapter(raw)
         else:
             failed.append(cap_def.name)
-        await _update_substep(f"capability_done:{cap_def.name}", {"capabilitiesCompleted": completed[:]})
+        await _update_substep(f"capability_done:{cap_def.name}", {"capabilitiesCompleted": completed[:], "capabilitiesFailed": failed[:]})
 
     await asyncio.gather(*[_run_cap(c) for c in caps_to_run], return_exceptions=True)
 

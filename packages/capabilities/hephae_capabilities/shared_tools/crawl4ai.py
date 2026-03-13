@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Any, Optional
 
 import httpx
@@ -25,6 +26,35 @@ CRAWL4AI_URL = os.environ.get("CRAWL4AI_URL", "http://localhost:11235")
 MAX_CONTENT_LENGTH = 10_000
 MAX_ADVANCED_CONTENT_LENGTH = 15_000
 MAX_PAGE_CONTENT_LENGTH = 3_000
+
+
+def _record_crawl_telemetry(
+    url: str,
+    strategy: str,
+    success: bool,
+    content_length: int = 0,
+    duration_ms: int = 0,
+) -> None:
+    """Fire-and-forget crawl telemetry to BigQuery. Non-blocking, never raises."""
+    try:
+        import asyncio
+        from hephae_db.bigquery.feedback import record_crawl_feedback
+
+        # Extract a slug-like identifier from URL
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        slug = parsed.netloc.replace("www.", "").replace(".", "-")
+
+        asyncio.create_task(record_crawl_feedback(
+            business_slug=slug,
+            url=url,
+            crawl_strategy=strategy,
+            crawl_success=success,
+            crawl_content_length=content_length,
+            crawl_duration_ms=duration_ms,
+        ))
+    except Exception:
+        pass  # Telemetry must never break crawling
 
 
 async def crawl_for_content(
@@ -43,6 +73,7 @@ async def crawl_for_content(
     Returns:
         dict with 'markdown', 'links', 'media' keys, or 'error' on failure.
     """
+    t0 = time.monotonic()
     try:
         logger.info(f"[Crawl4aiTool] Crawling {url} via crawl4ai...")
 
@@ -66,6 +97,7 @@ async def crawl_for_content(
         if res.status_code != 200:
             text = res.text[:200]
             logger.warning(f"[Crawl4aiTool] crawl4ai returned {res.status_code}: {text}")
+            _record_crawl_telemetry(url, "basic", False, 0, int((time.monotonic() - t0) * 1000))
             return {"error": f"crawl4ai returned HTTP {res.status_code}"}
 
         data = res.json()
@@ -87,13 +119,16 @@ async def crawl_for_content(
             f"[Crawl4aiTool] Extracted {len(markdown)} chars markdown, {len(links)} links, {len(media)} media"
         )
 
+        _record_crawl_telemetry(url, "basic", bool(markdown), len(markdown), int((time.monotonic() - t0) * 1000))
         return {"markdown": markdown, "links": links, "media": media}
 
     except httpx.TimeoutException:
         logger.warning("[Crawl4aiTool] Request timed out after 30s")
+        _record_crawl_telemetry(url, "basic", False, 0, int((time.monotonic() - t0) * 1000))
         return {"error": "crawl4ai request timed out"}
     except Exception as error:
         logger.warning(f"[Crawl4aiTool] Service unavailable: {error}")
+        _record_crawl_telemetry(url, "basic", False, 0, int((time.monotonic() - t0) * 1000))
         return {"error": f"crawl4ai unavailable: {error}"}
 
 
@@ -146,6 +181,7 @@ async def crawl_with_options(
     Returns:
         dict with 'markdown', 'links', 'media' keys, or 'error' on failure.
     """
+    t0 = time.monotonic()
     try:
         logger.info(f"[Crawl4aiAdvanced] Crawling {url} with options...")
 
@@ -189,13 +225,16 @@ async def crawl_with_options(
             f"[Crawl4aiAdvanced] Extracted {len(markdown)} chars markdown, "
             f"{len(links)} links, {len(media)} media"
         )
+        _record_crawl_telemetry(url, "advanced", bool(markdown), len(markdown), int((time.monotonic() - t0) * 1000))
         return {"markdown": markdown, "links": links, "media": media}
 
     except httpx.TimeoutException:
         logger.warning("[Crawl4aiAdvanced] Request timed out after 60s")
+        _record_crawl_telemetry(url, "advanced", False, 0, int((time.monotonic() - t0) * 1000))
         return {"error": "crawl4ai advanced request timed out"}
     except Exception as error:
         logger.warning(f"[Crawl4aiAdvanced] Service unavailable: {error}")
+        _record_crawl_telemetry(url, "advanced", False, 0, int((time.monotonic() - t0) * 1000))
         return {"error": f"crawl4ai unavailable: {error}"}
 
 
@@ -218,6 +257,7 @@ async def crawl_multiple_pages(
     Returns:
         dict with 'pages' array [{url, title, markdown}] and 'total_found', or 'error'.
     """
+    t0 = time.monotonic()
     try:
         logger.info(f"[Crawl4aiDeep] Deep crawling {url} (max_pages={max_pages}, depth={max_depth})...")
 
@@ -267,12 +307,16 @@ async def crawl_multiple_pages(
             page_md = _extract_markdown(page_result, MAX_PAGE_CONTENT_LENGTH)
             pages.append({"url": page_url, "title": page_title, "markdown": page_md})
 
+        total_content = sum(len(p.get("markdown", "")) for p in pages)
         logger.info(f"[Crawl4aiDeep] Found {len(pages)} pages from {url}")
+        _record_crawl_telemetry(url, "deep", bool(pages), total_content, int((time.monotonic() - t0) * 1000))
         return {"pages": pages, "total_found": len(pages)}
 
     except httpx.TimeoutException:
         logger.warning("[Crawl4aiDeep] Request timed out after 90s")
+        _record_crawl_telemetry(url, "deep", False, 0, int((time.monotonic() - t0) * 1000))
         return {"error": "crawl4ai deep crawl request timed out"}
     except Exception as error:
         logger.warning(f"[Crawl4aiDeep] Service unavailable: {error}")
+        _record_crawl_telemetry(url, "deep", False, 0, int((time.monotonic() - t0) * 1000))
         return {"error": f"crawl4ai unavailable: {error}"}

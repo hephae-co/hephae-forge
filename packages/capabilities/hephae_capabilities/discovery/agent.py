@@ -18,6 +18,15 @@ from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 
 from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
+from hephae_common.adk_callbacks import log_agent_start, log_agent_complete
+from hephae_db.schemas.agent_outputs import (
+    EntityMatchOutput,
+    ThemeOutput,
+    BusinessOverviewOutput,
+    ChallengesOutput,
+    SocialProfilerOutput,
+    ReviewedDataOutput,
+)
 from hephae_capabilities.shared_tools import (
     google_search_tool,
     playwright_tool,
@@ -100,6 +109,7 @@ entity_matcher_agent = LlmAgent(
     instruction=_with_raw_data(ENTITY_MATCHER_INSTRUCTION),
     tools=[],  # Pure analysis — no tools needed
     output_key="entityMatchResult",
+    output_schema=EntityMatchOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -114,6 +124,7 @@ theme_agent = LlmAgent(
     instruction=_with_raw_data(THEME_AGENT_INSTRUCTION),
     tools=[google_search_tool],
     output_key="themeData",
+    output_schema=ThemeOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -178,6 +189,7 @@ business_overview_agent = LlmAgent(
     instruction=_with_raw_data(BUSINESS_OVERVIEW_INSTRUCTION),
     tools=[google_search_tool],
     output_key="aiOverview",
+    output_schema=BusinessOverviewOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -191,6 +203,7 @@ challenges_agent = LlmAgent(
     instruction=_with_raw_data(CHALLENGES_AGENT_INSTRUCTION),
     tools=[google_search_tool],
     output_key="challengesData",
+    output_schema=ChallengesOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -391,6 +404,7 @@ social_profiler_agent = LlmAgent(
     instruction=_with_social_urls(SOCIAL_PROFILER_INSTRUCTION),
     tools=[google_search_tool, crawl4ai_advanced_tool],
     output_key="socialProfileMetrics",
+    output_schema=SocialProfilerOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -436,6 +450,7 @@ discovery_reviewer_agent = LlmAgent(
     instruction=_with_all_discovery_data(DISCOVERY_REVIEWER_INSTRUCTION),
     tools=[validate_url_tool, google_search_tool],
     output_key="reviewerData",
+    output_schema=ReviewedDataOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -449,6 +464,8 @@ discovery_phase1 = SequentialAgent(
     name="DiscoveryPhase1",
     description="Crawl site and validate entity match.",
     sub_agents=[site_crawler_agent, entity_matcher_agent],
+    before_agent_callback=log_agent_start,
+    after_agent_callback=log_agent_complete,
 )
 
 # Phase 2: Full research (only runs if entity match passes)
@@ -456,6 +473,8 @@ discovery_phase2 = SequentialAgent(
     name="DiscoveryPhase2",
     description="Fan out to 9 agents (gated), profile social accounts, then validate all data.",
     sub_agents=[discovery_fan_out, social_profiler_agent, discovery_reviewer_agent],
+    before_agent_callback=log_agent_start,
+    after_agent_callback=log_agent_complete,
 )
 
 # Combined pipeline (nests phase1 + phase2 — for evals/integration tests that run the full pipeline)

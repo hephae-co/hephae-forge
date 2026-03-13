@@ -17,6 +17,7 @@ from backend.lib.auth import optional_firebase_user
 from hephae_capabilities.discovery import LocatorAgent
 from hephae_common.adk_helpers import user_msg
 from hephae_common.model_config import AgentModels
+from hephae_common.model_fallback import fallback_on_error
 from hephae_db.firestore.session_service import FirestoreSessionService
 
 logger = logging.getLogger(__name__)
@@ -101,6 +102,7 @@ def _build_chat_agent(
         model=AgentModels.PRIMARY_MODEL,
         instruction=instruction,
         tools=tools,
+        on_model_error_callback=fallback_on_error,
     )
 
 

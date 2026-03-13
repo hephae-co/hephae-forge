@@ -136,7 +136,7 @@ gcloud run deploy "$API_SERVICE" \
   --port 8080 \
   --memory 2Gi \
   --cpu 2 \
-  --timeout 300 \
+  --timeout 1800 \
   --concurrency 80 \
   --min-instances 1 \
   --max-instances 5 \

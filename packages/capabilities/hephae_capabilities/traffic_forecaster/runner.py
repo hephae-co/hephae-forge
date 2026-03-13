@@ -27,4 +27,4 @@ async def run_traffic_forecast(
     if not identity.get("name"):
         raise ValueError("Missing identity name for Traffic Forecaster")
 
-    return await ForecasterAgent.forecast(identity, business_context=business_context)
+    return await ForecasterAgent.forecast(identity, business_context=business_context, **kwargs)

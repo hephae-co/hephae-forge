@@ -8,6 +8,13 @@ from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 
 from hephae_common.model_config import AgentModels
 from hephae_common.model_fallback import fallback_on_error
+from hephae_common.adk_callbacks import log_agent_start, log_agent_complete
+from hephae_db.schemas.agent_outputs import (
+    MenuIntakeOutput,
+    BenchmarkOutput,
+    CommodityOutput,
+    AdvisorOutput,
+)
 from hephae_capabilities.margin_analyzer.prompts import (
     VISION_INTAKE_INSTRUCTION,
     BENCHMARKER_INSTRUCTION,
@@ -31,6 +38,7 @@ vision_intake_agent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     instruction=VISION_INTAKE_INSTRUCTION,
     output_key="parsedMenuItems",
+    output_schema=MenuIntakeOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -40,6 +48,7 @@ benchmarker_agent = LlmAgent(
     instruction=BENCHMARKER_INSTRUCTION,
     tools=[benchmark_tool],
     output_key="competitorBenchmarks",
+    output_schema=BenchmarkOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -49,6 +58,7 @@ commodity_watchdog_agent = LlmAgent(
     instruction=COMMODITY_WATCHDOG_INSTRUCTION,
     tools=[commodity_inflation_tool],
     output_key="commodityTrends",
+    output_schema=CommodityOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -66,6 +76,7 @@ advisor_agent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     instruction=ADVISOR_INSTRUCTION,
     output_key="strategicAdvice",
+    output_schema=AdvisorOutput,
     on_model_error_callback=fallback_on_error,
 )
 
@@ -94,4 +105,6 @@ margin_surgery_orchestrator = SequentialAgent(
         surgeon_agent,
         advisor_agent,
     ],
+    before_agent_callback=log_agent_start,
+    after_agent_callback=log_agent_complete,
 )

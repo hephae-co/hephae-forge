@@ -99,7 +99,7 @@ def _build_admin_context(business_context: Any) -> str:
 
 class ForecasterAgent:
     @staticmethod
-    async def forecast(identity: dict[str, Any], business_context: Any = None) -> dict[str, Any]:
+    async def forecast(identity: dict[str, Any], business_context: Any = None, **kwargs) -> dict[str, Any]:
         """Run the full traffic forecasting pipeline.
 
         Args:
@@ -123,7 +123,7 @@ class ForecasterAgent:
         if not location_query and (lat and lng):
             location_query = f"{lat}, {lng}"
 
-        session_service = InMemorySessionService()
+        session_service = (kwargs or {}).get("session_service") or InMemorySessionService()
         runner = Runner(
             app_name="hephae-hub",
             agent=context_gathering_pipeline,

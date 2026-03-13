@@ -87,6 +87,7 @@ export default function WorkflowDashboard() {
     const [researchLoading, setResearchLoading] = useState(false);
 
     const eventSourceRef = useRef<EventSource | null>(null);
+    const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const fetchWorkflows = useCallback(async () => {
         try {
@@ -131,9 +132,51 @@ export default function WorkflowDashboard() {
         const es = new EventSource(`/api/workflows/${activeWorkflow.id}/stream`);
         eventSourceRef.current = es;
 
+        // Debounced re-fetch: batches rapid events (e.g. many business:discovery in succession)
+        const scheduleRefetch = (id: string) => {
+            if (refetchTimerRef.current) return; // already scheduled
+            refetchTimerRef.current = setTimeout(() => {
+                refetchTimerRef.current = null;
+                fetchWorkflow(id);
+            }, 800);
+        };
+
         es.onmessage = (e) => {
             try {
-                const event: ProgressEvent = JSON.parse(e.data);
+                const data = JSON.parse(e.data);
+
+                // Handle stream-level events (initial, done, poll, heartbeat)
+                if (data.type === 'initial' && data.workflow) {
+                    setActiveWorkflow(data.workflow as WorkflowDocument);
+                    return;
+                }
+                if (data.type === 'done') {
+                    es.close();
+                    if (data.workflow) {
+                        setActiveWorkflow(data.workflow as WorkflowDocument);
+                    } else {
+                        fetchWorkflow(activeWorkflow.id);
+                    }
+                    fetchWorkflows();
+                    return;
+                }
+                if (data.type === 'heartbeat' || data.type === 'error') return;
+                if (data.type === 'poll' && data.progress) {
+                    setActiveWorkflow(prev => prev ? { ...prev, progress: data.progress } : prev);
+                    return;
+                }
+                // Polling fallback phase_changed includes full workflow
+                if (data.type === 'phase_changed' && data.workflow) {
+                    setActiveWorkflow(data.workflow as WorkflowDocument);
+                    if (data.phase === 'approval' || data.phase === 'completed' || data.phase === 'failed') {
+                        es.close();
+                        fetchWorkflows();
+                    }
+                    return;
+                }
+
+                // Handle ProgressEvent from in-process engine streaming
+                const event: ProgressEvent = data;
                 setActiveWorkflow(prev => {
                     if (!prev) return prev;
                     return {
@@ -147,12 +190,25 @@ export default function WorkflowDashboard() {
                     es.close();
                     fetchWorkflow(activeWorkflow.id);
                     fetchWorkflows();
+                    return;
                 }
 
                 // When reaching approval, fetch full state for business details
                 if (event.phase === 'approval') {
                     es.close();
                     fetchWorkflow(activeWorkflow.id);
+                    return;
+                }
+
+                // Re-fetch full workflow on phase transitions to pick up new data (e.g. businesses after discovery)
+                if (event.type === 'workflow:phase_changed') {
+                    fetchWorkflow(activeWorkflow.id);
+                    return;
+                }
+
+                // Debounced re-fetch for business-level events (discovery, enrichment, analysis progress)
+                if (event.type.startsWith('business:')) {
+                    scheduleRefetch(activeWorkflow.id);
                 }
             } catch { /* ignore parse errors */ }
         };
@@ -173,6 +229,10 @@ export default function WorkflowDashboard() {
         return () => {
             es.close();
             eventSourceRef.current = null;
+            if (refetchTimerRef.current) {
+                clearTimeout(refetchTimerRef.current);
+                refetchTimerRef.current = null;
+            }
         };
     }, [activeWorkflow?.id, activeWorkflow?.phase]);
 
@@ -467,6 +527,7 @@ export default function WorkflowDashboard() {
                     <button
                         onClick={handleLaunch}
                         disabled={isLaunching}
+                        data-testid="launch-button"
                         className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-md hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm transition-all"
                     >
                         {isLaunching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Rocket className="w-3.5 h-3.5" />}
@@ -508,7 +569,7 @@ export default function WorkflowDashboard() {
                             </div>
                             <span className="text-xs text-gray-400 font-mono">{activeWorkflow.id.slice(0, 8)}</span>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1" data-testid="phase-stepper" data-phase={activeWorkflow.phase}>
                             {PHASE_STEPS.map((step, idx) => (
                                 <div key={step} className="flex items-center flex-1">
                                     <div className={`flex-1 h-1.5 rounded-full transition-all ${
@@ -552,20 +613,20 @@ export default function WorkflowDashboard() {
                     )}
 
                     {/* Progress Stats */}
-                    <div className="p-4 border-b border-gray-200 grid grid-cols-4 gap-4">
-                        <div className="text-center">
+                    <div className="p-4 border-b border-gray-200 grid grid-cols-4 gap-4" data-testid="progress-counters">
+                        <div className="text-center" data-testid="counter-discovered">
                             <div className="text-2xl font-bold text-gray-800">{activeWorkflow.progress.totalBusinesses}</div>
                             <div className="text-xs text-gray-500">Discovered</div>
                         </div>
-                        <div className="text-center">
+                        <div className="text-center" data-testid="counter-analyzed">
                             <div className="text-2xl font-bold text-blue-500">{activeWorkflow.progress.analysisComplete}</div>
                             <div className="text-xs text-gray-500">Analyzed</div>
                         </div>
-                        <div className="text-center">
+                        <div className="text-center" data-testid="counter-passed-qa">
                             <div className="text-2xl font-bold text-green-500">{activeWorkflow.progress.qualityPassed}</div>
                             <div className="text-xs text-gray-500">Passed QA</div>
                         </div>
-                        <div className="text-center">
+                        <div className="text-center" data-testid="counter-outreached">
                             <div className="text-2xl font-bold text-purple-500">{activeWorkflow.progress.outreachComplete}</div>
                             <div className="text-xs text-gray-500">Outreached</div>
                         </div>
@@ -662,7 +723,7 @@ export default function WorkflowDashboard() {
                     {activeWorkflow.businesses && activeWorkflow.businesses.length > 0 && (
                         <div className="p-4 space-y-2">
                             {activeWorkflow.businesses.map(biz => (
-                                <div key={biz.slug} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <div key={biz.slug} data-testid={`business-card-${biz.slug}`} data-phase={biz.phase} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                             <span className="font-medium text-sm text-gray-800">{biz.name}</span>
@@ -673,7 +734,7 @@ export default function WorkflowDashboard() {
                                         </div>
                                         <div className="text-xs text-gray-500 mt-0.5">{biz.address}</div>
                                         {!biz.officialUrl && biz.phase !== 'pending' && (
-                                            <div className="text-[10px] text-amber-600 mt-0.5">No website — only social capability ran</div>
+                                            <div className="text-[10px] text-amber-600 mt-0.5">No website found</div>
                                         )}
                                         {biz.lastError && (
                                             <div className="text-[10px] text-red-500 mt-0.5 truncate max-w-md" title={biz.lastError}>
@@ -736,7 +797,7 @@ export default function WorkflowDashboard() {
                                             </button>
                                         </div>
                                     ) : (
-                                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                        <span data-testid="phase-badge" className={`text-xs px-2 py-0.5 rounded-full ${
                                             biz.phase === 'outreach_done' ? 'bg-green-50 text-green-600' :
                                             biz.phase === 'outreach_failed' ? 'bg-red-50 text-red-600' :
                                             biz.phase === 'approved' ? 'bg-green-50 text-green-600' :

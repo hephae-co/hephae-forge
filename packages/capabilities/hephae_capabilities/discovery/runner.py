@@ -99,11 +99,9 @@ async def run_discovery(
     Returns:
         Enriched profile dict with socialLinks, competitors, theme, etc.
     """
-    if not identity.get("officialUrl"):
-        raise ValueError("Missing officialUrl for discovery")
-
+    has_url = bool(identity.get("officialUrl"))
     name = identity.get("name", "Unknown")
-    logger.info(f"[Discovery Runner] Running for: {name} (Stages: {stages or 'ALL'})")
+    logger.info(f"[Discovery Runner] Running for: {name} (URL: {has_url}, Stages: {stages or 'ALL'})")
 
     from hephae_db.firestore.session_service import FirestoreSessionService
     session_service = FirestoreSessionService()
@@ -123,31 +121,43 @@ async def run_discovery(
 
     # --- Phase 1: Crawl + entity validation (parallel with local context fetch) ---
     zip_code = _extract_zip_code(identity)
+    p1_state: dict[str, Any] = {}
+    local_context: dict[str, Any] | None = None
 
-    async def _run_phase1():
-        phase1_runner = Runner(
-            app_name="hephae-hub",
-            agent=discovery_phase1,
-            session_service=session_service,
+    # Load grounding memory from human-curated fixtures
+    from hephae_db.eval.grounding import get_agent_memory_service
+    memory_service = await get_agent_memory_service("discovery")
+
+    if has_url:
+        async def _run_phase1():
+            phase1_runner = Runner(
+                app_name="hephae-hub",
+                agent=discovery_phase1,
+                session_service=session_service,
+                memory_service=memory_service,
+            )
+            async for _ in phase1_runner.run_async(
+                user_id=user_id,
+                session_id=session_id,
+                new_message=user_msg(prompt),
+            ):
+                pass
+
+        # Fire Phase 1 crawl and local context fetch in parallel — context fetch
+        # (~200ms Firestore read) is hidden behind the crawl's 5-15s network I/O
+        _, local_context = await asyncio.gather(
+            _run_phase1(),
+            _fetch_local_context(zip_code),
         )
-        async for _ in phase1_runner.run_async(
-            user_id=user_id,
-            session_id=session_id,
-            new_message=user_msg(prompt),
-        ):
-            pass
 
-    # Fire Phase 1 crawl and local context fetch in parallel — context fetch
-    # (~200ms Firestore read) is hidden behind the crawl's 5-15s network I/O
-    _, local_context = await asyncio.gather(
-        _run_phase1(),
-        _fetch_local_context(zip_code),
-    )
-
-    p1_session = await session_service.get_session(
-        app_name="hephae-hub", user_id=user_id, session_id=session_id
-    )
-    p1_state = p1_session.state if p1_session else {}
+        p1_session = await session_service.get_session(
+            app_name="hephae-hub", user_id=user_id, session_id=session_id
+        )
+        p1_state = p1_session.state if p1_session else {}
+    else:
+        # No website — skip Phase 1 (crawl + entity match), just fetch local context
+        logger.info(f"[Discovery Runner] No URL for {name} — skipping Phase 1, running Phase 2 only")
+        local_context = await _fetch_local_context(zip_code)
 
     # JIT: If only Phase 1 was requested, return early
     if stages is not None and 2 not in stages:
@@ -181,10 +191,10 @@ async def run_discovery(
         except Exception as e:
             logger.warning(f"[Discovery Runner] Caching failed: {e}")
 
-    # P0.3: Check entity match — abort early on MISMATCH/AGGREGATOR
-    entity_match = _safe_parse(p1_state.get("entityMatchResult"))
+    # P0.3: Check entity match — abort early on MISMATCH/AGGREGATOR (skip if no URL)
+    entity_match = _safe_parse(p1_state.get("entityMatchResult")) if has_url else {}
     match_status = entity_match.get("status", "MATCH")
-    if match_status in ("MISMATCH", "AGGREGATOR"):
+    if has_url and match_status in ("MISMATCH", "AGGREGATOR"):
         logger.warning(
             f"[Discovery Runner] Entity mismatch for {name}: status={match_status}, "
             f"reason={entity_match.get('reason', 'unknown')}"
@@ -202,6 +212,7 @@ async def run_discovery(
         app_name="hephae-hub",
         agent=discovery_phase2,
         session_service=session_service,
+        memory_service=memory_service,
     )
     async for _ in phase2_runner.run_async(
         user_id=user_id,

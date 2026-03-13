@@ -24,16 +24,14 @@ async def enrich_business_profile(
             logger.warning(f"[Enrichment] No website for {slug}, attempting search-based discovery")
             website = await _find_website(name, address)
 
-        if not website:
-            logger.warning(f"[Enrichment] Could not find website for {slug}, skipping full discovery")
-            # Return basic enrichment from scanner data
-            return biz_data if biz_data else None
-
         identity = {
             "name": name,
             "address": address,
-            "officialUrl": website,
+            "officialUrl": website or "",
         }
+
+        if not website:
+            logger.info(f"[Enrichment] No website for {slug}, running search-based discovery")
         result = await run_discovery(identity)
 
         if result and isinstance(result, dict):
@@ -52,6 +50,7 @@ async def _find_website(name: str, address: str) -> str:
     try:
         from hephae_common.adk_helpers import run_agent_to_json
         from hephae_common.model_config import AgentModels
+        from hephae_common.model_fallback import fallback_on_error
         from google.adk.agents import LlmAgent
         from google.adk.tools import google_search
 
@@ -63,6 +62,7 @@ async def _find_website(name: str, address: str) -> str:
             Example: {"url": "https://example.com"}
             If you cannot find a website, return: {"url": ""}""",
             tools=[google_search],
+            on_model_error_callback=fallback_on_error,
         )
 
         data = await run_agent_to_json(

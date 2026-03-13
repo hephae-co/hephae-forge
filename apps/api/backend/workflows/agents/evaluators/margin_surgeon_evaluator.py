@@ -6,6 +6,7 @@ from google.adk.agents import LlmAgent
 
 from backend.config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
+from hephae_db.schemas.agent_outputs import EvaluationOutput
 
 MarginSurgeonEvaluatorAgent = LlmAgent(
     name="margin_surgeon_evaluator",
@@ -28,6 +29,7 @@ Output MUST STRICTLY match this JSON schema:
     "isHallucinated": boolean,
     "issues": string[]
 }""",
+    output_schema=EvaluationOutput,
     generate_content_config=ThinkingPresets.MEDIUM,
     on_model_error_callback=fallback_on_error,
 )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import datetime
 from typing import Any, Callable
 
@@ -24,6 +25,8 @@ from backend.workflows.capabilities.registry import (
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = 3
+MAX_POLL_DURATION_SECONDS = 2400  # 40 minutes — safety valve for stuck tasks
+STUCK_TASK_THRESHOLD_SECONDS = 600  # 10 minutes with no substep change → mark failed
 
 PROMOTE_KEYS = [
     "phone", "email", "emailStatus", "contactFormUrl", "contactFormStatus", "hours", "googleMapsUrl", "socialLinks",
@@ -33,11 +36,11 @@ PROMOTE_KEYS = [
 
 
 async def _run_capability(
-    slug: str, cap_def: FullCapabilityDefinition, identity: dict
+    slug: str, cap_def: FullCapabilityDefinition, identity: dict, **kwargs
 ) -> dict | None:
     """Call a capability runner directly (in-process, no HTTP)."""
     try:
-        result = await cap_def.runner(identity)
+        result = await cap_def.runner(identity, **kwargs)
         if result:
             return result
         logger.error(f"[Analysis] {cap_def.name} returned None for {slug}")
@@ -115,9 +118,10 @@ async def run_single_business_analysis(slug: str) -> dict:
 
     enabled_capabilities = get_enabled_capabilities()
     official_url = biz_data.get("officialUrl") or identity.get("officialUrl")
+    should_run_ctx = {**biz_data, **identity, "officialUrl": official_url}
     caps_to_run = [
         c for c in enabled_capabilities
-        if not c.should_run or c.should_run({"officialUrl": official_url, **identity})
+        if not c.should_run or c.should_run(should_run_ctx)
     ]
 
     latest_outputs: dict[str, Any] = {}
@@ -203,15 +207,32 @@ async def run_analysis_phase(
     # 2. Poll loop — check all tasks every POLL_INTERVAL_SECONDS
     task_ids = list(task_map.keys())
     last_substep: dict[str, str] = {tid: "" for tid in task_ids}
+    last_substep_time: dict[str, float] = {tid: time.monotonic() for tid in task_ids}
     terminal_statuses = {STATUS_COMPLETED, STATUS_FAILED}
+    poll_start = time.monotonic()
 
     while True:
         await _sleep(POLL_INTERVAL_SECONDS)
+
+        elapsed = time.monotonic() - poll_start
+        if elapsed > MAX_POLL_DURATION_SECONDS:
+            logger.error(f"[Analysis] Polling timeout after {elapsed:.0f}s — force-failing remaining tasks")
+            for tid in task_ids:
+                slug = task_map[tid]
+                biz = biz_by_slug[slug]
+                if biz.phase != BusinessPhase.ANALYSIS_DONE:
+                    biz.lastError = "Analysis timed out (polling limit exceeded)"
+                    biz.phase = BusinessPhase.ANALYSIS_DONE
+                    await update_task(tid, {"status": STATUS_FAILED, "error": biz.lastError})
+                    if callbacks.get("onBusinessDone"):
+                        await callbacks["onBusinessDone"](slug)
+            break
 
         tasks = await get_tasks_by_ids(task_ids)
         tasks_by_id = {t["id"]: t for t in tasks}
 
         all_terminal = True
+        now = time.monotonic()
         for tid in task_ids:
             task = tasks_by_id.get(tid)
             if not task:
@@ -226,26 +247,41 @@ async def run_analysis_phase(
             if status not in terminal_statuses:
                 all_terminal = False
 
+            # Sync officialUrl from task metadata whenever available
+            if meta.get("officialUrl") and not biz.officialUrl:
+                biz.officialUrl = meta["officialUrl"]
+
             # Detect substep transitions and fire callbacks
             prev = last_substep.get(tid, "")
             if substep != prev:
                 last_substep[tid] = substep
+                last_substep_time[tid] = now
 
                 if substep == "enrichment_done" and prev != "enrichment_done":
                     biz.phase = BusinessPhase.ANALYZING
-                    # Sync officialUrl from task metadata (set during enrichment)
-                    if meta.get("officialUrl"):
-                        biz.officialUrl = meta["officialUrl"]
                     if callbacks.get("onEnrichmentDone"):
                         callbacks["onEnrichmentDone"](slug, True)
                 elif substep.startswith("capability_done:"):
                     cap_name = substep.split(":", 1)[1]
                     biz.capabilitiesCompleted = meta.get("capabilitiesCompleted", [])
+                    biz.capabilitiesFailed = meta.get("capabilitiesFailed", [])
                     if callbacks.get("onCapabilityDone"):
                         callbacks["onCapabilityDone"](slug, cap_name, True)
                 elif substep == "insights_done":
                     if callbacks.get("onInsightsDone"):
                         callbacks["onInsightsDone"](slug, True)
+
+            # Detect stuck tasks — no progress for STUCK_TASK_THRESHOLD_SECONDS
+            if status not in terminal_statuses and biz.phase != BusinessPhase.ANALYSIS_DONE:
+                stale_duration = now - last_substep_time.get(tid, poll_start)
+                if stale_duration > STUCK_TASK_THRESHOLD_SECONDS:
+                    logger.error(f"[Analysis] Task {tid} for {slug} stuck for {stale_duration:.0f}s — marking failed")
+                    biz.lastError = f"Analysis stuck (no progress for {int(stale_duration)}s)"
+                    biz.phase = BusinessPhase.ANALYSIS_DONE
+                    await update_task(tid, {"status": STATUS_FAILED, "error": biz.lastError})
+                    if callbacks.get("onBusinessDone"):
+                        await callbacks["onBusinessDone"](slug)
+                    continue
 
             # Detect terminal status
             if status == STATUS_COMPLETED and biz.phase != BusinessPhase.ANALYSIS_DONE:

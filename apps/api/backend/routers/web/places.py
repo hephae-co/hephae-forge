@@ -52,9 +52,12 @@ async def places_autocomplete(input: str = Query(...), sessiontoken: str = Query
         for s in (data.get("suggestions") or [])[:5]:
             pred = s.get("placePrediction", {})
             structured = pred.get("structuredFormat", {})
+            main = structured.get("mainText", {}).get("text", "")
+            secondary = structured.get("secondaryText", {}).get("text", "")
             predictions.append({
-                "mainText": structured.get("mainText", {}).get("text", ""),
-                "secondaryText": structured.get("secondaryText", {}).get("text", ""),
+                "mainText": main,
+                "secondaryText": secondary,
+                "description": f"{main}, {secondary}" if secondary else main,
                 "placeId": pred.get("placeId", ""),
             })
 

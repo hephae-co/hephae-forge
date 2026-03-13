@@ -8,6 +8,7 @@ from typing import Callable
 
 from hephae_common.adk_helpers import run_agent_to_json
 from hephae_db.firestore.businesses import get_business
+from hephae_db.bigquery.feedback import record_evaluation_feedback
 from backend.types import BusinessWorkflowState, BusinessPhase, EvaluationResult
 from backend.workflows.capabilities.registry import get_evaluable_capabilities
 
@@ -48,15 +49,29 @@ async def run_evaluation_phase(
                 result = await run_agent_to_json(agent, prompt, app_name=cap_def.evaluator.app_name)
 
                 if result and isinstance(result, dict):
-                    biz.evaluations[cap_def.name] = EvaluationResult(
+                    eval_result = EvaluationResult(
                         score=result.get("score", 0),
                         isHallucinated=result.get("isHallucinated", True),
                         issues=result.get("issues", []),
                     )
                 else:
-                    biz.evaluations[cap_def.name] = EvaluationResult(
+                    eval_result = EvaluationResult(
                         score=0, isHallucinated=True, issues=["Failed to parse evaluator output"]
                     )
+
+                biz.evaluations[cap_def.name] = eval_result
+
+                # Record evaluation feedback to BigQuery (fire-and-forget)
+                asyncio.create_task(record_evaluation_feedback(
+                    business_slug=biz.slug,
+                    capability=cap_def.name,
+                    agent_name=cap_def.firestore_output_key,
+                    agent_version=latest_outputs.get(cap_def.firestore_output_key, {}).get("agentVersion", ""),
+                    eval_score=eval_result.score,
+                    is_hallucinated=eval_result.isHallucinated,
+                    zip_code=biz.sourceZipCode or "",
+                    business_type=biz.businessType or "",
+                ))
 
             eval_results = [v for v in biz.evaluations.values() if v]
             biz.qualityPassed = (

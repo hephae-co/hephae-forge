@@ -66,29 +66,29 @@ def _social_adapter(raw: dict) -> dict:
 
 # --- Runner functions (lazy imports to avoid circular deps) ---
 
-async def _run_seo(identity: dict, business_context: Any = None) -> dict:
+async def _run_seo(identity: dict, business_context: Any = None, **kwargs) -> dict:
     from hephae_capabilities.seo_auditor.runner import run_seo_audit
-    return await run_seo_audit(identity, business_context)
+    return await run_seo_audit(identity, business_context, **kwargs)
 
 
-async def _run_traffic(identity: dict, business_context: Any = None) -> dict:
+async def _run_traffic(identity: dict, business_context: Any = None, **kwargs) -> dict:
     from hephae_capabilities.traffic_forecaster.runner import run_traffic_forecast
-    return await run_traffic_forecast(identity, business_context)
+    return await run_traffic_forecast(identity, business_context, **kwargs)
 
 
-async def _run_competitive(identity: dict, business_context: Any = None) -> dict:
+async def _run_competitive(identity: dict, business_context: Any = None, **kwargs) -> dict:
     from hephae_capabilities.competitive_analysis.runner import run_competitive_analysis
-    return await run_competitive_analysis(identity, business_context)
+    return await run_competitive_analysis(identity, business_context, **kwargs)
 
 
-async def _run_margin(identity: dict, business_context: Any = None) -> dict:
+async def _run_margin(identity: dict, business_context: Any = None, **kwargs) -> dict:
     from hephae_capabilities.margin_analyzer.runner import run_margin_analysis
-    return await run_margin_analysis(identity, business_context, advanced_mode=True)
+    return await run_margin_analysis(identity, business_context, advanced_mode=True, **kwargs)
 
 
-async def _run_social(identity: dict, business_context: Any = None) -> dict:
+async def _run_social(identity: dict, business_context: Any = None, **kwargs) -> dict:
     from hephae_capabilities.social.media_auditor.runner import run_social_media_audit
-    return await run_social_media_audit(identity, business_context)
+    return await run_social_media_audit(identity, business_context, **kwargs)
 
 
 # --- Evaluator prompt builders ---
@@ -195,6 +195,7 @@ CAPABILITY_REGISTRY: list[FullCapabilityDefinition] = [
         runner=_run_competitive,
         evaluator=EvaluatorConfig(_lazy_competitive_evaluator, _competitive_eval_prompt, "wf_comp_eval"),
         enabled=True,
+        should_run=lambda biz: bool(biz.get("competitors")),
     ),
     FullCapabilityDefinition(
         name="margin_surgeon",
@@ -204,6 +205,7 @@ CAPABILITY_REGISTRY: list[FullCapabilityDefinition] = [
         runner=_run_margin,
         evaluator=EvaluatorConfig(_lazy_margin_evaluator, _margin_eval_prompt, "wf_margin_eval"),
         enabled=True,
+        should_run=lambda biz: bool(biz.get("menuScreenshotBase64")),
     ),
     FullCapabilityDefinition(
         name="social",

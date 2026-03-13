@@ -64,7 +64,12 @@ async def run_margin_analysis(
         raise ValueError("Missing menuScreenshotBase64 for margin analysis")
 
     logger.info("[Margin Runner] Commencing margin surgery...")
-    session_service = InMemorySessionService()
+
+    # Load grounding memory from human-curated fixtures
+    from hephae_db.eval.grounding import get_agent_memory_service
+    memory_service = await get_agent_memory_service("margin_surgeon")
+
+    session_service = kwargs.get("session_service") or InMemorySessionService()
     session_id = f"surgery-{int(time.time() * 1000)}"
     user_id = "hub-user"
 
@@ -90,7 +95,7 @@ async def run_margin_analysis(
 
     # 1. Vision Intake
     logger.info("[Margin Runner] Step 1: Vision Intake...")
-    vision_runner = Runner(app_name="hephae-hub", agent=vision_intake_agent, session_service=session_service)
+    vision_runner = Runner(app_name="hephae-hub", agent=vision_intake_agent, session_service=session_service, memory_service=memory_service)
 
     menu_items_prompt = ""
     menu_items: list = []
@@ -130,7 +135,7 @@ async def run_margin_analysis(
 
         async def _run_benchmarker():
             result = "[]"
-            br = Runner(app_name="hephae-hub", agent=benchmarker_agent, session_service=session_service)
+            br = Runner(app_name="hephae-hub", agent=benchmarker_agent, session_service=session_service, memory_service=memory_service)
             async for raw_event in br.run_async(
                 user_id=user_id,
                 session_id=session_id,
@@ -149,7 +154,7 @@ async def run_margin_analysis(
 
         async def _run_commodity_watchdog():
             result = "[]"
-            cr = Runner(app_name="hephae-hub", agent=commodity_watchdog_agent, session_service=session_service)
+            cr = Runner(app_name="hephae-hub", agent=commodity_watchdog_agent, session_service=session_service, memory_service=memory_service)
             async for raw_event in cr.run_async(
                 user_id=user_id,
                 session_id=session_id,
@@ -199,7 +204,7 @@ async def run_margin_analysis(
 
     # 4. Surgeon
     logger.info("[Margin Runner] Step 4: The Surgeon...")
-    surgeon_runner = Runner(app_name="hephae-hub", agent=surgeon_agent, session_service=session_service)
+    surgeon_runner = Runner(app_name="hephae-hub", agent=surgeon_agent, session_service=session_service, memory_service=memory_service)
     surgeon_prompt = ""
     menu_analysis: list = []
 
@@ -240,7 +245,7 @@ async def run_margin_analysis(
 
     # 5. Advisor
     logger.info("[Margin Runner] Step 5: The Advisor...")
-    advisor_runner = Runner(app_name="hephae-hub", agent=advisor_agent, session_service=session_service)
+    advisor_runner = Runner(app_name="hephae-hub", agent=advisor_agent, session_service=session_service, memory_service=memory_service)
     strategic_advice: list = []
 
     async for raw_event in advisor_runner.run_async(

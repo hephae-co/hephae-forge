@@ -116,11 +116,13 @@ class TestAgentConfig:
 
     def test_researcher_instruction_not_empty(self):
         from hephae_capabilities.social.media_auditor.agent import social_researcher_agent
-        assert len(social_researcher_agent.instruction) > 100
+        instr = social_researcher_agent.instruction
+        assert callable(instr) or len(instr) > 100
 
     def test_strategist_instruction_not_empty(self):
         from hephae_capabilities.social.media_auditor.agent import social_strategist_agent
-        assert len(social_strategist_agent.instruction) > 100
+        instr = social_strategist_agent.instruction
+        assert callable(instr) or len(instr) > 100
 
     def test_agents_have_fallback(self):
         from hephae_capabilities.social.media_auditor.agent import social_researcher_agent, social_strategist_agent
@@ -211,58 +213,18 @@ class TestBuildSocialAuditReport:
 
 @pytest_asyncio.fixture
 async def client():
-    mock_session_svc = MagicMock()
-    mock_session_svc.create_session = AsyncMock(return_value=None)
-
-    runners_created = []
-
-    def _make_runner(*a, **kw):
-        r = MagicMock()
-        r.run_async = MagicMock(side_effect=_empty_stream)
-        runners_created.append(r)
-        return r
-
     with (
-        patch("backend.routers.web.capabilities.InMemorySessionService", return_value=mock_session_svc),
-        patch("backend.routers.web.capabilities.Runner", side_effect=_make_runner),
+        patch("backend.routers.web.capabilities.run_social_media_audit", new_callable=AsyncMock, return_value=AUDIT_PAYLOAD),
         patch("backend.routers.web.capabilities.upload_report", new_callable=AsyncMock, return_value="https://storage.googleapis.com/test/social-audit.html"),
         patch("backend.routers.web.capabilities.build_social_audit_report", return_value="<html>audit</html>"),
         patch("backend.routers.web.capabilities.generate_slug", side_effect=lambda n: n.lower().replace(" ", "-")),
         patch("backend.routers.web.capabilities.write_agent_result", new_callable=AsyncMock, return_value=None),
+        patch("backend.routers.web.capabilities.generate_and_draft_marketing_content", new_callable=AsyncMock, return_value=None),
     ):
         from backend.main import app
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            ac._runners = runners_created  # type: ignore[attr-defined]
             yield ac
-
-
-def _setup_two_step(client, researcher_text: str, strategist_text: str):
-    """Configure the two runners for a Researcher -> Strategist pipeline."""
-    client._runners.clear()
-    call_idx = {"n": 0}
-
-    def _make_runner(*a, **kw):
-        r = MagicMock()
-        idx = call_idx["n"]
-        call_idx["n"] += 1
-
-        if idx == 0:
-            async def _researcher(*a2, **kw2):
-                yield _make_text_event(researcher_text)
-            r.run_async = MagicMock(side_effect=_researcher)
-        elif idx == 1:
-            async def _strategist(*a2, **kw2):
-                yield _make_text_event(strategist_text)
-            r.run_async = MagicMock(side_effect=_strategist)
-        else:
-            r.run_async = MagicMock(side_effect=_empty_stream)
-
-        client._runners.append(r)
-        return r
-
-    import backend.routers.web.capabilities as mod
-    mod.Runner = MagicMock(side_effect=_make_runner)
 
 
 # ---------------------------------------------------------------------------
@@ -288,11 +250,6 @@ class TestInputValidation:
 class TestSuccessfulPipeline:
     @pytest.mark.asyncio
     async def test_parses_social_audit_report(self, client):
-        _setup_two_step(
-            client,
-            researcher_text="Instagram: ~1200 followers, posting 2-3x/week...",
-            strategist_text=json.dumps(AUDIT_PAYLOAD),
-        )
         res = await client.post("/api/capabilities/marketing", json={"identity": IDENTITY})
         assert res.status_code == 200
         data = res.json()
@@ -301,27 +258,7 @@ class TestSuccessfulPipeline:
         assert "reportUrl" in data
 
     @pytest.mark.asyncio
-    async def test_extracts_json_from_fences(self, client):
-        _setup_two_step(
-            client,
-            researcher_text="Research brief.",
-            strategist_text=f"```json\n{json.dumps(AUDIT_PAYLOAD)}\n```",
-        )
-        res = await client.post("/api/capabilities/marketing", json={"identity": IDENTITY})
-        assert res.status_code == 200
-        assert res.json()["overall_score"] == 52
-
-    @pytest.mark.asyncio
-    async def test_extracts_json_from_prose(self, client):
-        text = f"Here is the audit:\n{json.dumps(AUDIT_PAYLOAD)}\nHope this helps!"
-        _setup_two_step(client, "Brief.", text)
-        res = await client.post("/api/capabilities/marketing", json={"identity": IDENTITY})
-        assert res.status_code == 200
-        assert res.json()["overall_score"] == 52
-
-    @pytest.mark.asyncio
     async def test_response_includes_report_url(self, client):
-        _setup_two_step(client, "Brief.", json.dumps(AUDIT_PAYLOAD))
         res = await client.post("/api/capabilities/marketing", json={"identity": IDENTITY})
         assert res.status_code == 200
         assert res.json()["reportUrl"] == "https://storage.googleapis.com/test/social-audit.html"
@@ -329,7 +266,6 @@ class TestSuccessfulPipeline:
     @pytest.mark.asyncio
     async def test_minimal_identity(self, client):
         """Only name is required."""
-        _setup_two_step(client, "Brief.", json.dumps(AUDIT_PAYLOAD))
         res = await client.post("/api/capabilities/marketing", json={
             "identity": {"name": "Simple Cafe"}
         })
@@ -342,51 +278,21 @@ class TestSuccessfulPipeline:
 
 class TestErrorHandling:
     @pytest.mark.asyncio
-    async def test_500_on_invalid_json(self, client):
-        _setup_two_step(client, "Brief.", "This is not JSON at all")
-        res = await client.post("/api/capabilities/marketing", json={"identity": IDENTITY})
-        assert res.status_code == 500
-
-    @pytest.mark.asyncio
-    async def test_filters_thinking_parts(self, client):
-        """Thinking parts from Gemini 2.5 should be skipped."""
-        client._runners.clear()
-        call_idx = {"n": 0}
-
-        def _make_runner(*a, **kw):
-            r = MagicMock()
-            idx = call_idx["n"]
-            call_idx["n"] += 1
-
-            if idx == 0:
-                async def _researcher(*a2, **kw2):
-                    yield _make_text_event("thinking...", thought=True)
-                    yield _make_text_event("Instagram data collected.")
-                r.run_async = MagicMock(side_effect=_researcher)
-            elif idx == 1:
-                async def _strategist(*a2, **kw2):
-                    yield _make_text_event("analyzing...", thought=True)
-                    yield _make_text_event(json.dumps(AUDIT_PAYLOAD))
-                r.run_async = MagicMock(side_effect=_strategist)
-            else:
-                r.run_async = MagicMock(side_effect=_empty_stream)
-
-            client._runners.append(r)
-            return r
-
-        import backend.routers.web.capabilities as mod
-        mod.Runner = MagicMock(side_effect=_make_runner)
-
-        res = await client.post("/api/capabilities/marketing", json={"identity": IDENTITY})
-        assert res.status_code == 200
-        data = res.json()
-        assert data["overall_score"] == 52
-
-    @pytest.mark.asyncio
-    async def test_500_on_empty_strategist_output(self, client):
-        _setup_two_step(client, "Brief.", "")
-        res = await client.post("/api/capabilities/marketing", json={"identity": IDENTITY})
-        assert res.status_code == 500
+    async def test_500_on_runner_error(self):
+        with (
+            patch("backend.routers.web.capabilities.run_social_media_audit", new_callable=AsyncMock, side_effect=ValueError("Audit failed")),
+            patch("backend.routers.web.capabilities.upload_report", new_callable=AsyncMock, return_value=None),
+            patch("backend.routers.web.capabilities.build_social_audit_report", return_value=""),
+            patch("backend.routers.web.capabilities.generate_slug", side_effect=lambda n: n.lower()),
+            patch("backend.routers.web.capabilities.write_agent_result", new_callable=AsyncMock),
+            patch("backend.routers.web.capabilities.generate_and_draft_marketing_content", new_callable=AsyncMock),
+        ):
+            from backend.main import app
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                res = await ac.post("/api/capabilities/marketing", json={"identity": IDENTITY})
+                assert res.status_code == 500
+                assert "Audit failed" in res.json()["error"]
 
 
 # ---------------------------------------------------------------------------

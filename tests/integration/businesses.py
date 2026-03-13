@@ -37,6 +37,59 @@ class GroundTruth:
     expect_yelp: bool = True  # most businesses have Yelp pages
 
 
+# ── Edge-case / adversarial businesses ─────────────────────────────────
+
+
+@dataclass
+class EdgeCaseBusiness:
+    """A business with known challenges for the discovery pipeline."""
+
+    id: str
+    name: str
+    address: str
+    official_url: str  # may be empty, aggregator, or broken
+    edge_type: str  # no_website | aggregator | broken_site | non_english | conflicting_info
+    description: str  # what makes this case hard
+    expect_discovery_abort: bool = False
+    expect_social_links: bool = True  # should still find social even without site
+
+
+EDGE_CASES: list[EdgeCaseBusiness] = [
+    EdgeCaseBusiness(
+        id="no-website-instagram-only",
+        name="Cupily Coffeehouse",
+        address="Nutley, NJ 07110",
+        official_url="",
+        edge_type="no_website",
+        description="Instagram-only business, no website at all. Pipeline must skip Phase 1 (crawl) and still find social links via search.",
+        expect_social_links=True,
+    ),
+    EdgeCaseBusiness(
+        id="aggregator-site",
+        name="Generic Test Restaurant",
+        address="123 Main St, Anytown, NJ 07001",
+        official_url="https://www.doordash.com/store/generic-test-restaurant",
+        edge_type="aggregator",
+        description="URL points to DoorDash (aggregator). EntityMatcher should detect AGGREGATOR and abort discovery.",
+        expect_discovery_abort=True,
+        expect_social_links=False,
+    ),
+    EdgeCaseBusiness(
+        id="third-party-menu-site",
+        name="Caffè Rosalba",
+        address="Bloomfield, NJ 07003",
+        official_url="",
+        edge_type="no_website",
+        description="Has a third-party menu site (res-menu.net) but not a real website. Pipeline should find it via search and still discover social links.",
+        expect_social_links=True,
+    ),
+]
+
+EDGE_CASE_MAP: dict[str, EdgeCaseBusiness] = {b.id: b for b in EDGE_CASES}
+
+
+# ── Happy-path ground truth ──────────────────────────────────────────
+
 BUSINESSES: list[GroundTruth] = [
     GroundTruth(
         id="bosphorus",

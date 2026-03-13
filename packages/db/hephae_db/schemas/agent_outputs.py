@@ -359,6 +359,67 @@ class CompetitiveAnalysisOutput(BaseModel):
     sources: list[SourceRef] = Field(default_factory=list)
 
 
+# ── Social Media Auditor ─────────────────────────────────────────────────
+
+
+class SocialPlatformAudit(BaseModel):
+    """Audit of a single social media platform."""
+
+    name: str
+    url: Optional[str] = None
+    handle: Optional[str] = None
+    score: int = 0
+    followers: str = "Unknown"
+    posting_frequency: str = "unknown"
+    content_themes: list[str] = Field(default_factory=list)
+    engagement: str = "unknown"
+    last_post_recency: str = "Unknown"
+    strengths: list[str] = Field(default_factory=list)
+    weaknesses: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+
+
+class CompetitorBenchmark(BaseModel):
+    """Social media benchmark for a competitor."""
+
+    name: str
+    strongest_platform: str = ""
+    followers: str = "Unknown"
+    posting_frequency: str = "unknown"
+    key_advantage: str = ""
+
+
+class StrategicRecommendation(BaseModel):
+    """A prioritized social media recommendation."""
+
+    priority: int = 3
+    action: str
+    impact: str = "medium"
+    effort: str = "medium"
+    rationale: str = ""
+
+
+class ContentStrategy(BaseModel):
+    """Content strategy summary."""
+
+    content_pillars: list[str] = Field(default_factory=list)
+    hashtag_strategy: list[str] = Field(default_factory=list)
+    posting_schedule: str = ""
+    quick_wins: list[str] = Field(default_factory=list)
+
+
+class SocialMediaAuditOutput(BaseModel):
+    """Output from SocialStrategistAgent (comprehensive social media audit)."""
+
+    overall_score: int = 0
+    summary: str = ""
+    platforms: list[SocialPlatformAudit] = Field(default_factory=list)
+    competitor_benchmarks: list[CompetitorBenchmark] = Field(default_factory=list)
+    strategic_recommendations: list[StrategicRecommendation] = Field(default_factory=list)
+    content_strategy: ContentStrategy = Field(default_factory=ContentStrategy)
+    sources: list[SourceRef] = Field(default_factory=list)
+
+
 class SeoMethodology(BaseModel):
     """Methodology details for an SEO section audit."""
 
@@ -394,3 +455,344 @@ class SeoAuditorOutput(BaseModel):
     overallScore: int = 0
     summary: str = ""
     sections: list[SeoSection] = Field(default_factory=list)
+
+
+# ── Margin Analyzer Agents ────────────────────────────────────────────────
+
+
+class ParsedMenuItem(BaseModel):
+    """A single menu item extracted from a menu screenshot."""
+
+    item_name: str
+    current_price: float = 0.0
+    category: str = ""
+    description: str = ""
+
+
+class MenuIntakeOutput(BaseModel):
+    """Output from VisionIntakeAgent (menu item extraction)."""
+
+    items: list[ParsedMenuItem] = Field(default_factory=list)
+
+
+class CompetitorBenchmarkEntry(BaseModel):
+    """A competitor price benchmark for a menu item."""
+
+    competitor_name: str
+    item_match: str = ""
+    price: float = 0.0
+    source_url: str = ""
+    distance_miles: float = 0.0
+
+
+class MacroeconomicContext(BaseModel):
+    """Macroeconomic context from BLS/FRED data."""
+
+    inflation_cpi: dict[str, Any] = Field(default_factory=dict)
+    unemployment_trend: dict[str, Any] = Field(default_factory=dict)
+    analysis_hint: str = ""
+
+
+class BenchmarkOutput(BaseModel):
+    """Output from BenchmarkerAgent (competitor price benchmarks)."""
+
+    competitors: list[CompetitorBenchmarkEntry] = Field(default_factory=list)
+    macroeconomic_context: MacroeconomicContext = Field(default_factory=MacroeconomicContext)
+
+
+class CommodityTrend(BaseModel):
+    """A single commodity inflation trend."""
+
+    ingredient: str
+    inflation_rate_12mo: float = 0.0
+    trend_description: str = ""
+
+
+class CommodityOutput(BaseModel):
+    """Output from CommodityWatchdogAgent (commodity price trends)."""
+
+    trends: list[CommodityTrend] = Field(default_factory=list)
+
+
+class SurgeryItem(BaseModel):
+    """A single menu item after margin surgery analysis."""
+
+    item_name: str = ""
+    current_price: float = 0.0
+    optimal_price: float = 0.0
+    price_leakage: float = 0.0
+    revenue_leakage: float = 0.0
+    category: str = ""
+
+
+class SurgeryReportOutput(BaseModel):
+    """Output from SurgeonAgent (margin surgery results)."""
+
+    items: list[SurgeryItem] = Field(default_factory=list)
+
+
+class AdvisorRecommendation(BaseModel):
+    """A strategic pricing recommendation."""
+
+    title: str
+    description: str
+    impact: str = ""
+
+
+class AdvisorOutput(BaseModel):
+    """Output from AdvisorAgent (strategic pricing advice)."""
+
+    recommendations: list[AdvisorRecommendation] = Field(default_factory=list)
+
+
+# ── Discovery Agents (detailed schemas) ────────────────────────────────────
+
+
+class EntityMatchOutput(BaseModel):
+    """Output from EntityMatcherAgent (site identity verification)."""
+
+    status: str = "MATCH"
+    siteIdentity: dict[str, Any] = Field(default_factory=dict)
+    confidence: float = 0.0
+    reason: str = ""
+
+
+class ThemeOutput(BaseModel):
+    """Output from ThemeAgent (site visual identity)."""
+
+    logoUrl: Optional[str] = None
+    favicon: Optional[str] = None
+    primaryColor: str = ""
+    secondaryColor: str = ""
+    persona: str = ""
+
+
+class ContactOutput(BaseModel):
+    """Output from ContactAgent (business contact info)."""
+
+    phone: str = ""
+    email: str = ""
+    emailStatus: str = "not_found"
+    hours: str = ""
+    contactFormUrl: str = ""
+    contactFormStatus: str = "not_found"
+
+
+class SocialMediaDiscoveryOutput(BaseModel):
+    """Output from SocialMediaAgent (social link discovery)."""
+
+    instagram: Optional[str] = None
+    facebook: Optional[str] = None
+    twitter: Optional[str] = None
+    tiktok: Optional[str] = None
+    yelp: Optional[str] = None
+    grubhub: Optional[str] = None
+    doordash: Optional[str] = None
+    ubereats: Optional[str] = None
+    seamless: Optional[str] = None
+    toasttab: Optional[str] = None
+
+
+class MenuDiscoveryOutput(BaseModel):
+    """Output from MenuAgent (menu URL discovery)."""
+
+    menuUrl: Optional[str] = None
+    grubhub: Optional[str] = None
+    doordash: Optional[str] = None
+    ubereats: Optional[str] = None
+    seamless: Optional[str] = None
+    toasttab: Optional[str] = None
+
+
+class DiscoveredCompetitor(BaseModel):
+    """A single competitor found during discovery."""
+
+    name: str
+    url: str = ""
+    reason: str = ""
+
+
+class CompetitorDiscoveryOutput(BaseModel):
+    """Output from CompetitorAgent (local competitor discovery)."""
+
+    competitors: list[DiscoveredCompetitor] = Field(default_factory=list)
+
+
+class DiscoveryNewsItem(BaseModel):
+    """A news article found during discovery."""
+
+    title: str
+    url: str = ""
+    source: str = ""
+    date: Optional[str] = None
+    snippet: str = ""
+
+
+class NewsDiscoveryOutput(BaseModel):
+    """Output from NewsAgent (recent business news)."""
+
+    articles: list[DiscoveryNewsItem] = Field(default_factory=list)
+
+
+class BusinessOverviewOutput(BaseModel):
+    """Output from BusinessOverviewAgent (AI-generated overview)."""
+
+    summary: str = ""
+    highlights: list[str] = Field(default_factory=list)
+    business_type: Optional[str] = None
+    price_range: Optional[str] = None
+    established: Optional[str] = None
+    notable_mentions: list[str] = Field(default_factory=list)
+    reputation_signals: str = "unknown"
+    sources: list[SourceRef] = Field(default_factory=list)
+
+
+class ComplaintItem(BaseModel):
+    """A customer complaint or operational issue."""
+
+    issue: str
+    severity: str = "medium"
+    source: str = ""
+    sourceUrl: str = ""
+
+
+class ChallengesOutput(BaseModel):
+    """Output from ChallengesAgent (business risk/complaints research)."""
+
+    customer_complaints: list[ComplaintItem] = Field(default_factory=list)
+    operational_issues: list[ComplaintItem] = Field(default_factory=list)
+    regulatory_flags: list[ComplaintItem] = Field(default_factory=list)
+    reputation_risks: list[ComplaintItem] = Field(default_factory=list)
+    competitive_weaknesses: list[ComplaintItem] = Field(default_factory=list)
+    overall_risk_level: str = "low"
+    summary: str = ""
+
+
+class SocialPlatformMetrics(BaseModel):
+    """Metrics for a single social platform from profiler."""
+
+    url: str = ""
+    username: str = ""
+    followerCount: int = 0
+    postCount: int = 0
+    bio: str = ""
+    isVerified: bool = False
+    lastPostRecency: str = ""
+    engagementIndicator: str = ""
+    error: Optional[str] = None
+
+
+class YelpMetrics(BaseModel):
+    """Yelp-specific metrics."""
+
+    url: str = ""
+    rating: float = 0.0
+    reviewCount: int = 0
+    priceRange: str = ""
+    categories: list[str] = Field(default_factory=list)
+    claimedByOwner: bool = False
+    error: Optional[str] = None
+
+
+class SocialProfileSummary(BaseModel):
+    """Summary of social media presence."""
+
+    totalFollowers: int = 0
+    strongestPlatform: str = ""
+    weakestPlatform: str = ""
+    overallPresenceScore: int = 0
+    postingFrequency: str = ""
+    recommendation: str = ""
+
+
+class SocialProfilerOutput(BaseModel):
+    """Output from SocialProfilerAgent (detailed social metrics)."""
+
+    instagram: Optional[SocialPlatformMetrics] = None
+    facebook: Optional[SocialPlatformMetrics] = None
+    twitter: Optional[SocialPlatformMetrics] = None
+    tiktok: Optional[SocialPlatformMetrics] = None
+    yelp: Optional[YelpMetrics] = None
+    summary: SocialProfileSummary = Field(default_factory=SocialProfileSummary)
+
+
+class ValidationReport(BaseModel):
+    """URL validation report from discovery reviewer."""
+
+    totalUrlsChecked: int = 0
+    valid: int = 0
+    invalid: int = 0
+    unverifiable: int = 0
+    corrected: int = 0
+    flags: list[str] = Field(default_factory=list)
+
+
+class ReviewedDataOutput(BaseModel):
+    """Output from DiscoveryReviewerAgent (validated discovery data)."""
+
+    validatedSocialData: dict[str, Any] = Field(default_factory=dict)
+    validatedMenuUrl: Optional[str] = None
+    validatedCompetitors: list[dict[str, Any]] = Field(default_factory=list)
+    validatedNews: list[dict[str, Any]] = Field(default_factory=list)
+    validatedMapsUrl: Optional[str] = None
+    validationReport: ValidationReport = Field(default_factory=ValidationReport)
+
+
+# ── Content Generation Agents ───────────────────────────────────────────
+
+
+class InstagramPostOutput(BaseModel):
+    """Output from InstagramPostAgent."""
+
+    caption: str = ""
+    reportLink: str = ""
+    imageUrl: str = ""
+
+
+class FacebookPostOutput(BaseModel):
+    """Output from FacebookPostAgent."""
+
+    post: str = ""
+    reportLink: str = ""
+    imageUrl: str = ""
+
+
+class TwitterPostOutput(BaseModel):
+    """Output from TwitterPostAgent."""
+
+    tweet: str = ""
+    reportLink: str = ""
+    imageUrl: str = ""
+
+
+class EmailOutreachOutput(BaseModel):
+    """Output from EmailOutreachAgent."""
+
+    subject: str = ""
+    body: str = ""
+
+
+class ContactFormOutput(BaseModel):
+    """Output from ContactFormAgent."""
+
+    message: str = ""
+
+
+class BlogResearchOutput(BaseModel):
+    """Output from ResearchCompilerAgent (blog research brief)."""
+
+    key_findings: list[str] = Field(default_factory=list)
+    data_points: list[str] = Field(default_factory=list)
+    narrative_angles: list[str] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)
+
+
+# ── Evaluator Agents ────────────────────────────────────────────────────
+
+
+class EvaluationOutput(BaseModel):
+    """Output from evaluator agents (score + hallucination check)."""
+
+    score: int = 0
+    isHallucinated: bool = False
+    issues: list[str] = Field(default_factory=list)

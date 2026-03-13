@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from backend.lib.auth import verify_admin_request
 
 from hephae_db.firestore.workflows import load_workflow, save_workflow, delete_workflow
+from hephae_db.bigquery.feedback import record_approval_feedback
 from backend.types import WorkflowDocument, WorkflowPhase, BusinessPhase
 from backend.workflows.engine import WorkflowEngine, start_workflow_engine
 
@@ -108,6 +109,16 @@ async def approve_workflow(workflow_id: str, req: ApproveRequest):
             any_approved = True
         elif decision == "reject":
             biz.phase = BusinessPhase.REJECTED
+
+        # Record approval feedback to BigQuery (fire-and-forget)
+        if decision in ("approve", "reject"):
+            asyncio.create_task(record_approval_feedback(
+                business_slug=biz.slug,
+                human_decision=decision,
+                auto_approved=False,
+                zip_code=biz.sourceZipCode or "",
+                business_type=biz.businessType or "",
+            ))
 
     await save_workflow(workflow)
 

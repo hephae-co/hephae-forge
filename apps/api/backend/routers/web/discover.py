@@ -47,8 +47,8 @@ async def discover(request: Request, firebase_user: dict | None = Depends(option
         body = await request.json()
         identity = body.get("identity")
 
-        if not identity or not identity.get("officialUrl"):
-            return JSONResponse({"error": "Missing BaseIdentity"}, status_code=400)
+        if not identity or not identity.get("name"):
+            return JSONResponse({"error": "Missing BaseIdentity (name required)"}, status_code=400)
 
         name = identity.get("name", "Unknown")
         logger.info(f"[API/Discover] Running DiscoveryPipeline for: {name}")

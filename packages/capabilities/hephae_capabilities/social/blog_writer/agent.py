@@ -1,6 +1,7 @@
 """
-Blog writer agent — 2-stage pipeline: ResearchCompiler → BlogWriter.
+Blog writer agents — ResearchCompiler + BlogWriter as SequentialAgent.
 
+Pipeline: ResearchCompiler → BlogWriter (via session state).
 Generates full authoritative blog posts (800-1200 words) from Firestore latestOutputs.
 """
 
@@ -12,39 +13,21 @@ import re
 import time
 from typing import Any
 
-from google.adk.agents import LlmAgent
+from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
 from hephae_common.model_config import AgentModels
 from hephae_common.model_fallback import fallback_on_error
 from hephae_common.adk_helpers import user_msg
+from hephae_common.adk_callbacks import log_agent_start, log_agent_complete
+from hephae_db.schemas.agent_outputs import BlogResearchOutput
 from hephae_capabilities.social.blog_writer.prompts import (
     RESEARCH_COMPILER_INSTRUCTION,
     BLOG_WRITER_INSTRUCTION,
 )
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Agent definitions
-# ---------------------------------------------------------------------------
-
-research_compiler_agent = LlmAgent(
-    name="ResearchCompilerAgent",
-    model=AgentModels.PRIMARY_MODEL,
-    instruction=RESEARCH_COMPILER_INSTRUCTION,
-    output_key="researchBrief",
-    on_model_error_callback=fallback_on_error,
-)
-
-blog_writer_agent = LlmAgent(
-    name="BlogWriterAgent",
-    model=AgentModels.ENHANCED_MODEL,
-    instruction=BLOG_WRITER_INSTRUCTION,
-    output_key="blogContent",
-    on_model_error_callback=fallback_on_error,
-)
 
 # ---------------------------------------------------------------------------
 # Report type labels
@@ -59,15 +42,61 @@ REPORT_TYPE_LABELS = {
 }
 
 
-def _parse_json(raw: str) -> dict:
-    """Extract JSON from agent output, stripping markdown fences."""
-    if isinstance(raw, dict):
-        return raw
-    cleaned = re.sub(r"```json\n?|\n?```", "", str(raw)).strip()
-    try:
-        return json.loads(cleaned)
-    except Exception:
-        return {}
+# ---------------------------------------------------------------------------
+# Dynamic instructions (Phase 3)
+# ---------------------------------------------------------------------------
+
+
+def _research_instruction(ctx):
+    """Dynamic instruction — reads data context from session state."""
+    parts = [RESEARCH_COMPILER_INSTRUCTION]
+    data_context = ctx.state.get("dataContext", "")
+    if data_context:
+        parts.append(f"\n\n{data_context}")
+    return "\n".join(parts)
+
+
+def _writer_instruction(ctx):
+    """Dynamic instruction — reads research brief from session state."""
+    parts = [BLOG_WRITER_INSTRUCTION]
+    brief = ctx.state.get("researchBrief", "")
+    if brief:
+        parts.append(f"\n\nResearch Brief:\n{brief}")
+    return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Agent definitions
+# ---------------------------------------------------------------------------
+
+research_compiler_agent = LlmAgent(
+    name="ResearchCompilerAgent",
+    model=AgentModels.PRIMARY_MODEL,
+    instruction=_research_instruction,
+    output_key="researchBrief",
+    output_schema=BlogResearchOutput,
+    on_model_error_callback=fallback_on_error,
+)
+
+blog_writer_agent = LlmAgent(
+    name="BlogWriterAgent",
+    model=AgentModels.ENHANCED_MODEL,
+    instruction=_writer_instruction,
+    output_key="blogContent",
+    on_model_error_callback=fallback_on_error,
+)
+
+blog_pipeline = SequentialAgent(
+    name="BlogPipeline",
+    description="2-stage blog generation: compile research → write blog post.",
+    sub_agents=[research_compiler_agent, blog_writer_agent],
+    before_agent_callback=log_agent_start,
+    after_agent_callback=log_agent_complete,
+)
+
+# ---------------------------------------------------------------------------
+# Context builder
+# ---------------------------------------------------------------------------
 
 
 def _build_data_context(
@@ -149,11 +178,27 @@ def _build_data_context(
     return "\n".join(parts)
 
 
+def _parse_json(raw: str) -> dict:
+    """Extract JSON from agent output, stripping markdown fences."""
+    if isinstance(raw, dict):
+        return raw
+    cleaned = re.sub(r"```json\n?|\n?```", "", str(raw)).strip()
+    try:
+        return json.loads(cleaned)
+    except Exception:
+        return {}
+
+
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
+
+
 async def generate_blog_post(
     business_name: str,
     latest_outputs: dict[str, Any],
 ) -> dict[str, Any]:
-    """Generate a full blog post from stored analysis data.
+    """Generate a full blog post via SequentialAgent pipeline.
 
     Args:
         business_name: Name of the business.
@@ -173,57 +218,43 @@ async def generate_blog_post(
 
     logger.info(f"[BlogWriter] Starting pipeline for {business_name}")
 
-    # Stage 1: Research Compiler
-    rc_session_id = f"blog-rc-{int(time.time() * 1000)}"
-    rc_runner = Runner(
+    session_id = f"blog-{int(time.time() * 1000)}"
+
+    # Pre-populate session state for dynamic instructions
+    await session_service.create_session(
         app_name="hephae-hub",
-        agent=research_compiler_agent,
+        session_id=session_id,
+        user_id="sys",
+        state={"dataContext": data_context},
+    )
+
+    runner = Runner(
+        app_name="hephae-hub",
+        agent=blog_pipeline,
         session_service=session_service,
     )
-    await session_service.create_session(
-        app_name="hephae-hub", session_id=rc_session_id, user_id="sys", state={}
-    )
-    async for _ in rc_runner.run_async(
-        session_id=rc_session_id, user_id="sys", new_message=user_msg(data_context),
+
+    async for _ in runner.run_async(
+        session_id=session_id,
+        user_id="sys",
+        new_message=user_msg("Compile research and write blog post."),
     ):
         pass
 
+    # Read outputs from session state
     session = await session_service.get_session(
-        app_name="hephae-hub", session_id=rc_session_id, user_id="sys"
+        app_name="hephae-hub", session_id=session_id, user_id="sys"
     )
-    research_brief_raw = (session.state or {}).get("researchBrief", "{}")
-    research_brief = _parse_json(research_brief_raw)
-
-    logger.info(f"[BlogWriter] Research brief compiled: {len(research_brief.get('key_findings', []))} findings")
-
-    # Stage 2: Blog Writer
-    bw_session_id = f"blog-bw-{int(time.time() * 1000)}"
-    bw_runner = Runner(
-        app_name="hephae-hub",
-        agent=blog_writer_agent,
-        session_service=session_service,
-    )
-    await session_service.create_session(
-        app_name="hephae-hub", session_id=bw_session_id, user_id="sys", state={}
-    )
-    async for _ in bw_runner.run_async(
-        session_id=bw_session_id, user_id="sys",
-        new_message=user_msg(f"Research Brief:\n{json.dumps(research_brief, indent=2)}"),
-    ):
-        pass
-
-    bw_session = await session_service.get_session(
-        app_name="hephae-hub", session_id=bw_session_id, user_id="sys"
-    )
-    blog_html = (bw_session.state or {}).get("blogContent", "")
+    state = session.state or {}
+    research_brief = _parse_json(state.get("researchBrief", "{}"))
+    blog_html = str(state.get("blogContent", ""))
 
     # Clean up: strip any markdown/json fences
-    blog_html = re.sub(r"```(?:html)?\n?|\n?```", "", str(blog_html)).strip()
+    blog_html = re.sub(r"```(?:html)?\n?|\n?```", "", blog_html).strip()
 
     # Extract title from <h1> tag
     title_match = re.search(r"<h1[^>]*>(.*?)</h1>", blog_html, re.DOTALL)
     title = title_match.group(1).strip() if title_match else f"Hephae Analysis: {business_name}"
-    # Strip any HTML tags from title text
     title = re.sub(r"<[^>]+>", "", title)
 
     # Count words (strip HTML tags for counting)

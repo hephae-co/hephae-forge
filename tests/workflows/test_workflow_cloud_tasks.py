@@ -456,7 +456,7 @@ class TestRunWorkflowAnalyze:
     @patch("backend.workflows.phases.enrichment.enrich_business_profile", new_callable=AsyncMock)
     @patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock)
     @patch("hephae_common.firebase.get_db")
-    @patch("hephae_db.firestore.tasks.update_task", new_callable=AsyncMock)
+    @patch("backend.routers.admin.tasks.update_task", new_callable=AsyncMock)
     async def test_full_pipeline_substep_progression(
         self, mock_update_task, mock_get_db, mock_get_biz, mock_enrich,
         mock_get_caps, mock_run_cap, mock_insights,
@@ -505,7 +505,7 @@ class TestRunWorkflowAnalyze:
 
     @pytest.mark.asyncio
     @patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock)
-    @patch("hephae_db.firestore.tasks.update_task", new_callable=AsyncMock)
+    @patch("backend.routers.admin.tasks.update_task", new_callable=AsyncMock)
     async def test_business_not_found_raises(self, mock_update, mock_get_biz):
         from backend.routers.admin.tasks import _run_workflow_analyze
 
@@ -521,7 +521,7 @@ class TestRunWorkflowAnalyze:
     @patch("backend.workflows.phases.enrichment.enrich_business_profile", new_callable=AsyncMock)
     @patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock)
     @patch("hephae_common.firebase.get_db")
-    @patch("hephae_db.firestore.tasks.update_task", new_callable=AsyncMock)
+    @patch("backend.routers.admin.tasks.update_task", new_callable=AsyncMock)
     async def test_skips_capabilities_without_official_url(
         self, mock_update, mock_get_db, mock_get_biz, mock_enrich,
         mock_get_caps, mock_run_cap, mock_insights,

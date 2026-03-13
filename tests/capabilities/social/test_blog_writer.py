@@ -247,20 +247,12 @@ class TestGenerateBlogPost:
             patch("hephae_capabilities.social.blog_writer.agent.InMemorySessionService") as mock_svc_cls,
             patch("hephae_capabilities.social.blog_writer.agent.Runner") as mock_runner_cls,
         ):
-            rc_session = MagicMock()
-            rc_session.state = {"researchBrief": "{}"}
-            bw_session = MagicMock()
-            bw_session.state = {"blogContent": "<h1>My Custom Blog Title</h1><p>Body text.</p>"}
-
-            call_count = {"n": 0}
-            def _make_session_get(*a, **kw):
-                idx = call_count["n"]
-                call_count["n"] += 1
-                return rc_session if idx == 0 else bw_session
+            session = MagicMock()
+            session.state = {"researchBrief": "{}", "blogContent": "<h1>My Custom Blog Title</h1><p>Body text.</p>"}
 
             svc = MagicMock()
             svc.create_session = AsyncMock(return_value=None)
-            svc.get_session = AsyncMock(side_effect=_make_session_get)
+            svc.get_session = AsyncMock(return_value=session)
             mock_svc_cls.return_value = svc
 
             runner = MagicMock()
@@ -278,20 +270,12 @@ class TestGenerateBlogPost:
             patch("hephae_capabilities.social.blog_writer.agent.InMemorySessionService") as mock_svc_cls,
             patch("hephae_capabilities.social.blog_writer.agent.Runner") as mock_runner_cls,
         ):
-            rc_session = MagicMock()
-            rc_session.state = {"researchBrief": "{}"}
-            bw_session = MagicMock()
-            bw_session.state = {"blogContent": "<p>No heading here.</p>"}
-
-            call_count = {"n": 0}
-            def _make_session_get(*a, **kw):
-                idx = call_count["n"]
-                call_count["n"] += 1
-                return rc_session if idx == 0 else bw_session
+            session = MagicMock()
+            session.state = {"researchBrief": "{}", "blogContent": "<p>No heading here.</p>"}
 
             svc = MagicMock()
             svc.create_session = AsyncMock(return_value=None)
-            svc.get_session = AsyncMock(side_effect=_make_session_get)
+            svc.get_session = AsyncMock(return_value=session)
             mock_svc_cls.return_value = svc
 
             runner = MagicMock()
@@ -309,20 +293,12 @@ class TestGenerateBlogPost:
             patch("hephae_capabilities.social.blog_writer.agent.InMemorySessionService") as mock_svc_cls,
             patch("hephae_capabilities.social.blog_writer.agent.Runner") as mock_runner_cls,
         ):
-            rc_session = MagicMock()
-            rc_session.state = {"researchBrief": "{}"}
-            bw_session = MagicMock()
-            bw_session.state = {"blogContent": "<h1>Title</h1><p>One two three four five.</p>"}
-
-            call_count = {"n": 0}
-            def _make_session_get(*a, **kw):
-                idx = call_count["n"]
-                call_count["n"] += 1
-                return rc_session if idx == 0 else bw_session
+            session = MagicMock()
+            session.state = {"researchBrief": "{}", "blogContent": "<h1>Title</h1><p>One two three four five.</p>"}
 
             svc = MagicMock()
             svc.create_session = AsyncMock(return_value=None)
-            svc.get_session = AsyncMock(side_effect=_make_session_get)
+            svc.get_session = AsyncMock(return_value=session)
             mock_svc_cls.return_value = svc
 
             runner = MagicMock()
@@ -341,20 +317,12 @@ class TestGenerateBlogPost:
             patch("hephae_capabilities.social.blog_writer.agent.InMemorySessionService") as mock_svc_cls,
             patch("hephae_capabilities.social.blog_writer.agent.Runner") as mock_runner_cls,
         ):
-            rc_session = MagicMock()
-            rc_session.state = {"researchBrief": "{}"}
-            bw_session = MagicMock()
-            bw_session.state = {"blogContent": "<h1>T</h1>"}
-
-            call_count = {"n": 0}
-            def _make_session_get(*a, **kw):
-                idx = call_count["n"]
-                call_count["n"] += 1
-                return rc_session if idx == 0 else bw_session
+            session = MagicMock()
+            session.state = {"researchBrief": "{}", "blogContent": "<h1>T</h1>"}
 
             svc = MagicMock()
             svc.create_session = AsyncMock(return_value=None)
-            svc.get_session = AsyncMock(side_effect=_make_session_get)
+            svc.get_session = AsyncMock(return_value=session)
             mock_svc_cls.return_value = svc
 
             runner = MagicMock()
@@ -373,20 +341,12 @@ class TestGenerateBlogPost:
             patch("hephae_capabilities.social.blog_writer.agent.InMemorySessionService") as mock_svc_cls,
             patch("hephae_capabilities.social.blog_writer.agent.Runner") as mock_runner_cls,
         ):
-            rc_session = MagicMock()
-            rc_session.state = {"researchBrief": "{}"}
-            bw_session = MagicMock()
-            bw_session.state = {"blogContent": "```html\n<h1>Title</h1>\n```"}
-
-            call_count = {"n": 0}
-            def _make_session_get(*a, **kw):
-                idx = call_count["n"]
-                call_count["n"] += 1
-                return rc_session if idx == 0 else bw_session
+            session = MagicMock()
+            session.state = {"researchBrief": "{}", "blogContent": "```html\n<h1>Title</h1>\n```"}
 
             svc = MagicMock()
             svc.create_session = AsyncMock(return_value=None)
-            svc.get_session = AsyncMock(side_effect=_make_session_get)
+            svc.get_session = AsyncMock(return_value=session)
             mock_svc_cls.return_value = svc
 
             runner = MagicMock()

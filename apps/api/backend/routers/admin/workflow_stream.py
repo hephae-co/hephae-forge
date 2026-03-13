@@ -71,7 +71,7 @@ async def stream_workflow(workflow_id: str):
                 break
 
             if workflow.phase != last_phase:
-                yield f"data: {json.dumps({'type': 'phase_changed', 'phase': workflow.phase.value, 'progress': workflow.progress.model_dump(mode='json')})}\n\n"
+                yield f"data: {json.dumps({'type': 'phase_changed', 'phase': workflow.phase.value, 'progress': workflow.progress.model_dump(mode='json'), 'workflow': workflow.model_dump(mode='json')})}\n\n"
                 last_phase = workflow.phase
 
             if workflow.phase in TERMINAL_PHASES:

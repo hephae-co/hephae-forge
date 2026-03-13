@@ -7,7 +7,7 @@ JSON parsing with native Gemini structured output validation.
 
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -150,12 +150,19 @@ class MarketOpportunity(BaseModel):
     keyFactors: list[str] = Field(default_factory=list)
 
 
+class KeyMetric(BaseModel):
+    """A key demographic metric (name-value pair)."""
+
+    name: str
+    value: str = ""
+
+
 class DemographicFit(BaseModel):
     """Demographic fit assessment."""
 
     score: float
     narrative: str
-    keyMetrics: dict[str, Any] = Field(default_factory=dict)
+    keyMetrics: list[KeyMetric] = Field(default_factory=list)
 
 
 class CompetitiveLandscape(BaseModel):
@@ -316,12 +323,19 @@ class NearbyPOI(BaseModel):
     type: str = ""
 
 
+class Coordinates(BaseModel):
+    """Latitude/longitude pair."""
+
+    lat: float = 0.0
+    lng: float = 0.0
+
+
 class ForecastBusiness(BaseModel):
     """Business info embedded in traffic forecast."""
 
     name: str
     address: str = ""
-    coordinates: dict[str, float] = Field(default_factory=dict)
+    coordinates: Coordinates = Field(default_factory=Coordinates)
     type: str = ""
     nearbyPOIs: list[NearbyPOI] = Field(default_factory=list)
 
@@ -488,8 +502,8 @@ class CompetitorBenchmarkEntry(BaseModel):
 class MacroeconomicContext(BaseModel):
     """Macroeconomic context from BLS/FRED data."""
 
-    inflation_cpi: dict[str, Any] = Field(default_factory=dict)
-    unemployment_trend: dict[str, Any] = Field(default_factory=dict)
+    inflation_cpi: str = ""
+    unemployment_trend: str = ""
     analysis_hint: str = ""
 
 
@@ -548,11 +562,21 @@ class AdvisorOutput(BaseModel):
 # ── Discovery Agents (detailed schemas) ────────────────────────────────────
 
 
+class SiteIdentity(BaseModel):
+    """Identity information extracted from a crawled website."""
+
+    name: str = ""
+    address: str = ""
+    phone: str = ""
+    type: str = ""
+    description: str = ""
+
+
 class EntityMatchOutput(BaseModel):
     """Output from EntityMatcherAgent (site identity verification)."""
 
     status: str = "MATCH"
-    siteIdentity: dict[str, Any] = Field(default_factory=dict)
+    siteIdentity: SiteIdentity = Field(default_factory=SiteIdentity)
     confidence: float = 0.0
     reason: str = ""
 
@@ -730,10 +754,10 @@ class ValidationReport(BaseModel):
 class ReviewedDataOutput(BaseModel):
     """Output from DiscoveryReviewerAgent (validated discovery data)."""
 
-    validatedSocialData: dict[str, Any] = Field(default_factory=dict)
+    validatedSocialData: SocialMediaDiscoveryOutput = Field(default_factory=SocialMediaDiscoveryOutput)
     validatedMenuUrl: Optional[str] = None
-    validatedCompetitors: list[dict[str, Any]] = Field(default_factory=list)
-    validatedNews: list[dict[str, Any]] = Field(default_factory=list)
+    validatedCompetitors: list[DiscoveredCompetitor] = Field(default_factory=list)
+    validatedNews: list[DiscoveryNewsItem] = Field(default_factory=list)
     validatedMapsUrl: Optional[str] = None
     validationReport: ValidationReport = Field(default_factory=ValidationReport)
 

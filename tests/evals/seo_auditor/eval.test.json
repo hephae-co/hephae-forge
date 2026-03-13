@@ -84,6 +84,35 @@
         "user_id": "eval",
         "state": {}
       }
+    },
+    {
+      "eval_id": "historic_iconic_restaurant",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Perform a comprehensive SEO audit for Nom Wah Tea Parlor located at 13 Doyers St, New York, NY 10013. Their website is https://nomwah.com. Return a JSON report."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"overallScore\": 68, \"summary\": \"Nom Wah Tea Parlor has immense organic authority due to its historic status and frequent press mentions. Technical SEO is moderate, with good mobile responsiveness but some slow-loading image assets. The main SEO opportunity lies in optimizing local intent for keywords like 'dim sum NYC' and better organizing its menu content for structured data.\", \"seo_technical_score\": 65, \"seo_content_score\": 70, \"seo_ux_score\": 62, \"seo_performance_score\": 58, \"seo_authority_score\": 85, \"issues\": [\"Large hero images causing slow Largest Contentful Paint (LCP)\", \"Menu items are not marked up with Schema.org FoodEstablishment data\", \"Low content-to-code ratio on the history page\", \"Backlinks are strong but lack local niche anchor text variance\"], \"recommendations\": [\"Implement WebP image compression for all gallery and menu photos\", \"Add JSON-LD for menu items and pricing\", \"Optimize title tags to include 'Historic NYC Dim Sum' and targeted keywords\", \"Improve mobile page speed by deferring non-critical JavaScript\"]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "Nom Wah Tea Parlor NYC reviews and SEO analysis"}},
+              {"id": "call_2", "name": "pagespeed_tool", "args": {"url": "https://nomwah.com"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "seo_auditor",
+        "user_id": "eval",
+        "state": {}
+      }
     }
+
   ]
 }

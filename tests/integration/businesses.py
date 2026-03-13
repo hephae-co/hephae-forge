@@ -173,5 +173,63 @@ BUSINESSES: list[GroundTruth] = [
     ),
 ]
 
+# ── Grounded Pricing Benchmarks (Open Prices / Dotlas) ──────────────────
+
+@dataclass
+class PricingBenchmark:
+    item_name: str
+    expected_avg_price: float
+    expected_low_price: float
+    expected_high_price: float
+    category: str
+
+# Ground truth for specific item categories in NE corridor (NYC/NJ)
+PRICING_GROUND_TRUTH: dict[str, list[PricingBenchmark]] = {
+    "Pizza Shops": [
+        PricingBenchmark("Plain Slice", 3.50, 2.50, 4.50, "Food"),
+        PricingBenchmark("Large Plain Pie", 22.00, 18.00, 26.00, "Food"),
+        PricingBenchmark("Soda (Can)", 2.00, 1.50, 2.50, "Beverage"),
+    ],
+    "Coffee Shops": [
+        PricingBenchmark("Drip Coffee (Small)", 3.25, 2.75, 4.50, "Beverage"),
+        PricingBenchmark("Latte (Small)", 5.25, 4.50, 6.50, "Beverage"),
+        PricingBenchmark("Croissant", 4.50, 3.50, 5.50, "Food"),
+    ],
+}
+
+# ── Yelp Grounded Businesses (Verified Entity Data) ───────────────────
+
+YELP_GROUNDED_BUSINESSES: list[GroundTruth] = [
+    GroundTruth(
+        id="joes-pizza-nyc",
+        name="Joe's Pizza",
+        query="Joe's Pizza Greenwich Village NYC",
+        city="New York",
+        state="NY",
+        biz_type="Pizza restaurant",
+        expected_name_fragment="Joe",
+        expected_url_fragment="joespizzanyc",
+        expected_lat=40.730,
+        expected_lng=-74.002,
+        expected_social_platforms=["instagram", "facebook"],
+        expect_menu=True,
+    ),
+    GroundTruth(
+        id="katz-delicatessen",
+        name="Katz's Delicatessen",
+        query="Katz's Delicatessen Lower East Side NYC",
+        city="New York",
+        state="NY",
+        biz_type="Kosher-style delicatessen",
+        expected_name_fragment="Katz",
+        expected_url_fragment="katzsdelicatessen",
+        expected_lat=40.722,
+        expected_lng=-73.987,
+        expected_social_platforms=["instagram", "facebook", "twitter"],
+        expect_menu=True,
+    ),
+]
+
 # Quick lookup by ID
 BUSINESS_MAP: dict[str, GroundTruth] = {b.id: b for b in BUSINESSES}
+ALL_GROUNDED_BUSINESSES = BUSINESSES + YELP_GROUNDED_BUSINESSES

@@ -14,7 +14,7 @@ from backend.workflows.agents.insights.insights_agent import generate_insights
 from hephae_db.firestore.businesses import get_business
 from hephae_db.firestore.tasks import (
     create_task, update_task, get_tasks_by_ids,
-    STATUS_COMPLETED, STATUS_FAILED,
+    STATUS_COMPLETED, STATUS_FAILED, STATUS_RETRY_QUEUED,
 )
 from hephae_common.firebase import get_db
 from backend.types import BusinessWorkflowState, BusinessPhase
@@ -28,6 +28,10 @@ POLL_INTERVAL_SECONDS = 3
 MAX_POLL_DURATION_SECONDS = 2400  # 40 minutes — safety valve for stuck tasks
 STUCK_TASK_THRESHOLD_SECONDS = 600  # 10 minutes with no substep change → mark failed
 
+# Retry configuration for retriable errors (429, 503, 529)
+_CAP_MAX_RETRIES = 3
+_CAP_RETRY_BACKOFF = [10, 30, 60]  # seconds between retries
+
 PROMOTE_KEYS = [
     "phone", "email", "emailStatus", "contactFormUrl", "contactFormStatus", "hours", "googleMapsUrl", "socialLinks",
     "logoUrl", "favicon", "primaryColor", "secondaryColor",
@@ -35,19 +39,42 @@ PROMOTE_KEYS = [
 ]
 
 
+class RetriableCapabilityError(Exception):
+    """Raised when a capability fails with a retriable error after exhausting retries."""
+    pass
+
+
+def _is_retriable_error(exc: Exception) -> bool:
+    """Check if an exception is a retriable API error (429, 503, 529)."""
+    msg = str(exc)
+    return any(code in msg for code in ("429", "503", "529", "Resource exhausted", "RESOURCE_EXHAUSTED"))
+
+
 async def _run_capability(
     slug: str, cap_def: FullCapabilityDefinition, identity: dict, **kwargs
 ) -> dict | None:
-    """Call a capability runner directly (in-process, no HTTP)."""
-    try:
-        result = await cap_def.runner(identity, **kwargs)
-        if result:
-            return result
-        logger.error(f"[Analysis] {cap_def.name} returned None for {slug}")
-        return None
-    except Exception as e:
-        logger.error(f"[Analysis] {cap_def.name} error for {slug}: {e}")
-        return None
+    """Call a capability runner with retry on 429/503/529 errors."""
+    last_error = None
+    for attempt in range(_CAP_MAX_RETRIES):
+        try:
+            result = await cap_def.runner(identity, **kwargs)
+            if result:
+                return result
+            logger.error(f"[Analysis] {cap_def.name} returned None for {slug}")
+            return None
+        except Exception as e:
+            last_error = e
+            if _is_retriable_error(e) and attempt < _CAP_MAX_RETRIES - 1:
+                wait = _CAP_RETRY_BACKOFF[min(attempt, len(_CAP_RETRY_BACKOFF) - 1)]
+                logger.warning(f"[Analysis] {cap_def.name} retriable error for {slug} (attempt {attempt + 1}/{_CAP_MAX_RETRIES}): {e}, retrying in {wait}s")
+                await asyncio.sleep(wait)
+                continue
+            if _is_retriable_error(e):
+                logger.error(f"[Analysis] {cap_def.name} retriable error for {slug} after {_CAP_MAX_RETRIES} attempts: {e}")
+                raise RetriableCapabilityError(f"{cap_def.name}: {e}") from e
+            logger.error(f"[Analysis] {cap_def.name} error for {slug}: {e}")
+            return None
+    return None
 
 
 async def run_single_business_analysis(slug: str) -> dict:
@@ -245,7 +272,7 @@ async def run_analysis_phase(
             meta = task.get("metadata", {})
             substep = meta.get("substep", "")
 
-            if status not in terminal_statuses:
+            if status not in terminal_statuses and status != STATUS_RETRY_QUEUED:
                 all_terminal = False
 
             # Sync officialUrl from task metadata whenever available
@@ -273,7 +300,7 @@ async def run_analysis_phase(
                         callbacks["onInsightsDone"](slug, True)
 
             # Detect stuck tasks — no progress for STUCK_TASK_THRESHOLD_SECONDS
-            if status not in terminal_statuses and biz.phase != BusinessPhase.ANALYSIS_DONE:
+            if status not in terminal_statuses and status != STATUS_RETRY_QUEUED and biz.phase != BusinessPhase.ANALYSIS_DONE:
                 stale_duration = now - last_substep_time.get(tid, poll_start)
                 if stale_duration > STUCK_TASK_THRESHOLD_SECONDS:
                     logger.error(f"[Analysis] Task {tid} for {slug} stuck for {stale_duration:.0f}s — marking failed")
@@ -294,6 +321,19 @@ async def run_analysis_phase(
                 biz.phase = BusinessPhase.ANALYSIS_DONE
                 if callbacks.get("onBusinessDone"):
                     await callbacks["onBusinessDone"](slug)
+            elif status == STATUS_RETRY_QUEUED and biz.phase != BusinessPhase.ANALYSIS_DONE:
+                # Partial success — some caps completed, others will retry in background.
+                # Track the retry task and add it to our poll list.
+                retry_task_id = meta.get("retryTaskId")
+                retriable_failures = meta.get("retriableFailures", [])
+                if retry_task_id and retry_task_id not in task_map:
+                    task_map[retry_task_id] = slug
+                    task_ids.append(retry_task_id)
+                    last_substep[retry_task_id] = ""
+                    last_substep_time[retry_task_id] = now
+                    logger.info(f"[Analysis] Tracking retry task {retry_task_id} for {slug} (caps: {retriable_failures})")
+                    if callbacks.get("onCapabilityDone"):
+                        callbacks["onCapabilityDone"](slug, f"retry_queued({','.join(retriable_failures)})", True)
 
         if all_terminal:
             break
@@ -311,7 +351,7 @@ async def run_analysis_phase(
         if biz.phase == BusinessPhase.ANALYSIS_DONE:
             continue
         status = (task or {}).get("status", "")
-        if status in terminal_statuses or task is None:
+        if status in terminal_statuses or status == STATUS_RETRY_QUEUED or task is None:
             biz.phase = BusinessPhase.ANALYSIS_DONE
             if status == STATUS_FAILED:
                 biz.lastError = (task or {}).get("error", "Unknown error")

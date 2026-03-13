@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from backend.lib.auth import verify_admin_request
 from backend.lib.tasks import enqueue_agent_task
-from hephae_db.firestore.tasks import create_task, update_task, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED
+from hephae_db.firestore.tasks import create_task, update_task, STATUS_RUNNING, STATUS_COMPLETED, STATUS_FAILED, STATUS_RETRY_QUEUED
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +81,21 @@ async def spawn_tasks(req: SpawnTasksRequest):
         "enqueueFailed": enqueue_failures,
     }
 
+def _enqueue_retry_task(slug: str, retry_task_id: str, metadata: dict[str, Any], delay_seconds: int) -> None:
+    """Enqueue a retry task with a schedule delay."""
+    from google.protobuf import timestamp_pb2
+    result = enqueue_agent_task(
+        slug, "WORKFLOW_ANALYZE", retry_task_id,
+        metadata=metadata,
+        dispatch_deadline_seconds=1800,
+        schedule_delay_seconds=delay_seconds,
+    )
+    if result:
+        logger.info(f"[Tasks] Retry task enqueued for {slug}: {retry_task_id} (delay={delay_seconds}s)")
+    else:
+        logger.error(f"[Tasks] Failed to enqueue retry task for {slug}")
+
+
 @router.post("/execute")
 async def execute_task(req: ExecuteTaskRequest):
     """The internal endpoint called by Cloud Tasks to run the actual agent."""
@@ -92,11 +107,14 @@ async def execute_task(req: ExecuteTaskRequest):
         # WORKFLOW_ANALYZE: full pipeline for a single business within a workflow
         if req.actionType == "WORKFLOW_ANALYZE":
             result = await _run_workflow_analyze(req.businessId, req.taskId, req.metadata or {})
-            await update_task(req.taskId, {
-                "status": STATUS_COMPLETED,
-                "completedAt": datetime.utcnow(),
-                "progress": 100,
-            })
+            # Only mark COMPLETED if no retry was queued (retry sets STATUS_RETRY_QUEUED itself)
+            retriable = result.get("retriableFailures", [])
+            if not retriable:
+                await update_task(req.taskId, {
+                    "status": STATUS_COMPLETED,
+                    "completedAt": datetime.utcnow(),
+                    "progress": 100,
+                })
             return {"success": True, "result": result}
 
         # 2. Agentic Dispatcher (The "Brain")
@@ -136,14 +154,17 @@ async def execute_task(req: ExecuteTaskRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+MAX_RETRY_ROUNDS = 3  # prevent infinite re-enqueue loops
+
+
 async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any]) -> dict[str, Any]:
     """Full analysis pipeline for a single business within a workflow Cloud Task."""
     from hephae_common.firebase import get_db
     from hephae_db.firestore.businesses import get_business
     from hephae_db.firestore.session_service import FirestoreSessionService
     from backend.workflows.phases.enrichment import enrich_business_profile
-    from backend.workflows.capabilities.registry import get_enabled_capabilities, FullCapabilityDefinition
-    from backend.workflows.phases.analysis import _run_capability
+    from backend.workflows.capabilities.registry import get_enabled_capabilities, get_capability, FullCapabilityDefinition
+    from backend.workflows.phases.analysis import _run_capability, RetriableCapabilityError
     from backend.workflows.agents.insights.insights_agent import generate_insights
 
     db = get_db()
@@ -283,22 +304,34 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
     latest_outputs: dict[str, Any] = {}
     completed: list[str] = []
     failed: list[str] = []
+    retriable_failed: list[str] = []  # caps that failed with 429/503 — eligible for retry
+
+    # If this is a retry, only run the caps that failed last time
+    retry_only_caps = metadata.get("retryOnlyCaps")
+    retry_round = metadata.get("retryRound", 0)
+    if retry_only_caps:
+        caps_to_run = [c for c in caps_to_run if c.name in retry_only_caps]
+        logger.info(f"[WorkflowAnalyze] Retry round {retry_round} for {slug}: running {[c.name for c in caps_to_run]}")
 
     # Shared Firestore session service for all capabilities — persists state for debugging
     wf_session_service = FirestoreSessionService()
 
     async def _run_cap(cap_def: FullCapabilityDefinition):
-        raw = await _run_capability(slug, cap_def, identity, session_service=wf_session_service)
-        if raw:
-            completed.append(cap_def.name)
-            latest_outputs[cap_def.firestore_output_key] = cap_def.response_adapter(raw)
-        else:
+        try:
+            raw = await _run_capability(slug, cap_def, identity, session_service=wf_session_service)
+            if raw:
+                completed.append(cap_def.name)
+                latest_outputs[cap_def.firestore_output_key] = cap_def.response_adapter(raw)
+            else:
+                failed.append(cap_def.name)
+        except RetriableCapabilityError:
+            retriable_failed.append(cap_def.name)
             failed.append(cap_def.name)
         await _update_substep(f"capability_done:{cap_def.name}", {"capabilitiesCompleted": completed[:], "capabilitiesFailed": failed[:]})
 
     await asyncio.gather(*[_run_cap(c) for c in caps_to_run], return_exceptions=True)
 
-    # Step 4: Persist latestOutputs
+    # Step 4: Persist latestOutputs (even partial results)
     if latest_outputs:
         try:
             await asyncio.to_thread(
@@ -308,17 +341,47 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
         except Exception as e:
             logger.error(f"[WorkflowAnalyze] Firestore persist error for {slug}: {e}")
 
-    # Step 5: Generate insights
+    # Step 5: Generate insights (only if we have some outputs)
     insights = None
-    try:
-        insights = await generate_insights(slug)
-    except Exception as e:
-        logger.error(f"[WorkflowAnalyze] Insights error for {slug}: {e}")
+    if completed:
+        try:
+            insights = await generate_insights(slug)
+        except Exception as e:
+            logger.error(f"[WorkflowAnalyze] Insights error for {slug}: {e}")
 
     await _update_substep("insights_done")
+
+    # Step 6: Re-enqueue retriable failures for a later retry
+    if retriable_failed and retry_round < MAX_RETRY_ROUNDS:
+        next_round = retry_round + 1
+        retry_delay_seconds = 60 * next_round  # 60s, 120s, 180s
+        logger.warning(
+            f"[WorkflowAnalyze] {len(retriable_failed)} caps failed with retriable errors for {slug}, "
+            f"re-enqueueing round {next_round} in {retry_delay_seconds}s: {retriable_failed}"
+        )
+        retry_metadata = {
+            **metadata,
+            "retryOnlyCaps": retriable_failed,
+            "retryRound": next_round,
+            "retriedFrom": task_id,
+        }
+        retry_task_id = await create_task(
+            slug, "WORKFLOW_ANALYZE",
+            triggered_by="auto_retry",
+            metadata=retry_metadata,
+        )
+        await update_task(task_id, {
+            "status": STATUS_RETRY_QUEUED,
+            "metadata.retryTaskId": retry_task_id,
+            "metadata.retriableFailures": retriable_failed,
+        })
+        # Enqueue with schedule delay
+        _enqueue_retry_task(slug, retry_task_id, retry_metadata, retry_delay_seconds)
 
     return {
         "capabilitiesCompleted": completed,
         "capabilitiesFailed": failed,
+        "retriableFailures": retriable_failed,
+        "retryRound": retry_round,
         "insights": insights is not None,
     }

@@ -18,14 +18,26 @@ gcloud tasks queues create hephae-agent-queue \
   --project=$GCP_PROJECT_ID \
   --max-dispatches-per-second=5 \
   --max-concurrent-dispatches=3 \
-  --max-attempts=2 \
-  --min-backoff=10s
+  --max-attempts=3 \
+  --min-backoff=30s \
+  --max-backoff=300s
 ```
 
 Queue settings:
 - **max-concurrent-dispatches=3** — replaces the old `BATCH_CONCURRENCY = 3`
 - **max-dispatches-per-second=5** — rate limit to avoid overwhelming the API
-- **max-attempts=2** — retry once on failure (execute endpoint is idempotent)
+- **max-attempts=3** — retry twice on failure (execute endpoint is idempotent)
+- **min-backoff=30s** — wait at least 30s before retrying a failed task
+
+To update an existing queue:
+```bash
+gcloud tasks queues update hephae-agent-queue \
+  --location=us-central1 \
+  --project=$GCP_PROJECT_ID \
+  --max-attempts=3 \
+  --min-backoff=30s \
+  --max-backoff=300s
+```
 
 ### 3. Grant IAM Roles to Service Account
 
@@ -76,9 +88,12 @@ Cloud Tasks Queue (hephae-agent-queue)
             ├─ Enrichment → substep: enrichment_done
             ├─ Identity building (area/zip/sector research context)
             ├─ Food pricing context (BLS + USDA for food businesses)
-            ├─ Run all capabilities (asyncio.gather) → substep: capability_done:{name}
-            ├─ Persist latestOutputs to Firestore
-            └─ Generate insights → substep: insights_done
+            ├─ Run capabilities with retry (3 attempts, 10/30/60s backoff on 429/503)
+            │   └─ substep: capability_done:{name}
+            ├─ Persist latestOutputs to Firestore (even partial results)
+            ├─ Generate insights → substep: insights_done
+            └─ If retriable caps remain → re-enqueue retry task (max 3 rounds)
+                 └─ status: retry_queued (poller tracks retry task)
 ```
 
 ## Verification

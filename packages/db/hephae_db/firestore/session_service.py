@@ -101,14 +101,15 @@ class FirestoreSessionService(BaseSessionService):
     async def update_session(
         self, *, app_name: str, user_id: str, session_id: str, state: dict[str, Any]
     ) -> Session:
-        """Custom method: merge state into an existing session."""
+        """Custom method: merge state into an existing session using dot notation."""
         db = get_db()
         doc_ref = db.collection(COLLECTION).document(session_id)
 
-        await asyncio.to_thread(doc_ref.update, {
-            "state": state,
-            "updatedAt": datetime.utcnow()
-        })
+        # Use dot notation to merge top-level keys of the state dict
+        updates = {f"state.{k}": v for k, v in state.items()}
+        updates["updatedAt"] = datetime.utcnow()
+
+        await asyncio.to_thread(doc_ref.update, updates)
 
         return await self.get_session(app_name=app_name, user_id=user_id, session_id=session_id)
 

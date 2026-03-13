@@ -157,8 +157,8 @@ class BusinessInsights(BaseModel):
 
 
 class BusinessWorkflowState(BaseModel):
-    slug: str
-    name: str
+    slug: str | None = None
+    name: str | None = None
     address: str = ""
     officialUrl: str | None = None
     sourceZipCode: str | None = None
@@ -188,7 +188,7 @@ class WorkflowProgress(BaseModel):
 
 
 class WorkflowDocument(BaseModel):
-    id: str = ""
+    id: str | None = None
     zipCode: str = ""
     businessType: str | None = None
     county: str | None = None

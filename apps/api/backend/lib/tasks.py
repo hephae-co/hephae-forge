@@ -40,9 +40,13 @@ def enqueue_agent_task(
     priority: int = 5,
     metadata: dict[str, Any] | None = None,
     dispatch_deadline_seconds: int | None = None,
+    schedule_delay_seconds: int | None = None,
 ) -> str | None:
-    """Push a task into the Cloud Tasks queue for background execution."""
+    """Push a task into the Cloud Tasks queue for background execution.
 
+    Args:
+        schedule_delay_seconds: If set, delay execution by this many seconds (for retries).
+    """
     project = os.environ.get("GOOGLE_CLOUD_PROJECT", "hephae-co-dev")
     queue = "hephae-agent-queue"
     location = os.environ.get("CLOUD_RUN_REGION", "us-central1")
@@ -83,8 +87,16 @@ def enqueue_agent_task(
         if dispatch_deadline_seconds:
             task["dispatch_deadline"] = {"seconds": dispatch_deadline_seconds}
 
+        # Schedule delay for retry tasks
+        if schedule_delay_seconds and schedule_delay_seconds > 0:
+            import datetime as dt
+            schedule_time = timestamp_pb2.Timestamp()
+            schedule_time.FromDatetime(dt.datetime.utcnow() + dt.timedelta(seconds=schedule_delay_seconds))
+            task["schedule_time"] = schedule_time
+
         response = client.create_task(request={"parent": parent, "task": task})
-        logger.info(f"[Tasks] Enqueued {action_type} for {business_id} as {response.name}")
+        logger.info(f"[Tasks] Enqueued {action_type} for {business_id} as {response.name}"
+                     + (f" (delay={schedule_delay_seconds}s)" if schedule_delay_seconds else ""))
         return response.name
 
     except Exception as e:

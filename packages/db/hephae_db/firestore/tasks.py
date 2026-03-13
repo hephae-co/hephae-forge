@@ -22,6 +22,7 @@ STATUS_QUEUED = "queued"
 STATUS_RUNNING = "running"
 STATUS_COMPLETED = "completed"
 STATUS_FAILED = "failed"
+STATUS_RETRY_QUEUED = "retry_queued"
 
 async def create_task(
     business_id: str,

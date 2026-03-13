@@ -85,6 +85,9 @@ export default function WorkflowDashboard() {
     const [research, setResearch] = useState<{ zipReports: Record<string, any>; areaResearch: Record<string, any> } | null>(null);
     const [researchOpen, setResearchOpen] = useState(false);
     const [researchLoading, setResearchLoading] = useState(false);
+    const [expandedBiz, setExpandedBiz] = useState<string | null>(null);
+    const [bizDetail, setBizDetail] = useState<Record<string, any>>({});
+    const [bizDetailLoading, setBizDetailLoading] = useState<string | null>(null);
 
     const eventSourceRef = useRef<EventSource | null>(null);
     const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -122,6 +125,24 @@ export default function WorkflowDashboard() {
         } catch { /* silent */ }
         finally { setResearchLoading(false); }
     }, []);
+
+    const toggleBizDetail = useCallback(async (slug: string) => {
+        if (expandedBiz === slug) {
+            setExpandedBiz(null);
+            return;
+        }
+        setExpandedBiz(slug);
+        if (bizDetail[slug]) return; // already cached
+        setBizDetailLoading(slug);
+        try {
+            const res = await fetch(`/api/research/businesses/${slug}`);
+            if (res.ok) {
+                const data = await res.json();
+                setBizDetail(prev => ({ ...prev, [slug]: data }));
+            }
+        } catch { /* silent */ }
+        finally { setBizDetailLoading(null); }
+    }, [expandedBiz, bizDetail]);
 
     // Poll for active workflow state when not streaming
     useEffect(() => {
@@ -723,10 +744,14 @@ export default function WorkflowDashboard() {
                     {activeWorkflow.businesses && activeWorkflow.businesses.length > 0 && (
                         <div className="p-4 space-y-2">
                             {activeWorkflow.businesses.map(biz => (
-                                <div key={biz.slug} data-testid={`business-card-${biz.slug}`} data-phase={biz.phase} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <div key={biz.slug} data-testid={`business-card-${biz.slug}`} data-phase={biz.phase} className="bg-gray-50 rounded-lg border border-gray-200">
+                                <div className="flex items-center justify-between p-3">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-medium text-sm text-gray-800">{biz.name}</span>
+                                            <button onClick={() => toggleBizDetail(biz.slug)} className="font-medium text-sm text-gray-800 hover:text-indigo-600 transition-colors text-left flex items-center gap-1">
+                                                {expandedBiz === biz.slug ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                                {biz.name}
+                                            </button>
                                             <span className="text-xs text-gray-400">{biz.slug}</span>
                                             {biz.sourceZipCode && activeWorkflow.zipCodes && activeWorkflow.zipCodes.length > 0 && (
                                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-mono">{biz.sourceZipCode}</span>
@@ -736,9 +761,15 @@ export default function WorkflowDashboard() {
                                         {!biz.officialUrl && biz.phase !== 'pending' && (
                                             <div className="text-[10px] text-amber-600 mt-0.5">No website found</div>
                                         )}
-                                        {biz.lastError && (
+                                        {biz.lastError && !biz.lastError.includes('retry_queued') && (
                                             <div className="text-[10px] text-red-500 mt-0.5 truncate max-w-md" title={biz.lastError}>
                                                 Error: {biz.lastError.length > 100 ? biz.lastError.slice(0, 100) + '…' : biz.lastError}
+                                            </div>
+                                        )}
+                                        {biz.capabilitiesFailed.length > 0 && biz.capabilitiesCompleted.length > 0 && biz.phase === 'analyzing' && (
+                                            <div className="text-[10px] text-blue-500 mt-0.5 flex items-center gap-1">
+                                                <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                                Retrying: {biz.capabilitiesFailed.join(', ')}
                                             </div>
                                         )}
                                     </div>
@@ -840,6 +871,93 @@ export default function WorkflowDashboard() {
                                             )}
                                         </div>
                                     )}
+                                </div>
+
+                                {/* Expandable detail panel */}
+                                {expandedBiz === biz.slug && (
+                                    <div className="border-t border-gray-200 px-4 py-3 bg-white">
+                                        {bizDetailLoading === biz.slug ? (
+                                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                                                <Loader2 className="w-3 h-3 animate-spin" /> Loading business details...
+                                            </div>
+                                        ) : bizDetail[biz.slug] ? (
+                                            <div className="grid grid-cols-2 gap-4 text-xs">
+                                                {/* Left: Identity */}
+                                                <div className="space-y-2">
+                                                    <h5 className="font-semibold text-gray-700 text-[11px] uppercase tracking-wide">Discovery Profile</h5>
+                                                    {bizDetail[biz.slug].officialUrl && (
+                                                        <div><span className="text-gray-400">Website:</span>{' '}
+                                                            <a href={bizDetail[biz.slug].officialUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">{bizDetail[biz.slug].officialUrl}</a>
+                                                        </div>
+                                                    )}
+                                                    {bizDetail[biz.slug].phone && <div><span className="text-gray-400">Phone:</span> {bizDetail[biz.slug].phone}</div>}
+                                                    {bizDetail[biz.slug].email && <div><span className="text-gray-400">Email:</span> {bizDetail[biz.slug].email}</div>}
+                                                    {bizDetail[biz.slug].hours && <div><span className="text-gray-400">Hours:</span> {bizDetail[biz.slug].hours}</div>}
+                                                    {bizDetail[biz.slug].menuUrl && (
+                                                        <div><span className="text-gray-400">Menu:</span>{' '}
+                                                            <a href={bizDetail[biz.slug].menuUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">View Menu</a>
+                                                        </div>
+                                                    )}
+                                                    {bizDetail[biz.slug].persona && (
+                                                        <div className="mt-1"><span className="text-gray-400">Persona:</span> <span className="text-gray-600">{bizDetail[biz.slug].persona}</span></div>
+                                                    )}
+                                                    {bizDetail[biz.slug].socialLinks && Object.keys(bizDetail[biz.slug].socialLinks).length > 0 && (
+                                                        <div>
+                                                            <span className="text-gray-400">Social:</span>{' '}
+                                                            {Object.entries(bizDetail[biz.slug].socialLinks).map(([platform, url]) => (
+                                                                <a key={platform} href={url as string} target="_blank" rel="noopener noreferrer" className="inline-block mr-2 text-indigo-600 hover:underline">{platform}</a>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {bizDetail[biz.slug].competitors?.length > 0 && (
+                                                        <div>
+                                                            <span className="text-gray-400">Competitors:</span>{' '}
+                                                            <span className="text-gray-600">{bizDetail[biz.slug].competitors.map((c: any) => typeof c === 'string' ? c : c.name).join(', ')}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Right: Capability summaries + Insights */}
+                                                <div className="space-y-2">
+                                                    {bizDetail[biz.slug].capabilities && Object.keys(bizDetail[biz.slug].capabilities).length > 0 && (
+                                                        <>
+                                                            <h5 className="font-semibold text-gray-700 text-[11px] uppercase tracking-wide">Analysis Results</h5>
+                                                            {Object.entries(bizDetail[biz.slug].capabilities).map(([cap, data]: [string, any]) => (
+                                                                <div key={cap} className="bg-gray-50 rounded p-2 border border-gray-100">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="font-medium text-gray-700">{cap.replace(/_/g, ' ')}</span>
+                                                                        {data.score != null && (
+                                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${data.score >= 70 ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                                                {data.score}/100
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    {data.summary && <p className="text-gray-500 mt-0.5 line-clamp-3">{data.summary}</p>}
+                                                                    {data.reportUrl && (
+                                                                        <a href={data.reportUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-[10px] mt-0.5 inline-block">View Full Report</a>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </>
+                                                    )}
+                                                    {bizDetail[biz.slug].insights && (
+                                                        <>
+                                                            <h5 className="font-semibold text-gray-700 text-[11px] uppercase tracking-wide mt-2">Insights</h5>
+                                                            <p className="text-gray-600">{bizDetail[biz.slug].insights.summary}</p>
+                                                            {bizDetail[biz.slug].insights.keyFindings?.length > 0 && (
+                                                                <ul className="list-disc list-inside text-gray-500 space-y-0.5">
+                                                                    {bizDetail[biz.slug].insights.keyFindings.map((f: string, i: number) => <li key={i}>{f}</li>)}
+                                                                </ul>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-gray-400 italic">No details available for this business.</p>
+                                        )}
+                                    </div>
+                                )}
                                 </div>
                             ))}
                         </div>

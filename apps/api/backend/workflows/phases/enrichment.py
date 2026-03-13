@@ -17,12 +17,22 @@ async def enrich_business_profile(
 
         # Load existing business data to get website URL
         biz_data = await get_business(slug)
-        website = (biz_data or {}).get("website", "") if biz_data else ""
+        website = (
+            (biz_data or {}).get("officialUrl")
+            or (biz_data or {}).get("website")
+            or (biz_data or {}).get("identity", {}).get("officialUrl")
+            or ""
+        ) if biz_data else ""
 
         # If no website, try a Google search-based enrichment
         if not website:
             logger.warning(f"[Enrichment] No website for {slug}, attempting search-based discovery")
             website = await _find_website(name, address)
+            # Persist found URL immediately so it survives even if discovery fails
+            if website:
+                from hephae_db.firestore.businesses import save_business
+                await save_business(slug, {"officialUrl": website})
+                logger.info(f"[Enrichment] Found and saved website for {slug}: {website}")
 
         identity = {
             "name": name,
@@ -46,32 +56,42 @@ async def enrich_business_profile(
 
 
 async def _find_website(name: str, address: str) -> str:
-    """Try to find a business website using Google Search via ADK."""
-    try:
-        from hephae_common.adk_helpers import run_agent_to_json
-        from hephae_common.model_config import AgentModels
-        from hephae_common.model_fallback import fallback_on_error
-        from google.adk.agents import LlmAgent
-        from google.adk.tools import google_search
+    """Try to find a business website using Google Search via ADK. Retries on 429."""
+    import asyncio
 
-        agent = LlmAgent(
-            name="WebsiteFinder",
-            model=AgentModels.PRIMARY_MODEL,
-            instruction="""Find the official website URL for the given business.
-            Use Google Search to find it. Return ONLY a JSON object with a single "url" field.
-            Example: {"url": "https://example.com"}
-            If you cannot find a website, return: {"url": ""}""",
-            tools=[google_search],
-            on_model_error_callback=fallback_on_error,
-        )
+    for attempt in range(2):
+        try:
+            from hephae_common.adk_helpers import run_agent_to_json
+            from hephae_common.model_config import AgentModels
+            from hephae_common.model_fallback import fallback_on_error
+            from google.adk.agents import LlmAgent
+            from google.adk.tools import google_search
 
-        data = await run_agent_to_json(
-            agent,
-            f"Find the official website for: {name}, located at {address}",
-            app_name="HephaeAdmin",
-        )
-        if data and isinstance(data, dict):
-            return data.get("url", "")
-    except Exception as e:
-        logger.warning(f"[Enrichment] Website search failed for {name}: {e}")
+            agent = LlmAgent(
+                name="WebsiteFinder",
+                model=AgentModels.PRIMARY_MODEL,
+                instruction="""Find the official website URL for the given business.
+                Use Google Search to find it. Return ONLY a JSON object with a single "url" field.
+                Example: {"url": "https://example.com"}
+                If you cannot find a website, return: {"url": ""}""",
+                tools=[google_search],
+                on_model_error_callback=fallback_on_error,
+            )
+
+            data = await run_agent_to_json(
+                agent,
+                f"Find the official website for: {name}, located at {address}",
+                app_name="HephaeAdmin",
+            )
+            if data and isinstance(data, dict):
+                url = data.get("url", "")
+                if url:
+                    return url
+        except Exception as e:
+            is_retriable = "429" in str(e) or "Resource exhausted" in str(e) or "503" in str(e)
+            if is_retriable and attempt < 1:
+                logger.warning(f"[Enrichment] Website search attempt {attempt + 1} failed for {name}: {e}, retrying...")
+                await asyncio.sleep(10)
+                continue
+            logger.warning(f"[Enrichment] Website search failed for {name}: {e}")
     return ""

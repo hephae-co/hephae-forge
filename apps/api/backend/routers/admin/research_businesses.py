@@ -155,6 +155,52 @@ async def get_businesses(
     )
 
 
+@router.get("/businesses/{slug}")
+async def get_business_detail(slug: str):
+    """Return business profile summary for approval review."""
+    biz = await get_business(slug)
+    if not biz:
+        raise HTTPException(status_code=404, detail=f"Business {slug} not found")
+
+    identity = biz.get("identity", {})
+    latest = biz.get("latestOutputs", {})
+
+    # Build a lightweight summary for the approval UI
+    summary: dict = {
+        "slug": slug,
+        "name": identity.get("name") or biz.get("name", ""),
+        "address": identity.get("address") or biz.get("address", ""),
+        "officialUrl": biz.get("officialUrl") or identity.get("officialUrl") or "",
+        "phone": identity.get("phone") or biz.get("phone") or "",
+        "email": identity.get("email") or biz.get("email") or "",
+        "socialLinks": identity.get("socialLinks") or biz.get("socialLinks") or {},
+        "competitors": identity.get("competitors") or [],
+        "persona": identity.get("persona") or "",
+        "hours": identity.get("hours") or "",
+        "menuUrl": identity.get("menuUrl") or "",
+        "logoUrl": identity.get("logoUrl") or "",
+    }
+
+    # Capability output summaries (just top-level scores/headlines, not full reports)
+    cap_summaries: dict = {}
+    for key, data in latest.items():
+        if not isinstance(data, dict):
+            continue
+        cap_summaries[key] = {
+            "score": data.get("score"),
+            "summary": (data.get("summary") or data.get("executiveSummary") or "")[:500],
+            "reportUrl": data.get("reportUrl"),
+        }
+    summary["capabilities"] = cap_summaries
+
+    # Insights
+    insights = biz.get("insights")
+    if insights:
+        summary["insights"] = insights
+
+    return summary
+
+
 @router.post("/businesses")
 async def discover_businesses(req: DiscoverRequest):
     businesses = await scan_zipcode(req.zipCode, force=True)

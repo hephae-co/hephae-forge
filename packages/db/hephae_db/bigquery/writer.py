@@ -13,7 +13,11 @@ from typing import Any
 
 from google.cloud import bigquery
 
-_PROJECT_ID = os.getenv("BIGQUERY_PROJECT_ID") or os.getenv("GCP_PROJECT_ID", "")
+_PROJECT_ID = (
+    os.getenv("BIGQUERY_PROJECT_ID")
+    or os.getenv("GCP_PROJECT_ID")
+    or os.getenv("GOOGLE_CLOUD_PROJECT", "")
+)
 DATASET = "hephae"
 
 _client: bigquery.Client | None = None

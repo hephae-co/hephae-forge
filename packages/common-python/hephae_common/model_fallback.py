@@ -54,10 +54,22 @@ async def fallback_on_error(
 
     try:
         client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
+
+        # Strip response_mime_type when tools are present — Gemini rejects the combo
+        config = llm_request.config
+        has_tools = bool(getattr(llm_request, "tools", None))
+        if has_tools and config:
+            config_dict = config.model_dump() if hasattr(config, "model_dump") else (dict(config) if config else {})
+            if config_dict.get("response_mime_type"):
+                config_dict.pop("response_mime_type", None)
+                config_dict.pop("response_schema", None)
+                from google.genai.types import GenerateContentConfig
+                config = GenerateContentConfig(**{k: v for k, v in config_dict.items() if v is not None})
+
         response = await client.aio.models.generate_content(
             model=fallback_model,
             contents=llm_request.contents,
-            config=llm_request.config,
+            config=config,
         )
 
         content = response.candidates[0].content if response.candidates else None

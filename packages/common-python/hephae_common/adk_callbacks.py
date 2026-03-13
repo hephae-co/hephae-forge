@@ -17,20 +17,7 @@ import logging
 import time
 
 
-class _TraceIdFilter(logging.Filter):
-    """Ensure trace_id exists on log records for Cloud Run structured logging."""
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        if not hasattr(record, "trace_id"):
-            record.trace_id = ""  # type: ignore[attr-defined]
-        return True
-
-
 logger = logging.getLogger("hephae.adk")
-logger.addFilter(_TraceIdFilter())
-
-# Also add to root logger so ALL loggers get trace_id
-logging.getLogger().addFilter(_TraceIdFilter())
 
 # Module-level dict to track start times by agent invocation
 _agent_start_times: dict[str, float] = {}

@@ -40,8 +40,10 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s [%(trace_id)s] %(message)s",
 )
-# Add the filter to the root logger so all child loggers inherit it
-logging.getLogger().addFilter(_TraceFilter())
+# Add the filter to all handlers (not the logger) — logger filters only apply
+# to records emitted directly, not propagated records from child loggers.
+for _handler in logging.getLogger().handlers:
+    _handler.addFilter(_TraceFilter())
 logger = logging.getLogger(__name__)
 
 

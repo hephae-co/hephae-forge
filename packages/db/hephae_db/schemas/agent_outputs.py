@@ -7,15 +7,43 @@ JSON parsing with native Gemini structured output validation.
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+
+class _NullSafeModel(BaseModel):
+    """Base model that coerces None → field default for Gemini compatibility.
+
+    Gemini's structured output mode occasionally returns null for non-nullable
+    string/int/float fields.  This validator converts those nulls to the declared
+    default *before* Pydantic strict validation rejects them.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_nulls(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        for field_name, field_info in cls.model_fields.items():
+            if field_name in data and data[field_name] is None:
+                if field_info.default is not None:
+                    # Use declared default (e.g. "" for str, 0 for int)
+                    from pydantic_core import PydanticUndefined
+
+                    if field_info.default is not PydanticUndefined:
+                        data[field_name] = field_info.default
+                    elif field_info.default_factory is not None:
+                        data[field_name] = field_info.default_factory()
+                elif field_info.default_factory is not None:
+                    data[field_name] = field_info.default_factory()
+        return data
 
 
 # ── Discovery Agents ──────────────────────────────────────────────────────
 
 
-class DiscoveredBusinessItem(BaseModel):
+class DiscoveredBusinessItem(_NullSafeModel):
     """A single business discovered via Google Search or OSM."""
 
     name: str
@@ -24,13 +52,13 @@ class DiscoveredBusinessItem(BaseModel):
     category: str = ""
 
 
-class ZipcodeScannerOutput(BaseModel):
+class ZipcodeScannerOutput(_NullSafeModel):
     """Output from ZipcodeScannerAgent (Google Search grounding)."""
 
     businesses: list[DiscoveredBusinessItem] = Field(default_factory=list)
 
 
-class CountyResolverOutput(BaseModel):
+class CountyResolverOutput(_NullSafeModel):
     """Output from CountyResolverAgent (maps county to zip codes)."""
 
     zipCodes: list[str] = Field(default_factory=list)
@@ -42,7 +70,7 @@ class CountyResolverOutput(BaseModel):
 # ── Research Agents ───────────────────────────────────────────────────────
 
 
-class IndustryChallenge(BaseModel):
+class IndustryChallenge(_NullSafeModel):
     """A challenge faced by businesses in an industry sector."""
 
     title: str
@@ -50,7 +78,7 @@ class IndustryChallenge(BaseModel):
     severity: Literal["low", "medium", "high"]
 
 
-class IndustryOpportunity(BaseModel):
+class IndustryOpportunity(_NullSafeModel):
     """An opportunity for a new or existing business in a sector."""
 
     title: str
@@ -58,7 +86,7 @@ class IndustryOpportunity(BaseModel):
     timeframe: Literal["immediate", "short_term", "long_term"]
 
 
-class IndustryTrend(BaseModel):
+class IndustryTrend(_NullSafeModel):
     """A trend affecting an industry sector."""
 
     name: str
@@ -66,14 +94,14 @@ class IndustryTrend(BaseModel):
     description: str
 
 
-class ConsumerBehaviorShift(BaseModel):
+class ConsumerBehaviorShift(_NullSafeModel):
     """A shift in consumer behavior affecting a sector."""
 
     shift: str
     impact: str
 
 
-class TechnologyAdoptionItem(BaseModel):
+class TechnologyAdoptionItem(_NullSafeModel):
     """Technology adoption levels in an industry."""
 
     technology: str
@@ -81,7 +109,7 @@ class TechnologyAdoptionItem(BaseModel):
     relevance: str
 
 
-class IndustryBenchmarks(BaseModel):
+class IndustryBenchmarks(_NullSafeModel):
     """Financial and operational benchmarks for an industry."""
 
     gross_margin_pct: Optional[float] = None
@@ -94,7 +122,7 @@ class IndustryBenchmarks(BaseModel):
     avg_startup_cost: Optional[float] = None
 
 
-class IndustryAnalystOutput(BaseModel):
+class IndustryAnalystOutput(_NullSafeModel):
     """Output from IndustryAnalystAgent (deep sector analysis)."""
 
     overview: str
@@ -109,7 +137,7 @@ class IndustryAnalystOutput(BaseModel):
     benchmarks: IndustryBenchmarks = Field(default_factory=IndustryBenchmarks)
 
 
-class NewsItem(BaseModel):
+class NewsItem(_NullSafeModel):
     """A news item relevant to an industry."""
 
     headline: str
@@ -118,7 +146,7 @@ class NewsItem(BaseModel):
     source: Optional[str] = None
 
 
-class PriceTrend(BaseModel):
+class PriceTrend(_NullSafeModel):
     """A commodity or input price trend."""
 
     item: str
@@ -126,7 +154,7 @@ class PriceTrend(BaseModel):
     detail: str
 
 
-class RegulatoryUpdate(BaseModel):
+class RegulatoryUpdate(_NullSafeModel):
     """A regulatory change affecting an industry."""
 
     title: str
@@ -134,7 +162,7 @@ class RegulatoryUpdate(BaseModel):
     impact: Literal["low", "medium", "high"]
 
 
-class IndustryNewsOutput(BaseModel):
+class IndustryNewsOutput(_NullSafeModel):
     """Output from IndustryNewsAgent (research recent news)."""
 
     recentNews: list[NewsItem] = Field(default_factory=list)
@@ -142,7 +170,7 @@ class IndustryNewsOutput(BaseModel):
     regulatoryUpdates: list[RegulatoryUpdate] = Field(default_factory=list)
 
 
-class MarketOpportunity(BaseModel):
+class MarketOpportunity(_NullSafeModel):
     """Market opportunity assessment."""
 
     score: float
@@ -150,14 +178,14 @@ class MarketOpportunity(BaseModel):
     keyFactors: list[str] = Field(default_factory=list)
 
 
-class KeyMetric(BaseModel):
+class KeyMetric(_NullSafeModel):
     """A key demographic metric (name-value pair)."""
 
     name: str
     value: str = ""
 
 
-class DemographicFit(BaseModel):
+class DemographicFit(_NullSafeModel):
     """Demographic fit assessment."""
 
     score: float
@@ -165,7 +193,7 @@ class DemographicFit(BaseModel):
     keyMetrics: list[KeyMetric] = Field(default_factory=list)
 
 
-class CompetitiveLandscape(BaseModel):
+class CompetitiveLandscape(_NullSafeModel):
     """Competitive landscape assessment."""
 
     score: float
@@ -175,7 +203,7 @@ class CompetitiveLandscape(BaseModel):
     gaps: list[str] = Field(default_factory=list)
 
 
-class TrendingInsights(BaseModel):
+class TrendingInsights(_NullSafeModel):
     """Insights on trending search terms and seasonal patterns."""
 
     narrative: str
@@ -184,7 +212,7 @@ class TrendingInsights(BaseModel):
     seasonalPatterns: list[str] = Field(default_factory=list)
 
 
-class RiskItem(BaseModel):
+class RiskItem(_NullSafeModel):
     """A risk to a business type in an area."""
 
     category: str
@@ -192,13 +220,13 @@ class RiskItem(BaseModel):
     description: str
 
 
-class RiskAssessment(BaseModel):
+class RiskAssessment(_NullSafeModel):
     """Risk assessment for an area."""
 
     items: list[RiskItem] = Field(default_factory=list)
 
 
-class ZipCodeRecommendation(BaseModel):
+class ZipCodeRecommendation(_NullSafeModel):
     """A recommended zip code."""
 
     zipCode: str
@@ -206,14 +234,14 @@ class ZipCodeRecommendation(BaseModel):
     score: float
 
 
-class AvoidZipCode(BaseModel):
+class AvoidZipCode(_NullSafeModel):
     """A zip code to avoid."""
 
     zipCode: str
     reason: str
 
 
-class Recommendations(BaseModel):
+class Recommendations(_NullSafeModel):
     """Recommendations for action."""
 
     topZipCodes: list[ZipCodeRecommendation] = Field(default_factory=list)
@@ -221,7 +249,7 @@ class Recommendations(BaseModel):
     avoidZipCodes: list[AvoidZipCode] = Field(default_factory=list)
 
 
-class AreaSummaryOutput(BaseModel):
+class AreaSummaryOutput(_NullSafeModel):
     """Output from AreaSummaryAgent (area-level synthesis)."""
 
     marketOpportunity: MarketOpportunity = Field(default_factory=MarketOpportunity)
@@ -235,7 +263,7 @@ class AreaSummaryOutput(BaseModel):
     generatedAt: str = ""
 
 
-class ContextCombinerOutput(BaseModel):
+class ContextCombinerOutput(_NullSafeModel):
     """Output from ContextCombinerAgent (synthesize multiple zip reports)."""
 
     summary: str
@@ -245,7 +273,7 @@ class ContextCombinerOutput(BaseModel):
     trendingTerms: list[str] = Field(default_factory=list)
 
 
-class ZipCodeReportSection(BaseModel):
+class ZipCodeReportSection(_NullSafeModel):
     """A section in a zip code report."""
 
     title: str = ""
@@ -253,7 +281,7 @@ class ZipCodeReportSection(BaseModel):
     key_facts: list[str] = Field(default_factory=list)
 
 
-class ZipcodeReportSections(BaseModel):
+class ZipcodeReportSections(_NullSafeModel):
     """All sections in a zip code report."""
 
     geography: ZipCodeReportSection = Field(default_factory=ZipCodeReportSection)
@@ -270,7 +298,7 @@ class ZipcodeReportSections(BaseModel):
     seasonal_weather: Optional[ZipCodeReportSection] = None
 
 
-class ZipcodeReportComposerOutput(BaseModel):
+class ZipcodeReportComposerOutput(_NullSafeModel):
     """Output from ZipcodeReportComposerAgent (compose structured report)."""
 
     summary: str
@@ -283,7 +311,7 @@ class ZipcodeReportComposerOutput(BaseModel):
 # ── Insight Agents ────────────────────────────────────────────────────────
 
 
-class InsightsOutput(BaseModel):
+class InsightsOutput(_NullSafeModel):
     """Output from InsightsAgent (cross-capability synthesis)."""
 
     summary: str
@@ -295,7 +323,7 @@ class InsightsOutput(BaseModel):
 # ── Capability Runner Outputs ─────────────────────────────────────────────
 
 
-class TrafficSlot(BaseModel):
+class TrafficSlot(_NullSafeModel):
     """A single time-slot forecast entry."""
 
     label: str
@@ -304,7 +332,7 @@ class TrafficSlot(BaseModel):
     reason: str = ""
 
 
-class ForecastDay(BaseModel):
+class ForecastDay(_NullSafeModel):
     """One day of traffic forecast."""
 
     date: str
@@ -314,7 +342,7 @@ class ForecastDay(BaseModel):
     slots: list[TrafficSlot] = Field(default_factory=list)
 
 
-class NearbyPOI(BaseModel):
+class NearbyPOI(_NullSafeModel):
     """A nearby point of interest."""
 
     name: str
@@ -323,14 +351,14 @@ class NearbyPOI(BaseModel):
     type: str = ""
 
 
-class Coordinates(BaseModel):
+class Coordinates(_NullSafeModel):
     """Latitude/longitude pair."""
 
     lat: float = 0.0
     lng: float = 0.0
 
 
-class ForecastBusiness(BaseModel):
+class ForecastBusiness(_NullSafeModel):
     """Business info embedded in traffic forecast."""
 
     name: str
@@ -340,7 +368,7 @@ class ForecastBusiness(BaseModel):
     nearbyPOIs: list[NearbyPOI] = Field(default_factory=list)
 
 
-class TrafficForecastOutput(BaseModel):
+class TrafficForecastOutput(_NullSafeModel):
     """Output from ForecasterAgent (3-day foot traffic forecast)."""
 
     business: ForecastBusiness
@@ -348,7 +376,7 @@ class TrafficForecastOutput(BaseModel):
     forecast: list[ForecastDay] = Field(default_factory=list)
 
 
-class CompetitorEntry(BaseModel):
+class CompetitorEntry(_NullSafeModel):
     """A single competitor analysis entry."""
 
     name: str
@@ -357,14 +385,14 @@ class CompetitorEntry(BaseModel):
     threat_level: int = 5
 
 
-class SourceRef(BaseModel):
+class SourceRef(_NullSafeModel):
     """A source reference with URL and title."""
 
     url: str = ""
     title: str = ""
 
 
-class CompetitiveAnalysisOutput(BaseModel):
+class CompetitiveAnalysisOutput(_NullSafeModel):
     """Output from MarketPositioningAgent (competitive strategy JSON)."""
 
     market_summary: str = ""
@@ -376,7 +404,7 @@ class CompetitiveAnalysisOutput(BaseModel):
 # ── Social Media Auditor ─────────────────────────────────────────────────
 
 
-class SocialPlatformAudit(BaseModel):
+class SocialPlatformAudit(_NullSafeModel):
     """Audit of a single social media platform."""
 
     name: str
@@ -393,7 +421,7 @@ class SocialPlatformAudit(BaseModel):
     recommendations: list[str] = Field(default_factory=list)
 
 
-class CompetitorBenchmark(BaseModel):
+class CompetitorBenchmark(_NullSafeModel):
     """Social media benchmark for a competitor."""
 
     name: str
@@ -403,7 +431,7 @@ class CompetitorBenchmark(BaseModel):
     key_advantage: str = ""
 
 
-class StrategicRecommendation(BaseModel):
+class StrategicRecommendation(_NullSafeModel):
     """A prioritized social media recommendation."""
 
     priority: int = 3
@@ -413,7 +441,7 @@ class StrategicRecommendation(BaseModel):
     rationale: str = ""
 
 
-class ContentStrategy(BaseModel):
+class ContentStrategy(_NullSafeModel):
     """Content strategy summary."""
 
     content_pillars: list[str] = Field(default_factory=list)
@@ -422,7 +450,7 @@ class ContentStrategy(BaseModel):
     quick_wins: list[str] = Field(default_factory=list)
 
 
-class SocialMediaAuditOutput(BaseModel):
+class SocialMediaAuditOutput(_NullSafeModel):
     """Output from SocialStrategistAgent (comprehensive social media audit)."""
 
     overall_score: int = 0
@@ -434,7 +462,7 @@ class SocialMediaAuditOutput(BaseModel):
     sources: list[SourceRef] = Field(default_factory=list)
 
 
-class SeoMethodology(BaseModel):
+class SeoMethodology(_NullSafeModel):
     """Methodology details for an SEO section audit."""
 
     reasoningSteps: list[str] = Field(default_factory=list)
@@ -443,7 +471,7 @@ class SeoMethodology(BaseModel):
     sourcesUsed: list[SourceRef] = Field(default_factory=list)
 
 
-class SeoRecommendation(BaseModel):
+class SeoRecommendation(_NullSafeModel):
     """A single SEO recommendation."""
 
     title: str = ""
@@ -452,7 +480,7 @@ class SeoRecommendation(BaseModel):
     impact: str = ""
 
 
-class SeoSection(BaseModel):
+class SeoSection(_NullSafeModel):
     """A single section of the SEO audit report."""
 
     id: str
@@ -463,7 +491,7 @@ class SeoSection(BaseModel):
     methodology: SeoMethodology = Field(default_factory=SeoMethodology)
 
 
-class SeoAuditorOutput(BaseModel):
+class SeoAuditorOutput(_NullSafeModel):
     """Output from SeoAuditorAgent (comprehensive SEO audit)."""
 
     overallScore: int = 0
@@ -474,7 +502,7 @@ class SeoAuditorOutput(BaseModel):
 # ── Margin Analyzer Agents ────────────────────────────────────────────────
 
 
-class ParsedMenuItem(BaseModel):
+class ParsedMenuItem(_NullSafeModel):
     """A single menu item extracted from a menu screenshot."""
 
     item_name: str
@@ -483,13 +511,13 @@ class ParsedMenuItem(BaseModel):
     description: str = ""
 
 
-class MenuIntakeOutput(BaseModel):
+class MenuIntakeOutput(_NullSafeModel):
     """Output from VisionIntakeAgent (menu item extraction)."""
 
     items: list[ParsedMenuItem] = Field(default_factory=list)
 
 
-class CompetitorBenchmarkEntry(BaseModel):
+class CompetitorBenchmarkEntry(_NullSafeModel):
     """A competitor price benchmark for a menu item."""
 
     competitor_name: str
@@ -499,7 +527,7 @@ class CompetitorBenchmarkEntry(BaseModel):
     distance_miles: float = 0.0
 
 
-class MacroeconomicContext(BaseModel):
+class MacroeconomicContext(_NullSafeModel):
     """Macroeconomic context from BLS/FRED data."""
 
     inflation_cpi: str = ""
@@ -507,14 +535,14 @@ class MacroeconomicContext(BaseModel):
     analysis_hint: str = ""
 
 
-class BenchmarkOutput(BaseModel):
+class BenchmarkOutput(_NullSafeModel):
     """Output from BenchmarkerAgent (competitor price benchmarks)."""
 
     competitors: list[CompetitorBenchmarkEntry] = Field(default_factory=list)
     macroeconomic_context: MacroeconomicContext = Field(default_factory=MacroeconomicContext)
 
 
-class CommodityTrend(BaseModel):
+class CommodityTrend(_NullSafeModel):
     """A single commodity inflation trend."""
 
     ingredient: str
@@ -522,13 +550,13 @@ class CommodityTrend(BaseModel):
     trend_description: str = ""
 
 
-class CommodityOutput(BaseModel):
+class CommodityOutput(_NullSafeModel):
     """Output from CommodityWatchdogAgent (commodity price trends)."""
 
     trends: list[CommodityTrend] = Field(default_factory=list)
 
 
-class SurgeryItem(BaseModel):
+class SurgeryItem(_NullSafeModel):
     """A single menu item after margin surgery analysis."""
 
     item_name: str = ""
@@ -539,13 +567,13 @@ class SurgeryItem(BaseModel):
     category: str = ""
 
 
-class SurgeryReportOutput(BaseModel):
+class SurgeryReportOutput(_NullSafeModel):
     """Output from SurgeonAgent (margin surgery results)."""
 
     items: list[SurgeryItem] = Field(default_factory=list)
 
 
-class AdvisorRecommendation(BaseModel):
+class AdvisorRecommendation(_NullSafeModel):
     """A strategic pricing recommendation."""
 
     title: str
@@ -553,7 +581,7 @@ class AdvisorRecommendation(BaseModel):
     impact: str = ""
 
 
-class AdvisorOutput(BaseModel):
+class AdvisorOutput(_NullSafeModel):
     """Output from AdvisorAgent (strategic pricing advice)."""
 
     recommendations: list[AdvisorRecommendation] = Field(default_factory=list)
@@ -562,7 +590,7 @@ class AdvisorOutput(BaseModel):
 # ── Discovery Agents (detailed schemas) ────────────────────────────────────
 
 
-class SiteIdentity(BaseModel):
+class SiteIdentity(_NullSafeModel):
     """Identity information extracted from a crawled website."""
 
     name: str = ""
@@ -572,7 +600,7 @@ class SiteIdentity(BaseModel):
     description: str = ""
 
 
-class EntityMatchOutput(BaseModel):
+class EntityMatchOutput(_NullSafeModel):
     """Output from EntityMatcherAgent (site identity verification)."""
 
     status: str = "MATCH"
@@ -581,7 +609,7 @@ class EntityMatchOutput(BaseModel):
     reason: str = ""
 
 
-class ThemeOutput(BaseModel):
+class ThemeOutput(_NullSafeModel):
     """Output from ThemeAgent (site visual identity)."""
 
     logoUrl: Optional[str] = None
@@ -591,7 +619,7 @@ class ThemeOutput(BaseModel):
     persona: str = ""
 
 
-class ContactOutput(BaseModel):
+class ContactOutput(_NullSafeModel):
     """Output from ContactAgent (business contact info)."""
 
     phone: str = ""
@@ -602,7 +630,7 @@ class ContactOutput(BaseModel):
     contactFormStatus: str = "not_found"
 
 
-class SocialMediaDiscoveryOutput(BaseModel):
+class SocialMediaDiscoveryOutput(_NullSafeModel):
     """Output from SocialMediaAgent (social link discovery)."""
 
     instagram: Optional[str] = None
@@ -617,7 +645,7 @@ class SocialMediaDiscoveryOutput(BaseModel):
     toasttab: Optional[str] = None
 
 
-class MenuDiscoveryOutput(BaseModel):
+class MenuDiscoveryOutput(_NullSafeModel):
     """Output from MenuAgent (menu URL discovery)."""
 
     menuUrl: Optional[str] = None
@@ -628,7 +656,7 @@ class MenuDiscoveryOutput(BaseModel):
     toasttab: Optional[str] = None
 
 
-class DiscoveredCompetitor(BaseModel):
+class DiscoveredCompetitor(_NullSafeModel):
     """A single competitor found during discovery."""
 
     name: str
@@ -636,13 +664,13 @@ class DiscoveredCompetitor(BaseModel):
     reason: str = ""
 
 
-class CompetitorDiscoveryOutput(BaseModel):
+class CompetitorDiscoveryOutput(_NullSafeModel):
     """Output from CompetitorAgent (local competitor discovery)."""
 
     competitors: list[DiscoveredCompetitor] = Field(default_factory=list)
 
 
-class DiscoveryNewsItem(BaseModel):
+class DiscoveryNewsItem(_NullSafeModel):
     """A news article found during discovery."""
 
     title: str
@@ -652,13 +680,13 @@ class DiscoveryNewsItem(BaseModel):
     snippet: str = ""
 
 
-class NewsDiscoveryOutput(BaseModel):
+class NewsDiscoveryOutput(_NullSafeModel):
     """Output from NewsAgent (recent business news)."""
 
     articles: list[DiscoveryNewsItem] = Field(default_factory=list)
 
 
-class BusinessOverviewOutput(BaseModel):
+class BusinessOverviewOutput(_NullSafeModel):
     """Output from BusinessOverviewAgent (AI-generated overview)."""
 
     summary: str = ""
@@ -671,7 +699,7 @@ class BusinessOverviewOutput(BaseModel):
     sources: list[SourceRef] = Field(default_factory=list)
 
 
-class ComplaintItem(BaseModel):
+class ComplaintItem(_NullSafeModel):
     """A customer complaint or operational issue."""
 
     issue: str
@@ -680,7 +708,7 @@ class ComplaintItem(BaseModel):
     sourceUrl: str = ""
 
 
-class ChallengesOutput(BaseModel):
+class ChallengesOutput(_NullSafeModel):
     """Output from ChallengesAgent (business risk/complaints research)."""
 
     customer_complaints: list[ComplaintItem] = Field(default_factory=list)
@@ -692,7 +720,7 @@ class ChallengesOutput(BaseModel):
     summary: str = ""
 
 
-class SocialPlatformMetrics(BaseModel):
+class SocialPlatformMetrics(_NullSafeModel):
     """Metrics for a single social platform from profiler."""
 
     url: str = ""
@@ -706,7 +734,7 @@ class SocialPlatformMetrics(BaseModel):
     error: Optional[str] = None
 
 
-class YelpMetrics(BaseModel):
+class YelpMetrics(_NullSafeModel):
     """Yelp-specific metrics."""
 
     url: str = ""
@@ -718,7 +746,7 @@ class YelpMetrics(BaseModel):
     error: Optional[str] = None
 
 
-class SocialProfileSummary(BaseModel):
+class SocialProfileSummary(_NullSafeModel):
     """Summary of social media presence."""
 
     totalFollowers: int = 0
@@ -729,7 +757,7 @@ class SocialProfileSummary(BaseModel):
     recommendation: str = ""
 
 
-class SocialProfilerOutput(BaseModel):
+class SocialProfilerOutput(_NullSafeModel):
     """Output from SocialProfilerAgent (detailed social metrics)."""
 
     instagram: Optional[SocialPlatformMetrics] = None
@@ -740,7 +768,7 @@ class SocialProfilerOutput(BaseModel):
     summary: SocialProfileSummary = Field(default_factory=SocialProfileSummary)
 
 
-class ValidationReport(BaseModel):
+class ValidationReport(_NullSafeModel):
     """URL validation report from discovery reviewer."""
 
     totalUrlsChecked: int = 0
@@ -751,7 +779,7 @@ class ValidationReport(BaseModel):
     flags: list[str] = Field(default_factory=list)
 
 
-class ReviewedDataOutput(BaseModel):
+class ReviewedDataOutput(_NullSafeModel):
     """Output from DiscoveryReviewerAgent (validated discovery data)."""
 
     validatedSocialData: SocialMediaDiscoveryOutput = Field(default_factory=SocialMediaDiscoveryOutput)
@@ -765,7 +793,7 @@ class ReviewedDataOutput(BaseModel):
 # ── Content Generation Agents ───────────────────────────────────────────
 
 
-class InstagramPostOutput(BaseModel):
+class InstagramPostOutput(_NullSafeModel):
     """Output from InstagramPostAgent."""
 
     caption: str = ""
@@ -773,7 +801,7 @@ class InstagramPostOutput(BaseModel):
     imageUrl: str = ""
 
 
-class FacebookPostOutput(BaseModel):
+class FacebookPostOutput(_NullSafeModel):
     """Output from FacebookPostAgent."""
 
     post: str = ""
@@ -781,7 +809,7 @@ class FacebookPostOutput(BaseModel):
     imageUrl: str = ""
 
 
-class TwitterPostOutput(BaseModel):
+class TwitterPostOutput(_NullSafeModel):
     """Output from TwitterPostAgent."""
 
     tweet: str = ""
@@ -789,20 +817,20 @@ class TwitterPostOutput(BaseModel):
     imageUrl: str = ""
 
 
-class EmailOutreachOutput(BaseModel):
+class EmailOutreachOutput(_NullSafeModel):
     """Output from EmailOutreachAgent."""
 
     subject: str = ""
     body: str = ""
 
 
-class ContactFormOutput(BaseModel):
+class ContactFormOutput(_NullSafeModel):
     """Output from ContactFormAgent."""
 
     message: str = ""
 
 
-class BlogResearchOutput(BaseModel):
+class BlogResearchOutput(_NullSafeModel):
     """Output from ResearchCompilerAgent (blog research brief)."""
 
     key_findings: list[str] = Field(default_factory=list)
@@ -814,7 +842,7 @@ class BlogResearchOutput(BaseModel):
 # ── Evaluator Agents ────────────────────────────────────────────────────
 
 
-class EvaluationOutput(BaseModel):
+class EvaluationOutput(_NullSafeModel):
     """Output from evaluator agents (score + hallucination check)."""
 
     score: int = 0

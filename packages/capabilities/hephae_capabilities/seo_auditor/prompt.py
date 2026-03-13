@@ -35,4 +35,6 @@ SEO_AUDITOR_INSTRUCTION = f"""You are an elite Technical SEO Auditor. Your task 
        - 'searchQueries': array of search queries run (if any)
        - 'sourcesUsed': array of {{"url": "https://...", "title": "page title or description"}} for every page, URL, or resource searched or audited for that section
 
+       **CRITICAL: ONLY use the tools provided to you: 'audit_web_performance', 'google_search', and 'load_memory'. Do NOT attempt to call any other tool or function — tools like 'SetModelResponseSections' do NOT exist. If you have finished your research, output the final JSON directly.**
+
        OUTPUT STRICTLY VALID JSON! NO MARKDOWN. NO CODE BLOCKS."""

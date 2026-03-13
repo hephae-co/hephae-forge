@@ -145,10 +145,15 @@ async def run_discovery(
 
         # Fire Phase 1 crawl and local context fetch in parallel — context fetch
         # (~200ms Firestore read) is hidden behind the crawl's 5-15s network I/O
-        _, local_context = await asyncio.gather(
+        results = await asyncio.gather(
             _run_phase1(),
             _fetch_local_context(zip_code),
+            return_exceptions=True,
         )
+        # Handle Phase 1 errors gracefully — log and continue with empty state
+        if isinstance(results[0], BaseException):
+            logger.error(f"[Discovery Runner] Phase 1 failed for {name}: {results[0]}")
+        local_context = results[1] if not isinstance(results[1], BaseException) else None
 
         p1_session = await session_service.get_session(
             app_name="hephae-hub", user_id=user_id, session_id=session_id

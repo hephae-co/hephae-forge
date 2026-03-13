@@ -181,6 +181,7 @@ async def run_analysis_phase(
         biz.phase = BusinessPhase.ENRICHING
         metadata = {
             "workflowId": workflow_id,
+            "slug": biz.slug,
             "sourceZipCode": biz.sourceZipCode or "",
             "businessType": biz.businessType or "",
         }
@@ -296,3 +297,24 @@ async def run_analysis_phase(
 
         if all_terminal:
             break
+
+    # ── Final reconciliation pass ──────────────────────────────────────────
+    # Ensure every business has been marked ANALYSIS_DONE even if the poller
+    # missed a transition (e.g. task completed between the last poll check
+    # and the all_terminal break).
+    tasks = await get_tasks_by_ids(task_ids)
+    tasks_by_id = {t["id"]: t for t in tasks}
+    for tid in task_ids:
+        task = tasks_by_id.get(tid)
+        slug = task_map[tid]
+        biz = biz_by_slug[slug]
+        if biz.phase == BusinessPhase.ANALYSIS_DONE:
+            continue
+        status = (task or {}).get("status", "")
+        if status in terminal_statuses or task is None:
+            biz.phase = BusinessPhase.ANALYSIS_DONE
+            if status == STATUS_FAILED:
+                biz.lastError = (task or {}).get("error", "Unknown error")
+            logger.info(f"[Analysis] Reconciliation: marked {slug} as ANALYSIS_DONE (status={status})")
+            if callbacks.get("onBusinessDone"):
+                await callbacks["onBusinessDone"](slug)

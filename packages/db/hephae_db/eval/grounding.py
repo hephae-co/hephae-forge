@@ -94,9 +94,17 @@ async def get_agent_memory_service(agent_key: str) -> InMemoryMemoryService | No
             .get()
         )
     except Exception as e:
-        logger.warning(
-            f"[Grounding] Failed to load grounding fixtures for {agent_key}: {e}"
-        )
+        error_msg = str(e)
+        if "index" in error_msg.lower() or "requires an index" in error_msg.lower():
+            logger.warning(
+                f"[Grounding] Missing composite index for test_fixtures query "
+                f"(fixtureType + agentKey + savedAt). Create it in Firestore console. "
+                f"Agent {agent_key} will run without memory grounding."
+            )
+        else:
+            logger.warning(
+                f"[Grounding] Failed to load grounding fixtures for {agent_key}: {e}"
+            )
         return None
 
     all_events: list[Event] = []

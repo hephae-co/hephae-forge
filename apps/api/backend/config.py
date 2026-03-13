@@ -92,7 +92,7 @@ class AgentVersions:
 
     # Analysis agents
     MARGIN_SURGEON = "1.1.0"  # MINOR: PDF extraction, menuNotFound flow, pre-discovered delivery URLs
-    SEO_AUDITOR = "1.0.0"
+    SEO_AUDITOR = "1.0.1"
     TRAFFIC_FORECASTER = "1.0.0"
     COMPETITIVE_ANALYZER = "1.0.0"
 

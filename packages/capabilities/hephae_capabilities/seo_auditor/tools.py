@@ -4,6 +4,7 @@ SEO auditor tools — PageSpeed Insights (Lighthouse) audit.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 from urllib.parse import quote
@@ -12,6 +13,9 @@ import httpx
 from google.adk.tools import FunctionTool
 
 logger = logging.getLogger(__name__)
+
+_MAX_RETRIES = 3
+_RETRY_BACKOFF = [5, 15, 30]  # seconds — escalating backoff for 429s
 
 
 async def audit_web_performance(url: str) -> dict[str, Any]:
@@ -27,11 +31,22 @@ async def audit_web_performance(url: str) -> dict[str, Any]:
     """
     try:
         api_url = f"https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url={quote(url)}&strategy=mobile"
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            res = await client.get(api_url)
 
-        if res.status_code != 200:
-            return {"error": f"PageSpeed API returned {res.status_code}"}
+        res = None
+        for attempt in range(_MAX_RETRIES):
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                res = await client.get(api_url)
+
+            if res.status_code == 429:
+                wait = _RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)]
+                logger.warning(f"[PageSpeed] 429 rate limited for {url}, retry {attempt + 1}/{_MAX_RETRIES} in {wait}s")
+                await asyncio.sleep(wait)
+                continue
+            break
+
+        if res is None or res.status_code != 200:
+            status = res.status_code if res else "no response"
+            return {"error": f"PageSpeed API returned {status}"}
 
         data = res.json()
         cats = data.get("lighthouseResult", {}).get("categories", {})

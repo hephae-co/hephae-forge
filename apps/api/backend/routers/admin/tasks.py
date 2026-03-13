@@ -258,9 +258,9 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
                 )
 
                 identity["foodPricingContext"] = {
-                    "blsHighlights": bls.highlights,
-                    "usdaHighlights": usda.highlights,
-                    "latestMonth": bls.latestMonth,
+                    "blsHighlights": bls.get("highlights", []) if isinstance(bls, dict) else getattr(bls, "highlights", []),
+                    "usdaHighlights": usda.get("highlights", []) if isinstance(usda, dict) else getattr(usda, "highlights", []),
+                    "latestMonth": bls.get("latestMonth", "") if isinstance(bls, dict) else getattr(bls, "latestMonth", ""),
                     "source": "BLS Consumer Price Index + USDA NASS QuickStats",
                 }
         except Exception as e:

@@ -66,18 +66,24 @@ async def get_task(task_id: str) -> dict[str, Any] | None:
     return data
 
 async def get_tasks_by_ids(task_ids: list[str]) -> list[dict[str, Any]]:
-    """Fetch multiple task documents by their IDs."""
+    """Fetch multiple task documents by their IDs (batched for efficiency)."""
     if not task_ids:
         return []
 
     db = get_db()
     tasks = []
-    for tid in task_ids:
-        doc = await asyncio.to_thread(db.collection(COLLECTION).document(tid).get)
-        if doc.exists:
-            data = doc.to_dict()
-            data["id"] = doc.id
-            tasks.append(data)
+
+    # Firestore getAll supports up to 500 docs per batch
+    for i in range(0, len(task_ids), 100):
+        batch_ids = task_ids[i : i + 100]
+        refs = [db.collection(COLLECTION).document(tid) for tid in batch_ids]
+        docs = await asyncio.to_thread(db.get_all, refs)
+        for doc in docs:
+            if doc.exists:
+                data = doc.to_dict()
+                data["id"] = doc.id
+                tasks.append(data)
+
     return tasks
 
 

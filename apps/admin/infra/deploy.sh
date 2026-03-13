@@ -9,6 +9,13 @@ set -euo pipefail
 #   bash apps/admin/infra/deploy.sh --skip-checks
 # ─────────────────────────────────────────────────────────────
 
+# Auto-source .env from repo root if GCP_PROJECT_ID not set
+SCRIPT_DIR_EARLY="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT_EARLY="$(cd "$SCRIPT_DIR_EARLY/../../.." && pwd)"
+if [ -z "${GCP_PROJECT_ID:-}" ] && [ -f "$REPO_ROOT_EARLY/.env" ]; then
+  set -a; source "$REPO_ROOT_EARLY/.env"; set +a
+fi
+
 PROJECT_ID="${GCP_PROJECT_ID:?Set GCP_PROJECT_ID env var}"
 REGION="us-central1"
 BUILD_REGION="us-central1"

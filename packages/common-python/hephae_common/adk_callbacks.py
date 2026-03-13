@@ -29,6 +29,9 @@ class _TraceIdFilter(logging.Filter):
 logger = logging.getLogger("hephae.adk")
 logger.addFilter(_TraceIdFilter())
 
+# Also add to root logger so ALL loggers get trace_id
+logging.getLogger().addFilter(_TraceIdFilter())
+
 # Module-level dict to track start times by agent invocation
 _agent_start_times: dict[str, float] = {}
 

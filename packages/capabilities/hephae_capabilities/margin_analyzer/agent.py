@@ -11,8 +11,6 @@ from hephae_common.model_fallback import fallback_on_error
 from hephae_common.adk_callbacks import log_agent_start, log_agent_complete
 from hephae_db.schemas.agent_outputs import (
     MenuIntakeOutput,
-    BenchmarkOutput,
-    CommodityOutput,
     AdvisorOutput,
 )
 from hephae_capabilities.margin_analyzer.prompts import (
@@ -48,7 +46,7 @@ benchmarker_agent = LlmAgent(
     instruction=BENCHMARKER_INSTRUCTION,
     tools=[benchmark_tool],
     output_key="competitorBenchmarks",
-    output_schema=BenchmarkOutput,
+    # output_schema incompatible with tools — Gemini rejects response_schema + tool use
     on_model_error_callback=fallback_on_error,
 )
 
@@ -58,7 +56,6 @@ commodity_watchdog_agent = LlmAgent(
     instruction=COMMODITY_WATCHDOG_INSTRUCTION,
     tools=[commodity_inflation_tool],
     output_key="commodityTrends",
-    output_schema=CommodityOutput,
     on_model_error_callback=fallback_on_error,
 )
 

@@ -77,7 +77,7 @@ async def get_tasks_by_ids(task_ids: list[str]) -> list[dict[str, Any]]:
     for i in range(0, len(task_ids), 100):
         batch_ids = task_ids[i : i + 100]
         refs = [db.collection(COLLECTION).document(tid) for tid in batch_ids]
-        docs = await asyncio.to_thread(db.get_all, refs)
+        docs = await asyncio.to_thread(lambda: list(db.get_all(refs)))
         for doc in docs:
             if doc.exists:
                 data = doc.to_dict()

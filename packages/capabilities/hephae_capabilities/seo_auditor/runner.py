@@ -188,7 +188,6 @@ async def run_seo_audit(
             instruction=SEO_AUDITOR_INSTRUCTION,
             model=AgentModels.ENHANCED_FALLBACK,
             tools=[google_search_tool, pagespeed_tool, load_memory_tool],
-            output_schema=SeoAuditorOutput,
             on_model_error_callback=fallback_on_error,
         )
         fallback_data = await _run_seo_agent(fallback_agent, identity, memory_service, session_service=ext_session_service)

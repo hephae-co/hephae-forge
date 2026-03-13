@@ -30,7 +30,8 @@ async def research_zip_code(
         cached = await get_zipcode_report(zip_code)
         if cached:
             logger.info(f"[ZipCodeResearch] Returning cached report for {zip_code}")
-            report_dict = cached.report.model_dump(mode="json") if hasattr(cached.report, "model_dump") else cached.report
+            raw_report = cached["report"] if isinstance(cached, dict) else cached.report
+            report_dict = raw_report.model_dump(mode="json") if hasattr(raw_report, "model_dump") else raw_report
             run_id = await save_zipcode_run(zip_code, report_dict)
             return {"report": report_dict, "runId": run_id}
 

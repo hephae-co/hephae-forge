@@ -128,7 +128,7 @@ export default function DashboardOverview() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Overview of your research, workflows, and content</p>
+          <p className="text-sm text-gray-500 mt-0.5">Industry-specific research pipeline for Restaurants, Barbers, and Bakeries</p>
         </div>
         <button
           onClick={fetchStats}

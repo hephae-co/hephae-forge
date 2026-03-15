@@ -47,26 +47,14 @@ type LaunchMode = 'single' | 'county';
 
 const BUSINESS_TYPES = [
     'Restaurants',
+    'Barbers',
     'Bakeries',
-    'Barbershops',
-    'Hair Salons',
-    'Nail Salons',
-    'Coffee Shops',
-    'Dentists',
-    'Auto Repair',
-    'Gyms',
-    'Florists',
-    'Pet Groomers',
-    'Dry Cleaners',
-    'Pizza Shops',
-    'Delis',
-    'Spas',
 ];
 
 export default function WorkflowDashboard() {
     const [launchMode, setLaunchMode] = useState<LaunchMode>('single');
     const [zipCode, setZipCode] = useState('');
-    const [businessType, setBusinessType] = useState('');
+    const [businessType, setBusinessType] = useState('Restaurants');
     const [county, setCounty] = useState('');
     const [isLaunching, setIsLaunching] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -281,7 +269,7 @@ export default function WorkflowDashboard() {
         try {
             let res: Response;
 
-            const resolvedType = businessType.trim() || 'Restaurants';
+            const resolvedType = businessType;
 
             if (launchMode === 'county') {
                 res = await fetch('/api/workflows/county', {
@@ -540,8 +528,7 @@ export default function WorkflowDashboard() {
                         onChange={e => setBusinessType(e.target.value)}
                         className="w-36 px-2 py-1.5 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all"
                     >
-                        <option value="">Restaurants</option>
-                        {BUSINESS_TYPES.filter(t => t !== 'Restaurants').map(t => (
+                        {BUSINESS_TYPES.map(t => (
                             <option key={t} value={t}>{t}</option>
                         ))}
                     </select>
@@ -556,6 +543,9 @@ export default function WorkflowDashboard() {
                         {isLaunching ? 'Launching...' : 'Launch'}
                     </button>
                 </div>
+                <p className="text-[11px] text-gray-400 mt-1.5">
+                    Runs industry-specific research (sector analysis, area intel, zip demographics) in parallel with discovery, then qualifies leads before deep analysis.
+                </p>
             </div>
 
             {error && (
@@ -635,10 +625,18 @@ export default function WorkflowDashboard() {
                     )}
 
                     {/* Progress Stats */}
-                    <div className="p-4 border-b border-gray-200 grid grid-cols-4 gap-4" data-testid="progress-counters">
+                    <div className="p-4 border-b border-gray-200 grid grid-cols-6 gap-3" data-testid="progress-counters">
                         <div className="text-center" data-testid="counter-discovered">
                             <div className="text-2xl font-bold text-gray-800">{activeWorkflow.progress.totalBusinesses}</div>
                             <div className="text-xs text-gray-500">Discovered</div>
+                        </div>
+                        <div className="text-center" data-testid="counter-qualified">
+                            <div className="text-2xl font-bold text-emerald-500">{activeWorkflow.progress.qualificationQualified ?? 0}</div>
+                            <div className="text-xs text-gray-500">Qualified</div>
+                        </div>
+                        <div className="text-center" data-testid="counter-parked">
+                            <div className="text-2xl font-bold text-amber-400">{activeWorkflow.progress.qualificationParked ?? 0}</div>
+                            <div className="text-xs text-gray-500">Parked</div>
                         </div>
                         <div className="text-center" data-testid="counter-analyzed">
                             <div className="text-2xl font-bold text-blue-500">{activeWorkflow.progress.analysisComplete}</div>

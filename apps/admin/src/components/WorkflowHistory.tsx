@@ -92,7 +92,13 @@ export default function WorkflowHistory({ workflows, onSelect, onDelete, onStop,
                                 </span>
                             </div>
                             <div className="mt-2 flex gap-4 text-xs text-gray-500">
-                                <span>{wf.progress.totalBusinesses} businesses</span>
+                                <span>{wf.progress.totalBusinesses} discovered</span>
+                                {(wf.progress.qualificationQualified ?? 0) > 0 && (
+                                    <span className="text-emerald-600">{wf.progress.qualificationQualified} qualified</span>
+                                )}
+                                {(wf.progress.qualificationParked ?? 0) > 0 && (
+                                    <span className="text-amber-500">{wf.progress.qualificationParked} parked</span>
+                                )}
                                 <span>{wf.progress.analysisComplete} analyzed</span>
                                 <span>{wf.progress.qualityPassed} passed QA</span>
                                 <span>{wf.progress.outreachComplete} outreached</span>

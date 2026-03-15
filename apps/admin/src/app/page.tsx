@@ -107,7 +107,7 @@ export default function HephaeAdminDashboard() {
                 <h1 className="text-3xl font-extrabold text-gray-900 whitespace-nowrap">Hephae</h1>
                 <span className="text-[10px] font-bold uppercase tracking-widest bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-200">Admin</span>
               </div>
-              <p className="text-gray-500 mt-0.5 text-sm">Agentic Control Center</p>
+              <p className="text-gray-500 mt-0.5 text-sm">Industry Intelligence Pipeline</p>
             </div>
           </div>
 

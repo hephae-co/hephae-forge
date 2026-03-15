@@ -16,6 +16,7 @@ from hephae_api.types import (
 from hephae_api.workflows.phases.analysis import run_analysis_phase
 from hephae_api.workflows.phases.discovery import (
     run_discovery_phase, run_multi_zip_discovery_phase, to_business_workflow_states,
+    _inherit_urls_from_firestore, _find_missing_websites,
 )
 from hephae_api.workflows.phases.qualification import run_qualification_phase
 from hephae_api.workflows.phases.evaluation import run_evaluation_phase
@@ -270,6 +271,14 @@ class WorkflowEngine:
 
         if not discovered:
             raise ValueError("No businesses discovered for this zip code")
+
+        # Inherit URLs from prior runs + search for missing websites BEFORE qualification
+        self._emit("workflow:url_resolution", f"Resolving URLs for {len(discovered)} businesses...")
+        discovered = await _inherit_urls_from_firestore(discovered)
+        discovered = await _find_missing_websites(discovered)
+
+        with_url = sum(1 for b in discovered if b.get("officialUrl"))
+        self._emit("workflow:url_resolution", f"URL resolution done: {with_url}/{len(discovered)} have websites")
 
         self.workflow.businesses = to_business_workflow_states(discovered)
         await self._checkpoint()

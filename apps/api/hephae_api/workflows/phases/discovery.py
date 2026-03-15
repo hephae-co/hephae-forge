@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from typing import Callable
 
 from hephae_agents.discovery.zipcode_scanner import scan_zipcode
+from hephae_db.firestore.businesses import get_business
 from hephae_api.types import BusinessWorkflowState, BusinessPhase
 
 logger = logging.getLogger(__name__)
@@ -75,6 +77,59 @@ async def run_multi_zip_discovery_phase(
 
     logger.info(f"[Workflow:MultiZip] Total: {len(all_businesses)} unique businesses from {len(zip_codes)} zip codes")
     return all_businesses
+
+
+async def _inherit_urls_from_firestore(discovered: list[dict]) -> list[dict]:
+    """For businesses missing URLs, check if Firestore has one from a prior run."""
+    missing = [b for b in discovered if not b.get("officialUrl")]
+    if not missing:
+        return discovered
+
+    inherited = 0
+    for biz in missing:
+        try:
+            existing = await get_business(biz["slug"])
+            if existing and existing.get("officialUrl"):
+                biz["officialUrl"] = existing["officialUrl"]
+                inherited += 1
+        except Exception:
+            pass
+
+    if inherited:
+        logger.info(f"[Workflow:Discovery] Inherited {inherited} URLs from prior business docs")
+    return discovered
+
+
+async def _find_missing_websites(discovered: list[dict]) -> list[dict]:
+    """Search for websites of businesses that still have no URL after inheritance."""
+    from hephae_api.workflows.phases.enrichment import _find_website
+
+    missing = [b for b in discovered if not b.get("officialUrl")]
+    if not missing:
+        return discovered
+
+    logger.info(f"[Workflow:Discovery] Searching for websites of {len(missing)} businesses without URLs")
+
+    async def _search_one(biz: dict):
+        try:
+            url = await _find_website(biz["name"], biz.get("address", ""))
+            if url:
+                biz["officialUrl"] = url
+                logger.info(f"[Workflow:Discovery] Found website for {biz['name']}: {url}")
+        except Exception as e:
+            logger.warning(f"[Workflow:Discovery] Website search failed for {biz['name']}: {e}")
+
+    # Run searches concurrently (max 5 at a time to avoid rate limits)
+    sem = asyncio.Semaphore(5)
+    async def _bounded(biz):
+        async with sem:
+            await _search_one(biz)
+
+    await asyncio.gather(*[_bounded(b) for b in missing], return_exceptions=True)
+
+    found = sum(1 for b in missing if b.get("officialUrl"))
+    logger.info(f"[Workflow:Discovery] Website search found {found}/{len(missing)} URLs")
+    return discovered
 
 
 def to_business_workflow_states(discovered: list[dict]) -> list[BusinessWorkflowState]:

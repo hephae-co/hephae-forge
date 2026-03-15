@@ -204,7 +204,7 @@ CAPABILITY_REGISTRY: list[FullCapabilityDefinition] = [
         runner=_run_margin,
         evaluator=EvaluatorConfig(_lazy_margin_evaluator, _margin_eval_prompt, "wf_margin_eval"),
         enabled=True,
-        should_run=lambda biz: bool(biz.get("menuScreenshotBase64")),
+        should_run=lambda biz: bool(biz.get("menuScreenshotBase64") or biz.get("menuUrl")),
     ),
     FullCapabilityDefinition(
         name="social",

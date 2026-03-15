@@ -8,7 +8,7 @@ WORKDIR /app
 # Copy workspace root config + lockfile
 COPY package.json package-lock.json ./
 # Copy shared TS package
-COPY packages/common-ts/ ./packages/common-ts/
+COPY lib/common-ts/ ./lib/common-ts/
 # Copy web app package.json for workspace resolution
 COPY apps/web/package.json ./apps/web/
 # Copy admin package.json (needed for workspace resolution, no install)

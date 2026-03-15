@@ -6,7 +6,7 @@
 FROM node:20-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-COPY packages/common-ts/ ./packages/common-ts/
+COPY lib/common-ts/ ./lib/common-ts/
 COPY apps/admin/package.json ./apps/admin/
 COPY apps/web/package.json ./apps/web/
 RUN npm ci
@@ -15,7 +15,6 @@ FROM node:20-slim AS builder
 WORKDIR /app
 COPY --from=deps /app ./
 COPY apps/admin/ ./apps/admin/
-RUN rm -rf apps/admin/backend/
 ENV NEXT_TELEMETRY_DISABLED=1
 # Firebase Auth config (NEXT_PUBLIC_* must be present at build time)
 ARG NEXT_PUBLIC_FIREBASE_API_KEY

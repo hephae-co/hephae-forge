@@ -27,19 +27,20 @@ async def run_sector_research(
     2. Analyze local sector trends per zip code
     3. Synthesize into summary
     """
-    doc = await create_sector_research(sector, zip_codes, area_name)
+    raw = await create_sector_research(sector, zip_codes, area_name)
+    doc = SectorResearchDocument(**raw)
 
     try:
         # Phase 1: Industry analysis
         doc.phase = SectorResearchPhase.ANALYZING
-        await save_sector_research(doc)
+        await save_sector_research(doc.model_dump())
 
         logger.info(f"[SectorResearch] Analyzing industry: {sector}")
         industry_analysis = await analyze_industry(sector)
 
         # Phase 2: Local trends per zip
         doc.phase = SectorResearchPhase.LOCAL_TRENDS
-        await save_sector_research(doc)
+        await save_sector_research(doc.model_dump())
 
         local_trends = []
         for zip_code in zip_codes:
@@ -58,7 +59,7 @@ async def run_sector_research(
 
         # Phase 3: Synthesis
         doc.phase = SectorResearchPhase.SYNTHESIZING
-        await save_sector_research(doc)
+        await save_sector_research(doc.model_dump())
 
         # Build synthesis using area summary agent
         zip_reports = []
@@ -94,7 +95,7 @@ async def run_sector_research(
 
         doc.summary = summary
         doc.phase = SectorResearchPhase.COMPLETED
-        await save_sector_research(doc)
+        await save_sector_research(doc.model_dump())
 
         logger.info(f"[SectorResearch] Complete for {sector}")
         return doc
@@ -103,5 +104,5 @@ async def run_sector_research(
         logger.error(f"[SectorResearch] Fatal error: {e}")
         doc.phase = SectorResearchPhase.FAILED
         doc.lastError = str(e)
-        await save_sector_research(doc)
+        await save_sector_research(doc.model_dump())
         return doc

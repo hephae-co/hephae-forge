@@ -66,7 +66,7 @@ class AreaResearchOrchestrator:
                 pass
 
     async def _checkpoint(self):
-        await save_area_research(self.doc)
+        await save_area_research(self.doc.model_dump())
 
     async def run(self):
         _active_orchestrators[self.doc.id] = self
@@ -340,7 +340,8 @@ async def start_area_research(
     max_zip_codes: int = 10,
 ) -> dict:
     """Start area research in background. Returns {"orchestrator": ..., "areaId": str}."""
-    doc = await create_area_research(area, business_type, [])
+    raw = await create_area_research(area, business_type, [])
+    doc = AreaResearchDocument(**raw)
     orchestrator = AreaResearchOrchestrator(doc, max_zip_codes)
 
     # Run in background

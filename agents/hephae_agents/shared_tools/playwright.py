@@ -15,6 +15,7 @@ Port of src/agents/tools/playwrightTool.ts.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import logging
 import re as _re
@@ -22,6 +23,9 @@ from typing import Any
 from urllib.parse import urlparse, urljoin
 
 logger = logging.getLogger(__name__)
+
+# Global semaphore — at most 1 Chromium instance at a time to stay under 2GB RAM.
+_browser_semaphore = asyncio.Semaphore(1)
 
 # ---------------------------------------------------------------------------
 # Deterministic contact extraction helpers (P0.1)
@@ -90,6 +94,7 @@ async def crawl_web_page(
         dict with extracted page data.
     """
     browser = None
+    await _browser_semaphore.acquire()
     try:
         from playwright.async_api import async_playwright
 
@@ -447,6 +452,7 @@ async def crawl_web_page(
     finally:
         if browser:
             await browser.close()
+        _browser_semaphore.release()
 
 
 # ---------------------------------------------------------------------------
@@ -478,6 +484,7 @@ async def screenshot_page(
           error: error message string or None.
     """
     browser = None
+    await _browser_semaphore.acquire()
     try:
         from playwright.async_api import async_playwright
 
@@ -506,3 +513,4 @@ async def screenshot_page(
     finally:
         if browser:
             await browser.close()
+        _browser_semaphore.release()

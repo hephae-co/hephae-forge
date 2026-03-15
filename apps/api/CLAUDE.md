@@ -7,15 +7,15 @@ This is the unified backend API serving both the web and admin UIs. It replaces 
 ## Commands
 
 ```bash
-pip install -e . && uvicorn backend.main:app --reload --port 8080
+pip install -e . && uvicorn hephae_api.main:app --reload --port 8080
 # Or with all packages:
-pip install -e ../../packages/common-python -e ../../packages/db -e ../../packages/integrations -e ../../packages/capabilities -e .
+pip install -e ../../lib/common -e ../../lib/db -e ../../lib/integrations -e ../../agents -e .
 ```
 
-## Backend Structure
+## API Structure
 
 ```
-backend/
+hephae_api/
 ├── main.py                     # FastAPI app, CORS, health endpoint
 ├── config.py                   # Merged Settings + AgentVersions
 ├── types.py                    # Merged Pydantic v2 models
@@ -37,14 +37,14 @@ backend/
 
 ## Key Architectural Decisions
 
-1. **No inter-service HTTP** — Capabilities are direct Python imports via `hephae-capabilities` package
+1. **No inter-service HTTP** — Capabilities are direct Python imports via `hephae-agents` package
 2. **Environment-based CORS** — `ALLOWED_ORIGINS` env var (default `*`)
 3. **Capability registry** uses `runner` functions (not HTTP endpoints)
 4. **SSE streaming** via Starlette native `StreamingResponse` for workflow progress
 
 ## Environment Variables (~30)
 
-See `backend/config.py` for the full list. Key ones:
+See `hephae_api/config.py` for the full list. Key ones:
 - `GEMINI_API_KEY` — Google AI API key
 - `PORT` — Server port (default 8080, Cloud Run sets this)
 - `ALLOWED_ORIGINS` — CORS origins (comma-separated, default `*`)

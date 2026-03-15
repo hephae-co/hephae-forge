@@ -17,7 +17,7 @@ import os
 import httpx
 import pytest
 
-from hephae_capabilities.shared_tools.crawl4ai import (
+from hephae_agents.shared_tools.crawl4ai import (
     crawl_for_content,
     crawl_with_options,
     crawl_multiple_pages,

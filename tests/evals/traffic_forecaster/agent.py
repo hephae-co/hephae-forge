@@ -7,6 +7,6 @@ The traffic forecaster pipeline has two stages:
 We eval stage 1 — the intelligence gathering portion.
 """
 
-from hephae_capabilities.traffic_forecaster.agent import context_gathering_pipeline as root_agent
+from hephae_agents.traffic_forecaster.agent import context_gathering_pipeline as root_agent
 
 __all__ = ["root_agent"]

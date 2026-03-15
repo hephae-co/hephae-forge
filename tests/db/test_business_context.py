@@ -236,9 +236,9 @@ class TestBuildBusinessContext:
             patch("hephae_db.context.business_context.read_business", return_value=None),
             patch("hephae_db.context.business_context.get_zipcode_report", new_callable=AsyncMock, return_value=None),
             patch("hephae_db.context.business_context.get_area_research_for_zip", new_callable=AsyncMock, return_value=None),
-            patch("hephae_capabilities.market_data.fetch_cpi_data", new_callable=AsyncMock, return_value={"rate": 3.0}),
-            patch("hephae_capabilities.market_data.fetch_fred_indicators", new_callable=AsyncMock, return_value={"rate": 3.5}),
-            patch("hephae_capabilities.market_data.fetch_commodity_prices", new_callable=AsyncMock, return_value={"commodity": "eggs", "price": 5.0}),
+            patch("hephae_agents.market_data.fetch_cpi_data", new_callable=AsyncMock, return_value={"rate": 3.0}),
+            patch("hephae_agents.market_data.fetch_fred_indicators", new_callable=AsyncMock, return_value={"rate": 3.5}),
+            patch("hephae_agents.market_data.fetch_commodity_prices", new_callable=AsyncMock, return_value={"commodity": "eggs", "price": 5.0}),
         ):
             ctx = await build_business_context(SAMPLE_IDENTITY, capabilities=["margin"])
             assert ctx.cpi_data == {"rate": 3.0}

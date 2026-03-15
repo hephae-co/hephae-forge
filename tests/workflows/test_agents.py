@@ -2,17 +2,17 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
 try:
-    from hephae_capabilities.discovery import scan_zipcode, BusinessItem
+    from hephae_agents.discovery import scan_zipcode, BusinessItem
 except ImportError:
     pytest.skip("Module removed during refactor", allow_module_level=True)
 
 try:
-    from backend.agents.analyst import run_deep_dive
+    from hephae_api.agents.analyst import run_deep_dive
 except ImportError:
     pytest.skip("Module removed during refactor", allow_module_level=True)
 
 @pytest.mark.asyncio
-@patch("hephae_capabilities.discovery.firestore_service.get_businesses_in_zipcode")
+@patch("hephae_agents.discovery.firestore_service.get_businesses_in_zipcode")
 async def test_scan_zipcode_cached(mock_get_cached):
     mock_get_cached.return_value = [{"name": "Cached Biz", "address": "123 St", "docId": "cached-biz"}]
 
@@ -23,7 +23,7 @@ async def test_scan_zipcode_cached(mock_get_cached):
     mock_get_cached.assert_called_with("10001")
 
 @pytest.mark.asyncio
-@patch("hephae_capabilities.discovery.firestore_service")
+@patch("hephae_agents.discovery.firestore_service")
 async def test_scan_zipcode_cached_enriched(mock_fs):
     """Cache hit with enriched data returns full BusinessItem fields."""
     mock_fs.get_businesses_in_zipcode.return_value = [
@@ -47,7 +47,7 @@ async def test_scan_zipcode_cached_enriched(mock_fs):
 
 @pytest.mark.asyncio
 @patch("httpx.AsyncClient.post")
-@patch("backend.agents.analyst.firestore_service.update_latest_outputs")
+@patch("hephae_api.agents.analyst.firestore_service.update_latest_outputs")
 async def test_run_deep_dive_success(mock_update, mock_post):
     # Mock responses for 3 API calls
     mock_resp = MagicMock()

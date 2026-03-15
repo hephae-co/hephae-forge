@@ -7,15 +7,15 @@ from unittest.mock import patch, AsyncMock
 
 from fastapi.testclient import TestClient
 
-from backend.types import BlsCpiData, BlsCpiSeries, BlsCpiDataPoint, UsdaPriceData, UsdaCommodityPrice
+from hephae_api.types import BlsCpiData, BlsCpiSeries, BlsCpiDataPoint, UsdaPriceData, UsdaCommodityPrice
 
 
 @pytest.fixture
 def client():
     """Create a test client with mocked Firebase and bypassed admin auth."""
     with patch("hephae_common.firebase.get_db"):
-        from backend.main import app
-        from backend.lib.auth import verify_admin_request
+        from hephae_api.main import app
+        from hephae_api.lib.auth import verify_admin_request
 
         app.dependency_overrides[verify_admin_request] = lambda: {"uid": "test-admin", "email": "admin@test.com"}
         yield TestClient(app)
@@ -36,7 +36,7 @@ class TestCpiEndpoint:
             highlights=["Food (all items): 2.5% up year-over-year (index 310.5, 2025-03)"],
         )
 
-        with patch("backend.routers.admin.food_prices.query_bls_cpi", new_callable=AsyncMock, return_value=mock_data):
+        with patch("hephae_api.routers.admin.food_prices.query_bls_cpi", new_callable=AsyncMock, return_value=mock_data):
             response = client.get("/api/food-prices/cpi?industry=pizza")
 
         assert response.status_code == 200
@@ -47,7 +47,7 @@ class TestCpiEndpoint:
 
     def test_get_cpi_default_industry(self, client):
         mock_data = BlsCpiData()
-        with patch("backend.routers.admin.food_prices.query_bls_cpi", new_callable=AsyncMock, return_value=mock_data):
+        with patch("hephae_api.routers.admin.food_prices.query_bls_cpi", new_callable=AsyncMock, return_value=mock_data):
             response = client.get("/api/food-prices/cpi")
         assert response.status_code == 200
 
@@ -61,7 +61,7 @@ class TestCommoditiesEndpoint:
             highlights=["WHEAT: $7.50/$ / BU (2024)"],
         )
 
-        with patch("backend.routers.admin.food_prices.query_usda_prices", new_callable=AsyncMock, return_value=mock_data):
+        with patch("hephae_api.routers.admin.food_prices.query_usda_prices", new_callable=AsyncMock, return_value=mock_data):
             response = client.get("/api/food-prices/commodities?industry=bakeries&state=NJ")
 
         assert response.status_code == 200
@@ -71,7 +71,7 @@ class TestCommoditiesEndpoint:
 
     def test_get_commodities_defaults(self, client):
         mock_data = UsdaPriceData()
-        with patch("backend.routers.admin.food_prices.query_usda_prices", new_callable=AsyncMock, return_value=mock_data):
+        with patch("hephae_api.routers.admin.food_prices.query_usda_prices", new_callable=AsyncMock, return_value=mock_data):
             response = client.get("/api/food-prices/commodities")
         assert response.status_code == 200
 
@@ -89,8 +89,8 @@ class TestSummaryEndpoint:
             "highlights": ["WHEAT: $7.50"],
         }
 
-        with patch("backend.routers.admin.food_prices.query_bls_cpi", new_callable=AsyncMock, return_value=bls_data), \
-             patch("backend.routers.admin.food_prices.query_usda_prices", new_callable=AsyncMock, return_value=usda_data):
+        with patch("hephae_api.routers.admin.food_prices.query_bls_cpi", new_callable=AsyncMock, return_value=bls_data), \
+             patch("hephae_api.routers.admin.food_prices.query_usda_prices", new_callable=AsyncMock, return_value=usda_data):
             response = client.get("/api/food-prices/summary?industry=pizza&state=NJ")
 
         assert response.status_code == 200
@@ -102,8 +102,8 @@ class TestSummaryEndpoint:
         assert data["usdaNass"] is not None
 
     def test_summary_with_empty_data(self, client):
-        with patch("backend.routers.admin.food_prices.query_bls_cpi", new_callable=AsyncMock, return_value={"series": [], "highlights": []}), \
-             patch("backend.routers.admin.food_prices.query_usda_prices", new_callable=AsyncMock, return_value={"commodities": [], "highlights": []}):
+        with patch("hephae_api.routers.admin.food_prices.query_bls_cpi", new_callable=AsyncMock, return_value={"series": [], "highlights": []}), \
+             patch("hephae_api.routers.admin.food_prices.query_usda_prices", new_callable=AsyncMock, return_value={"commodities": [], "highlights": []}):
             response = client.get("/api/food-prices/summary")
 
         assert response.status_code == 200

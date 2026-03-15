@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from hephae_capabilities.shared_tools.google_search import google_search
+from hephae_agents.shared_tools.google_search import google_search
 from tests.integration.businesses import BUSINESSES
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]

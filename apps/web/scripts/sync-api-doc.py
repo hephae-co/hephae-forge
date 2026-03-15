@@ -29,7 +29,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 def get_openapi_spec() -> dict:
     """Import the FastAPI app and return its OpenAPI schema."""
-    from backend.main import app
+    from hephae_api.main import app
 
     return app.openapi()
 

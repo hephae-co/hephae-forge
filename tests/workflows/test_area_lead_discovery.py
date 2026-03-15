@@ -4,11 +4,11 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime
 
-from backend.workflows.agents.research.local_catalyst import research_local_catalysts
-from backend.workflows.agents.discovery.municipal_hubs import find_municipal_hub
-from backend.workflows.agents.discovery.directory_parser import parse_directory_content
-from backend.workflows.orchestrators.area_research import AreaResearchOrchestrator
-from backend.types import AreaResearchDocument, AreaResearchPhase
+from hephae_agents.research.local_catalyst import research_local_catalysts
+from hephae_agents.discovery.municipal_hubs import find_municipal_hub
+from hephae_agents.discovery.directory_parser import parse_directory_content
+from hephae_api.workflows.orchestrators.area_research import AreaResearchOrchestrator
+from hephae_api.types import AreaResearchDocument, AreaResearchPhase
 
 # ---------------------------------------------------------------------------
 # 1. Component Tests
@@ -17,7 +17,7 @@ from backend.types import AreaResearchDocument, AreaResearchPhase
 @pytest.mark.asyncio
 async def test_find_municipal_hub():
     """Verify MunicipalHubAgent returns a valid URL."""
-    with patch("backend.workflows.agents.discovery.municipal_hubs.run_agent_to_text", new_callable=AsyncMock) as mock_run:
+    with patch("hephae_agents.discovery.municipal_hubs.run_agent_to_text", new_callable=AsyncMock) as mock_run:
         mock_run.return_value = "https://montclairchamber.com/directory"
         
         url = await find_municipal_hub("Montclair", "NJ")
@@ -28,7 +28,7 @@ async def test_find_municipal_hub():
 @pytest.mark.asyncio
 async def test_find_municipal_hub_none():
     """Verify MunicipalHubAgent returns None on fallback."""
-    with patch("backend.workflows.agents.discovery.municipal_hubs.run_agent_to_text", new_callable=AsyncMock) as mock_run:
+    with patch("hephae_agents.discovery.municipal_hubs.run_agent_to_text", new_callable=AsyncMock) as mock_run:
         mock_run.return_value = "NONE"
         
         url = await find_municipal_hub("Nowhere", "XY")
@@ -45,7 +45,7 @@ async def test_parse_directory_content():
         {"name": "Bakery B", "address": "456 St", "website": "b.com", "category": "Bakery"}
     ])
     
-    with patch("backend.workflows.agents.discovery.directory_parser.run_agent_to_json", new_callable=AsyncMock) as mock_run:
+    with patch("hephae_agents.discovery.directory_parser.run_agent_to_json", new_callable=AsyncMock) as mock_run:
         mock_run.return_value = mock_output
         
         leads = await parse_directory_content("Raw Content", category="Bakery")
@@ -64,7 +64,7 @@ async def test_research_local_catalysts():
         "recommendation": "Check site."
     }
     
-    with patch("backend.workflows.agents.research.local_catalyst.run_agent_to_json", new_callable=AsyncMock) as mock_run:
+    with patch("hephae_agents.research.local_catalyst.run_agent_to_json", new_callable=AsyncMock) as mock_run:
         mock_run.return_value = mock_result
         
         res = await research_local_catalysts("Nutley", "NJ", "Bakery")
@@ -99,7 +99,7 @@ async def test_area_research_lead_discovery_flow():
         # We only want to test the lead discovery part, so we mock the main run steps
         with patch.object(orchestrator, "_checkpoint", new_callable=AsyncMock), \
              patch.object(orchestrator, "_emit"), \
-             patch("backend.workflows.orchestrators.area_research.generate_enhanced_area_summary", new_callable=AsyncMock) as mock_summary, \
+             patch("hephae_api.workflows.orchestrators.area_research.generate_enhanced_area_summary", new_callable=AsyncMock) as mock_summary, \
              patch.object(orchestrator, "_fetch_zip_reports", new_callable=AsyncMock) as mock_fetch:
             
             mock_summary.return_value = "Test summary"
@@ -123,9 +123,9 @@ async def test_discover_leads_from_hub_implementation():
     doc = AreaResearchDocument(id="area1", area="Nutley, NJ", businessType="Cafe")
     orchestrator = AreaResearchOrchestrator(doc)
     
-    with patch("backend.workflows.orchestrators.area_research.find_municipal_hub", new_callable=AsyncMock) as mock_find, \
-         patch("backend.workflows.orchestrators.area_research.crawl4ai_tool", new_callable=AsyncMock) as mock_crawl, \
-         patch("backend.workflows.orchestrators.area_research.parse_directory_content", new_callable=AsyncMock) as mock_parse, \
+    with patch("hephae_api.workflows.orchestrators.area_research.find_municipal_hub", new_callable=AsyncMock) as mock_find, \
+         patch("hephae_api.workflows.orchestrators.area_research.crawl4ai_tool", new_callable=AsyncMock) as mock_crawl, \
+         patch("hephae_api.workflows.orchestrators.area_research.parse_directory_content", new_callable=AsyncMock) as mock_parse, \
          patch("hephae_db.firestore.businesses.save_business", new_callable=AsyncMock) as mock_save:
         
         mock_find.return_value = "http://hub.com"

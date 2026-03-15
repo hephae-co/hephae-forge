@@ -8,7 +8,7 @@ The blog writer pipeline runs two LlmAgents sequentially:
 
 from google.adk.agents import SequentialAgent
 
-from hephae_capabilities.social.blog_writer.agent import (
+from hephae_agents.social.blog_writer.agent import (
     research_compiler_agent,
     blog_writer_agent,
 )

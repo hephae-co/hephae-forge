@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev\" \"uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload\"",
+    "dev": "concurrently \"next dev\" \"uvicorn hephae_api.main:app --host 0.0.0.0 --port 8000 --reload\"",
     "dev:next": "next dev",
-    "dev:api": "uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload",
+    "dev:api": "uvicorn hephae_api.main:app --host 0.0.0.0 --port 8000 --reload",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

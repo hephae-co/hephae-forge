@@ -18,7 +18,7 @@ class TestBuildReviewerPrompt:
     """_build_reviewer_prompt includes expected sections."""
 
     def _prompt(self, identity=None, outputs=None):
-        from backend.workflows.agents.reviewer.runner import _build_reviewer_prompt
+        from hephae_agents.reviewer.runner import _build_reviewer_prompt
         return _build_reviewer_prompt(
             "test-biz",
             identity or {},
@@ -74,7 +74,7 @@ class TestReviewTool:
     """The FunctionTool capture logic (record_review)."""
 
     def _make_tool_and_container(self):
-        from backend.workflows.agents.reviewer.runner import _make_review_tool
+        from hephae_agents.reviewer.runner import _make_review_tool
         container = []
         tool = _make_review_tool(container)
         return tool, container
@@ -169,9 +169,9 @@ class TestRunReviewer:
 
         # Patch at the Runner level — simulate that the agent runs and fills the container
         with patch(
-            "backend.workflows.agents.reviewer.runner.Runner"
+            "hephae_agents.reviewer.runner.Runner"
         ) as MockRunner, patch(
-            "backend.workflows.agents.reviewer.runner.InMemorySessionService"
+            "hephae_agents.reviewer.runner.InMemorySessionService"
         ) as MockSS:
             mock_runner_instance = MagicMock()
 
@@ -191,8 +191,8 @@ class TestRunReviewer:
                 container.append(expected)
                 return MagicMock()
 
-            with patch("backend.workflows.agents.reviewer.runner._make_review_tool", side_effect=_fake_make_tool):
-                from backend.workflows.agents.reviewer.runner import run_reviewer
+            with patch("hephae_agents.reviewer.runner._make_review_tool", side_effect=_fake_make_tool):
+                from hephae_agents.reviewer.runner import run_reviewer
                 result = await run_reviewer("biz-1", {"name": "Test"}, {})
 
         assert result == expected
@@ -201,9 +201,9 @@ class TestRunReviewer:
     async def test_returns_none_on_agent_exception(self):
         """If the ADK runner raises, run_reviewer returns None (fail-open)."""
         with patch(
-            "backend.workflows.agents.reviewer.runner.Runner"
+            "hephae_agents.reviewer.runner.Runner"
         ) as MockRunner, patch(
-            "backend.workflows.agents.reviewer.runner.InMemorySessionService"
+            "hephae_agents.reviewer.runner.InMemorySessionService"
         ) as MockSS:
             mock_runner_instance = MagicMock()
 
@@ -217,7 +217,7 @@ class TestRunReviewer:
             mock_ss.create_session = AsyncMock()
             MockSS.return_value = mock_ss
 
-            from backend.workflows.agents.reviewer.runner import run_reviewer
+            from hephae_agents.reviewer.runner import run_reviewer
             result = await run_reviewer("biz-2", {"name": "Biz"}, {})
 
         assert result is None
@@ -226,9 +226,9 @@ class TestRunReviewer:
     async def test_returns_none_when_no_tool_call(self):
         """If agent never calls record_review, run_reviewer returns None."""
         with patch(
-            "backend.workflows.agents.reviewer.runner.Runner"
+            "hephae_agents.reviewer.runner.Runner"
         ) as MockRunner, patch(
-            "backend.workflows.agents.reviewer.runner.InMemorySessionService"
+            "hephae_agents.reviewer.runner.InMemorySessionService"
         ) as MockSS:
             mock_runner_instance = MagicMock()
 
@@ -242,7 +242,7 @@ class TestRunReviewer:
             mock_ss.create_session = AsyncMock()
             MockSS.return_value = mock_ss
 
-            from backend.workflows.agents.reviewer.runner import run_reviewer
+            from hephae_agents.reviewer.runner import run_reviewer
             result = await run_reviewer("biz-3", {}, {})
 
         assert result is None

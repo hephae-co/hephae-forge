@@ -8,7 +8,7 @@ The competitive analysis pipeline runs two LlmAgents sequentially:
 
 from google.adk.agents import SequentialAgent
 
-from hephae_capabilities.competitive_analysis.agent import (
+from hephae_agents.competitive_analysis.agent import (
     competitor_profiler_agent,
     market_positioning_agent,
 )

@@ -14,7 +14,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 pytestmark = pytest.mark.skip(
     reason="Old admin discovery pipeline removed — BusinessItem, ConfidenceScorer, "
     "CategoryProgressChecker, DiscoveryAccumulator, scan_zipcode etc. no longer exist "
-    "in hephae_capabilities.discovery. Tests need rewrite for 2-phase runner pattern."
+    "in hephae_agents.discovery. Tests need rewrite for 2-phase runner pattern."
 )
 
 # These imports are kept for reference but will not execute due to pytestmark skip.
@@ -367,7 +367,7 @@ class TestAgentSetup:
         ]
 
     def test_loop_agent_sub_agents(self):
-        category_discovery_loop = None  # was: from hephae_capabilities.discovery import category_discovery_loop
+        category_discovery_loop = None  # was: from hephae_agents.discovery import category_discovery_loop
         names = [a.name for a in category_discovery_loop.sub_agents]
         assert names == [
             "category_scanner",
@@ -382,7 +382,7 @@ class TestAgentSetup:
 
 class TestScanZipcode:
     @pytest.mark.asyncio
-    @patch("hephae_capabilities.discovery.firestore_service")
+    @patch("hephae_agents.discovery.firestore_service")
     async def test_cache_hit_returns_enriched_data(self, mock_fs):
         mock_fs.get_businesses_in_zipcode.return_value = [
             {
@@ -409,7 +409,7 @@ class TestScanZipcode:
         mock_fs.get_businesses_in_zipcode.assert_called_with("07110")
 
     @pytest.mark.asyncio
-    @patch("hephae_capabilities.discovery.firestore_service")
+    @patch("hephae_agents.discovery.firestore_service")
     async def test_cache_hit_backward_compat(self, mock_fs):
         """Old cache entries with only name/address/docId still work."""
         mock_fs.get_businesses_in_zipcode.return_value = [

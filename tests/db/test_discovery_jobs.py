@@ -101,7 +101,7 @@ class TestDiscoveryJobConfig:
     """DiscoveryJobConfig.from_firestore parses Firestore data correctly."""
 
     def test_minimal_data(self):
-        from backend.workflows.scheduled_discovery.config import DiscoveryJobConfig
+        from hephae_api.workflows.scheduled_discovery.config import DiscoveryJobConfig
         data = {
             "id": "job-1",
             "targets": [{"zipCode": "07110"}],
@@ -115,7 +115,7 @@ class TestDiscoveryJobConfig:
         assert config.targets[0].businessTypes == []
 
     def test_full_data(self):
-        from backend.workflows.scheduled_discovery.config import DiscoveryJobConfig
+        from hephae_api.workflows.scheduled_discovery.config import DiscoveryJobConfig
         data = {
             "id": "job-2",
             "name": "Nutley NJ",
@@ -141,14 +141,14 @@ class TestDiscoveryJobConfig:
         assert config.targets[1].zipCode == "07111"
 
     def test_missing_settings_uses_defaults(self):
-        from backend.workflows.scheduled_discovery.config import DiscoveryJobConfig
+        from hephae_api.workflows.scheduled_discovery.config import DiscoveryJobConfig
         data = {"id": "job-3", "targets": []}
         config = DiscoveryJobConfig.from_firestore(data)
         assert config.settings.freshnessDiscoveryDays == 30
         assert config.settings.rateLimitSeconds == 3
 
     def test_empty_settings_dict_uses_defaults(self):
-        from backend.workflows.scheduled_discovery.config import DiscoveryJobConfig
+        from hephae_api.workflows.scheduled_discovery.config import DiscoveryJobConfig
         data = {"id": "job-4", "targets": [], "settings": {}}
         config = DiscoveryJobConfig.from_firestore(data)
         assert config.settings.freshnessDiscoveryDays == 30

@@ -1,4 +1,4 @@
-export type WorkflowPhase = 'discovery' | 'analysis' | 'evaluation' | 'approval' | 'outreach' | 'completed' | 'failed';
+export type WorkflowPhase = 'discovery' | 'qualification' | 'analysis' | 'evaluation' | 'approval' | 'outreach' | 'completed' | 'failed';
 
 export type BusinessPhase =
     | 'pending'
@@ -46,6 +46,9 @@ export interface BusinessWorkflowState {
 
 export interface WorkflowProgress {
     totalBusinesses: number;
+    qualificationQualified?: number;
+    qualificationParked?: number;
+    qualificationDisqualified?: number;
     analysisComplete: number;
     evaluationComplete?: number;
     qualityPassed: number;

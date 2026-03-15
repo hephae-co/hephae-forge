@@ -12,8 +12,8 @@ from fastapi.testclient import TestClient
 def client():
     """Create a test client with mocked Firebase and bypassed admin auth."""
     with patch("hephae_common.firebase.get_db"):
-        from backend.main import app
-        from backend.lib.auth import verify_admin_request
+        from hephae_api.main import app
+        from hephae_api.lib.auth import verify_admin_request
 
         # Override the admin auth dependency so tests don't need real Firebase tokens
         app.dependency_overrides[verify_admin_request] = lambda: {"uid": "test-admin", "email": "admin@test.com"}
@@ -42,7 +42,7 @@ class TestRunTests:
                 {"capability": "margin", "businessId": "qa-test-001", "businessName": "Test Biz", "score": 60, "isHallucinated": True, "issues": ["Low score"], "responseTimeMs": 2000},
             ],
         }
-        with patch("backend.workflows.test_runner.test_runner.run_all_tests", new_callable=AsyncMock, return_value=summary):
+        with patch("hephae_api.workflows.test_runner.test_runner.run_all_tests", new_callable=AsyncMock, return_value=summary):
             response = client.post("/api/run-tests")
         assert response.status_code == 200
         data = response.json()
@@ -52,7 +52,7 @@ class TestRunTests:
         assert len(data["results"]) == 4
 
     def test_run_tests_error(self, client):
-        with patch("backend.workflows.test_runner.test_runner.run_all_tests", new_callable=AsyncMock, side_effect=Exception("Agent timeout")):
+        with patch("hephae_api.workflows.test_runner.test_runner.run_all_tests", new_callable=AsyncMock, side_effect=Exception("Agent timeout")):
             response = client.post("/api/run-tests")
         assert response.status_code == 500
         assert "Agent timeout" in response.json()["detail"]
@@ -100,7 +100,7 @@ class TestStats:
             "totalReports": 150,
             "activeWorkflows": 2,
         }
-        with patch("backend.routers.admin.stats.get_dashboard_stats", new_callable=AsyncMock, return_value=stats):
+        with patch("hephae_api.routers.admin.stats.get_dashboard_stats", new_callable=AsyncMock, return_value=stats):
             response = client.get("/api/stats")
         assert response.status_code == 200
         data = response.json()
@@ -117,8 +117,8 @@ class TestWorkflows:
     def test_create_workflow_success(self, client):
         mock_wf = MagicMock()
         mock_wf.id = "wf-abc"
-        with patch("backend.routers.admin.workflows.create_workflow", new_callable=AsyncMock, return_value=mock_wf), \
-             patch("backend.routers.admin.workflows.start_workflow_engine", new_callable=AsyncMock):
+        with patch("hephae_api.routers.admin.workflows.create_workflow", new_callable=AsyncMock, return_value=mock_wf), \
+             patch("hephae_api.routers.admin.workflows.start_workflow_engine", new_callable=AsyncMock):
             response = client.post("/api/workflows", json={"zipCode": "07110"})
         assert response.status_code == 200
         assert response.json()["workflowId"] == "wf-abc"
@@ -136,7 +136,7 @@ class TestWorkflows:
     def test_list_workflows(self, client):
         mock_wf = MagicMock()
         mock_wf.model_dump.return_value = {"id": "wf-1", "phase": "completed", "businesses": []}
-        with patch("backend.routers.admin.workflows.list_workflows", new_callable=AsyncMock, return_value=[mock_wf]):
+        with patch("hephae_api.routers.admin.workflows.list_workflows", new_callable=AsyncMock, return_value=[mock_wf]):
             response = client.get("/api/workflows")
         assert response.status_code == 200
         assert len(response.json()) == 1
@@ -150,9 +150,9 @@ class TestWorkflows:
         mock_resolved.state = "NJ"
         mock_resolved.error = None
 
-        with patch("backend.routers.admin.workflows.resolve_county_zip_codes", new_callable=AsyncMock, return_value=mock_resolved), \
-             patch("backend.routers.admin.workflows.create_workflow", new_callable=AsyncMock, return_value=mock_wf), \
-             patch("backend.routers.admin.workflows.start_workflow_engine", new_callable=AsyncMock):
+        with patch("hephae_api.routers.admin.workflows.resolve_county_zip_codes", new_callable=AsyncMock, return_value=mock_resolved), \
+             patch("hephae_api.routers.admin.workflows.create_workflow", new_callable=AsyncMock, return_value=mock_wf), \
+             patch("hephae_api.routers.admin.workflows.start_workflow_engine", new_callable=AsyncMock):
             response = client.post("/api/workflows/county", json={
                 "businessType": "restaurant",
                 "county": "Essex County, NJ",
@@ -166,7 +166,7 @@ class TestWorkflows:
         mock_resolved = MagicMock()
         mock_resolved.zipCodes = []
         mock_resolved.error = "Could not resolve county"
-        with patch("backend.routers.admin.workflows.resolve_county_zip_codes", new_callable=AsyncMock, return_value=mock_resolved):
+        with patch("hephae_api.routers.admin.workflows.resolve_county_zip_codes", new_callable=AsyncMock, return_value=mock_resolved):
             response = client.post("/api/workflows/county", json={
                 "businessType": "restaurant",
                 "county": "Fake County",
@@ -182,7 +182,7 @@ class TestWorkflowActions:
     """GET/PATCH/DELETE /api/workflows/{id}, approve, resume"""
 
     def _mock_workflow(self, **overrides):
-        from backend.types import WorkflowPhase
+        from hephae_api.types import WorkflowPhase
         wf = MagicMock()
         wf.phase = overrides.get("phase", WorkflowPhase.DISCOVERY)
         wf.businesses = overrides.get("businesses", [])
@@ -193,73 +193,73 @@ class TestWorkflowActions:
 
     def test_get_workflow(self, client):
         wf = self._mock_workflow()
-        with patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=wf):
+        with patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=wf):
             response = client.get("/api/workflows/wf-1")
         assert response.status_code == 200
 
     def test_get_workflow_not_found(self, client):
-        with patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=None):
             response = client.get("/api/workflows/nonexistent")
         assert response.status_code == 404
 
     def test_force_stop_workflow(self, client):
-        from backend.types import WorkflowPhase
+        from hephae_api.types import WorkflowPhase
         wf = self._mock_workflow(phase=WorkflowPhase.DISCOVERY)
-        with patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=wf), \
-             patch("backend.routers.admin.workflow_actions.save_workflow", new_callable=AsyncMock):
+        with patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=wf), \
+             patch("hephae_api.routers.admin.workflow_actions.save_workflow", new_callable=AsyncMock):
             response = client.patch("/api/workflows/wf-1")
         assert response.status_code == 200
         assert response.json()["success"] is True
         assert wf.phase == WorkflowPhase.FAILED
 
     def test_delete_workflow(self, client):
-        with patch("backend.routers.admin.workflow_actions.delete_workflow", new_callable=AsyncMock, return_value={"businessesRemoved": 5}):
+        with patch("hephae_api.routers.admin.workflow_actions.delete_workflow", new_callable=AsyncMock, return_value={"businessesRemoved": 5}):
             response = client.delete("/api/workflows/wf-1")
         assert response.status_code == 200
         assert response.json()["businessesRemoved"] == 5
 
     def test_delete_workflow_error(self, client):
-        with patch("backend.routers.admin.workflow_actions.delete_workflow", new_callable=AsyncMock, side_effect=ValueError("Cannot delete running")):
+        with patch("hephae_api.routers.admin.workflow_actions.delete_workflow", new_callable=AsyncMock, side_effect=ValueError("Cannot delete running")):
             response = client.delete("/api/workflows/wf-1")
         assert response.status_code == 400
 
     def test_approve_workflow(self, client):
-        from backend.types import WorkflowPhase, BusinessPhase
+        from hephae_api.types import WorkflowPhase, BusinessPhase
         biz = MagicMock()
         biz.slug = "test-biz"
         biz.phase = BusinessPhase.EVALUATION_DONE
         wf = self._mock_workflow(phase=WorkflowPhase.APPROVAL, businesses=[biz])
-        with patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=wf), \
-             patch("backend.routers.admin.workflow_actions.save_workflow", new_callable=AsyncMock), \
-             patch("backend.routers.admin.workflow_actions.WorkflowEngine"), \
-             patch("backend.routers.admin.workflow_actions.asyncio"):
+        with patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=wf), \
+             patch("hephae_api.routers.admin.workflow_actions.save_workflow", new_callable=AsyncMock), \
+             patch("hephae_api.routers.admin.workflow_actions.WorkflowEngine"), \
+             patch("hephae_api.routers.admin.workflow_actions.asyncio"):
             response = client.post("/api/workflows/wf-1/approve", json={"approvals": {"test-biz": "approve"}})
         assert response.status_code == 200
         assert response.json()["approved"] is True
         assert biz.phase == BusinessPhase.APPROVED
 
     def test_approve_wrong_phase(self, client):
-        from backend.types import WorkflowPhase
+        from hephae_api.types import WorkflowPhase
         wf = self._mock_workflow(phase=WorkflowPhase.DISCOVERY)
-        with patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=wf):
+        with patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=wf):
             response = client.post("/api/workflows/wf-1/approve", json={"approvals": {}})
         assert response.status_code == 400
         assert "not approval" in response.json()["detail"]
 
     def test_resume_failed_workflow(self, client):
-        from backend.types import WorkflowPhase
+        from hephae_api.types import WorkflowPhase
         wf = self._mock_workflow(phase=WorkflowPhase.FAILED)
-        with patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=wf), \
-             patch("backend.routers.admin.workflow_actions.save_workflow", new_callable=AsyncMock), \
-             patch("backend.routers.admin.workflow_actions.start_workflow_engine", new_callable=AsyncMock):
+        with patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=wf), \
+             patch("hephae_api.routers.admin.workflow_actions.save_workflow", new_callable=AsyncMock), \
+             patch("hephae_api.routers.admin.workflow_actions.start_workflow_engine", new_callable=AsyncMock):
             response = client.post("/api/workflows/wf-1/resume")
         assert response.status_code == 200
         assert response.json()["success"] is True
 
     def test_resume_non_failed_rejected(self, client):
-        from backend.types import WorkflowPhase
+        from hephae_api.types import WorkflowPhase
         wf = self._mock_workflow(phase=WorkflowPhase.DISCOVERY)
-        with patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=wf):
+        with patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock, return_value=wf):
             response = client.post("/api/workflows/wf-1/resume")
         assert response.status_code == 400
         assert "failed" in response.json()["detail"].lower()
@@ -283,9 +283,9 @@ class TestFixtures:
         mock_biz.model_dump.return_value = {"slug": "test-biz"}
         mock_wf.businesses = [mock_biz]
 
-        with patch("backend.routers.admin.fixtures.load_workflow", new_callable=AsyncMock, return_value=mock_wf), \
+        with patch("hephae_api.routers.admin.fixtures.load_workflow", new_callable=AsyncMock, return_value=mock_wf), \
              patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value={"latestOutputs": {}}), \
-             patch("backend.routers.admin.fixtures.save_fixture", new_callable=AsyncMock, return_value="fix-123"):
+             patch("hephae_api.routers.admin.fixtures.save_fixture", new_callable=AsyncMock, return_value="fix-123"):
             response = client.post("/api/fixtures", json={
                 "workflowId": "wf-1",
                 "businessSlug": "test-biz",
@@ -295,7 +295,7 @@ class TestFixtures:
         assert response.json()["fixtureId"] == "fix-123"
 
     def test_create_fixture_workflow_not_found(self, client):
-        with patch("backend.routers.admin.fixtures.load_workflow", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.fixtures.load_workflow", new_callable=AsyncMock, return_value=None):
             response = client.post("/api/fixtures", json={
                 "workflowId": "nonexistent",
                 "businessSlug": "test-biz",
@@ -306,7 +306,7 @@ class TestFixtures:
     def test_create_fixture_business_not_found(self, client):
         mock_wf = MagicMock()
         mock_wf.businesses = []
-        with patch("backend.routers.admin.fixtures.load_workflow", new_callable=AsyncMock, return_value=mock_wf):
+        with patch("hephae_api.routers.admin.fixtures.load_workflow", new_callable=AsyncMock, return_value=mock_wf):
             response = client.post("/api/fixtures", json={
                 "workflowId": "wf-1",
                 "businessSlug": "nonexistent",
@@ -315,29 +315,29 @@ class TestFixtures:
         assert response.status_code == 404
 
     def test_list_fixtures(self, client):
-        with patch("backend.routers.admin.fixtures.list_fixtures", new_callable=AsyncMock, return_value=[{"id": "f1"}, {"id": "f2"}]):
+        with patch("hephae_api.routers.admin.fixtures.list_fixtures", new_callable=AsyncMock, return_value=[{"id": "f1"}, {"id": "f2"}]):
             response = client.get("/api/fixtures")
         assert response.status_code == 200
         assert len(response.json()) == 2
 
     def test_list_fixtures_with_type(self, client):
-        with patch("backend.routers.admin.fixtures.list_fixtures", new_callable=AsyncMock, return_value=[]) as mock_list:
+        with patch("hephae_api.routers.admin.fixtures.list_fixtures", new_callable=AsyncMock, return_value=[]) as mock_list:
             response = client.get("/api/fixtures?type=grounding")
         assert response.status_code == 200
         mock_list.assert_called_once_with(fixture_type="grounding")
 
     def test_get_fixture(self, client):
-        with patch("backend.routers.admin.fixtures.get_fixture", new_callable=AsyncMock, return_value={"id": "f1", "fixtureType": "grounding"}):
+        with patch("hephae_api.routers.admin.fixtures.get_fixture", new_callable=AsyncMock, return_value={"id": "f1", "fixtureType": "grounding"}):
             response = client.get("/api/fixtures/f1")
         assert response.status_code == 200
 
     def test_get_fixture_not_found(self, client):
-        with patch("backend.routers.admin.fixtures.get_fixture", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.fixtures.get_fixture", new_callable=AsyncMock, return_value=None):
             response = client.get("/api/fixtures/nonexistent")
         assert response.status_code == 404
 
     def test_delete_fixture(self, client):
-        with patch("backend.routers.admin.fixtures.delete_fixture", new_callable=AsyncMock):
+        with patch("hephae_api.routers.admin.fixtures.delete_fixture", new_callable=AsyncMock):
             response = client.delete("/api/fixtures/f1")
         assert response.status_code == 200
         assert response.json()["success"] is True
@@ -352,7 +352,7 @@ class TestZipcodeResearch:
 
     def test_start_research(self, client):
         result = {"report": {"summary": "Test"}, "runId": "run-1"}
-        with patch("backend.routers.admin.zipcode_research.research_zip_code", new_callable=AsyncMock, return_value=result):
+        with patch("hephae_api.routers.admin.zipcode_research.research_zip_code", new_callable=AsyncMock, return_value=result):
             response = client.post("/api/zipcode-research/07110")
         assert response.status_code == 200
         assert response.json()["success"] is True
@@ -364,32 +364,32 @@ class TestZipcodeResearch:
         assert "Invalid" in response.json()["detail"]
 
     def test_get_report(self, client):
-        with patch("backend.routers.admin.zipcode_research.get_zipcode_report", new_callable=AsyncMock, return_value={"zipCode": "07110", "summary": "data"}):
+        with patch("hephae_api.routers.admin.zipcode_research.get_zipcode_report", new_callable=AsyncMock, return_value={"zipCode": "07110", "summary": "data"}):
             response = client.get("/api/zipcode-research/07110")
         assert response.status_code == 200
 
     def test_get_report_not_found(self, client):
-        with patch("backend.routers.admin.zipcode_research.get_zipcode_report", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.zipcode_research.get_zipcode_report", new_callable=AsyncMock, return_value=None):
             response = client.get("/api/zipcode-research/99999")
         assert response.status_code == 404
 
     def test_list_runs(self, client):
-        with patch("backend.routers.admin.zipcode_research.list_zipcode_runs", new_callable=AsyncMock, return_value=[{"id": "r1"}]):
+        with patch("hephae_api.routers.admin.zipcode_research.list_zipcode_runs", new_callable=AsyncMock, return_value=[{"id": "r1"}]):
             response = client.get("/api/zipcode-research")
         assert response.status_code == 200
 
     def test_get_run(self, client):
-        with patch("backend.routers.admin.zipcode_research.get_run", new_callable=AsyncMock, return_value={"id": "r1"}):
+        with patch("hephae_api.routers.admin.zipcode_research.get_run", new_callable=AsyncMock, return_value={"id": "r1"}):
             response = client.get("/api/zipcode-research/runs/r1")
         assert response.status_code == 200
 
     def test_get_run_not_found(self, client):
-        with patch("backend.routers.admin.zipcode_research.get_run", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.zipcode_research.get_run", new_callable=AsyncMock, return_value=None):
             response = client.get("/api/zipcode-research/runs/nonexistent")
         assert response.status_code == 404
 
     def test_delete_run(self, client):
-        with patch("backend.routers.admin.zipcode_research.delete_run", new_callable=AsyncMock):
+        with patch("hephae_api.routers.admin.zipcode_research.delete_run", new_callable=AsyncMock):
             response = client.delete("/api/zipcode-research/runs/r1")
         assert response.status_code == 200
 
@@ -402,13 +402,13 @@ class TestDiscoveryJobs:
     """CRUD /api/admin/discovery-jobs"""
 
     def test_list_jobs(self, client):
-        with patch("backend.routers.admin.discovery_jobs.list_discovery_jobs", new_callable=AsyncMock, return_value=[]):
+        with patch("hephae_api.routers.admin.discovery_jobs.list_discovery_jobs", new_callable=AsyncMock, return_value=[]):
             response = client.get("/api/admin/discovery-jobs")
         assert response.status_code == 200
         assert response.json()["jobs"] == []
 
     def test_create_job(self, client):
-        with patch("backend.routers.admin.discovery_jobs.create_discovery_job", new_callable=AsyncMock, return_value="job-123"):
+        with patch("hephae_api.routers.admin.discovery_jobs.create_discovery_job", new_callable=AsyncMock, return_value="job-123"):
             response = client.post("/api/admin/discovery-jobs", json={
                 "name": "Test Job",
                 "targets": [{"zipCode": "07110", "businessTypes": ["restaurant"]}],
@@ -424,39 +424,39 @@ class TestDiscoveryJobs:
         assert response.status_code == 400
 
     def test_get_job(self, client):
-        with patch("backend.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value={"id": "job-1", "status": "pending"}):
+        with patch("hephae_api.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value={"id": "job-1", "status": "pending"}):
             response = client.get("/api/admin/discovery-jobs/job-1")
         assert response.status_code == 200
 
     def test_get_job_not_found(self, client):
-        with patch("backend.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value=None):
             response = client.get("/api/admin/discovery-jobs/nonexistent")
         assert response.status_code == 404
 
     def test_delete_pending_job(self, client):
-        with patch("backend.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value={"id": "j1", "status": "pending"}), \
-             patch("backend.routers.admin.discovery_jobs.cancel_job", new_callable=AsyncMock):
+        with patch("hephae_api.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value={"id": "j1", "status": "pending"}), \
+             patch("hephae_api.routers.admin.discovery_jobs.cancel_job", new_callable=AsyncMock):
             response = client.delete("/api/admin/discovery-jobs/j1")
         assert response.status_code == 200
 
     def test_delete_completed_job(self, client):
-        with patch("backend.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value={"id": "j1", "status": "completed"}), \
-             patch("backend.routers.admin.discovery_jobs.delete_discovery_job", new_callable=AsyncMock):
+        with patch("hephae_api.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value={"id": "j1", "status": "completed"}), \
+             patch("hephae_api.routers.admin.discovery_jobs.delete_discovery_job", new_callable=AsyncMock):
             response = client.delete("/api/admin/discovery-jobs/j1")
         assert response.status_code == 200
 
     def test_delete_running_job_blocked(self, client):
-        with patch("backend.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value={"id": "j1", "status": "running"}):
+        with patch("hephae_api.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value={"id": "j1", "status": "running"}):
             response = client.delete("/api/admin/discovery-jobs/j1")
         assert response.status_code == 409
 
     def test_run_job_not_found(self, client):
-        with patch("backend.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value=None):
             response = client.post("/api/admin/discovery-jobs/j1/run-now")
         assert response.status_code == 404
 
     def test_run_already_running_job(self, client):
-        with patch("backend.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value={"id": "j1", "status": "running"}):
+        with patch("hephae_api.routers.admin.discovery_jobs.get_discovery_job", new_callable=AsyncMock, return_value={"id": "j1", "status": "running"}):
             response = client.post("/api/admin/discovery-jobs/j1/run-now")
         assert response.status_code == 409
 
@@ -469,7 +469,7 @@ class TestAreaResearch:
     """POST/GET/DELETE /api/area-research"""
 
     def test_create_area_research(self, client):
-        with patch("backend.routers.admin.area_research.start_area_research", new_callable=AsyncMock, return_value={"areaId": "area-1"}):
+        with patch("hephae_api.routers.admin.area_research.start_area_research", new_callable=AsyncMock, return_value={"areaId": "area-1"}):
             response = client.post("/api/area-research", json={
                 "area": "Bergen County, NJ",
                 "businessType": "restaurant",
@@ -478,28 +478,28 @@ class TestAreaResearch:
         assert response.json()["areaId"] == "area-1"
 
     def test_list_area_research(self, client):
-        with patch("backend.routers.admin.area_research.list_area_research", new_callable=AsyncMock, return_value=[{"id": "a1"}]):
+        with patch("hephae_api.routers.admin.area_research.list_area_research", new_callable=AsyncMock, return_value=[{"id": "a1"}]):
             response = client.get("/api/area-research")
         assert response.status_code == 200
 
     def test_get_area_research(self, client):
-        with patch("backend.routers.admin.area_research.load_area_research", new_callable=AsyncMock, return_value={"id": "a1", "phase": "completed"}):
+        with patch("hephae_api.routers.admin.area_research.load_area_research", new_callable=AsyncMock, return_value={"id": "a1", "phase": "completed"}):
             response = client.get("/api/area-research/a1")
         assert response.status_code == 200
 
     def test_get_area_research_not_found(self, client):
-        with patch("backend.routers.admin.area_research.load_area_research", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.area_research.load_area_research", new_callable=AsyncMock, return_value=None):
             response = client.get("/api/area-research/nonexistent")
         assert response.status_code == 404
 
     def test_delete_area_research(self, client):
-        with patch("backend.routers.admin.area_research.get_active_orchestrator", return_value=None), \
-             patch("backend.routers.admin.area_research.delete_area_research", new_callable=AsyncMock):
+        with patch("hephae_api.routers.admin.area_research.get_active_orchestrator", return_value=None), \
+             patch("hephae_api.routers.admin.area_research.delete_area_research", new_callable=AsyncMock):
             response = client.delete("/api/area-research/a1")
         assert response.status_code == 200
 
     def test_delete_running_area_research_blocked(self, client):
-        with patch("backend.routers.admin.area_research.get_active_orchestrator", return_value=MagicMock()):
+        with patch("hephae_api.routers.admin.area_research.get_active_orchestrator", return_value=MagicMock()):
             response = client.delete("/api/area-research/a1")
         assert response.status_code == 400
         assert "running" in response.json()["detail"].lower()
@@ -513,31 +513,31 @@ class TestSectorResearch:
     """POST/GET /api/sector-research"""
 
     def test_create_sector_research_new(self, client):
-        with patch("backend.routers.admin.sector_research.get_sector_research_for_type", new_callable=AsyncMock, return_value=None), \
-             patch("backend.routers.admin.sector_research.run_sector_research", new_callable=AsyncMock), \
-             patch("backend.routers.admin.sector_research.asyncio"):
+        with patch("hephae_api.routers.admin.sector_research.get_sector_research_for_type", new_callable=AsyncMock, return_value=None), \
+             patch("hephae_api.routers.admin.sector_research.run_sector_research", new_callable=AsyncMock), \
+             patch("hephae_api.routers.admin.sector_research.asyncio"):
             response = client.post("/api/sector-research", json={"sector": "pizza"})
         assert response.status_code == 200
         assert response.json()["status"] == "started"
 
     def test_create_sector_research_existing(self, client):
         existing = {"id": "sec-1", "sector": "pizza"}
-        with patch("backend.routers.admin.sector_research.get_sector_research_for_type", new_callable=AsyncMock, return_value=existing):
+        with patch("hephae_api.routers.admin.sector_research.get_sector_research_for_type", new_callable=AsyncMock, return_value=existing):
             response = client.post("/api/sector-research", json={"sector": "pizza"})
         assert response.status_code == 200
         assert response.json()["status"] == "existing"
 
     def test_list_sector_research(self, client):
-        with patch("backend.routers.admin.sector_research.list_sector_research", new_callable=AsyncMock, return_value=[]):
+        with patch("hephae_api.routers.admin.sector_research.list_sector_research", new_callable=AsyncMock, return_value=[]):
             response = client.get("/api/sector-research")
         assert response.status_code == 200
 
     def test_get_sector_research(self, client):
-        with patch("backend.routers.admin.sector_research.load_sector_research", new_callable=AsyncMock, return_value={"id": "s1"}):
+        with patch("hephae_api.routers.admin.sector_research.load_sector_research", new_callable=AsyncMock, return_value={"id": "s1"}):
             response = client.get("/api/sector-research/s1")
         assert response.status_code == 200
 
     def test_get_sector_research_not_found(self, client):
-        with patch("backend.routers.admin.sector_research.load_sector_research", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.sector_research.load_sector_research", new_callable=AsyncMock, return_value=None):
             response = client.get("/api/sector-research/nonexistent")
         assert response.status_code == 404

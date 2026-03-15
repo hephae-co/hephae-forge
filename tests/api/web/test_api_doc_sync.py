@@ -7,7 +7,7 @@ This catches two classes of drift:
 
 import pytest
 
-from backend.main import app
+from hephae_api.main import app
 
 
 @pytest.fixture(scope="module")

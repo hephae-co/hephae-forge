@@ -7,15 +7,15 @@ from unittest.mock import patch, AsyncMock, MagicMock
 
 from fastapi.testclient import TestClient
 
-from backend.types import ContentPost, ContentStatus, ContentPlatform, ContentType, ContentSourceType
+from hephae_api.types import ContentPost, ContentStatus, ContentPlatform, ContentType, ContentSourceType
 
 
 @pytest.fixture
 def client():
     """Create a test client with mocked Firebase and bypassed admin auth."""
     with patch("hephae_common.firebase.get_db"):
-        from backend.main import app
-        from backend.lib.auth import verify_admin_request
+        from hephae_api.main import app
+        from hephae_api.lib.auth import verify_admin_request
 
         app.dependency_overrides[verify_admin_request] = lambda: {"uid": "test-admin", "email": "admin@test.com"}
         yield TestClient(app)
@@ -64,9 +64,9 @@ class TestGenerateContent:
         mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_instance.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("backend.routers.admin.content.get_run", new_callable=AsyncMock, return_value=mock_run_data), \
-             patch("backend.routers.admin.content.save_content_post", new_callable=AsyncMock, return_value="new-id"), \
-             patch("backend.routers.admin.content.httpx.AsyncClient", return_value=mock_client_instance):
+        with patch("hephae_api.routers.admin.content.get_run", new_callable=AsyncMock, return_value=mock_run_data), \
+             patch("hephae_api.routers.admin.content.save_content_post", new_callable=AsyncMock, return_value="new-id"), \
+             patch("hephae_api.routers.admin.content.httpx.AsyncClient", return_value=mock_client_instance):
 
             response = client.post("/api/content/generate", json={
                 "platform": "x",
@@ -80,7 +80,7 @@ class TestGenerateContent:
         assert data["post"]["content"] == "Great post!"
 
     def test_generate_missing_source_returns_404(self, client):
-        with patch("backend.routers.admin.content.get_run", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.content.get_run", new_callable=AsyncMock, return_value=None):
             response = client.post("/api/content/generate", json={
                 "platform": "x",
                 "sourceType": "zipcode_research",
@@ -102,14 +102,14 @@ class TestListPosts:
 
     def test_list_posts(self, client):
         drafts = [_make_draft(), _make_draft(id="post-456")]
-        with patch("backend.routers.admin.content.list_content_posts", new_callable=AsyncMock, return_value=drafts):
+        with patch("hephae_api.routers.admin.content.list_content_posts", new_callable=AsyncMock, return_value=drafts):
             response = client.get("/api/content?limit=10")
 
         assert response.status_code == 200
         assert len(response.json()) == 2
 
     def test_list_posts_with_platform_filter(self, client):
-        with patch("backend.routers.admin.content.list_content_posts", new_callable=AsyncMock, return_value=[]) as mock_list:
+        with patch("hephae_api.routers.admin.content.list_content_posts", new_callable=AsyncMock, return_value=[]) as mock_list:
             response = client.get("/api/content?platform=x")
 
         assert response.status_code == 200
@@ -121,13 +121,13 @@ class TestGetPost:
 
     def test_get_post(self, client):
         draft = _make_draft()
-        with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=draft):
+        with patch("hephae_api.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=draft):
             response = client.get("/api/content/post-123")
         assert response.status_code == 200
         assert response.json()["id"] == "post-123"
 
     def test_get_post_not_found(self, client):
-        with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=None):
             response = client.get("/api/content/nonexistent")
         assert response.status_code == 404
 
@@ -138,8 +138,8 @@ class TestEditPost:
     def test_edit_draft(self, client):
         draft = _make_draft()
         updated = _make_draft(content="Updated content")
-        with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, side_effect=[draft, updated]), \
-             patch("backend.routers.admin.content.update_content_post", new_callable=AsyncMock):
+        with patch("hephae_api.routers.admin.content.get_content_post", new_callable=AsyncMock, side_effect=[draft, updated]), \
+             patch("hephae_api.routers.admin.content.update_content_post", new_callable=AsyncMock):
             response = client.patch("/api/content/post-123", json={"content": "Updated content"})
 
         assert response.status_code == 200
@@ -147,7 +147,7 @@ class TestEditPost:
 
     def test_edit_published_post_rejected(self, client):
         published = _make_draft(status=ContentStatus.PUBLISHED.value)
-        with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=published):
+        with patch("hephae_api.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=published):
             response = client.patch("/api/content/post-123", json={"content": "New"})
         assert response.status_code == 400
         assert "drafts" in response.json()["detail"].lower()
@@ -159,8 +159,8 @@ class TestPublishPost:
     def test_publish_blog(self, client):
         blog_draft = _make_draft(platform=ContentPlatform.BLOG.value, type=ContentType.BLOG.value)
         published = _make_draft(platform=ContentPlatform.BLOG.value, status=ContentStatus.PUBLISHED.value)
-        with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, side_effect=[blog_draft, published]), \
-             patch("backend.routers.admin.content.update_content_post", new_callable=AsyncMock):
+        with patch("hephae_api.routers.admin.content.get_content_post", new_callable=AsyncMock, side_effect=[blog_draft, published]), \
+             patch("hephae_api.routers.admin.content.update_content_post", new_callable=AsyncMock):
             response = client.post("/api/content/post-123/publish")
 
         assert response.status_code == 200
@@ -168,12 +168,12 @@ class TestPublishPost:
 
     def test_publish_already_published_rejected(self, client):
         published = _make_draft(status=ContentStatus.PUBLISHED.value)
-        with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=published):
+        with patch("hephae_api.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=published):
             response = client.post("/api/content/post-123/publish")
         assert response.status_code == 400
 
     def test_publish_not_found(self, client):
-        with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=None):
             response = client.post("/api/content/nonexistent/publish")
         assert response.status_code == 404
 
@@ -183,19 +183,19 @@ class TestDeletePost:
 
     def test_delete_draft(self, client):
         draft = _make_draft()
-        with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=draft), \
-             patch("backend.routers.admin.content.delete_content_post", new_callable=AsyncMock):
+        with patch("hephae_api.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=draft), \
+             patch("hephae_api.routers.admin.content.delete_content_post", new_callable=AsyncMock):
             response = client.delete("/api/content/post-123")
         assert response.status_code == 200
         assert response.json()["success"] is True
 
     def test_delete_published_rejected(self, client):
         published = _make_draft(status=ContentStatus.PUBLISHED.value)
-        with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=published):
+        with patch("hephae_api.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=published):
             response = client.delete("/api/content/post-123")
         assert response.status_code == 400
 
     def test_delete_not_found(self, client):
-        with patch("backend.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=None):
+        with patch("hephae_api.routers.admin.content.get_content_post", new_callable=AsyncMock, return_value=None):
             response = client.delete("/api/content/nonexistent")
         assert response.status_code == 404

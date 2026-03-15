@@ -15,7 +15,7 @@ from httpx import ASGITransport, AsyncClient
 
 class TestComputeDelta:
     def test_first_run_is_significant(self):
-        from backend.workflows.heartbeat_runner import compute_delta
+        from hephae_api.workflows.heartbeat_runner import compute_delta
 
         current = {"score": 72, "summary": "Initial SEO audit", "reportUrl": "https://cdn.hephae.co/reports/test"}
         delta = compute_delta("seo", prev=None, current=current)
@@ -27,7 +27,7 @@ class TestComputeDelta:
         assert delta["prevScore"] is None
 
     def test_score_improved_significantly(self):
-        from backend.workflows.heartbeat_runner import compute_delta
+        from hephae_api.workflows.heartbeat_runner import compute_delta
 
         prev = {"score": 60, "summary": "Old", "reportUrl": "old-url"}
         current = {"score": 70, "summary": "Better", "reportUrl": "new-url"}
@@ -38,7 +38,7 @@ class TestComputeDelta:
         assert delta["scoreChange"] == 10
 
     def test_score_declined_significantly(self):
-        from backend.workflows.heartbeat_runner import compute_delta
+        from hephae_api.workflows.heartbeat_runner import compute_delta
 
         prev = {"score": 80, "summary": "Good"}
         current = {"score": 72, "summary": "Worse"}
@@ -49,7 +49,7 @@ class TestComputeDelta:
         assert delta["scoreChange"] == -8
 
     def test_small_change_not_significant(self):
-        from backend.workflows.heartbeat_runner import compute_delta
+        from hephae_api.workflows.heartbeat_runner import compute_delta
 
         prev = {"score": 80}
         current = {"score": 82}
@@ -60,7 +60,7 @@ class TestComputeDelta:
         assert delta["scoreChange"] == 2
 
     def test_stable_score(self):
-        from backend.workflows.heartbeat_runner import compute_delta
+        from hephae_api.workflows.heartbeat_runner import compute_delta
 
         prev = {"score": 75}
         current = {"score": 75}
@@ -71,7 +71,7 @@ class TestComputeDelta:
         assert delta["scoreChange"] == 0
 
     def test_none_scores_treated_as_zero(self):
-        from backend.workflows.heartbeat_runner import compute_delta
+        from hephae_api.workflows.heartbeat_runner import compute_delta
 
         prev = {"score": None}
         current = {"score": None}
@@ -131,12 +131,12 @@ class TestRunHeartbeatCycle:
             patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
             patch("hephae_db.firestore.users.get_user", return_value={"email": "test@example.com"}),
             patch("hephae_db.context.business_context.build_business_context", new_callable=AsyncMock, return_value=None),
-            patch("backend.workflows.capabilities.registry.get_capability", side_effect=lambda name: _mock_capability(name, score=85)),
+            patch("hephae_api.workflows.capabilities.registry.get_capability", side_effect=lambda name: _mock_capability(name, score=85)),
             patch("hephae_db.firestore.heartbeats.record_heartbeat_run", new_callable=AsyncMock) as mock_record,
-            patch("backend.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock) as mock_email,
-            patch("backend.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock),
+            patch("hephae_api.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock) as mock_email,
+            patch("hephae_api.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock),
         ):
-            from backend.workflows.heartbeat_runner import run_heartbeat_cycle
+            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
 
             result = await run_heartbeat_cycle(SAMPLE_HEARTBEAT)
 
@@ -163,12 +163,12 @@ class TestRunHeartbeatCycle:
             patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
             patch("hephae_db.firestore.users.get_user", return_value={"email": "test@example.com"}),
             patch("hephae_db.context.business_context.build_business_context", new_callable=AsyncMock, return_value=None),
-            patch("backend.workflows.capabilities.registry.get_capability", side_effect=lambda name: _mock_capability(name, score=72)),
+            patch("hephae_api.workflows.capabilities.registry.get_capability", side_effect=lambda name: _mock_capability(name, score=72)),
             patch("hephae_db.firestore.heartbeats.record_heartbeat_run", new_callable=AsyncMock),
-            patch("backend.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock) as mock_digest,
-            patch("backend.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock) as mock_ok,
+            patch("hephae_api.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock) as mock_digest,
+            patch("hephae_api.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock) as mock_ok,
         ):
-            from backend.workflows.heartbeat_runner import run_heartbeat_cycle
+            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
 
             result = await run_heartbeat_cycle(heartbeat)
 
@@ -189,12 +189,12 @@ class TestRunHeartbeatCycle:
             patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
             patch("hephae_db.firestore.users.get_user", return_value={"email": "test@example.com"}),
             patch("hephae_db.context.business_context.build_business_context", new_callable=AsyncMock, return_value=None),
-            patch("backend.workflows.capabilities.registry.get_capability", side_effect=lambda name: _mock_capability(name, score=72)),
+            patch("hephae_api.workflows.capabilities.registry.get_capability", side_effect=lambda name: _mock_capability(name, score=72)),
             patch("hephae_db.firestore.heartbeats.record_heartbeat_run", new_callable=AsyncMock),
-            patch("backend.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock) as mock_digest,
-            patch("backend.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock) as mock_ok,
+            patch("hephae_api.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock) as mock_digest,
+            patch("hephae_api.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock) as mock_ok,
         ):
-            from backend.workflows.heartbeat_runner import run_heartbeat_cycle
+            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
 
             await run_heartbeat_cycle(heartbeat)
 
@@ -204,7 +204,7 @@ class TestRunHeartbeatCycle:
     @pytest.mark.asyncio
     async def test_skips_when_business_not_found(self):
         with patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=None):
-            from backend.workflows.heartbeat_runner import run_heartbeat_cycle
+            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
 
             result = await run_heartbeat_cycle(SAMPLE_HEARTBEAT)
 
@@ -217,7 +217,7 @@ class TestRunHeartbeatCycle:
             patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
             patch("hephae_db.firestore.users.get_user", return_value=None),
         ):
-            from backend.workflows.heartbeat_runner import run_heartbeat_cycle
+            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
 
             result = await run_heartbeat_cycle(SAMPLE_HEARTBEAT)
 
@@ -243,12 +243,12 @@ class TestRunHeartbeatCycle:
             patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
             patch("hephae_db.firestore.users.get_user", return_value={"email": "test@example.com"}),
             patch("hephae_db.context.business_context.build_business_context", new_callable=AsyncMock, return_value=None),
-            patch("backend.workflows.capabilities.registry.get_capability", side_effect=get_cap),
+            patch("hephae_api.workflows.capabilities.registry.get_capability", side_effect=get_cap),
             patch("hephae_db.firestore.heartbeats.record_heartbeat_run", new_callable=AsyncMock),
-            patch("backend.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock),
-            patch("backend.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock),
+            patch("hephae_api.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock),
+            patch("hephae_api.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock),
         ):
-            from backend.workflows.heartbeat_runner import run_heartbeat_cycle
+            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
 
             # Should not raise — gracefully handles failure
             result = await run_heartbeat_cycle(SAMPLE_HEARTBEAT)
@@ -273,12 +273,12 @@ class TestRunHeartbeatCycle:
             patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
             patch("hephae_db.firestore.users.get_user", return_value={"email": "test@example.com"}),
             patch("hephae_db.context.business_context.build_business_context", new_callable=AsyncMock, return_value=None),
-            patch("backend.workflows.capabilities.registry.get_capability", side_effect=capture_get_cap),
+            patch("hephae_api.workflows.capabilities.registry.get_capability", side_effect=capture_get_cap),
             patch("hephae_db.firestore.heartbeats.record_heartbeat_run", new_callable=AsyncMock),
-            patch("backend.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock),
-            patch("backend.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock),
+            patch("hephae_api.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock),
+            patch("hephae_api.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock),
         ):
-            from backend.workflows.heartbeat_runner import run_heartbeat_cycle
+            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
 
             await run_heartbeat_cycle(heartbeat)
 
@@ -291,7 +291,7 @@ class TestRunHeartbeatCycle:
 
 class TestEmailBuilders:
     def test_digest_html_contains_business_name(self):
-        from backend.workflows.heartbeat_runner import _build_digest_html
+        from hephae_api.workflows.heartbeat_runner import _build_digest_html
 
         deltas = [{
             "capability": "seo",
@@ -313,7 +313,7 @@ class TestEmailBuilders:
         assert "View Report" in html
 
     def test_ok_html_contains_stable_scores(self):
-        from backend.workflows.heartbeat_runner import _build_ok_html
+        from hephae_api.workflows.heartbeat_runner import _build_ok_html
 
         snapshot = {
             "seo": {"score": 72},
@@ -328,7 +328,7 @@ class TestEmailBuilders:
         assert "stable" in html
 
     def test_digest_html_handles_no_report_url(self):
-        from backend.workflows.heartbeat_runner import _build_digest_html
+        from hephae_api.workflows.heartbeat_runner import _build_digest_html
 
         deltas = [{
             "capability": "seo",
@@ -359,7 +359,7 @@ class TestHeartbeatCron:
             {"id": "hb-2", **SAMPLE_HEARTBEAT, "businessSlug": "bobs-burgers"},
         ]
 
-        from backend.routers.batch.heartbeat_cron import settings as cron_settings
+        from hephae_api.routers.batch.heartbeat_cron import settings as cron_settings
 
         with (
             patch.object(cron_settings, "CRON_SECRET", "test-secret"),
@@ -369,12 +369,12 @@ class TestHeartbeatCron:
                 return_value=due,
             ),
             patch(
-                "backend.workflows.heartbeat_runner.run_heartbeat_cycle",
+                "hephae_api.workflows.heartbeat_runner.run_heartbeat_cycle",
                 new_callable=AsyncMock,
                 return_value={"status": "completed", "capabilities_run": 2, "significant_changes": 0, "email_sent": True},
             ) as mock_run,
         ):
-            from backend.main import app
+            from hephae_api.main import app
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
                 res = await ac.get(
@@ -389,10 +389,10 @@ class TestHeartbeatCron:
 
     @pytest.mark.asyncio
     async def test_cron_rejects_bad_auth(self):
-        from backend.routers.batch.heartbeat_cron import settings as cron_settings
+        from hephae_api.routers.batch.heartbeat_cron import settings as cron_settings
 
         with patch.object(cron_settings, "CRON_SECRET", "real-secret"):
-            from backend.main import app
+            from hephae_api.main import app
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
                 res = await ac.get(

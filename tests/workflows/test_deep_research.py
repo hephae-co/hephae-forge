@@ -2,10 +2,10 @@ import pytest
 import json
 from unittest.mock import patch, MagicMock, AsyncMock
 
-from backend.config import AgentModels
+from hephae_api.config import AgentModels
 
 try:
-    from backend.agents.deep_research import (
+    from hephae_api.agents.deep_research import (
         run_zipcode_research,
         EscalationChecker,
         Feedback,
@@ -214,7 +214,7 @@ class TestCollectSourcesCallback:
 
 class TestRunZipcodeResearch:
     @pytest.mark.asyncio
-    @patch("backend.agents.deep_research.firestore_service")
+    @patch("hephae_api.agents.deep_research.firestore_service")
     async def test_returns_cached_result(self, mock_fs):
         cached_report = {
             "summary": "Cached report for 07110",
@@ -231,9 +231,9 @@ class TestRunZipcodeResearch:
         mock_fs.save_zipcode_research.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("backend.agents.deep_research.firestore_service")
-    @patch("backend.agents.deep_research.Runner")
-    @patch("backend.agents.deep_research.InMemorySessionService")
+    @patch("hephae_api.agents.deep_research.firestore_service")
+    @patch("hephae_api.agents.deep_research.Runner")
+    @patch("hephae_api.agents.deep_research.InMemorySessionService")
     async def test_runs_pipeline_when_no_cache(self, mock_session_cls, mock_runner_cls, mock_fs):
         mock_fs.get_zipcode_research.return_value = None
 
@@ -273,9 +273,9 @@ class TestRunZipcodeResearch:
         mock_fs.save_zipcode_research.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("backend.agents.deep_research.firestore_service")
-    @patch("backend.agents.deep_research.Runner")
-    @patch("backend.agents.deep_research.InMemorySessionService")
+    @patch("hephae_api.agents.deep_research.firestore_service")
+    @patch("hephae_api.agents.deep_research.Runner")
+    @patch("hephae_api.agents.deep_research.InMemorySessionService")
     async def test_fallback_when_no_structured_report(self, mock_session_cls, mock_runner_cls, mock_fs):
         mock_fs.get_zipcode_research.return_value = None
 
@@ -308,9 +308,9 @@ class TestRunZipcodeResearch:
         mock_fs.save_zipcode_research.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("backend.agents.deep_research.firestore_service")
-    @patch("backend.agents.deep_research.Runner")
-    @patch("backend.agents.deep_research.InMemorySessionService")
+    @patch("hephae_api.agents.deep_research.firestore_service")
+    @patch("hephae_api.agents.deep_research.Runner")
+    @patch("hephae_api.agents.deep_research.InMemorySessionService")
     async def test_handles_dict_final_report(self, mock_session_cls, mock_runner_cls, mock_fs):
         mock_fs.get_zipcode_research.return_value = None
 
@@ -343,9 +343,9 @@ class TestRunZipcodeResearch:
         assert result["zip_code"] == "20002"
 
     @pytest.mark.asyncio
-    @patch("backend.agents.deep_research.firestore_service")
-    @patch("backend.agents.deep_research.Runner")
-    @patch("backend.agents.deep_research.InMemorySessionService")
+    @patch("hephae_api.agents.deep_research.firestore_service")
+    @patch("hephae_api.agents.deep_research.Runner")
+    @patch("hephae_api.agents.deep_research.InMemorySessionService")
     async def test_handles_malformed_json_report(self, mock_session_cls, mock_runner_cls, mock_fs):
         mock_fs.get_zipcode_research.return_value = None
 

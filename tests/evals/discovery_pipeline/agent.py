@@ -8,6 +8,6 @@ The discovery pipeline runs five stages:
   5. DiscoveryReviewerAgent: validates all URLs and cross-references data
 """
 
-from hephae_capabilities.discovery.agent import discovery_pipeline as root_agent
+from hephae_agents.discovery.agent import discovery_pipeline as root_agent
 
 __all__ = ["root_agent"]

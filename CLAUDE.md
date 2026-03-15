@@ -1,6 +1,6 @@
 # CLAUDE.md — Hephae Forge Monorepo
 
-This is the root of the hephae-forge monorepo. It contains three services, five shared packages, and centralized tests.
+This is the root of the hephae-forge monorepo. It contains three services, shared libraries, AI agents, and centralized tests.
 
 ## Repository Structure
 
@@ -10,14 +10,23 @@ hephae-forge/
 │   ├── web/                   # Customer-facing web app (hephae.co) — Next.js 16 frontend
 │   ├── admin/                 # Internal admin dashboard — Next.js 14.1 frontend
 │   └── api/                   # Unified backend API — FastAPI (serves both UIs)
-├── packages/
-│   ├── common-python/         # hephae-common — Models, config, auth, Firebase, helpers
-│   ├── common-ts/             # @hephae/common — Shared TypeScript types
+│       └── hephae_api/        # API module (routers, workflows, config)
+├── agents/                    # hephae-agents — All AI agents + stateless runner functions
+│   └── hephae_agents/
+├── lib/
+│   ├── common/                # hephae-common — Models, config, auth, Firebase, helpers
+│   │   └── hephae_common/
 │   ├── db/                    # hephae-db — All Firestore, BigQuery, GCS access
+│   │   └── hephae_db/
 │   ├── integrations/          # hephae-integrations — 3rd-party API clients (BLS, USDA, etc.)
-│   └── capabilities/          # hephae-capabilities — All AI agents + stateless runner functions
+│   │   └── hephae_integrations/
+│   └── common-ts/             # @hephae/common — Shared TypeScript types
 ├── tests/                     # Centralized test suite (capabilities, workflows, API, integration)
-├── contracts/                 # Shared API & data contracts (documentation)
+├── infra/                     # Infrastructure, deploy scripts, contracts
+│   ├── docker/                # Dockerfiles
+│   ├── scripts/               # Deploy scripts (deploy.sh, trigger-evals.sh, etc.)
+│   ├── contracts/             # Shared API & data contracts (documentation)
+│   └── setup.sh               # GCP project bootstrap
 └── package.json               # npm workspaces root
 ```
 
@@ -29,22 +38,22 @@ hephae-forge/
 | `apps/admin/` | Next.js 14.1 | 3000 | Admin UI — proxies `/api/*` to unified API |
 | `apps/api/` | FastAPI | 8080 | Unified backend — all capabilities, workflows, DB access |
 
-Both UIs call the same backend. Capabilities are direct Python imports (no inter-service HTTP).
+Both UIs call the same API. Capabilities are direct Python imports (no inter-service HTTP).
 
 ## Shared Packages
 
 | Package | Name | Contains |
 |---------|------|----------|
-| `packages/common-python/` | `hephae-common` | Models, config, auth, Firebase, model fallback, ADK helpers, email, report templates |
-| `packages/common-ts/` | `@hephae/common` | TypeScript types |
-| `packages/db/` | `hephae-db` | Firestore, BigQuery, GCS, BusinessContext |
-| `packages/integrations/` | `hephae-integrations` | BLS, USDA, FDA, OSM, social media API clients |
-| `packages/capabilities/` | `hephae-capabilities` | All AI agents + runner.py files (stateless: identity → report) |
+| `lib/common/` | `hephae-common` | Models, config, auth, Firebase, model fallback, ADK helpers, email, report templates |
+| `lib/common-ts/` | `@hephae/common` | TypeScript types |
+| `lib/db/` | `hephae-db` | Firestore, BigQuery, GCS, BusinessContext |
+| `lib/integrations/` | `hephae-integrations` | BLS, USDA, FDA, OSM, social media API clients |
+| `agents/` | `hephae-agents` | All AI agents + runner.py files (stateless: identity → report) |
 
 ### Dependency Graph (no cycles)
 ```
-apps/api              → hephae-capabilities, hephae-db, hephae-integrations, hephae-common
-hephae-capabilities   → hephae-integrations, hephae-db, hephae-common
+apps/api              → hephae-agents, hephae-db, hephae-integrations, hephae-common
+hephae-agents         → hephae-integrations, hephae-db, hephae-common
 hephae-integrations   → hephae-common
 hephae-db             → hephae-common
 hephae-common         → (external only)
@@ -65,7 +74,7 @@ All AI agents use Google Gemini via Google ADK.
 
 Thinking modes: MEDIUM for evaluators, HIGH for competitive/market positioning.
 
-Model tiers are defined in `packages/common-python/hephae_common/model_config.py`.
+Model tiers are defined in `lib/common/hephae_common/model_config.py`.
 
 ### Database Rules (strictly enforced)
 
@@ -76,7 +85,7 @@ Model tiers are defined in `packages/common-python/hephae_common/model_config.py
 
 ### Agent Versioning
 
-Every agent has a semantic version in `apps/api/backend/config.py` under `AgentVersions`.
+Every agent has a semantic version in `apps/api/hephae_api/config.py` under `AgentVersions`.
 
 - MAJOR: output schema change (fields added/removed/renamed)
 - MINOR: logic change, same schema
@@ -113,17 +122,17 @@ All services deploy to `us-central1`. Run `bash infra/setup.sh` to bootstrap a f
 Evaluator agents validate capability outputs:
 - **Pass threshold:** score >= 80 AND !isHallucinated
 - **Evaluator model:** ENHANCED tier + MEDIUM thinking
-- All 4 capabilities (SEO, traffic, competitive, margin) have dedicated evaluator agents in `apps/api/backend/workflows/agents/evaluators/`
+- All 4 capabilities (SEO, traffic, competitive, margin) have dedicated evaluator agents in `agents/hephae_agents/evaluators/`
 
 ## Contracts
 
-See `contracts/` for shared documentation:
-- `contracts/firestore-schema.md` — Firestore document shapes
-- `contracts/bigquery-schema.md` — BigQuery table definitions
-- `contracts/api-web.md` — Web-facing API routes
-- `contracts/api-admin.md` — Admin-facing API routes
-- `contracts/gcs-conventions.md` — GCS path patterns
-- `contracts/eval-standards.md` — Evaluation criteria and thresholds
+See `infra/contracts/` for shared documentation:
+- `infra/contracts/firestore-schema.md` — Firestore document shapes
+- `infra/contracts/bigquery-schema.md` — BigQuery table definitions
+- `infra/contracts/api-web.md` — Web-facing API routes
+- `infra/contracts/api-admin.md` — Admin-facing API routes
+- `infra/contracts/gcs-conventions.md` — GCS path patterns
+- `infra/contracts/eval-standards.md` — Evaluation criteria and thresholds
 
 ## Commands
 
@@ -132,7 +141,7 @@ See `contracts/` for shared documentation:
 bash infra/setup.sh
 
 # Unified API
-cd apps/api && pip install -e . && uvicorn backend.main:app --reload --port 8080
+cd apps/api && pip install -e . && uvicorn hephae_api.main:app --reload --port 8080
 
 # Web UI
 cd apps/web && npm install && npm run dev
@@ -141,13 +150,13 @@ cd apps/web && npm install && npm run dev
 cd apps/admin && npm install && npm run dev
 
 # Install all shared packages
-pip install -e packages/common-python -e packages/db -e packages/integrations -e packages/capabilities
+pip install -e lib/common -e lib/db -e lib/integrations -e agents
 
 # Run tests
 python -m pytest tests/
 
 # Deploy (all to us-central1)
-bash apps/api/infra/deploy.sh       # Unified API
+bash infra/scripts/deploy.sh              # Unified API
 bash apps/web/infra/deploy.sh       # Web frontend
 bash apps/admin/infra/deploy.sh     # Admin frontend
 ```
@@ -155,7 +164,7 @@ bash apps/admin/infra/deploy.sh     # Admin frontend
 ## Working in This Repo
 
 - When modifying shared packages, run tests across all consumers.
-- When changing an API endpoint, update the corresponding `contracts/` doc.
+- When changing an API endpoint, update the corresponding `infra/contracts/` doc.
 - Each app has its own `CLAUDE.md` with app-specific details. Read it before working in that app.
-- Capabilities are in `packages/capabilities/` — each has a `runner.py` (stateless: identity in, report out).
-- DB access is in `packages/db/` — never access Firestore/BQ directly from routers or agents.
+- Agents are in `agents/` — each has a `runner.py` (stateless: identity in, report out).
+- DB access is in `lib/db/` — never access Firestore/BQ directly from routers or agents.

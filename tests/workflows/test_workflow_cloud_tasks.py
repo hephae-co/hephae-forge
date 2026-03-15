@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock, MagicMock, patch, call
 
 import pytest
 
-from backend.types import (
+from hephae_api.types import (
     BusinessPhase,
     BusinessWorkflowState,
     EvaluationResult,
@@ -86,12 +86,12 @@ def _make_workflow(
 # ===========================================================================
 
 class TestEnqueueAgentTask:
-    """Tests for apps/api/backend/lib/tasks.py::enqueue_agent_task."""
+    """Tests for apps/api/hephae_api/lib/tasks.py::enqueue_agent_task."""
 
-    @patch("backend.lib.tasks.tasks_v2.CloudTasksClient")
-    @patch("backend.lib.tasks.settings")
+    @patch("hephae_api.lib.tasks.tasks_v2.CloudTasksClient")
+    @patch("hephae_api.lib.tasks.settings")
     def test_enqueue_success(self, mock_settings, mock_client_cls):
-        from backend.lib.tasks import enqueue_agent_task
+        from hephae_api.lib.tasks import enqueue_agent_task
 
         mock_settings.API_BASE_URL = "https://api.example.com"
         mock_client = MagicMock()
@@ -113,10 +113,10 @@ class TestEnqueueAgentTask:
         assert body["actionType"] == "WORKFLOW_ANALYZE"
         assert body["taskId"] == "task-001"
 
-    @patch("backend.lib.tasks.tasks_v2.CloudTasksClient")
-    @patch("backend.lib.tasks.settings")
+    @patch("hephae_api.lib.tasks.tasks_v2.CloudTasksClient")
+    @patch("hephae_api.lib.tasks.settings")
     def test_enqueue_includes_metadata(self, mock_settings, mock_client_cls):
-        from backend.lib.tasks import enqueue_agent_task
+        from hephae_api.lib.tasks import enqueue_agent_task
 
         mock_settings.API_BASE_URL = "https://api.example.com"
         mock_client = MagicMock()
@@ -132,10 +132,10 @@ class TestEnqueueAgentTask:
         body = json.loads(mock_client.create_task.call_args.kwargs["request"]["task"]["http_request"]["body"])
         assert body["metadata"] == metadata
 
-    @patch("backend.lib.tasks.tasks_v2.CloudTasksClient")
-    @patch("backend.lib.tasks.settings")
+    @patch("hephae_api.lib.tasks.tasks_v2.CloudTasksClient")
+    @patch("hephae_api.lib.tasks.settings")
     def test_enqueue_sets_dispatch_deadline(self, mock_settings, mock_client_cls):
-        from backend.lib.tasks import enqueue_agent_task
+        from hephae_api.lib.tasks import enqueue_agent_task
 
         mock_settings.API_BASE_URL = "https://api.example.com"
         mock_client = MagicMock()
@@ -150,10 +150,10 @@ class TestEnqueueAgentTask:
         task = mock_client.create_task.call_args.kwargs["request"]["task"]
         assert task["dispatch_deadline"]["seconds"] == 1800
 
-    @patch("backend.lib.tasks.tasks_v2.CloudTasksClient")
-    @patch("backend.lib.tasks.settings")
+    @patch("hephae_api.lib.tasks.tasks_v2.CloudTasksClient")
+    @patch("hephae_api.lib.tasks.settings")
     def test_enqueue_includes_oidc_token(self, mock_settings, mock_client_cls):
-        from backend.lib.tasks import enqueue_agent_task
+        from hephae_api.lib.tasks import enqueue_agent_task
 
         mock_settings.API_BASE_URL = "https://api.example.com"
         mock_client = MagicMock()
@@ -169,19 +169,19 @@ class TestEnqueueAgentTask:
         assert "oidc_token" in task["http_request"]
         assert "service_account_email" in task["http_request"]["oidc_token"]
 
-    @patch("backend.lib.tasks.settings")
+    @patch("hephae_api.lib.tasks.settings")
     def test_enqueue_returns_none_without_base_url(self, mock_settings):
-        from backend.lib.tasks import enqueue_agent_task
+        from hephae_api.lib.tasks import enqueue_agent_task
 
         mock_settings.API_BASE_URL = ""
         with patch.dict("os.environ", {}, clear=True):
             result = enqueue_agent_task("biz-1", "X", "t-1")
         assert result is None
 
-    @patch("backend.lib.tasks.tasks_v2.CloudTasksClient")
-    @patch("backend.lib.tasks.settings")
+    @patch("hephae_api.lib.tasks.tasks_v2.CloudTasksClient")
+    @patch("hephae_api.lib.tasks.settings")
     def test_enqueue_returns_none_on_api_error(self, mock_settings, mock_client_cls):
-        from backend.lib.tasks import enqueue_agent_task
+        from hephae_api.lib.tasks import enqueue_agent_task
 
         mock_settings.API_BASE_URL = "https://api.example.com"
         mock_client = MagicMock()
@@ -198,7 +198,7 @@ class TestEnqueueAgentTask:
 # ===========================================================================
 
 class TestGetTasksByIds:
-    """Tests for packages/db/hephae_db/firestore/tasks.py::get_tasks_by_ids."""
+    """Tests for lib/db/hephae_db/firestore/tasks.py::get_tasks_by_ids."""
 
     @pytest.mark.asyncio
     @patch("hephae_db.firestore.tasks.get_db")
@@ -261,11 +261,11 @@ class TestGetTasksByIds:
 # ===========================================================================
 
 class TestRunAnalysisPhase:
-    """Tests for apps/api/backend/workflows/phases/analysis.py::run_analysis_phase."""
+    """Tests for apps/api/hephae_api/workflows/phases/analysis.py::run_analysis_phase."""
 
     @pytest.mark.asyncio
     async def test_skips_when_no_pending_businesses(self):
-        from backend.workflows.phases.analysis import run_analysis_phase
+        from hephae_api.workflows.phases.analysis import run_analysis_phase
 
         businesses = [_make_business("biz-1", phase=BusinessPhase.ANALYSIS_DONE)]
         callbacks = {"onBusinessDone": AsyncMock()}
@@ -274,15 +274,15 @@ class TestRunAnalysisPhase:
         callbacks["onBusinessDone"].assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.phases.analysis._sleep", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.analysis.get_tasks_by_ids", new_callable=AsyncMock)
-    @patch("backend.lib.tasks.enqueue_agent_task")
-    @patch("backend.workflows.phases.analysis.create_task", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.analysis.update_task", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis._sleep", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis.get_tasks_by_ids", new_callable=AsyncMock)
+    @patch("hephae_api.lib.tasks.enqueue_agent_task")
+    @patch("hephae_api.workflows.phases.analysis.create_task", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis.update_task", new_callable=AsyncMock)
     async def test_enqueues_one_task_per_business(
         self, mock_update_task, mock_create_task, mock_enqueue, mock_get_tasks, mock_sleep
     ):
-        from backend.workflows.phases.analysis import run_analysis_phase
+        from hephae_api.workflows.phases.analysis import run_analysis_phase
 
         mock_create_task.side_effect = ["task-1", "task-2"]
         mock_enqueue.side_effect = ["cloud-task-1", "cloud-task-2"]
@@ -305,14 +305,14 @@ class TestRunAnalysisPhase:
         assert mock_enqueue.call_count == 2
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.phases.analysis.get_tasks_by_ids", new_callable=AsyncMock)
-    @patch("backend.lib.tasks.enqueue_agent_task")
-    @patch("backend.workflows.phases.analysis.create_task", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.analysis.update_task", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis.get_tasks_by_ids", new_callable=AsyncMock)
+    @patch("hephae_api.lib.tasks.enqueue_agent_task")
+    @patch("hephae_api.workflows.phases.analysis.create_task", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis.update_task", new_callable=AsyncMock)
     async def test_marks_business_done_on_enqueue_failure(
         self, mock_update_task, mock_create_task, mock_enqueue, mock_get_tasks
     ):
-        from backend.workflows.phases.analysis import run_analysis_phase
+        from hephae_api.workflows.phases.analysis import run_analysis_phase
 
         mock_create_task.return_value = "task-1"
         mock_enqueue.return_value = None  # Enqueue fails
@@ -328,15 +328,15 @@ class TestRunAnalysisPhase:
         mock_update_task.assert_called()
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.phases.analysis._sleep", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.analysis.get_tasks_by_ids", new_callable=AsyncMock)
-    @patch("backend.lib.tasks.enqueue_agent_task")
-    @patch("backend.workflows.phases.analysis.create_task", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.analysis.update_task", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis._sleep", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis.get_tasks_by_ids", new_callable=AsyncMock)
+    @patch("hephae_api.lib.tasks.enqueue_agent_task")
+    @patch("hephae_api.workflows.phases.analysis.create_task", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis.update_task", new_callable=AsyncMock)
     async def test_fires_enrichment_callback_on_substep(
         self, mock_update, mock_create, mock_enqueue, mock_get_tasks, mock_sleep
     ):
-        from backend.workflows.phases.analysis import run_analysis_phase
+        from hephae_api.workflows.phases.analysis import run_analysis_phase
 
         mock_create.return_value = "task-1"
         mock_enqueue.return_value = "cloud-task-1"
@@ -358,15 +358,15 @@ class TestRunAnalysisPhase:
         on_done.assert_called_once_with("biz-1")
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.phases.analysis._sleep", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.analysis.get_tasks_by_ids", new_callable=AsyncMock)
-    @patch("backend.lib.tasks.enqueue_agent_task")
-    @patch("backend.workflows.phases.analysis.create_task", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.analysis.update_task", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis._sleep", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis.get_tasks_by_ids", new_callable=AsyncMock)
+    @patch("hephae_api.lib.tasks.enqueue_agent_task")
+    @patch("hephae_api.workflows.phases.analysis.create_task", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis.update_task", new_callable=AsyncMock)
     async def test_fires_capability_callback_on_substep(
         self, mock_update, mock_create, mock_enqueue, mock_get_tasks, mock_sleep
     ):
-        from backend.workflows.phases.analysis import run_analysis_phase
+        from hephae_api.workflows.phases.analysis import run_analysis_phase
 
         mock_create.return_value = "task-1"
         mock_enqueue.return_value = "cloud-task-1"
@@ -388,15 +388,15 @@ class TestRunAnalysisPhase:
         on_cap.assert_called_once_with("biz-1", "seo", True)
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.phases.analysis._sleep", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.analysis.get_tasks_by_ids", new_callable=AsyncMock)
-    @patch("backend.lib.tasks.enqueue_agent_task")
-    @patch("backend.workflows.phases.analysis.create_task", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.analysis.update_task", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis._sleep", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis.get_tasks_by_ids", new_callable=AsyncMock)
+    @patch("hephae_api.lib.tasks.enqueue_agent_task")
+    @patch("hephae_api.workflows.phases.analysis.create_task", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis.update_task", new_callable=AsyncMock)
     async def test_handles_task_failure(
         self, mock_update, mock_create, mock_enqueue, mock_get_tasks, mock_sleep,
     ):
-        from backend.workflows.phases.analysis import run_analysis_phase
+        from hephae_api.workflows.phases.analysis import run_analysis_phase
 
         mock_create.return_value = "task-1"
         mock_enqueue.return_value = "cloud-task-1"
@@ -416,14 +416,14 @@ class TestRunAnalysisPhase:
         on_done.assert_called_once_with("biz-1")
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.phases.analysis.get_tasks_by_ids", new_callable=AsyncMock)
-    @patch("backend.lib.tasks.enqueue_agent_task")
-    @patch("backend.workflows.phases.analysis.create_task", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.analysis.update_task", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis.get_tasks_by_ids", new_callable=AsyncMock)
+    @patch("hephae_api.lib.tasks.enqueue_agent_task")
+    @patch("hephae_api.workflows.phases.analysis.create_task", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis.update_task", new_callable=AsyncMock)
     async def test_returns_immediately_when_all_enqueues_fail(
         self, mock_update, mock_create, mock_enqueue, mock_get_tasks
     ):
-        from backend.workflows.phases.analysis import run_analysis_phase
+        from hephae_api.workflows.phases.analysis import run_analysis_phase
 
         mock_create.side_effect = ["t-1", "t-2"]
         mock_enqueue.return_value = None  # All fail
@@ -447,21 +447,21 @@ class TestRunAnalysisPhase:
 # ===========================================================================
 
 class TestRunWorkflowAnalyze:
-    """Tests for apps/api/backend/routers/admin/tasks.py::_run_workflow_analyze."""
+    """Tests for apps/api/hephae_api/routers/admin/tasks.py::_run_workflow_analyze."""
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.agents.insights.insights_agent.generate_insights", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.analysis._run_capability", new_callable=AsyncMock)
-    @patch("backend.workflows.capabilities.registry.get_enabled_capabilities")
-    @patch("backend.workflows.phases.enrichment.enrich_business_profile", new_callable=AsyncMock)
+    @patch("hephae_agents.insights.insights_agent.generate_insights", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis._run_capability", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.capabilities.registry.get_enabled_capabilities")
+    @patch("hephae_api.workflows.phases.enrichment.enrich_business_profile", new_callable=AsyncMock)
     @patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock)
     @patch("hephae_common.firebase.get_db")
-    @patch("backend.routers.admin.tasks.update_task", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.tasks.update_task", new_callable=AsyncMock)
     async def test_full_pipeline_substep_progression(
         self, mock_update_task, mock_get_db, mock_get_biz, mock_enrich,
         mock_get_caps, mock_run_cap, mock_insights,
     ):
-        from backend.routers.admin.tasks import _run_workflow_analyze
+        from hephae_api.routers.admin.tasks import _run_workflow_analyze
 
         mock_db = MagicMock()
         mock_db.collection.return_value.document.return_value.update = MagicMock()
@@ -505,9 +505,9 @@ class TestRunWorkflowAnalyze:
 
     @pytest.mark.asyncio
     @patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock)
-    @patch("backend.routers.admin.tasks.update_task", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.tasks.update_task", new_callable=AsyncMock)
     async def test_business_not_found_raises(self, mock_update, mock_get_biz):
-        from backend.routers.admin.tasks import _run_workflow_analyze
+        from hephae_api.routers.admin.tasks import _run_workflow_analyze
 
         mock_get_biz.return_value = None
 
@@ -515,18 +515,18 @@ class TestRunWorkflowAnalyze:
             await _run_workflow_analyze("missing-biz", "task-1", {})
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.agents.insights.insights_agent.generate_insights", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.analysis._run_capability", new_callable=AsyncMock)
-    @patch("backend.workflows.capabilities.registry.get_enabled_capabilities")
-    @patch("backend.workflows.phases.enrichment.enrich_business_profile", new_callable=AsyncMock)
+    @patch("hephae_agents.insights.insights_agent.generate_insights", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.analysis._run_capability", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.capabilities.registry.get_enabled_capabilities")
+    @patch("hephae_api.workflows.phases.enrichment.enrich_business_profile", new_callable=AsyncMock)
     @patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock)
     @patch("hephae_common.firebase.get_db")
-    @patch("backend.routers.admin.tasks.update_task", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.tasks.update_task", new_callable=AsyncMock)
     async def test_skips_capabilities_without_official_url(
         self, mock_update, mock_get_db, mock_get_biz, mock_enrich,
         mock_get_caps, mock_run_cap, mock_insights,
     ):
-        from backend.routers.admin.tasks import _run_workflow_analyze
+        from hephae_api.routers.admin.tasks import _run_workflow_analyze
 
         mock_get_db.return_value = MagicMock()
         mock_get_biz.side_effect = [
@@ -559,20 +559,20 @@ class TestRunWorkflowAnalyze:
 # ===========================================================================
 
 class TestWorkflowEngine:
-    """Tests for apps/api/backend/workflows/engine.py::WorkflowEngine."""
+    """Tests for apps/api/hephae_api/workflows/engine.py::WorkflowEngine."""
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.engine.save_workflow", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.run_outreach_phase", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.run_evaluation_phase", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.run_analysis_phase", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.run_discovery_phase", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.research_zip_code", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.save_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.run_outreach_phase", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.run_evaluation_phase", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.run_analysis_phase", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.run_discovery_phase", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.research_zip_code", new_callable=AsyncMock)
     async def test_passes_workflow_id_to_analysis_phase(
         self, mock_research, mock_discovery, mock_analysis,
         mock_eval, mock_outreach, mock_save,
     ):
-        from backend.workflows.engine import WorkflowEngine
+        from hephae_api.workflows.engine import WorkflowEngine
 
         businesses = [_make_business("biz-1", phase=BusinessPhase.PENDING)]
         workflow = _make_workflow(
@@ -596,14 +596,14 @@ class TestWorkflowEngine:
                (len(call_kwargs.args) >= 3 and call_kwargs.args[2] == "wf-test-123")
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.engine.save_workflow", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.run_analysis_phase", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.run_discovery_phase", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.research_zip_code", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.save_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.run_analysis_phase", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.run_discovery_phase", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.research_zip_code", new_callable=AsyncMock)
     async def test_engine_emits_progress_events(
         self, mock_research, mock_discovery, mock_analysis, mock_save,
     ):
-        from backend.workflows.engine import WorkflowEngine
+        from hephae_api.workflows.engine import WorkflowEngine
 
         mock_discovery.return_value = [
             {"slug": "biz-1", "name": "Biz One", "address": "123 St"},
@@ -625,13 +625,13 @@ class TestWorkflowEngine:
         assert "workflow:phase_changed" in event_types
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.engine.save_workflow", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.run_discovery_phase", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.research_zip_code", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.save_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.run_discovery_phase", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.research_zip_code", new_callable=AsyncMock)
     async def test_engine_sets_failed_on_error(
         self, mock_research, mock_discovery, mock_save,
     ):
-        from backend.workflows.engine import WorkflowEngine
+        from hephae_api.workflows.engine import WorkflowEngine
 
         mock_discovery.side_effect = ValueError("No businesses discovered")
 
@@ -643,15 +643,15 @@ class TestWorkflowEngine:
         assert "No businesses discovered" in (workflow.lastError or "")
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.engine.save_workflow", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.run_evaluation_phase", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.run_analysis_phase", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.run_discovery_phase", new_callable=AsyncMock)
-    @patch("backend.workflows.engine.research_zip_code", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.save_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.run_evaluation_phase", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.run_analysis_phase", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.run_discovery_phase", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.engine.research_zip_code", new_callable=AsyncMock)
     async def test_engine_pauses_at_approval(
         self, mock_research, mock_discovery, mock_analysis, mock_eval, mock_save,
     ):
-        from backend.workflows.engine import WorkflowEngine
+        from hephae_api.workflows.engine import WorkflowEngine
 
         mock_discovery.return_value = [
             {"slug": "biz-1", "name": "Biz One", "address": "123 St"},
@@ -678,7 +678,7 @@ class TestWorkflowResearchEndpoint:
     @pytest.mark.asyncio
     @patch("hephae_db.firestore.research.get_area_research_for_zip_code", new_callable=AsyncMock)
     @patch("hephae_db.firestore.research.get_zipcode_report", new_callable=AsyncMock)
-    @patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
     async def test_returns_research_for_single_zipcode(
         self, mock_load, mock_zip_report, mock_area, client,
     ):
@@ -691,8 +691,8 @@ class TestWorkflowResearchEndpoint:
         mock_zip_report.return_value = report_mock
         mock_area.return_value = None
 
-        from backend.lib.auth import verify_admin_request
-        from backend.main import app
+        from hephae_api.lib.auth import verify_admin_request
+        from hephae_api.main import app
         app.dependency_overrides[verify_admin_request] = lambda: None
 
         try:
@@ -706,12 +706,12 @@ class TestWorkflowResearchEndpoint:
             app.dependency_overrides.pop(verify_admin_request, None)
 
     @pytest.mark.asyncio
-    @patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
     async def test_returns_404_for_missing_workflow(self, mock_load, client):
         mock_load.return_value = None
 
-        from backend.lib.auth import verify_admin_request
-        from backend.main import app
+        from hephae_api.lib.auth import verify_admin_request
+        from hephae_api.main import app
         app.dependency_overrides[verify_admin_request] = lambda: None
 
         try:
@@ -723,7 +723,7 @@ class TestWorkflowResearchEndpoint:
     @pytest.mark.asyncio
     @patch("hephae_db.firestore.research.get_area_research_for_zip_code", new_callable=AsyncMock)
     @patch("hephae_db.firestore.research.get_zipcode_report", new_callable=AsyncMock)
-    @patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
     async def test_returns_empty_when_no_research_exists(
         self, mock_load, mock_zip_report, mock_area, client,
     ):
@@ -732,8 +732,8 @@ class TestWorkflowResearchEndpoint:
         mock_zip_report.return_value = None
         mock_area.return_value = None
 
-        from backend.lib.auth import verify_admin_request
-        from backend.main import app
+        from hephae_api.lib.auth import verify_admin_request
+        from hephae_api.main import app
         app.dependency_overrides[verify_admin_request] = lambda: None
 
         try:
@@ -751,7 +751,7 @@ class TestWorkflowResearchEndpoint:
 # ===========================================================================
 
 class TestOsmCategoryMapping:
-    """Tests for packages/integrations/hephae_integrations/osm_client.py."""
+    """Tests for lib/integrations/hephae_integrations/osm_client.py."""
 
     def test_all_business_types_have_osm_mapping(self):
         from hephae_integrations.osm_client import _CATEGORY_TO_OSM
@@ -816,15 +816,15 @@ class TestDiscoveryCategoryFiltering:
     """Tests for scan_zipcode with category parameter."""
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.agents.discovery.zipcode_scanner._run_hub_discovery", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner._run_adk_discovery", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner.osm_discover", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner.get_businesses_in_zipcode", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner.save_business", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner._run_hub_discovery", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner._run_adk_discovery", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner.osm_discover", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner.get_businesses_in_zipcode", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner.save_business", new_callable=AsyncMock)
     async def test_category_passed_to_all_sources(
         self, mock_save, mock_cache, mock_osm, mock_adk, mock_hub,
     ):
-        from backend.workflows.agents.discovery.zipcode_scanner import scan_zipcode
+        from hephae_agents.discovery.zipcode_scanner import scan_zipcode
 
         mock_osm.return_value = []
         mock_adk.return_value = []
@@ -843,15 +843,15 @@ class TestDiscoveryCategoryFiltering:
         assert mock_hub.call_args.kwargs.get("category") == "Bakeries"
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.agents.discovery.zipcode_scanner._run_hub_discovery", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner._run_adk_discovery", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner.osm_discover", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner.get_businesses_in_zipcode", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner.save_business", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner._run_hub_discovery", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner._run_adk_discovery", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner.osm_discover", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner.get_businesses_in_zipcode", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner.save_business", new_callable=AsyncMock)
     async def test_category_bypasses_cache(
         self, mock_save, mock_cache, mock_osm, mock_adk, mock_hub,
     ):
-        from backend.workflows.agents.discovery.zipcode_scanner import scan_zipcode
+        from hephae_agents.discovery.zipcode_scanner import scan_zipcode
 
         mock_osm.return_value = []
         mock_adk.return_value = []
@@ -863,15 +863,15 @@ class TestDiscoveryCategoryFiltering:
         mock_cache.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.agents.discovery.zipcode_scanner._run_hub_discovery", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner._run_adk_discovery", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner.osm_discover", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner.get_businesses_in_zipcode", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner.save_business", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner._run_hub_discovery", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner._run_adk_discovery", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner.osm_discover", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner.get_businesses_in_zipcode", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner.save_business", new_callable=AsyncMock)
     async def test_dedup_prefers_hub_over_adk(
         self, mock_save, mock_cache, mock_osm, mock_adk, mock_hub,
     ):
-        from backend.workflows.agents.discovery.zipcode_scanner import scan_zipcode
+        from hephae_agents.discovery.zipcode_scanner import scan_zipcode
 
         mock_osm.return_value = []
         mock_hub.return_value = [
@@ -887,15 +887,15 @@ class TestDiscoveryCategoryFiltering:
         assert results[0].website == "https://hub.com"  # Hub takes priority
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.agents.discovery.zipcode_scanner._run_hub_discovery", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner._run_adk_discovery", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner.osm_discover", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner.get_businesses_in_zipcode", new_callable=AsyncMock)
-    @patch("backend.workflows.agents.discovery.zipcode_scanner.save_business", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner._run_hub_discovery", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner._run_adk_discovery", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner.osm_discover", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner.get_businesses_in_zipcode", new_callable=AsyncMock)
+    @patch("hephae_agents.discovery.zipcode_scanner.save_business", new_callable=AsyncMock)
     async def test_handles_source_failure_gracefully(
         self, mock_save, mock_cache, mock_osm, mock_adk, mock_hub,
     ):
-        from backend.workflows.agents.discovery.zipcode_scanner import scan_zipcode
+        from hephae_agents.discovery.zipcode_scanner import scan_zipcode
         from hephae_integrations.osm_client import OsmBusiness
 
         mock_osm.return_value = [
@@ -912,7 +912,7 @@ class TestDiscoveryCategoryFiltering:
     def test_discovery_phase_passes_category(self):
         """Verify run_discovery_phase calls scan_zipcode with category."""
         import inspect
-        from backend.workflows.phases.discovery import run_discovery_phase
+        from hephae_api.workflows.phases.discovery import run_discovery_phase
 
         source = inspect.getsource(run_discovery_phase)
         assert "category=business_type" in source
@@ -923,16 +923,16 @@ class TestDiscoveryCategoryFiltering:
 # ===========================================================================
 
 class TestEvaluationPhase:
-    """Tests for apps/api/backend/workflows/phases/evaluation.py."""
+    """Tests for apps/api/hephae_api/workflows/phases/evaluation.py."""
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.phases.evaluation.run_agent_to_json", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.evaluation.get_business", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.evaluation.get_evaluable_capabilities")
+    @patch("hephae_api.workflows.phases.evaluation.run_agent_to_json", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.evaluation.get_business", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.evaluation.get_evaluable_capabilities")
     async def test_quality_passes_when_all_scores_high(
         self, mock_get_caps, mock_get_biz, mock_run_agent,
     ):
-        from backend.workflows.phases.evaluation import run_evaluation_phase
+        from hephae_api.workflows.phases.evaluation import run_evaluation_phase
 
         cap = MagicMock()
         cap.name = "seo"
@@ -959,13 +959,13 @@ class TestEvaluationPhase:
         on_eval.assert_called_once_with("biz-1", True)
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.phases.evaluation.run_agent_to_json", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.evaluation.get_business", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.evaluation.get_evaluable_capabilities")
+    @patch("hephae_api.workflows.phases.evaluation.run_agent_to_json", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.evaluation.get_business", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.evaluation.get_evaluable_capabilities")
     async def test_quality_fails_when_score_below_80(
         self, mock_get_caps, mock_get_biz, mock_run_agent,
     ):
-        from backend.workflows.phases.evaluation import run_evaluation_phase
+        from hephae_api.workflows.phases.evaluation import run_evaluation_phase
 
         cap = MagicMock()
         cap.name = "seo"
@@ -991,13 +991,13 @@ class TestEvaluationPhase:
         on_eval.assert_called_once_with("biz-1", False)
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.phases.evaluation.run_agent_to_json", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.evaluation.get_business", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.evaluation.get_evaluable_capabilities")
+    @patch("hephae_api.workflows.phases.evaluation.run_agent_to_json", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.evaluation.get_business", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.evaluation.get_evaluable_capabilities")
     async def test_quality_fails_when_hallucinated(
         self, mock_get_caps, mock_get_biz, mock_run_agent,
     ):
-        from backend.workflows.phases.evaluation import run_evaluation_phase
+        from hephae_api.workflows.phases.evaluation import run_evaluation_phase
 
         cap = MagicMock()
         cap.name = "seo"
@@ -1022,13 +1022,13 @@ class TestEvaluationPhase:
         assert biz.qualityPassed is False
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.phases.evaluation.run_agent_to_json", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.evaluation.get_business", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.evaluation.get_evaluable_capabilities")
+    @patch("hephae_api.workflows.phases.evaluation.run_agent_to_json", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.evaluation.get_business", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.evaluation.get_evaluable_capabilities")
     async def test_quality_fails_with_no_evaluations(
         self, mock_get_caps, mock_get_biz, mock_run_agent,
     ):
-        from backend.workflows.phases.evaluation import run_evaluation_phase
+        from hephae_api.workflows.phases.evaluation import run_evaluation_phase
 
         mock_get_caps.return_value = []  # No evaluable capabilities
         mock_get_biz.return_value = {"identity": {"name": "Test"}, "latestOutputs": {}}
@@ -1042,12 +1042,12 @@ class TestEvaluationPhase:
         assert biz.phase == BusinessPhase.EVALUATION_DONE
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.phases.evaluation.get_business", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.evaluation.get_evaluable_capabilities")
+    @patch("hephae_api.workflows.phases.evaluation.get_business", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.evaluation.get_evaluable_capabilities")
     async def test_evaluation_handles_error_gracefully(
         self, mock_get_caps, mock_get_biz,
     ):
-        from backend.workflows.phases.evaluation import run_evaluation_phase
+        from hephae_api.workflows.phases.evaluation import run_evaluation_phase
 
         mock_get_biz.side_effect = Exception("Firestore unavailable")
         mock_get_caps.return_value = [MagicMock()]
@@ -1062,13 +1062,13 @@ class TestEvaluationPhase:
         assert biz.lastError is not None
 
     @pytest.mark.asyncio
-    @patch("backend.workflows.phases.evaluation.run_agent_to_json", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.evaluation.get_business", new_callable=AsyncMock)
-    @patch("backend.workflows.phases.evaluation.get_evaluable_capabilities")
+    @patch("hephae_api.workflows.phases.evaluation.run_agent_to_json", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.evaluation.get_business", new_callable=AsyncMock)
+    @patch("hephae_api.workflows.phases.evaluation.get_evaluable_capabilities")
     async def test_skips_caps_not_in_completed_list(
         self, mock_get_caps, mock_get_biz, mock_run_agent,
     ):
-        from backend.workflows.phases.evaluation import run_evaluation_phase
+        from hephae_api.workflows.phases.evaluation import run_evaluation_phase
 
         cap = MagicMock()
         cap.name = "seo"
@@ -1096,16 +1096,16 @@ class TestEvaluationPhase:
 # ===========================================================================
 
 class TestWorkflowActionEndpoints:
-    """Tests for apps/api/backend/routers/admin/workflow_actions.py."""
+    """Tests for apps/api/hephae_api/routers/admin/workflow_actions.py."""
 
     @pytest.mark.asyncio
-    @patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
     async def test_get_workflow_returns_data(self, mock_load, client):
         workflow = _make_workflow()
         mock_load.return_value = workflow
 
-        from backend.lib.auth import verify_admin_request
-        from backend.main import app
+        from hephae_api.lib.auth import verify_admin_request
+        from hephae_api.main import app
         app.dependency_overrides[verify_admin_request] = lambda: None
 
         try:
@@ -1117,14 +1117,14 @@ class TestWorkflowActionEndpoints:
             app.dependency_overrides.pop(verify_admin_request, None)
 
     @pytest.mark.asyncio
-    @patch("backend.routers.admin.workflow_actions.save_workflow", new_callable=AsyncMock)
-    @patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.workflow_actions.save_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
     async def test_force_stop_marks_failed(self, mock_load, mock_save, client):
         workflow = _make_workflow(phase=WorkflowPhase.ANALYSIS)
         mock_load.return_value = workflow
 
-        from backend.lib.auth import verify_admin_request
-        from backend.main import app
+        from hephae_api.lib.auth import verify_admin_request
+        from hephae_api.main import app
         app.dependency_overrides[verify_admin_request] = lambda: None
 
         try:
@@ -1136,15 +1136,15 @@ class TestWorkflowActionEndpoints:
             app.dependency_overrides.pop(verify_admin_request, None)
 
     @pytest.mark.asyncio
-    @patch("backend.routers.admin.workflow_actions.start_workflow_engine", new_callable=AsyncMock)
-    @patch("backend.routers.admin.workflow_actions.save_workflow", new_callable=AsyncMock)
-    @patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.workflow_actions.start_workflow_engine", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.workflow_actions.save_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
     async def test_resume_only_works_on_failed(self, mock_load, mock_save, mock_start, client):
         workflow = _make_workflow(phase=WorkflowPhase.ANALYSIS)
         mock_load.return_value = workflow
 
-        from backend.lib.auth import verify_admin_request
-        from backend.main import app
+        from hephae_api.lib.auth import verify_admin_request
+        from hephae_api.main import app
         app.dependency_overrides[verify_admin_request] = lambda: None
 
         try:
@@ -1155,15 +1155,15 @@ class TestWorkflowActionEndpoints:
             app.dependency_overrides.pop(verify_admin_request, None)
 
     @pytest.mark.asyncio
-    @patch("backend.routers.admin.workflow_actions.WorkflowEngine")
-    @patch("backend.routers.admin.workflow_actions.save_workflow", new_callable=AsyncMock)
-    @patch("backend.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.workflow_actions.WorkflowEngine")
+    @patch("hephae_api.routers.admin.workflow_actions.save_workflow", new_callable=AsyncMock)
+    @patch("hephae_api.routers.admin.workflow_actions.load_workflow", new_callable=AsyncMock)
     async def test_approve_rejects_non_approval_phase(self, mock_load, mock_save, mock_engine, client):
         workflow = _make_workflow(phase=WorkflowPhase.ANALYSIS)
         mock_load.return_value = workflow
 
-        from backend.lib.auth import verify_admin_request
-        from backend.main import app
+        from hephae_api.lib.auth import verify_admin_request
+        from hephae_api.main import app
         app.dependency_overrides[verify_admin_request] = lambda: None
 
         try:

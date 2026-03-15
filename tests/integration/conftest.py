@@ -21,7 +21,7 @@ import pytest_asyncio
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from hephae_capabilities.discovery import discovery_pipeline
+from hephae_agents.discovery import discovery_pipeline
 from hephae_common.adk_helpers import user_msg
 from tests.integration.businesses import BUSINESSES, GroundTruth
 

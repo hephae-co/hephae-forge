@@ -1,0 +1,54 @@
+# ───────────────────────────────────────────────────────────
+# Dockerfile.fastapi — Unified API backend
+# Build context: repo root (hephae-forge/)
+# ───────────────────────────────────────────────────────────
+
+FROM python:3.12-slim-bookworm
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1
+
+# Install system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install shared packages (changes less often → cached layer)
+COPY lib/common/ ./lib/common/
+RUN pip install --no-cache-dir ./lib/common
+
+COPY lib/db/ ./lib/db/
+RUN pip install --no-cache-dir ./lib/db
+
+COPY lib/integrations/ ./lib/integrations/
+RUN pip install --no-cache-dir ./lib/integrations
+
+COPY agents/ ./agents/
+RUN pip install --no-cache-dir ./agents
+
+# Install unified API deps
+COPY apps/api/pyproject.toml ./apps/api/
+RUN pip install --no-cache-dir ./apps/api
+
+# Install Playwright Chromium (needed for screenshots, social cards)
+RUN playwright install --with-deps chromium
+
+# Copy API code
+COPY apps/api/hephae_api/ ./apps/api/hephae_api/
+
+# Copy all tests (evals + unit tests run in the agent-evals Cloud Run Job)
+COPY tests/ ./tests/
+
+# Install test/eval deps
+RUN pip install --no-cache-dir pytest pytest-asyncio pytest-html
+
+WORKDIR /app/apps/api
+
+# Expose port (Cloud Run injects PORT env var, default 8080)
+EXPOSE 8080
+ENV PORT=8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request, os; urllib.request.urlopen(f'http://localhost:{os.environ.get(\"PORT\", 8080)}/api/health')" || exit 1
+
+CMD uvicorn hephae_api.main:app --host 0.0.0.0 --port $PORT --workers 1

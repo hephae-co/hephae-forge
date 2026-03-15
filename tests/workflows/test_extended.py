@@ -1,15 +1,15 @@
 import pytest
 import json
 from unittest.mock import patch, MagicMock, AsyncMock
-from backend.workflows.agents.outreach.communicator import draft_and_send_outreach
-from backend.workflows.test_runner import test_runner
-from backend.workflows.agents.evaluators.seo_evaluator import SeoEvaluatorAgent
+from hephae_agents.outreach.communicator import draft_and_send_outreach
+from hephae_api.workflows.test_runner import test_runner
+from hephae_agents.evaluators.seo_evaluator import SeoEvaluatorAgent
 
 @pytest.mark.asyncio
-@patch("backend.workflows.agents.outreach.communicator.get_db")
-@patch("backend.workflows.agents.outreach.communicator.get_business", new_callable=AsyncMock)
-@patch("backend.workflows.agents.outreach.communicator.run_agent_to_text", new_callable=AsyncMock)
-@patch("backend.workflows.agents.outreach.communicator.send_email", new_callable=AsyncMock)
+@patch("hephae_agents.outreach.communicator.get_db")
+@patch("hephae_agents.outreach.communicator.get_business", new_callable=AsyncMock)
+@patch("hephae_agents.outreach.communicator.run_agent_to_text", new_callable=AsyncMock)
+@patch("hephae_agents.outreach.communicator.send_email", new_callable=AsyncMock)
 async def test_draft_and_send_outreach_success(mock_send_email, mock_run_agent, mock_get_biz, mock_get_db):
     # Mock business data
     mock_get_biz.return_value = {
@@ -37,11 +37,11 @@ async def test_draft_and_send_outreach_success(mock_send_email, mock_run_agent, 
     mock_send_email.assert_called_once()
 
 @pytest.mark.asyncio
-@patch("hephae_capabilities.margin_analyzer.runner.run_margin_analysis", new_callable=AsyncMock, return_value={"items": []})
-@patch("hephae_capabilities.competitive_analysis.runner.run_competitive_analysis", new_callable=AsyncMock, return_value={"competitors": []})
-@patch("hephae_capabilities.traffic_forecaster.runner.run_traffic_forecast", new_callable=AsyncMock, return_value={"forecast": []})
-@patch("hephae_capabilities.seo_auditor.runner.run_seo_audit", new_callable=AsyncMock, return_value={"overallScore": 85})
-@patch("backend.workflows.test_runner.HephaeTestRunner.evaluate_with_agent", new_callable=AsyncMock)
+@patch("hephae_agents.margin_analyzer.runner.run_margin_analysis", new_callable=AsyncMock, return_value={"items": []})
+@patch("hephae_agents.competitive_analysis.runner.run_competitive_analysis", new_callable=AsyncMock, return_value={"competitors": []})
+@patch("hephae_agents.traffic_forecaster.runner.run_traffic_forecast", new_callable=AsyncMock, return_value={"forecast": []})
+@patch("hephae_agents.seo_auditor.runner.run_seo_audit", new_callable=AsyncMock, return_value={"overallScore": 85})
+@patch("hephae_api.workflows.test_runner.HephaeTestRunner.evaluate_with_agent", new_callable=AsyncMock)
 async def test_run_all_tests_success(mock_evaluate, mock_seo, mock_traffic, mock_competitive, mock_margin):
     # Mock evaluation — all pass
     mock_evaluate.return_value = {"score": 95, "isHallucinated": False, "issues": []}

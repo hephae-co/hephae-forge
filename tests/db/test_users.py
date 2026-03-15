@@ -37,8 +37,8 @@ class TestGetOrCreateUser:
         db.collection.return_value.document.return_value = doc_ref
         doc_ref.get.return_value = _mock_doc(exists=False)
 
-        with patch("packages.db.hephae_db.firestore.users.get_db", return_value=db):
-            from packages.db.hephae_db.firestore.users import get_or_create_user
+        with patch("hephae_db.firestore.users.get_db", return_value=db):
+            from hephae_db.firestore.users import get_or_create_user
 
             result = await get_or_create_user(
                 uid="new-user-1",
@@ -75,8 +75,8 @@ class TestGetOrCreateUser:
         }
         doc_ref.get.return_value = _mock_doc(exists=True, data=existing_data)
 
-        with patch("packages.db.hephae_db.firestore.users.get_db", return_value=db):
-            from packages.db.hephae_db.firestore.users import get_or_create_user
+        with patch("hephae_db.firestore.users.get_db", return_value=db):
+            from hephae_db.firestore.users import get_or_create_user
 
             result = await get_or_create_user(uid="existing-user")
 
@@ -97,8 +97,8 @@ class TestGetOrCreateUser:
         db.collection.return_value.document.return_value = doc_ref
         doc_ref.get.return_value = _mock_doc(exists=False)
 
-        with patch("packages.db.hephae_db.firestore.users.get_db", return_value=db):
-            from packages.db.hephae_db.firestore.users import get_or_create_user
+        with patch("hephae_db.firestore.users.get_db", return_value=db):
+            from hephae_db.firestore.users import get_or_create_user
 
             result = await get_or_create_user(uid="minimal-user")
 
@@ -119,8 +119,8 @@ class TestGetUser:
             exists=True, data={"email": "test@test.com", "businesses": ["slug-1"]}
         )
 
-        with patch("packages.db.hephae_db.firestore.users.get_db", return_value=db):
-            from packages.db.hephae_db.firestore.users import get_user
+        with patch("hephae_db.firestore.users.get_db", return_value=db):
+            from hephae_db.firestore.users import get_user
 
             result = get_user("uid-123")
 
@@ -131,8 +131,8 @@ class TestGetUser:
         db = _mock_db()
         db.collection.return_value.document.return_value.get.return_value = _mock_doc(exists=False)
 
-        with patch("packages.db.hephae_db.firestore.users.get_db", return_value=db):
-            from packages.db.hephae_db.firestore.users import get_user
+        with patch("hephae_db.firestore.users.get_db", return_value=db):
+            from hephae_db.firestore.users import get_user
 
             result = get_user("nonexistent")
 
@@ -150,10 +150,10 @@ class TestAddBusinessToUser:
         db.collection.return_value.document.return_value = doc_ref
 
         with (
-            patch("packages.db.hephae_db.firestore.users.get_db", return_value=db),
+            patch("hephae_db.firestore.users.get_db", return_value=db),
             patch("google.cloud.firestore_v1.ArrayUnion") as mock_union,
         ):
-            from packages.db.hephae_db.firestore.users import add_business_to_user
+            from hephae_db.firestore.users import add_business_to_user
 
             add_business_to_user("uid-123", "new-biz-slug")
 
@@ -172,8 +172,8 @@ class TestGetUserBusinesses:
             exists=True, data={"businesses": ["biz-1", "biz-2"]}
         )
 
-        with patch("packages.db.hephae_db.firestore.users.get_db", return_value=db):
-            from packages.db.hephae_db.firestore.users import get_user_businesses
+        with patch("hephae_db.firestore.users.get_db", return_value=db):
+            from hephae_db.firestore.users import get_user_businesses
 
             result = get_user_businesses("uid-123")
 
@@ -183,8 +183,8 @@ class TestGetUserBusinesses:
         db = _mock_db()
         db.collection.return_value.document.return_value.get.return_value = _mock_doc(exists=False)
 
-        with patch("packages.db.hephae_db.firestore.users.get_db", return_value=db):
-            from packages.db.hephae_db.firestore.users import get_user_businesses
+        with patch("hephae_db.firestore.users.get_db", return_value=db):
+            from hephae_db.firestore.users import get_user_businesses
 
             result = get_user_businesses("ghost")
 

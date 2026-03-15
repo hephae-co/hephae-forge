@@ -19,7 +19,7 @@ async def test_chat_persistence_and_isolation(client):
     user_b = {"uid": "user_B", "email": "b@hephae.co"}
 
     # Mock the firebase auth verification
-    with patch("backend.lib.auth.auth.verify_id_token") as mock_verify:
+    with patch("hephae_api.lib.auth.auth.verify_id_token") as mock_verify:
         
         # --- SCENARIO 1: User A starts a chat ---
         mock_verify.return_value = user_a
@@ -82,7 +82,7 @@ async def test_heartbeat_registration_authenticated(client):
     token = "mock-token-user-a"
     user = {"uid": "user_A", "email": "a@hephae.co"}
 
-    with patch("backend.lib.auth.auth.verify_id_token", return_value=user):
+    with patch("hephae_api.lib.auth.auth.verify_id_token", return_value=user):
         # We also need to mock the DB call
         with patch("hephae_db.firestore.heartbeats.create_heartbeat", new_callable=AsyncMock) as mock_create:
             mock_create.return_value = "hb-123"

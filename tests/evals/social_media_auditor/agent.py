@@ -8,7 +8,7 @@ The social media auditor runs two LlmAgents sequentially:
 
 from google.adk.agents import SequentialAgent
 
-from hephae_capabilities.social.media_auditor.agent import (
+from hephae_agents.social.media_auditor.agent import (
     social_researcher_agent,
     social_strategist_agent,
 )

@@ -2,7 +2,7 @@
   "name": "hephae-forge",
   "private": true,
   "workspaces": [
-    "packages/common-ts",
+    "lib/common-ts",
     "apps/web",
     "apps/admin"
   ]

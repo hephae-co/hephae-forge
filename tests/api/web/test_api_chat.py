@@ -19,8 +19,8 @@ MOCK_USER = {"uid": "user-chat-1", "email": "chatter@example.com", "name": "Chat
 @pytest_asyncio.fixture
 async def authed_client():
     """Client with authenticated user."""
-    from backend.main import app
-    from backend.lib.auth import optional_firebase_user
+    from hephae_api.main import app
+    from hephae_api.lib.auth import optional_firebase_user
 
     app.dependency_overrides[optional_firebase_user] = lambda: MOCK_USER
 
@@ -34,8 +34,8 @@ async def authed_client():
 @pytest_asyncio.fixture
 async def guest_client():
     """Client with no auth (guest mode)."""
-    from backend.main import app
-    from backend.lib.auth import optional_firebase_user
+    from hephae_api.main import app
+    from hephae_api.lib.auth import optional_firebase_user
 
     app.dependency_overrides[optional_firebase_user] = lambda: None
 
@@ -82,8 +82,8 @@ class TestChatAuth:
         mock_session.id = "session-abc"
 
         with (
-            patch("backend.routers.web.chat._session_service") as mock_svc,
-            patch("backend.routers.web.chat.Runner") as MockRunner,
+            patch("hephae_api.routers.web.chat._session_service") as mock_svc,
+            patch("hephae_api.routers.web.chat.Runner") as MockRunner,
         ):
             mock_svc.get_session = AsyncMock(return_value=None)
             mock_svc.create_session = AsyncMock(return_value=mock_session)
@@ -106,8 +106,8 @@ class TestChatAuth:
         mock_session.id = "session-guest"
 
         with (
-            patch("backend.routers.web.chat._session_service") as mock_svc,
-            patch("backend.routers.web.chat.Runner") as MockRunner,
+            patch("hephae_api.routers.web.chat._session_service") as mock_svc,
+            patch("hephae_api.routers.web.chat.Runner") as MockRunner,
         ):
             mock_svc.get_session = AsyncMock(return_value=None)
             mock_svc.create_session = AsyncMock(return_value=mock_session)
@@ -137,8 +137,8 @@ class TestChatSession:
         mock_session.id = "new-session-123"
 
         with (
-            patch("backend.routers.web.chat._session_service") as mock_svc,
-            patch("backend.routers.web.chat.Runner") as MockRunner,
+            patch("hephae_api.routers.web.chat._session_service") as mock_svc,
+            patch("hephae_api.routers.web.chat.Runner") as MockRunner,
         ):
             mock_svc.get_session = AsyncMock(return_value=None)
             mock_svc.create_session = AsyncMock(return_value=mock_session)
@@ -158,8 +158,8 @@ class TestChatSession:
         existing_session.id = "existing-sess-456"
 
         with (
-            patch("backend.routers.web.chat._session_service") as mock_svc,
-            patch("backend.routers.web.chat.Runner") as MockRunner,
+            patch("hephae_api.routers.web.chat._session_service") as mock_svc,
+            patch("hephae_api.routers.web.chat.Runner") as MockRunner,
         ):
             mock_svc.get_session = AsyncMock(return_value=existing_session)
             MockRunner.return_value.run_async = _mock_runner_events()
@@ -182,8 +182,8 @@ class TestChatSession:
         mock_session.id = "sess-for-guest"
 
         with (
-            patch("backend.routers.web.chat._session_service") as mock_svc,
-            patch("backend.routers.web.chat.Runner") as MockRunner,
+            patch("hephae_api.routers.web.chat._session_service") as mock_svc,
+            patch("hephae_api.routers.web.chat.Runner") as MockRunner,
         ):
             mock_svc.get_session = AsyncMock(return_value=None)
             mock_svc.create_session = AsyncMock(return_value=mock_session)

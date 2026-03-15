@@ -24,8 +24,8 @@ MOCK_USER = {
 
 @pytest_asyncio.fixture
 async def client():
-    from backend.main import app
-    from backend.lib.auth import verify_firebase_token
+    from hephae_api.main import app
+    from hephae_api.lib.auth import verify_firebase_token
 
     app.dependency_overrides[verify_firebase_token] = lambda: MOCK_USER
 
@@ -39,7 +39,7 @@ async def client():
 @pytest_asyncio.fixture
 async def unauthed_client():
     """Client with NO auth override — real verify_firebase_token will reject."""
-    from backend.main import app
+    from hephae_api.main import app
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -66,7 +66,7 @@ class TestAuthMe:
         }
 
         with patch(
-            "backend.routers.web.auth.get_or_create_user",
+            "hephae_api.routers.web.auth.get_or_create_user",
             new_callable=AsyncMock,
             return_value=user_doc,
         ) as mock_create:
@@ -101,7 +101,7 @@ class TestAuthMe:
         }
 
         with patch(
-            "backend.routers.web.auth.get_or_create_user",
+            "hephae_api.routers.web.auth.get_or_create_user",
             new_callable=AsyncMock,
             return_value=user_doc,
         ):
@@ -121,7 +121,7 @@ class TestAuthMe:
         }
 
         with patch(
-            "backend.routers.web.auth.get_or_create_user",
+            "hephae_api.routers.web.auth.get_or_create_user",
             new_callable=AsyncMock,
             return_value=user_doc,
         ):
@@ -143,7 +143,7 @@ class TestAuthMe:
     async def test_returns_500_on_firestore_failure(self, client):
         """If get_or_create_user raises, endpoint should return 500."""
         with patch(
-            "backend.routers.web.auth.get_or_create_user",
+            "hephae_api.routers.web.auth.get_or_create_user",
             new_callable=AsyncMock,
             side_effect=Exception("Firestore connection failed"),
         ):

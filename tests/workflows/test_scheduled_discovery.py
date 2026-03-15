@@ -18,7 +18,7 @@ class TestBuildProfileSummary:
     """_build_profile_summary creates readable text from identity dict."""
 
     def _summary(self, identity: dict) -> str:
-        from backend.workflows.scheduled_discovery.quality_gate import _build_profile_summary
+        from hephae_api.workflows.scheduled_discovery.quality_gate import _build_profile_summary
         return _build_profile_summary(identity)
 
     def test_includes_name(self):
@@ -58,7 +58,7 @@ class TestQualityGateTool:
     """The qualify() FunctionTool captures the agent's decision."""
 
     def _make_tool(self):
-        from backend.workflows.scheduled_discovery.quality_gate import _make_qualify_tool
+        from hephae_api.workflows.scheduled_discovery.quality_gate import _make_qualify_tool
         container = []
         tool = _make_qualify_tool(container)
         return tool, container
@@ -88,8 +88,8 @@ class TestRunQualityGate:
     async def test_returns_qualified_result_from_tool(self):
         expected = {"qualified": True, "reason": "Independent business with email"}
 
-        with patch("backend.workflows.scheduled_discovery.quality_gate.Runner") as MockRunner, \
-             patch("backend.workflows.scheduled_discovery.quality_gate.InMemorySessionService") as MockSS:
+        with patch("hephae_api.workflows.scheduled_discovery.quality_gate.Runner") as MockRunner, \
+             patch("hephae_api.workflows.scheduled_discovery.quality_gate.InMemorySessionService") as MockSS:
             mock_runner = MagicMock()
 
             async def _gen(*a, **kw):
@@ -106,9 +106,9 @@ class TestRunQualityGate:
                 container.append(expected)
                 return MagicMock()
 
-            with patch("backend.workflows.scheduled_discovery.quality_gate._make_qualify_tool",
+            with patch("hephae_api.workflows.scheduled_discovery.quality_gate._make_qualify_tool",
                        side_effect=_fake_make_tool):
-                from backend.workflows.scheduled_discovery.quality_gate import run_quality_gate
+                from hephae_api.workflows.scheduled_discovery.quality_gate import run_quality_gate
                 result = await run_quality_gate({"name": "Test Biz", "email": "a@b.com"})
 
         assert result["qualified"] is True
@@ -117,8 +117,8 @@ class TestRunQualityGate:
     @pytest.mark.asyncio
     async def test_fails_open_on_agent_exception(self):
         """If ADK runner raises, returns qualified=True (don't lose data)."""
-        with patch("backend.workflows.scheduled_discovery.quality_gate.Runner") as MockRunner, \
-             patch("backend.workflows.scheduled_discovery.quality_gate.InMemorySessionService") as MockSS:
+        with patch("hephae_api.workflows.scheduled_discovery.quality_gate.Runner") as MockRunner, \
+             patch("hephae_api.workflows.scheduled_discovery.quality_gate.InMemorySessionService") as MockSS:
             mock_runner = MagicMock()
 
             async def _error(*a, **kw):
@@ -131,7 +131,7 @@ class TestRunQualityGate:
             mock_ss.create_session = AsyncMock()
             MockSS.return_value = mock_ss
 
-            from backend.workflows.scheduled_discovery.quality_gate import run_quality_gate
+            from hephae_api.workflows.scheduled_discovery.quality_gate import run_quality_gate
             result = await run_quality_gate({"name": "Biz"})
 
         assert result["qualified"] is True
@@ -139,8 +139,8 @@ class TestRunQualityGate:
     @pytest.mark.asyncio
     async def test_fails_open_when_no_tool_call(self):
         """If agent runs but never calls qualify(), returns qualified=True."""
-        with patch("backend.workflows.scheduled_discovery.quality_gate.Runner") as MockRunner, \
-             patch("backend.workflows.scheduled_discovery.quality_gate.InMemorySessionService") as MockSS:
+        with patch("hephae_api.workflows.scheduled_discovery.quality_gate.Runner") as MockRunner, \
+             patch("hephae_api.workflows.scheduled_discovery.quality_gate.InMemorySessionService") as MockSS:
             mock_runner = MagicMock()
 
             async def _empty(*a, **kw):
@@ -153,7 +153,7 @@ class TestRunQualityGate:
             mock_ss.create_session = AsyncMock()
             MockSS.return_value = mock_ss
 
-            from backend.workflows.scheduled_discovery.quality_gate import run_quality_gate
+            from hephae_api.workflows.scheduled_discovery.quality_gate import run_quality_gate
             result = await run_quality_gate({"name": "Biz"})
 
         assert result["qualified"] is True
@@ -170,7 +170,7 @@ class TestFreshnessCheck:
 
     def _check(self, biz: dict, settings_override: dict | None = None) -> bool:
         """Returns True if the business SHOULD be skipped (is fresh)."""
-        from backend.workflows.scheduled_discovery.config import JobSettings
+        from hephae_api.workflows.scheduled_discovery.config import JobSettings
         settings = JobSettings(**(settings_override or {}))
 
         # Replicate the orchestrator freshness logic
@@ -207,14 +207,14 @@ class TestFreshnessCheck:
 
 class TestJobSettings:
     def test_defaults_are_conservative(self):
-        from backend.workflows.scheduled_discovery.config import JobSettings
+        from hephae_api.workflows.scheduled_discovery.config import JobSettings
         s = JobSettings()
         assert s.freshnessDiscoveryDays == 30
         assert s.freshnessAnalysisDays == 7
         assert s.rateLimitSeconds == 3
 
     def test_custom_values_accepted(self):
-        from backend.workflows.scheduled_discovery.config import JobSettings
+        from hephae_api.workflows.scheduled_discovery.config import JobSettings
         s = JobSettings(freshnessDiscoveryDays=7, freshnessAnalysisDays=1, rateLimitSeconds=0)
         assert s.freshnessDiscoveryDays == 7
         assert s.rateLimitSeconds == 0
@@ -222,12 +222,12 @@ class TestJobSettings:
 
 class TestDiscoveryTarget:
     def test_zip_only(self):
-        from backend.workflows.scheduled_discovery.config import DiscoveryTarget
+        from hephae_api.workflows.scheduled_discovery.config import DiscoveryTarget
         t = DiscoveryTarget(zipCode="07110")
         assert t.zipCode == "07110"
         assert t.businessTypes == []
 
     def test_with_business_types(self):
-        from backend.workflows.scheduled_discovery.config import DiscoveryTarget
+        from hephae_api.workflows.scheduled_discovery.config import DiscoveryTarget
         t = DiscoveryTarget(zipCode="10001", businessTypes=["restaurant", "bar"])
         assert t.businessTypes == ["restaurant", "bar"]

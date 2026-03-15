@@ -16,7 +16,7 @@ import re
 
 import pytest
 
-from hephae_capabilities.discovery.locator import LocatorAgent
+from hephae_agents.discovery.locator import LocatorAgent
 from tests.integration.businesses import BUSINESSES, GroundTruth
 from tests.integration.conftest import build_enriched_profile
 from hephae_common.adk_helpers import user_msg

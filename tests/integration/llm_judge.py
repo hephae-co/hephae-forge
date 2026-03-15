@@ -21,7 +21,7 @@ import os
 from google import genai
 from google.genai import types
 
-from backend.config import AgentModels
+from hephae_api.config import AgentModels
 from tests.integration.businesses import GroundTruth
 
 logger = logging.getLogger(__name__)

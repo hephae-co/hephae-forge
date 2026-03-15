@@ -8,7 +8,7 @@ This is the internal admin dashboard UI. It proxies all `/api/*` requests to the
 
 - **Next.js 14.1** frontend only — no Python backend here
 - All API calls proxy to the unified API service (`apps/api/`)
-- Workflow engine, agents, and orchestrators are in `apps/api/backend/workflows/`
+- Workflow engine, agents, and orchestrators are in `apps/api/hephae_api/workflows/`
 
 ## Commands
 
@@ -27,7 +27,7 @@ npm run test:e2e                    # Playwright E2E tests
 
 ## Multi-Agent Pipeline (5 workflow phases)
 
-All phases run in the unified API (`apps/api/backend/workflows/`):
+All phases run in the unified API (`apps/api/hephae_api/workflows/`):
 
 1. **Discovery** — Scans zip codes for businesses (direct runner call)
 2. **Enrichment** — Gets full profiles (direct runner call)

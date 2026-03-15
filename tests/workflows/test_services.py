@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 try:
-    from backend.services.firestore_service import FirestoreService
-    from backend.services.bigquery_service import BigQueryService
+    from hephae_api.services.firestore_service import FirestoreService
+    from hephae_api.services.bigquery_service import BigQueryService
 except ImportError:
     pytest.skip("Module removed during refactor", allow_module_level=True)
 

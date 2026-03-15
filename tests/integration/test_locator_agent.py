@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from hephae_capabilities.discovery.locator import LocatorAgent
+from hephae_agents.discovery.locator import LocatorAgent
 from tests.integration.businesses import BUSINESSES, GroundTruth
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]

@@ -7,7 +7,7 @@ from unittest.mock import patch, AsyncMock, MagicMock
 
 from fastapi.testclient import TestClient
 
-from backend.types import DiscoveredBusiness
+from hephae_api.types import DiscoveredBusiness
 
 _PAGINATED_RESPONSE = {
     "businesses": [{"name": "Test Biz", "zipCode": "07110", "id": "test-biz"}],
@@ -30,8 +30,8 @@ def client():
             sys.modules[mod_name] = _mocks[mod_name]
 
     with patch("hephae_common.firebase.get_db"):
-        from backend.main import app
-        from backend.lib.auth import verify_admin_request
+        from hephae_api.main import app
+        from hephae_api.lib.auth import verify_admin_request
         app.dependency_overrides[verify_admin_request] = lambda: {"uid": "test-admin", "email": "admin@test.com"}
         yield TestClient(app)
         app.dependency_overrides.pop(verify_admin_request, None)
@@ -47,7 +47,7 @@ class TestDiscoverBusinesses:
             DiscoveredBusiness(name="Burger Barn", address="456 Oak Ave", docId="burger-barn"),
         ]
         with patch(
-            "backend.routers.admin.research_businesses.scan_zipcode",
+            "hephae_api.routers.admin.research_businesses.scan_zipcode",
             new_callable=AsyncMock,
             return_value=mock_businesses,
         ):
@@ -61,7 +61,7 @@ class TestDiscoverBusinesses:
 
     def test_discover_returns_count_field(self, client):
         with patch(
-            "backend.routers.admin.research_businesses.scan_zipcode",
+            "hephae_api.routers.admin.research_businesses.scan_zipcode",
             new_callable=AsyncMock,
             return_value=[],
         ):
@@ -84,7 +84,7 @@ class TestGetBusinesses:
 
     def test_get_businesses_with_zipcode(self, client):
         with patch(
-            "backend.routers.admin.research_businesses.get_businesses_paginated",
+            "hephae_api.routers.admin.research_businesses.get_businesses_paginated",
             new_callable=AsyncMock,
             return_value=_PAGINATED_RESPONSE,
         ):
@@ -102,7 +102,7 @@ class TestGetBusinesses:
     def test_get_businesses_pagination_params_forwarded(self, client):
         """page and pageSize are forwarded to the DB function."""
         mock_fn = AsyncMock(return_value={**_PAGINATED_RESPONSE, "page": 2, "total": 50})
-        with patch("backend.routers.admin.research_businesses.get_businesses_paginated", mock_fn):
+        with patch("hephae_api.routers.admin.research_businesses.get_businesses_paginated", mock_fn):
             response = client.get("/api/research/businesses?zipCode=07110&page=2&pageSize=10")
 
         assert response.status_code == 200
@@ -114,7 +114,7 @@ class TestGetBusinesses:
     def test_get_businesses_filter_params_forwarded(self, client):
         """category, status, hasEmail filters are forwarded."""
         mock_fn = AsyncMock(return_value=_PAGINATED_RESPONSE)
-        with patch("backend.routers.admin.research_businesses.get_businesses_paginated", mock_fn):
+        with patch("hephae_api.routers.admin.research_businesses.get_businesses_paginated", mock_fn):
             response = client.get(
                 "/api/research/businesses?zipCode=07110&category=restaurant&status=analyzed&hasEmail=true"
             )
@@ -128,19 +128,19 @@ class TestGetBusinesses:
     def test_get_businesses_no_zipcode_returns_200(self, client):
         """zipCode is now optional — returns 200 with empty results."""
         mock_fn = AsyncMock(return_value=_PAGINATED_RESPONSE)
-        with patch("backend.routers.admin.research_businesses.get_businesses_paginated", mock_fn):
+        with patch("hephae_api.routers.admin.research_businesses.get_businesses_paginated", mock_fn):
             assert client.get("/api/research/businesses").status_code == 200
 
     def test_page_must_be_positive(self, client):
         with patch(
-            "backend.routers.admin.research_businesses.get_businesses_paginated",
+            "hephae_api.routers.admin.research_businesses.get_businesses_paginated",
             new_callable=AsyncMock, return_value=_PAGINATED_RESPONSE,
         ):
             assert client.get("/api/research/businesses?zipCode=07110&page=0").status_code == 422
 
     def test_page_size_max_100(self, client):
         with patch(
-            "backend.routers.admin.research_businesses.get_businesses_paginated",
+            "hephae_api.routers.admin.research_businesses.get_businesses_paginated",
             new_callable=AsyncMock, return_value=_PAGINATED_RESPONSE,
         ):
             assert client.get("/api/research/businesses?zipCode=07110&pageSize=200").status_code == 422
@@ -151,7 +151,7 @@ class TestDeleteBusiness:
 
     def test_delete_business(self, client):
         with patch(
-            "backend.routers.admin.research_businesses.delete_business",
+            "hephae_api.routers.admin.research_businesses.delete_business",
             new_callable=AsyncMock,
         ):
             response = client.delete("/api/research/businesses?id=test-biz")
@@ -184,9 +184,9 @@ class TestRunReviewerAction:
         mock_db = MagicMock()
         mock_db.collection.return_value.document.return_value.update = MagicMock()
 
-        with patch("backend.routers.admin.research_businesses.get_business",
+        with patch("hephae_api.routers.admin.research_businesses.get_business",
                    new_callable=AsyncMock, return_value=mock_biz), \
-             patch("backend.workflows.agents.reviewer.runner.run_reviewer",
+             patch("hephae_agents.reviewer.runner.run_reviewer",
                    new_callable=AsyncMock, return_value=mock_result), \
              patch("hephae_common.firebase.get_db", return_value=mock_db), \
              patch("asyncio.to_thread", new_callable=AsyncMock):
@@ -201,7 +201,7 @@ class TestRunReviewerAction:
         assert data["result"]["outreach_score"] == 8
 
     def test_run_reviewer_business_not_found(self, client):
-        with patch("backend.routers.admin.research_businesses.get_business",
+        with patch("hephae_api.routers.admin.research_businesses.get_business",
                    new_callable=AsyncMock, return_value=None):
             response = client.post(
                 "/api/research/actions",
@@ -212,9 +212,9 @@ class TestRunReviewerAction:
     def test_run_reviewer_agent_returns_none(self, client):
         """When reviewer returns None, endpoint returns success=False."""
         mock_biz = {"id": "biz", "name": "Biz", "identity": {}, "latestOutputs": {}}
-        with patch("backend.routers.admin.research_businesses.get_business",
+        with patch("hephae_api.routers.admin.research_businesses.get_business",
                    new_callable=AsyncMock, return_value=mock_biz), \
-             patch("backend.workflows.agents.reviewer.runner.run_reviewer",
+             patch("hephae_agents.reviewer.runner.run_reviewer",
                    new_callable=AsyncMock, return_value=None):
             response = client.post(
                 "/api/research/actions",
@@ -243,11 +243,11 @@ class TestGenerateOutreachContent:
             "email": {"subject": "Email subject", "body": "Email body"},
             "contactForm": {"message": "Contact form message"},
         }
-        with patch("backend.routers.admin.research_businesses.get_business",
+        with patch("hephae_api.routers.admin.research_businesses.get_business",
                    new_callable=AsyncMock, return_value=mock_biz), \
-             patch("hephae_capabilities.social.post_generator.runner.run_social_post_generation",
+             patch("hephae_agents.social.post_generator.runner.run_social_post_generation",
                    new_callable=AsyncMock, return_value=mock_content), \
-             patch("backend.routers.admin.research_businesses.get_db") as mock_get_db:
+             patch("hephae_api.routers.admin.research_businesses.get_db") as mock_get_db:
             mock_db = MagicMock()
             mock_get_db.return_value = mock_db
             mock_db.collection.return_value.document.return_value.update = MagicMock()
@@ -267,7 +267,7 @@ class TestGenerateOutreachContent:
 
     def test_generate_outreach_content_business_not_found(self, client):
         """Should return 404 if business doesn't exist."""
-        with patch("backend.routers.admin.research_businesses.get_business",
+        with patch("hephae_api.routers.admin.research_businesses.get_business",
                    new_callable=AsyncMock, return_value=None):
             response = client.post(
                 "/api/research/actions",
@@ -291,11 +291,11 @@ class TestGenerateOutreachContent:
             "email": {"subject": "subj", "body": "body"},
             "contactForm": {"message": "msg"},
         }
-        with patch("backend.routers.admin.research_businesses.get_business",
+        with patch("hephae_api.routers.admin.research_businesses.get_business",
                    new_callable=AsyncMock, return_value=mock_biz), \
-             patch("hephae_capabilities.social.post_generator.runner.run_social_post_generation",
+             patch("hephae_agents.social.post_generator.runner.run_social_post_generation",
                    new_callable=AsyncMock, return_value=mock_content) as mock_runner, \
-             patch("backend.routers.admin.research_businesses.get_db"):
+             patch("hephae_api.routers.admin.research_businesses.get_db"):
             response = client.post(
                 "/api/research/actions",
                 json={"action": "generate-outreach-content", "businessId": "biz1"},
@@ -328,11 +328,11 @@ class TestGenerateOutreachContent:
             "email": {"subject": "subj", "body": "body"},
             "contactForm": {"message": "msg"},
         }
-        with patch("backend.routers.admin.research_businesses.get_business",
+        with patch("hephae_api.routers.admin.research_businesses.get_business",
                    new_callable=AsyncMock, return_value=mock_biz), \
-             patch("hephae_capabilities.social.post_generator.runner.run_social_post_generation",
+             patch("hephae_agents.social.post_generator.runner.run_social_post_generation",
                    new_callable=AsyncMock, return_value=mock_content) as mock_runner, \
-             patch("backend.routers.admin.research_businesses.get_db"):
+             patch("hephae_api.routers.admin.research_businesses.get_db"):
             response = client.post(
                 "/api/research/actions",
                 json={"action": "generate-outreach-content", "businessId": "biz1"},
@@ -349,7 +349,7 @@ class TestSaveOutreachDraft:
 
     def test_save_draft_twitter(self, client):
         """Save draft for twitter channel."""
-        with patch("backend.routers.admin.research_businesses.get_db") as mock_get_db, \
+        with patch("hephae_api.routers.admin.research_businesses.get_db") as mock_get_db, \
              patch("hephae_db.firestore.fixtures.save_fixture_from_business",
                    new_callable=AsyncMock) as mock_save_fixture:
             mock_db = MagicMock()
@@ -382,7 +382,7 @@ class TestSaveOutreachDraft:
 
     def test_save_draft_email_with_subject(self, client):
         """Save draft for email with subject line."""
-        with patch("backend.routers.admin.research_businesses.get_db") as mock_get_db, \
+        with patch("hephae_api.routers.admin.research_businesses.get_db") as mock_get_db, \
              patch("hephae_db.firestore.fixtures.save_fixture_from_business",
                    new_callable=AsyncMock):
             mock_db = MagicMock()
@@ -410,7 +410,7 @@ class TestSaveOutreachDraft:
 
     def test_save_draft_instagram(self, client):
         """Save draft for instagram channel."""
-        with patch("backend.routers.admin.research_businesses.get_db") as mock_get_db, \
+        with patch("hephae_api.routers.admin.research_businesses.get_db") as mock_get_db, \
              patch("hephae_db.firestore.fixtures.save_fixture_from_business",
                    new_callable=AsyncMock) as mock_save_fixture:
             mock_db = MagicMock()
@@ -437,7 +437,7 @@ class TestSaveOutreachDraft:
 
     def test_save_draft_contact_form(self, client):
         """Save draft for contact form channel."""
-        with patch("backend.routers.admin.research_businesses.get_db") as mock_get_db, \
+        with patch("hephae_api.routers.admin.research_businesses.get_db") as mock_get_db, \
              patch("hephae_db.firestore.fixtures.save_fixture_from_business",
                    new_callable=AsyncMock) as mock_save_fixture:
             mock_db = MagicMock()

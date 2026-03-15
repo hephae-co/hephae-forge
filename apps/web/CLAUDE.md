@@ -8,7 +8,7 @@ This is the customer-facing UI at hephae.co. It proxies all `/api/*` requests to
 
 - **Next.js 16** (React 19) frontend only — no Python backend here
 - All API calls proxy to the unified API service (`apps/api/`)
-- Backend logic, agents, and capabilities are in `apps/api/` and `packages/capabilities/`
+- Backend logic is in `apps/api/`, AI agents are in `agents/`
 
 ## Commands
 
@@ -31,4 +31,4 @@ npm run test                        # Vitest
 ## Deterministic Math Requirement
 
 - **Never** perform arithmetic for "Annual Profit Leakage" or "Margin %" in LLM prompts.
-- Extract variables into structured JSON, pipe to deterministic functions in `packages/capabilities/hephae_capabilities/math/`.
+- Extract variables into structured JSON, pipe to deterministic functions in `agents/hephae_agents/math/`.

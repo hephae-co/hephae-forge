@@ -18,7 +18,7 @@ from httpx import ASGITransport, AsyncClient
 @pytest_asyncio.fixture
 async def client():
     """Async test client that speaks directly to the FastAPI app."""
-    from backend.main import app
+    from hephae_api.main import app
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

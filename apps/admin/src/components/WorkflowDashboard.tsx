@@ -10,11 +10,12 @@ import {
     ChevronRight, ChevronDown, ThumbsUp, ThumbsDown, Send, RotateCcw, Trash2, MapPin, BookmarkPlus, FileText,
 } from 'lucide-react';
 
-const PHASE_STEPS: WorkflowPhase[] = ['discovery', 'analysis', 'evaluation', 'approval', 'outreach', 'completed'];
+const PHASE_STEPS: WorkflowPhase[] = ['discovery', 'qualification', 'analysis', 'evaluation', 'approval', 'outreach', 'completed'];
 
 function phaseLabel(phase: WorkflowPhase): string {
     const labels: Record<WorkflowPhase, string> = {
         discovery: 'Discovery',
+        qualification: 'Qualification',
         analysis: 'Analysis',
         evaluation: 'Evaluation',
         approval: 'Approval',

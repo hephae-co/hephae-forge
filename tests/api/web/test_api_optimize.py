@@ -16,13 +16,13 @@ from httpx import ASGITransport, AsyncClient
 async def client():
     """Fresh client with optimizer mocked."""
     with (
-        patch("backend.routers.web.optimize.run_optimizer", new_callable=AsyncMock, return_value={"status": "ok", "run_at": "2026-03-03T00:00:00Z", "duration_seconds": 1.0}),
-        patch("backend.routers.web.optimize._run_prompt_optimizer", new_callable=AsyncMock, return_value={"status": "ok"}),
-        patch("backend.routers.web.optimize._run_ai_cost_optimizer", new_callable=AsyncMock, return_value={"status": "ok"}),
-        patch("backend.routers.web.optimize._run_cloud_cost_optimizer", new_callable=AsyncMock, return_value={"status": "ok"}),
-        patch("backend.routers.web.optimize._run_performance_optimizer", new_callable=AsyncMock, return_value={"status": "ok"}),
+        patch("hephae_api.routers.web.optimize.run_optimizer", new_callable=AsyncMock, return_value={"status": "ok", "run_at": "2026-03-03T00:00:00Z", "duration_seconds": 1.0}),
+        patch("hephae_api.routers.web.optimize._run_prompt_optimizer", new_callable=AsyncMock, return_value={"status": "ok"}),
+        patch("hephae_api.routers.web.optimize._run_ai_cost_optimizer", new_callable=AsyncMock, return_value={"status": "ok"}),
+        patch("hephae_api.routers.web.optimize._run_cloud_cost_optimizer", new_callable=AsyncMock, return_value={"status": "ok"}),
+        patch("hephae_api.routers.web.optimize._run_performance_optimizer", new_callable=AsyncMock, return_value={"status": "ok"}),
     ):
-        from backend.main import app
+        from hephae_api.main import app
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             yield ac

@@ -14,7 +14,7 @@ interface WorkflowHistoryProps {
     stoppingId?: string | null;
 }
 
-const ACTIVE_PHASES: WorkflowPhase[] = ['discovery', 'analysis', 'evaluation', 'outreach'];
+const ACTIVE_PHASES: WorkflowPhase[] = ['discovery', 'qualification', 'analysis', 'evaluation', 'outreach'];
 
 function phaseBadge(phase: WorkflowPhase) {
     switch (phase) {

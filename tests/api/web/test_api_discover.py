@@ -120,13 +120,13 @@ async def client():
     mock_write_discovery = AsyncMock(return_value=None)
 
     with (
-        patch("backend.routers.web.discover.run_discovery", mock_run_discovery),
-        patch("backend.routers.web.discover.upload_report", new_callable=AsyncMock, return_value="https://storage.googleapis.com/test/profile.html"),
-        patch("backend.routers.web.discover.build_profile_report", return_value="<html>profile</html>"),
-        patch("backend.routers.web.discover.generate_slug", side_effect=lambda n: n.lower().replace(" ", "-")),
-        patch("backend.routers.web.discover.write_discovery", mock_write_discovery),
-        patch("backend.routers.web.discover.write_agent_result", mock_write_agent_result),
-        patch("backend.routers.web.discover._capture_menu", new_callable=AsyncMock, return_value=("", "")),
+        patch("hephae_api.routers.web.discover.run_discovery", mock_run_discovery),
+        patch("hephae_api.routers.web.discover.upload_report", new_callable=AsyncMock, return_value="https://storage.googleapis.com/test/profile.html"),
+        patch("hephae_api.routers.web.discover.build_profile_report", return_value="<html>profile</html>"),
+        patch("hephae_api.routers.web.discover.generate_slug", side_effect=lambda n: n.lower().replace(" ", "-")),
+        patch("hephae_api.routers.web.discover.write_discovery", mock_write_discovery),
+        patch("hephae_api.routers.web.discover.write_agent_result", mock_write_agent_result),
+        patch("hephae_api.routers.web.discover._capture_menu", new_callable=AsyncMock, return_value=("", "")),
     ):
         client_ctx = {
             "run_discovery": mock_run_discovery,
@@ -134,7 +134,7 @@ async def client():
             "write_discovery": mock_write_discovery,
         }
 
-        from backend.main import app
+        from hephae_api.main import app
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             ac._test_ctx = client_ctx  # type: ignore[attr-defined]
@@ -573,17 +573,17 @@ async def authed_client():
     mock_run_discovery = AsyncMock(return_value=_base_enriched())
 
     with (
-        patch("backend.routers.web.discover.run_discovery", mock_run_discovery),
-        patch("backend.routers.web.discover.upload_report", new_callable=AsyncMock, return_value="https://cdn.test/report.html"),
-        patch("backend.routers.web.discover.build_profile_report", return_value="<html/>"),
-        patch("backend.routers.web.discover.generate_slug", side_effect=lambda n: n.lower().replace(" ", "-")),
-        patch("backend.routers.web.discover.write_discovery", AsyncMock()),
-        patch("backend.routers.web.discover.write_agent_result", AsyncMock()),
-        patch("backend.routers.web.discover._capture_menu", new_callable=AsyncMock, return_value=("", "")),
+        patch("hephae_api.routers.web.discover.run_discovery", mock_run_discovery),
+        patch("hephae_api.routers.web.discover.upload_report", new_callable=AsyncMock, return_value="https://cdn.test/report.html"),
+        patch("hephae_api.routers.web.discover.build_profile_report", return_value="<html/>"),
+        patch("hephae_api.routers.web.discover.generate_slug", side_effect=lambda n: n.lower().replace(" ", "-")),
+        patch("hephae_api.routers.web.discover.write_discovery", AsyncMock()),
+        patch("hephae_api.routers.web.discover.write_agent_result", AsyncMock()),
+        patch("hephae_api.routers.web.discover._capture_menu", new_callable=AsyncMock, return_value=("", "")),
         patch("hephae_db.firestore.users.add_business_to_user") as mock_add_biz,
     ):
-        from backend.main import app
-        from backend.lib.auth import optional_firebase_user
+        from hephae_api.main import app
+        from hephae_api.lib.auth import optional_firebase_user
 
         app.dependency_overrides[optional_firebase_user] = lambda: MOCK_AUTH_USER
 
@@ -601,17 +601,17 @@ async def guest_discover_client():
     mock_run_discovery = AsyncMock(return_value=_base_enriched())
 
     with (
-        patch("backend.routers.web.discover.run_discovery", mock_run_discovery),
-        patch("backend.routers.web.discover.upload_report", new_callable=AsyncMock, return_value="https://cdn.test/report.html"),
-        patch("backend.routers.web.discover.build_profile_report", return_value="<html/>"),
-        patch("backend.routers.web.discover.generate_slug", side_effect=lambda n: n.lower().replace(" ", "-")),
-        patch("backend.routers.web.discover.write_discovery", AsyncMock()),
-        patch("backend.routers.web.discover.write_agent_result", AsyncMock()),
-        patch("backend.routers.web.discover._capture_menu", new_callable=AsyncMock, return_value=("", "")),
+        patch("hephae_api.routers.web.discover.run_discovery", mock_run_discovery),
+        patch("hephae_api.routers.web.discover.upload_report", new_callable=AsyncMock, return_value="https://cdn.test/report.html"),
+        patch("hephae_api.routers.web.discover.build_profile_report", return_value="<html/>"),
+        patch("hephae_api.routers.web.discover.generate_slug", side_effect=lambda n: n.lower().replace(" ", "-")),
+        patch("hephae_api.routers.web.discover.write_discovery", AsyncMock()),
+        patch("hephae_api.routers.web.discover.write_agent_result", AsyncMock()),
+        patch("hephae_api.routers.web.discover._capture_menu", new_callable=AsyncMock, return_value=("", "")),
         patch("hephae_db.firestore.users.add_business_to_user") as mock_add_biz,
     ):
-        from backend.main import app
-        from backend.lib.auth import optional_firebase_user
+        from hephae_api.main import app
+        from hephae_api.lib.auth import optional_firebase_user
 
         app.dependency_overrides[optional_firebase_user] = lambda: None
 

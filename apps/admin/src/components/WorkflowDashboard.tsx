@@ -8,6 +8,7 @@ import { CAPABILITY_DISPLAY_INFO } from '@/lib/capabilities/display';
 import {
     Rocket, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Loader2,
     ChevronRight, ChevronDown, ThumbsUp, ThumbsDown, Send, RotateCcw, Trash2, MapPin, BookmarkPlus, FileText,
+    Mail, ExternalLink, SkipForward, CheckSquare, Square, Minus,
 } from 'lucide-react';
 
 const PHASE_STEPS: WorkflowPhase[] = ['discovery', 'qualification', 'analysis', 'evaluation', 'approval', 'outreach', 'completed'];
@@ -77,6 +78,10 @@ export default function WorkflowDashboard() {
     const [expandedBiz, setExpandedBiz] = useState<string | null>(null);
     const [bizDetail, setBizDetail] = useState<Record<string, any>>({});
     const [bizDetailLoading, setBizDetailLoading] = useState<string | null>(null);
+    const [filterPhase, setFilterPhase] = useState<'all' | 'qualified' | 'parked' | 'analyzed' | 'passed_qa' | 'outreached'>('all');
+    const [selectedSlugs, setSelectedSlugs] = useState<Set<string>>(new Set());
+    const [outreachExpandedSlug, setOutreachExpandedSlug] = useState<string | null>(null);
+    const [batchAction, setBatchAction] = useState<string | null>(null);
 
     const eventSourceRef = useRef<EventSource | null>(null);
     const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -426,6 +431,10 @@ export default function WorkflowDashboard() {
         setSavedFixtures({});
         setResearch(null);
         setResearchOpen(false);
+        setFilterPhase('all');
+        setSelectedSlugs(new Set());
+        setOutreachExpandedSlug(null);
+        setBatchAction(null);
         await fetchWorkflow(id);
     };
 
@@ -624,32 +633,32 @@ export default function WorkflowDashboard() {
                         </div>
                     )}
 
-                    {/* Progress Stats */}
+                    {/* Progress Stats — clickable filters */}
                     <div className="p-4 border-b border-gray-200 grid grid-cols-6 gap-3" data-testid="progress-counters">
-                        <div className="text-center" data-testid="counter-discovered">
-                            <div className="text-2xl font-bold text-gray-800">{activeWorkflow.progress.totalBusinesses}</div>
-                            <div className="text-xs text-gray-500">Discovered</div>
-                        </div>
-                        <div className="text-center" data-testid="counter-qualified">
-                            <div className="text-2xl font-bold text-emerald-500">{activeWorkflow.progress.qualificationQualified ?? 0}</div>
-                            <div className="text-xs text-gray-500">Qualified</div>
-                        </div>
-                        <div className="text-center" data-testid="counter-parked">
-                            <div className="text-2xl font-bold text-amber-400">{activeWorkflow.progress.qualificationParked ?? 0}</div>
-                            <div className="text-xs text-gray-500">Parked</div>
-                        </div>
-                        <div className="text-center" data-testid="counter-analyzed">
-                            <div className="text-2xl font-bold text-blue-500">{activeWorkflow.progress.analysisComplete}</div>
-                            <div className="text-xs text-gray-500">Analyzed</div>
-                        </div>
-                        <div className="text-center" data-testid="counter-passed-qa">
-                            <div className="text-2xl font-bold text-green-500">{activeWorkflow.progress.qualityPassed}</div>
-                            <div className="text-xs text-gray-500">Passed QA</div>
-                        </div>
-                        <div className="text-center" data-testid="counter-outreached">
-                            <div className="text-2xl font-bold text-purple-500">{activeWorkflow.progress.outreachComplete}</div>
-                            <div className="text-xs text-gray-500">Outreached</div>
-                        </div>
+                        {([
+                            { key: 'all' as const, label: 'Discovered', value: activeWorkflow.progress.totalBusinesses, color: 'text-gray-800' },
+                            { key: 'qualified' as const, label: 'Qualified', value: activeWorkflow.progress.qualificationQualified ?? 0, color: 'text-emerald-500' },
+                            { key: 'parked' as const, label: 'Parked', value: activeWorkflow.progress.qualificationParked ?? 0, color: 'text-amber-400' },
+                            { key: 'analyzed' as const, label: 'Analyzed', value: activeWorkflow.progress.analysisComplete, color: 'text-blue-500' },
+                            { key: 'passed_qa' as const, label: 'Passed QA', value: activeWorkflow.progress.qualityPassed, color: 'text-green-500' },
+                            { key: 'outreached' as const, label: 'Outreached', value: activeWorkflow.progress.outreachComplete, color: 'text-purple-500' },
+                        ]).map(counter => (
+                            <button
+                                key={counter.key}
+                                onClick={() => setFilterPhase(prev => prev === counter.key ? 'all' : counter.key)}
+                                className={`text-center cursor-pointer rounded-lg py-1.5 transition-all ${
+                                    filterPhase === counter.key
+                                        ? 'bg-indigo-50 ring-2 ring-indigo-300'
+                                        : 'hover:bg-gray-50'
+                                }`}
+                                data-testid={`counter-${counter.key === 'all' ? 'discovered' : counter.key === 'passed_qa' ? 'passed-qa' : counter.key}`}
+                            >
+                                <div className={`text-2xl font-bold ${counter.color}`}>{counter.value}</div>
+                                <div className={`text-xs ${filterPhase === counter.key ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>
+                                    {counter.label}
+                                </div>
+                            </button>
+                        ))}
                     </div>
 
                     {/* Market Research */}
@@ -740,13 +749,157 @@ export default function WorkflowDashboard() {
                     ) : null}
 
                     {/* Business Cards */}
-                    {activeWorkflow.businesses && activeWorkflow.businesses.length > 0 && (
+                    {activeWorkflow.businesses && activeWorkflow.businesses.length > 0 && (() => {
+                        const filteredBusinesses = activeWorkflow.businesses.filter(biz => {
+                            switch (filterPhase) {
+                                case 'qualified': return !biz.lastError?.startsWith('Parked:');
+                                case 'parked': return !!biz.lastError?.startsWith('Parked:');
+                                case 'analyzed': return biz.phase === 'analysis_done' && biz.capabilitiesCompleted.length > 0;
+                                case 'passed_qa': return biz.qualityPassed === true;
+                                case 'outreached': return biz.phase === 'outreach_done';
+                                default: return true;
+                            }
+                        });
+                        const allFilteredSlugs = new Set(filteredBusinesses.map(b => b.slug));
+                        const allSelected = filteredBusinesses.length > 0 && filteredBusinesses.every(b => selectedSlugs.has(b.slug));
+                        const someSelected = filteredBusinesses.some(b => selectedSlugs.has(b.slug));
+
+                        return (
                         <div className="p-4 space-y-2">
-                            {activeWorkflow.businesses.map(biz => (
+                            {/* Batch Action Bar */}
+                            {selectedSlugs.size > 0 && (
+                                <div className="sticky top-0 z-10 bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-center gap-3 shadow-sm">
+                                    <span className="text-sm font-medium text-indigo-700">{selectedSlugs.size} selected</span>
+                                    <button
+                                        onClick={() => {
+                                            const next = new Set(selectedSlugs);
+                                            filteredBusinesses.forEach(b => next.add(b.slug));
+                                            setSelectedSlugs(next);
+                                        }}
+                                        className="text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors"
+                                    >
+                                        Select All
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedSlugs(new Set())}
+                                        className="text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors"
+                                    >
+                                        Deselect All
+                                    </button>
+                                    <div className="h-4 w-px bg-indigo-200" />
+                                    {activeWorkflow.phase === 'approval' && (
+                                        <button
+                                            onClick={async () => {
+                                                const batchApprovals: Record<string, 'approve'> = {};
+                                                selectedSlugs.forEach(slug => { batchApprovals[slug] = 'approve'; });
+                                                setApprovals(prev => ({ ...prev, ...batchApprovals }));
+                                                setBatchAction('outreach');
+                                                // Auto-submit
+                                                setIsApproving(true);
+                                                try {
+                                                    const merged = { ...approvals, ...batchApprovals };
+                                                    const res = await fetch(`/api/workflows/${activeWorkflow.id}/approve`, {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ approvals: merged }),
+                                                    });
+                                                    if (!res.ok) {
+                                                        const data = await res.json();
+                                                        throw new Error(data.error || 'Approval failed');
+                                                    }
+                                                    await fetchWorkflow(activeWorkflow.id);
+                                                    fetchWorkflows();
+                                                    setSelectedSlugs(new Set());
+                                                } catch (e: any) {
+                                                    setError(e.message);
+                                                } finally {
+                                                    setIsApproving(false);
+                                                    setBatchAction(null);
+                                                }
+                                            }}
+                                            disabled={isApproving}
+                                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-500 disabled:opacity-50 transition-colors font-medium"
+                                        >
+                                            {batchAction === 'outreach' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                                            Send Outreach
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={async () => {
+                                            setBatchAction('grounding');
+                                            for (const slug of Array.from(selectedSlugs)) {
+                                                await handleSaveFixture(slug, 'grounding');
+                                            }
+                                            setBatchAction(null);
+                                        }}
+                                        disabled={!!batchAction}
+                                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 disabled:opacity-50 transition-colors font-medium"
+                                    >
+                                        {batchAction === 'grounding' ? <Loader2 className="w-3 h-3 animate-spin" /> : <BookmarkPlus className="w-3 h-3" />}
+                                        Save as Grounding
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            setBatchAction('failure');
+                                            for (const slug of Array.from(selectedSlugs)) {
+                                                await handleSaveFixture(slug, 'failure_case');
+                                            }
+                                            setBatchAction(null);
+                                        }}
+                                        disabled={!!batchAction}
+                                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-50 transition-colors font-medium"
+                                    >
+                                        {batchAction === 'failure' ? <Loader2 className="w-3 h-3 animate-spin" /> : <BookmarkPlus className="w-3 h-3" />}
+                                        Save as Failure Case
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Select All / count header */}
+                            {filteredBusinesses.length > 0 && (
+                                <div className="flex items-center gap-2 px-1 pb-1">
+                                    <button
+                                        onClick={() => {
+                                            if (allSelected) {
+                                                const next = new Set(selectedSlugs);
+                                                filteredBusinesses.forEach(b => next.delete(b.slug));
+                                                setSelectedSlugs(next);
+                                            } else {
+                                                const next = new Set(selectedSlugs);
+                                                filteredBusinesses.forEach(b => next.add(b.slug));
+                                                setSelectedSlugs(next);
+                                            }
+                                        }}
+                                        className="text-gray-400 hover:text-indigo-600 transition-colors"
+                                        title={allSelected ? 'Deselect all' : 'Select all'}
+                                    >
+                                        {allSelected ? <CheckSquare className="w-4 h-4" /> : someSelected ? <Minus className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                                    </button>
+                                    <span className="text-xs text-gray-400">
+                                        {filteredBusinesses.length} business{filteredBusinesses.length !== 1 ? 'es' : ''}
+                                        {filterPhase !== 'all' && ` (${filterPhase.replace('_', ' ')})`}
+                                    </span>
+                                </div>
+                            )}
+
+                            {filteredBusinesses.map(biz => (
                                 <div key={biz.slug} data-testid={`business-card-${biz.slug}`} data-phase={biz.phase} className="bg-gray-50 rounded-lg border border-gray-200">
                                 <div className="flex items-center justify-between p-3">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedSlugs(prev => {
+                                                        const next = new Set(prev);
+                                                        next.has(biz.slug) ? next.delete(biz.slug) : next.add(biz.slug);
+                                                        return next;
+                                                    });
+                                                }}
+                                                className="text-gray-400 hover:text-indigo-600 transition-colors flex-shrink-0"
+                                            >
+                                                {selectedSlugs.has(biz.slug) ? <CheckSquare className="w-4 h-4 text-indigo-600" /> : <Square className="w-4 h-4" />}
+                                            </button>
                                             <button onClick={() => toggleBizDetail(biz.slug)} className="font-medium text-sm text-gray-800 hover:text-indigo-600 transition-colors text-left flex items-center gap-1">
                                                 {expandedBiz === biz.slug ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                                                 {biz.name}
@@ -795,7 +948,7 @@ export default function WorkflowDashboard() {
                                         </div>
                                     )}
 
-                                    {/* Phase badge / Approval toggle */}
+                                    {/* Phase badge / Outreach controls */}
                                     {activeWorkflow.phase === 'approval' && biz.phase === 'evaluation_done' ? (
                                         <div className="flex items-center gap-2">
                                             {!biz.qualityPassed && (
@@ -803,27 +956,33 @@ export default function WorkflowDashboard() {
                                                     Low QA
                                                 </span>
                                             )}
+                                            {approvals[biz.slug] === 'approve' && (
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-600 border border-green-200 flex items-center gap-0.5">
+                                                    <CheckCircle2 className="w-2.5 h-2.5" /> Outreach
+                                                </span>
+                                            )}
+                                            {approvals[biz.slug] === 'reject' && (
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-200 flex items-center gap-0.5">
+                                                    <XCircle className="w-2.5 h-2.5" /> Skipped
+                                                </span>
+                                            )}
                                             <button
-                                                onClick={() => setApprovals(prev => ({ ...prev, [biz.slug]: 'approve' }))}
-                                                className={`p-1.5 rounded transition-colors ${
-                                                    approvals[biz.slug] === 'approve'
-                                                        ? 'bg-green-600 text-white'
-                                                        : 'bg-gray-200 text-gray-500 hover:text-green-600'
+                                                onClick={() => setOutreachExpandedSlug(prev => prev === biz.slug ? null : biz.slug)}
+                                                className={`px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 ${
+                                                    outreachExpandedSlug === biz.slug
+                                                        ? 'bg-indigo-600 text-white'
+                                                        : 'bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100'
                                                 }`}
-                                                title="Approve for outreach"
                                             >
-                                                <ThumbsUp className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button
-                                                onClick={() => setApprovals(prev => ({ ...prev, [biz.slug]: 'reject' }))}
-                                                className={`p-1.5 rounded transition-colors ${
-                                                    approvals[biz.slug] === 'reject'
-                                                        ? 'bg-red-600 text-white'
-                                                        : 'bg-gray-200 text-gray-500 hover:text-red-600'
-                                                }`}
-                                                title="Reject"
-                                            >
-                                                <ThumbsDown className="w-3.5 h-3.5" />
+                                                {bizDetail[biz.slug]?.email ? (
+                                                    <><Mail className="w-3 h-3" /> Outreach</>
+                                                ) : bizDetail[biz.slug]?.contactFormUrl ? (
+                                                    <><ExternalLink className="w-3 h-3" /> Outreach</>
+                                                ) : bizDetail[biz.slug] ? (
+                                                    <><AlertTriangle className="w-3 h-3" /> No contact</>
+                                                ) : (
+                                                    <><Send className="w-3 h-3" /> Outreach</>
+                                                )}
                                             </button>
                                         </div>
                                     ) : (
@@ -871,6 +1030,71 @@ export default function WorkflowDashboard() {
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Outreach inline panel */}
+                                {outreachExpandedSlug === biz.slug && activeWorkflow.phase === 'approval' && (
+                                    <div className="border-t border-indigo-100 bg-indigo-50/50 px-4 py-3">
+                                        <div className="flex items-center gap-4 text-xs">
+                                            <div className="flex-1 space-y-1.5">
+                                                {bizDetail[biz.slug]?.email ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Mail className="w-3.5 h-3.5 text-indigo-500" />
+                                                        <span className="text-gray-600">Email:</span>
+                                                        <span className="font-medium text-gray-800">{bizDetail[biz.slug].email}</span>
+                                                    </div>
+                                                ) : bizDetail[biz.slug]?.contactFormUrl ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <ExternalLink className="w-3.5 h-3.5 text-indigo-500" />
+                                                        <span className="text-gray-600">Contact form:</span>
+                                                        <a href={bizDetail[biz.slug].contactFormUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-indigo-600 hover:underline truncate max-w-xs">
+                                                            {bizDetail[biz.slug].contactFormUrl}
+                                                        </a>
+                                                    </div>
+                                                ) : bizDetail[biz.slug] ? (
+                                                    <div className="flex items-center gap-1.5 text-amber-600">
+                                                        <AlertTriangle className="w-3.5 h-3.5" />
+                                                        No email or contact form found
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => toggleBizDetail(biz.slug)}
+                                                        className="text-indigo-600 hover:underline"
+                                                    >
+                                                        Load business details to see contact info
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setApprovals(prev => ({ ...prev, [biz.slug]: 'approve' }));
+                                                        setOutreachExpandedSlug(null);
+                                                    }}
+                                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                                                        approvals[biz.slug] === 'approve'
+                                                            ? 'bg-green-600 text-white'
+                                                            : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
+                                                    }`}
+                                                >
+                                                    <Send className="w-3 h-3" /> Send Outreach
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setApprovals(prev => ({ ...prev, [biz.slug]: 'reject' }));
+                                                        setOutreachExpandedSlug(null);
+                                                    }}
+                                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                                                        approvals[biz.slug] === 'reject'
+                                                            ? 'bg-red-600 text-white'
+                                                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                                    }`}
+                                                >
+                                                    <SkipForward className="w-3 h-3" /> Skip
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Expandable detail panel */}
                                 {expandedBiz === biz.slug && (
@@ -960,7 +1184,8 @@ export default function WorkflowDashboard() {
                                 </div>
                             ))}
                         </div>
-                    )}
+                        );
+                    })()}
 
                     {/* Action Buttons */}
                     <div className="p-4 border-t border-gray-200 flex items-center gap-3">
@@ -971,7 +1196,7 @@ export default function WorkflowDashboard() {
                                 className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all shadow-sm"
                             >
                                 {isApproving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                Submit Approvals
+                                Send All Outreach
                             </button>
                         )}
 
@@ -1071,7 +1296,7 @@ export default function WorkflowDashboard() {
                                 </span>
                             )}
                             <button
-                                onClick={() => { setActiveWorkflow(null); setApprovals({}); setResearch(null); setResearchOpen(false); setConfirmDeleteActive(false); setConfirmStop(false); }}
+                                onClick={() => { setActiveWorkflow(null); setApprovals({}); setResearch(null); setResearchOpen(false); setConfirmDeleteActive(false); setConfirmStop(false); setFilterPhase('all'); setSelectedSlugs(new Set()); setOutreachExpandedSlug(null); }}
                                 className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
                             >
                                 Close

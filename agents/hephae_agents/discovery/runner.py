@@ -210,6 +210,9 @@ async def run_discovery(
             "discoveryAborted": True,
             "discoveryAbortReason": f"Site does not match target business: {entity_match.get('reason', match_status)}",
         }
+    
+    if has_url and match_status == "BLOCKED":
+        logger.warning(f"[Discovery Runner] Site BLOCKED for {name}. Continuing with search-only discovery.")
 
     # --- Phase 2: Full research (entity match passed) ---
     logger.info(f"[Discovery Runner] Entity match passed ({match_status}). Running full research.")
@@ -235,6 +238,7 @@ async def run_discovery(
     theme_data = _safe_parse(state.get("themeData"))
     contact_data = _safe_parse(state.get("contactData"))
     social_data = _safe_parse(state.get("socialData"))
+    
     menu_data = _safe_parse(state.get("menuData"))
     social_profile_metrics = _safe_parse(state.get("socialProfileMetrics"))
     ai_overview = _safe_parse(state.get("aiOverview"))

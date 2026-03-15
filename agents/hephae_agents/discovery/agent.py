@@ -284,20 +284,6 @@ def _with_raw_data_and_menu_hints(base_instruction: str):
 # P2.1: Stage gating — skip agents if data already found in Stage 1
 # ---------------------------------------------------------------------------
 
-def _should_skip_contact(context) -> bool:
-    """Skip ContactAgent if deterministic extraction already found both email and phone."""
-    raw = getattr(context, "state", {}).get("rawSiteData", {})
-    det = {}
-    if isinstance(raw, dict):
-        det = raw.get("deterministicContact", {})
-    elif isinstance(raw, str):
-        try:
-            det = json.loads(raw).get("deterministicContact", {})
-        except (json.JSONDecodeError, ValueError):
-            pass
-    return bool(det.get("email") and det.get("phone"))
-
-
 def _should_skip_social(context) -> bool:
     """Skip SocialMediaAgent if crawl already found 3+ social links."""
     raw = getattr(context, "state", {}).get("rawSiteData", {})
@@ -339,15 +325,7 @@ def _gate_agent(agent: LlmAgent, skip_fn, output_key: str):
             # Populate from Stage 1 data so downstream still has it
             raw = getattr(context, "state", {}).get("rawSiteData", {})
             data = raw if isinstance(raw, dict) else {}
-            if output_key == "contactData":
-                det = data.get("deterministicContact", {})
-                logger.info("[StageGating] Skipping ContactAgent — deterministic data available")
-                # Return a minimal instruction that tells the agent to just output what we found
-                return (
-                    "The contact information was already extracted deterministically. "
-                    f"Return this JSON exactly: {json.dumps({'phone': det.get('phone'), 'email': det.get('email'), 'emailStatus': 'found' if det.get('email') else 'not_found', 'contactFormUrl': None, 'contactFormStatus': 'not_found'})}"
-                )
-            elif output_key == "socialData":
+            if output_key == "socialData":
                 sa = data.get("socialAnchors", {})
                 dp = data.get("deliveryPlatforms", {})
                 logger.info("[StageGating] Skipping SocialMediaAgent — crawl data sufficient")
@@ -372,7 +350,6 @@ contact_agent.instruction = _with_raw_data_and_contact_pages(CONTACT_AGENT_INSTR
 menu_agent.instruction = _with_raw_data_and_menu_hints(MENU_AGENT_INSTRUCTION)
 
 # Apply P2.1 stage gating
-_gate_agent(contact_agent, _should_skip_contact, "contactData")
 _gate_agent(social_media_agent, _should_skip_social, "socialData")
 _gate_agent(menu_agent, _should_skip_menu, "menuData")
 

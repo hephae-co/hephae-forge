@@ -58,6 +58,7 @@ async def enrich_business_profile(
 async def _find_website(name: str, address: str) -> str:
     """Try to find a business website using Google Search via ADK. Retries on 429."""
     import asyncio
+    print(f"[DEBUG] _find_website called for {name}")
 
     for attempt in range(2):
         try:
@@ -70,18 +71,17 @@ async def _find_website(name: str, address: str) -> str:
             agent = LlmAgent(
                 name="WebsiteFinder",
                 model=AgentModels.PRIMARY_MODEL,
-                instruction="""You are a business website finder. Your job is to find the official website URL for a local business.
+                instruction="""You are a business website finder. Find the official website URL for a local business.
 
-Search strategy — try MULTIPLE searches to maximize your chances:
-1. Search for the exact business name + city (e.g., "Queen Margherita Trattoria Nutley")
-2. Search for the business name + "official website" (e.g., "Sugar Tree Cafe official website")
-3. Search for the business name + "menu" or "hours" if it's a restaurant
+1. Use 'google_search' to find the business.
+2. Look for the most likely official domain (NOT yelp.com, facebook.com, etc. unless that is their ONLY presence).
+3. We prefer the business's own domain (e.g. bellalucenj.com).
 
-Look for the business's OWN domain (e.g., sugartreecafe.com, bellalucenj.com), NOT a Yelp/Facebook/TripAdvisor/Google Maps page.
-
-IMPORTANT: Many small businesses have websites. Try hard before giving up. If a business has a Facebook page, it likely has a website too.
-
-Return ONLY a JSON object: {"url": "https://example.com"} or {"url": ""} if truly not found.""",
+Return ONLY a JSON object:
+{
+  "url": "https://...",
+  "reasoning": "Why you chose this URL or why you couldn't find one"
+}""",
                 tools=[google_search],
                 on_model_error_callback=fallback_on_error,
             )

@@ -1,68 +1,120 @@
-# Debug Report: of0O9BLmx46z0sLDZ55C
-Generated: 2026-03-15T15:14:00Z
-Workflow Phase: approval (analysis + evaluation completed)
-Businesses: 34 total, 34 analysis done, 34 evaluation done, 0 quality passed, 34 quality failed
+# Debug Report: WgjhRth9tmBlQIQ2tmPt
+Generated: 2026-03-15T17:42:00Z
+Zip: 07110 (Nutley, NJ) | Type: Restaurants | Phase: analysis (active) | Duration: ~12 min
 
-## FINDING-1: Traffic Forecaster Ignores Weather Research Data [HIGH]
-- **Symptom:** All 11 qualified businesses have `traffic` evaluations flagged `isHallucinated=True` with scores 40-65 (below 80 threshold). This causes 100% quality failure rate — zero businesses pass evaluation.
-- **File:** `packages/capabilities/hephae_capabilities/traffic/runner.py` (agent prompt or context injection)
-- **Expected:** Traffic forecaster should incorporate `seasonal_weather` and `localContext` research from the identity context. The research explicitly warns of a "high-impact storm system on March 16th" and "significant temperature drop on March 17th". (Contract: `contracts/eval-standards.md` — evaluator checks factual grounding against provided context)
-- **Actual:** Traffic forecaster outputs "Standard conditions expected" / "Clear conditions expected" / "No significant weather disruptions" for March 16-17, directly contradicting the research data provided in its input context.
-- **Contract:** Evaluation Standards (CLAUDE.md § Evaluation Standards + `contracts/eval-standards.md`)
-- **Evidence:**
-  - MEAL eval: `score=40, isHallucinated=True` — "The forecast ignores the 'High-impact storm system' explicitly identified in the localContext"
-  - The Bosphorus eval: `score=60, isHallucinated=True` — "The 'weatherNote' claims 'Standard conditions expected' for dates where research documents adverse conditions"
-  - Cucina 355 eval: `score=40, isHallucinated=True` — "claiming 'Clear conditions expected'"
-  - Pattern identical across all 11 businesses
-- **Fix direction:** The traffic forecaster agent prompt must explicitly instruct the model to check and integrate `localContext.seasonal_weather` and `localContext.events` when generating weather notes and foot traffic impact assessments. The weather/event data is being passed in the identity but the agent is ignoring it.
-- **Impact:** 100% quality failure rate blocks entire workflow from reaching outreach. No businesses can be approved.
+## Workflow Summary
 
-## FINDING-2: capabilitiesCompleted Not Synced on insights_done or Terminal Status [MEDIUM]
-- **Symptom:** Some businesses show fewer capabilities completed in the workflow state than what the task metadata actually records. MEAL shows `['social', 'traffic']` but task has `['social', 'traffic', 'seo']`. Rocky's shows `['social', 'traffic']` but task has `['social', 'traffic', 'seo']`.
-- **File:** `apps/api/backend/workflows/phases/analysis.py:302-310`
-- **Expected:** The poller should sync `capabilitiesCompleted` from task metadata on every substep transition (or at least on `insights_done` and task completion), not only on `capability_done:` transitions.
-- **Actual:** The poller only syncs `capabilitiesCompleted` inside the `elif substep.startswith("capability_done:")` branch (line 302-307). If a `capability_done:` substep is overwritten by `insights_done` between 3-second polls (because capabilities run concurrently via `asyncio.gather`), the final capability's completion is never synced to the workflow state.
-- **Contract:** Workflow Phase Integrity — business state should accurately reflect task execution results
-- **Evidence:**
-  - MEAL: task metadata `capabilitiesCompleted=['social', 'traffic', 'seo']`, workflow state `capabilitiesCompleted=['social', 'traffic']` (seo missing)
-  - Rocky's: task metadata `capabilitiesCompleted=['social', 'traffic', 'seo']`, workflow state `capabilitiesCompleted=['social', 'traffic']` (seo missing)
-  - Root cause: capabilities run concurrently (`asyncio.gather` at tasks.py:332), each writes `capability_done:{name}` substep. The last capability_done can be overwritten by `insights_done` within the same poll interval.
-- **Fix direction:** Add `capabilitiesCompleted`/`capabilitiesFailed` sync to the `insights_done` substep handler (line 308-310) and to the terminal status handler (lines 325-333). Example:
-  ```python
-  elif substep == "insights_done":
-      biz.capabilitiesCompleted = meta.get("capabilitiesCompleted", [])
-      biz.capabilitiesFailed = meta.get("capabilitiesFailed", [])
-      # ... existing callback
-  ```
-  Also add the same sync in the `STATUS_COMPLETED` handler block.
-- **Impact:** Evaluation phase skips capabilities that were actually completed. For MEAL and Rocky's, SEO evaluation was skipped because SEO wasn't in `capabilitiesCompleted`, even though SEO results exist in the business document.
+| Metric | Value |
+|--------|-------|
+| Workflow ID | WgjhRth9tmBlQIQ2tmPt |
+| Zip Code / Business Type | 07110 / Restaurants |
+| Phase | analysis (active) |
+| Duration (created → last update) | ~12 min (17:29:11 → 17:41:39) |
+| Total Businesses | 15 |
+| Website Discovery Rate | 14 / 15 (93.3%) — massive improvement from prior 36.8% |
+| Contact Info Rate | 7 / 15 (46.7%) — 7 have phone/email from enrichment |
+| Social Link Rate | 6 / 15 (40%) — luna, oakley, ralph's, cucina, nutley-diner, pita-bowl from prior enrichment |
+| Competitor Rate | 6 / 15 (40%) — 6 have 3 competitors each |
+| Menu Rate | 6 / 15 (40%) — luna, oakley, ralph's, cucina, nutley-diner, rocky's |
+| Enrichment Null Rate | TBD — enrichment still in progress for 5 businesses |
+| Qualification Breakdown | 10 qualified, 5 parked (old-canal-inn, chris-and-angie-s, the-franklin, salumeria-regina, bgl) |
+| Dynamic Threshold Used | 30 (saturation=moderate, loaded from zip research) |
+| Retry Rate | 0 / 10 (0%) |
 
-## FINDING-3: BigQuery evaluation_feedback Table Does Not Exist [MEDIUM]
-- **Symptom:** Evaluation phase calls `record_evaluation_feedback()` which writes to `hephae.evaluation_feedback`, but this table doesn't exist in BigQuery.
-- **File:** `packages/db/hephae_db/bigquery/feedback.py` (table definition) and `infra/setup.sh` (table creation)
-- **Expected:** The `evaluation_feedback` table should be created during setup, per database contracts. (Contract: `contracts/bigquery-schema.md`)
-- **Actual:** BigQuery dataset `hephae` contains only `analyses` and `discoveries` tables. No `evaluation_feedback` table exists.
-- **Contract:** Database Rules (CLAUDE.md § Database Rules — historical data goes to BigQuery)
-- **Evidence:** `bq ls "hephae-co-dev:hephae"` shows only `analyses` and `discoveries` tables. Running `bq query` against `evaluation_feedback` returns `NOT_FOUND`.
-- **Fix direction:** Add the `evaluation_feedback` table creation to `infra/setup.sh` and verify the schema matches what `record_evaluation_feedback()` expects. Run the setup script to create the table.
-- **Impact:** All evaluation history is silently lost. Cannot audit or analyze evaluation patterns over time. The `asyncio.create_task` call at evaluation.py:65 silently fails.
+## Capability Coverage (10 qualified businesses, analysis in progress)
 
-## FINDING-4: Competitive Analysis Always Skipped — No Competitors Discovered [LOW]
-- **Symptom:** All 34 businesses have empty `competitors[]` arrays. The `competitive_analyzer` capability is skipped for every business because its `should_run` condition requires a non-empty competitors list.
-- **File:** `packages/capabilities/hephae_capabilities/discovery/runner.py` (competitor discovery) and `apps/api/backend/workflows/capabilities/registry.py` (should_run condition)
-- **Expected:** The discovery/enrichment pipeline should find competitors for businesses in the same zip code and business type. (Contract: capability registry — competitive_analyzer `should_run` checks `competitors` list)
-- **Actual:** After enrichment, no business has any competitors populated. Either the discovery agent isn't finding them or the PROMOTE_KEYS sync in analysis.py isn't propagating them correctly (note: `competitors` IS in `PROMOTE_KEYS` at analysis.py:38).
-- **Contract:** Capability Execution rules — capability should run when business has required data
-- **Evidence:** All 34 businesses: `competitors: []` in workflow state. Business docs also show `competitors count: 0`.
-- **Fix direction:** Investigate the discovery runner's competitor finding logic. Check if the competitor discovery sub-agent is producing results but they're not being persisted, or if it's failing silently.
-- **Impact:** Competitive analysis capability never runs. This is an entire analysis dimension missing from all reports, reducing the value of the pipeline output.
+| Capability | should_run | Completed | Failed | Skipped | Notes |
+|------------|-----------|-----------|--------|---------|-------|
+| SEO | needs officialUrl (10) | 5 | 0 | 0 | 5 still in progress |
+| Traffic | always (10) | 6 | 0 | 0 | 4 in progress |
+| Competitive | always (10) | 5 | 1 | 0 | sugar-tree-caf failed |
+| Margin Surgeon | menuScreenshotBase64 OR menuUrl (10) | 0 | 5 | 1 | **100% failure** |
+| Social | always (10) | 6 | 0 | 0 | 4 in progress |
 
-## FINDING-5: Margin Surgeon Always Skipped — No Menu Data [LOW]
-- **Symptom:** All 34 businesses have no `menuScreenshotBase64`. The `margin_surgeon` capability is skipped for every business.
-- **File:** `packages/capabilities/hephae_capabilities/discovery/runner.py` (menu discovery) and `apps/api/backend/workflows/capabilities/registry.py`
-- **Expected:** The discovery agent should find and capture menu data (screenshot or URL) during enrichment. The `menuUrl` field IS in PROMOTE_KEYS, and several businesses had URLs found by the menu discovery agent.
-- **Actual:** While `menuUrl` may be discovered, `menuScreenshotBase64` is never populated. The registry condition checks for `menuScreenshotBase64` specifically.
-- **Contract:** Capability Execution rules
-- **Evidence:** All 34 businesses: `menuScreenshotBase64` not present.
-- **Fix direction:** Either: (a) add a menu screenshot capture step to the enrichment pipeline that converts menuUrl to menuScreenshotBase64, or (b) update margin_surgeon's `should_run` condition to accept `menuUrl` as sufficient (the agent itself may support URL-based menu analysis with its PDF extraction flow).
-- **Impact:** Margin analysis never runs. Menu-based insights and leakage analysis unavailable for all businesses.
+## Cross-Reference Flags
+
+1. **sugar-tree-caf**: Business doc had url=MISSING before this workflow; now url=sugartreecafe.com (newly discovered by improved _find_website)
+2. **queen-margherita**: Business doc had url=MISSING before; now url=qmargherita.com (newly discovered)
+3. **bgl**: Has url=Y in workflow array but business doc still shows url=MISSING (enrichment pending or parked?)
+4. **Prior enrichment data preserved**: luna, oakley, ralph's, cucina, nutley-diner, rocky's all have full enrichment from prior workflow 8x5Idxzp
+
+## Improvements From Prior Workflow (8x5Idxzp)
+
+| Metric | Prior (8x5Idxzp) | Current (WgjhRth9) | Change |
+|--------|-------------------|---------------------|--------|
+| Website Discovery Rate | 7/19 (36.8%) | 14/15 (93.3%) | +56.5pp |
+| Research Context | None | Loaded (threshold=30) | Fixed |
+| Businesses Qualified | 7/19 (36.8%) | 10/15 (66.7%) | +29.9pp |
+| Enrichment Working | Yes | Yes | Stable |
+| Margin Surgeon | 100% skip | 100% fail | **Regressed** |
+
+---
+
+## PATTERN-1: Margin Surgeon 100% Failure [CRITICAL]
+
+- **Aggregate Signal:** 0 completions, 5 failures, 1 skip across all businesses with progress. No margin analysis produced.
+- **Category:** `capability_execution`
+- **Affected:** 10/10 qualified businesses (100%)
+- **Spot-Check Evidence:**
+  - luna-wood-fire-tavern: task completed with fail=['margin_surgeon'] — has menuUrl but no menuScreenshotBase64
+  - queen-margherita: task completed with fail=['margin_surgeon'] — same pattern
+  - sugar-tree-caf: task completed with skip=['margin_surgeon'] — only one that skipped instead of failing
+- **Cascade Impact:** Zero margin analysis for any business → no menu pricing insights, no margin optimization recommendations.
+- **Root Cause:** The `should_run` condition at `registry.py:207` was changed to: `lambda biz: bool(biz.get("menuScreenshotBase64") or biz.get("menuUrl"))`. This now returns True when `menuUrl` exists (which it does after enrichment), but the actual margin_surgeon runner likely still requires `menuScreenshotBase64` to function. The capability starts running and then crashes.
+- **File:** `apps/api/hephae_api/workflows/capabilities/registry.py:207` (should_run) and the margin_surgeon runner
+- **Fix Direction:** Either (a) update the margin_surgeon runner to accept `menuUrl` as input and fetch/screenshot the menu itself, or (b) revert should_run to only check `menuScreenshotBase64` until the runner supports URL-based input, or (c) add a menu screenshot step to enrichment that converts menuUrl → menuScreenshotBase64.
+
+## PATTERN-2: Full Probe NoneType Crash [HIGH]
+
+- **Aggregate Signal:** 3 out of 4 full probe attempts failed with `'NoneType' object has no attribute 'get'`. The 4th (BGL) timed out.
+- **Category:** `qualification_error`
+- **Affected:** 4 businesses in full probe (old-canal-inn, chris-and-angie-s-dinette, salumeria-regina, bgl)
+- **Spot-Check Evidence:**
+  - Old Canal Inn: Playwright crawled theoldcanalinn.com, extracted UI data (hasFavicon=True, primaryColor=#4f46e5), then probe FAILED with NoneType
+  - Salumeria Regina: Playwright timed out on salumeriareginanj.com (30s), then probe FAILED with NoneType
+  - BGL: Playwright timed out on thebgl.com (30s)
+- **Root Cause:** `scanner.py:375` calls `crawl_web_page(url)` which returns `None` when the crawl times out or fails. Line 380 then does `crawl_data.get("deterministicContact", {})` which crashes because `crawl_data` is `None`.
+- **File:** `agents/hephae_agents/qualification/scanner.py:375-380`
+- **Fix Direction:** Add a null check: `if not crawl_data: return partial_result` before line 380. This would gracefully fall back to the Step A result when crawling fails.
+
+## PATTERN-3: Overpass API Rate Limiting [MEDIUM]
+
+- **Aggregate Signal:** Overpass API returned HTTP 429 at 17:29:24 — 13 seconds into this workflow.
+- **Category:** `model_health`
+- **Affected:** Potential degradation of local context for all businesses
+- **Spot-Check Evidence:** Log: `HTTP Request: POST https://overpass-api.de/api/interpreter "HTTP/1.1 429 Too Many Requests"` — this is the 3rd occurrence across 3 workflows in the same hour.
+- **File:** Discovery agents using Overpass API
+- **Fix Direction:** Implement caching for Overpass queries by zip code (same data for same zip), or add retry with backoff.
+
+## PATTERN-4: Competitive Capability Failure for Sugar Tree [LOW]
+
+- **Aggregate Signal:** 1/6 competitive analyses failed (sugar-tree-caf).
+- **Category:** `capability_execution`
+- **Affected:** 1 business (sugar-tree-caf)
+- **Spot-Check Evidence:** sugar-tree-caf task: completed with fail=['competitive']. This is a newly discovered business (first time through the pipeline) — no prior competitive data.
+- **File:** `agents/hephae_agents/competitive_analysis/runner.py`
+- **Fix Direction:** Check if the competitive runner received valid competitors data. Sugar Tree Cafe had 0 competitors on its business doc, which may cause the competitive analyzer to fail rather than skip.
+
+## Qualification Audit
+
+### Dynamic Threshold
+- Research context: **Loaded** from zip 07110 research
+- Market saturation: moderate
+- Computed threshold: **30** (lower than default 40)
+- This is good — a lower threshold qualifies more businesses
+
+### Classification Breakdown
+- 10 qualified (66.7%) — includes 7 with prior enrichment + 3 newly discovered (sugar-tree-caf, queen-margherita, cowan-s-public)
+- 5 parked (33.3%):
+  - old-canal-inn: Had URL in workflow, Playwright crawled but full probe crashed (NoneType bug)
+  - chris-and-angie-s-dinette: Same — URL found, Playwright extracted data, probe crashed
+  - the-franklin-restaurant: No URL in workflow
+  - salumeria-regina: URL found, Playwright timed out, probe crashed
+  - bgl: URL found, Playwright timed out, probe crashed
+- **3 of 5 parked businesses were parked due to the full probe NoneType bug** — they had URLs and Playwright data but the probe crash caused them to fall back to Step A scores (below threshold 30)
+
+### Full Probe Impact
+- 4 businesses entered full probe
+- 0 successfully completed full probe (3 NoneType crash, 1 timeout)
+- At least 2 (old-canal-inn, chris-and-angie-s-dinette) had extractable data that could have upgraded their scores
+- **Fix the NoneType bug and these businesses likely qualify** — old-canal-inn had hasFavicon=True, primaryColor=#4f46e5, linkCount=24; chris-and-angie-s had hasLogo=True, hasFavicon=True, linkCount=39

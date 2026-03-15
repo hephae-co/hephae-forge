@@ -8,13 +8,12 @@ Port of src/agents/tools/googleSearchTool.ts.
 from __future__ import annotations
 
 import logging
-import os
 
-from google import genai
 from google.genai import types
 
 from hephae_common.model_config import AgentModels
 from hephae_common.model_fallback import generate_with_fallback
+from hephae_common.gemini_client import get_genai_client
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ async def google_search(query: str) -> dict:
     """
     try:
         logger.info(f"[GoogleSearchTool] Executing grounded query: {query}")
-        client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
+        client = get_genai_client()
         response = await generate_with_fallback(
             client,
             model=AgentModels.PRIMARY_MODEL,

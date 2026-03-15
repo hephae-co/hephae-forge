@@ -287,6 +287,16 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
         except Exception as e:
             logger.warning(f"[WorkflowAnalyze] Food pricing context error for {slug}: {e}")
 
+    # Step 2d: Context caching — cache business context for all capabilities to share
+    try:
+        from hephae_db.context.business_context import BusinessContext
+        from hephae_common.gemini_cache import get_or_create_cache
+        from hephae_common.model_config import AgentModels
+        biz_context = BusinessContext(slug=slug, identity=identity)
+        await get_or_create_cache(biz_context, AgentModels.PRIMARY_MODEL)
+    except Exception as e:
+        logger.debug(f"[WorkflowAnalyze] Context caching skipped for {slug}: {e}")
+
     # Step 3: Run capabilities
     enabled_capabilities = get_enabled_capabilities()
     official_url = (biz_data or {}).get("officialUrl") or identity.get("officialUrl")

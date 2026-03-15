@@ -92,7 +92,7 @@ class AgentVersions:
 
     # Analysis agents
     MARGIN_SURGEON = "1.1.0"  # MINOR: PDF extraction, menuNotFound flow, pre-discovered delivery URLs
-    SEO_AUDITOR = "1.0.1"
+    SEO_AUDITOR = "1.1.0"  # MINOR: switched to PRIMARY_MODEL + DEEP thinking
     TRAFFIC_FORECASTER = "1.0.0"
     COMPETITIVE_ANALYZER = "1.0.0"
 
@@ -100,11 +100,11 @@ class AgentVersions:
     MARKETING_SWARM = "1.0.0"
     SOCIAL_MEDIA_AUDITOR = "1.0.0"
     SOCIAL_POST_GENERATOR = "3.0.0"  # MAJOR: CDN report links + social card images, reports via cdn.hephae.co
-    BLOG_WRITER = "1.0.0"
+    BLOG_WRITER = "1.1.0"  # MINOR: switched to PRIMARY_MODEL + DEEP thinking
 
     # Research agents
-    LOCAL_CATALYST = "1.0.0"
-    DEMOGRAPHIC_EXPERT = "1.0.0"
+    LOCAL_CATALYST = "1.1.0"  # MINOR: switched to PRIMARY_MODEL + DEEP thinking
+    DEMOGRAPHIC_EXPERT = "1.1.0"  # MINOR: switched to PRIMARY_MODEL + DEEP thinking
 
     # Qualification pipeline
     QUALIFICATION_SCANNER = "1.0.0"

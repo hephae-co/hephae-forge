@@ -67,12 +67,11 @@ All AI agents use Google Gemini via Google ADK.
 
 | Tier | Model | Use Case |
 |------|-------|----------|
-| PRIMARY | `gemini-3.1-flash-lite-preview` | All standard agents (discovery, research, formatting, outreach) |
-| PRIMARY_FALLBACK | `gemini-2.5-flash-lite` | Automatic fallback on 429/503/529 |
-| ENHANCED | `gemini-3.0-flash-preview` | Complex analysis (SEO auditor) |
-| CREATIVE_VISION | `gemini-3-pro-image-preview` | Image generation |
+| PRIMARY | `gemini-3.1-flash-lite-preview` | All agents (+ DEEP thinking for complex analysis) |
+| FALLBACK | `gemini-3-flash-preview` | Auto-fallback on 429/503/529 (sparingly) |
+| CREATIVE_VISION | `gemini-3.1-flash-image-preview` | Image generation |
 
-Thinking modes: MEDIUM for evaluators, HIGH for competitive/market positioning.
+Thinking: MEDIUM for evaluators, HIGH for competitive/positioning, DEEP for complex analysis (SEO, research, blog).
 
 Model tiers are defined in `lib/common/hephae_common/model_config.py`.
 

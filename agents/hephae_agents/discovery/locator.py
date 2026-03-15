@@ -78,7 +78,8 @@ class LocatorAgent:
 
         logger.info(f'[LocatorAgent] Resolving identity for: "{query}"...')
 
-        client = genai.Client(api_key=api_key)
+        from hephae_common.gemini_client import get_genai_client
+        client = get_genai_client()
 
         prompt = f"""Use Google Search to find the official identity details for the business matching the query: "{query}".
 Return ONLY a valid JSON object with the following keys:

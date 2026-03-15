@@ -49,7 +49,7 @@ class TestCleanSql:
 class TestAgentInitialization:
     def test_trends_query_generator_config(self):
         assert trends_query_generator.name == "trends_query_generator"
-        assert trends_query_generator.model == AgentModels.ENHANCED_MODEL
+        assert trends_query_generator.model == AgentModels.PRIMARY_MODEL
         assert trends_query_generator.output_key == "generated_trends_sql"
         assert "top_rising_terms" in trends_query_generator.instruction
         assert "top_terms" in trends_query_generator.instruction

@@ -23,7 +23,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.tools import google_search
 
-from hephae_api.config import AgentModels
+from hephae_api.config import AgentModels, ThinkingPresets
 from hephae_common.adk_helpers import user_msg
 from hephae_common.model_fallback import fallback_on_error
 from hephae_agents.shared_tools import google_search_tool, crawl4ai_advanced_tool
@@ -93,7 +93,8 @@ def _demographic_expert_instruction(ctx) -> str:
 
 _industry_analyst_intel = LlmAgent(
     name="IndustryAnalystIntel",
-    model=AgentModels.ENHANCED_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
+    generate_content_config=ThinkingPresets.DEEP,
     instruction=_industry_analyst_instruction,
     output_key="industryAnalysis",
     on_model_error_callback=fallback_on_error,

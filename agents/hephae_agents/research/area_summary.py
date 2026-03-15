@@ -7,7 +7,7 @@ import logging
 
 from google.adk.agents import LlmAgent
 
-from hephae_api.config import AgentModels
+from hephae_api.config import AgentModels, ThinkingPresets
 from hephae_common.adk_helpers import run_agent_to_json
 from hephae_db.schemas import AreaSummaryOutput
 from hephae_common.model_fallback import fallback_on_error
@@ -38,68 +38,48 @@ def _condense_reports(reports: list[dict]) -> list[dict]:
 # Basic area summary agent
 AreaSummaryAgent = LlmAgent(
     name="area_summary",
-    model=AgentModels.ENHANCED_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
+    generate_content_config=ThinkingPresets.DEEP,
     description="Synthesizes multiple zip code research reports into an area-level business opportunity summary.",
-    instruction="""You are a market analyst. Synthesize multiple zip code research reports into an area-level opportunity summary for a specific business type.
+    instruction="""You are a market analyst. Synthesize zip code reports into an area-level opportunity summary.
 
-Return a JSON object with:
+Return JSON. Keep ALL narrative fields to 1-2 sentences max. Use bullet-style phrases, not paragraphs.
 {
-  "marketOpportunity": { "score": 0-100, "narrative": string, "keyFactors": [string] },
-  "demographicFit": { "score": 0-100, "narrative": string, "keyMetrics": {} },
-  "competitiveLandscape": { "score": 0-100, "narrative": string, "existingBusinessCount": number, "saturationLevel": "low"|"moderate"|"high"|"saturated", "gaps": [string] },
-  "trendingInsights": { "narrative": string, "risingSearches": [string], "decliningSearches": [string], "seasonalPatterns": [string] },
-  "risks": { "items": [{ "category": string, "severity": "low"|"medium"|"high", "description": string }] },
-  "recommendations": { "topZipCodes": [{ "zipCode": string, "reason": string, "score": 0-100 }], "actionItems": [string], "avoidZipCodes": [{ "zipCode": string, "reason": string }] },
+  "marketOpportunity": { "score": 0-100, "narrative": "1 sentence", "keyFactors": ["short phrase each"] },
+  "demographicFit": { "score": 0-100, "narrative": "1 sentence", "keyMetrics": {} },
+  "competitiveLandscape": { "score": 0-100, "narrative": "1 sentence", "existingBusinessCount": number, "saturationLevel": "low"|"moderate"|"high"|"saturated", "gaps": ["short phrase"] },
+  "trendingInsights": { "narrative": "1 sentence", "risingSearches": [string], "decliningSearches": [string], "seasonalPatterns": [string] },
+  "risks": { "items": [{ "category": string, "severity": "low"|"medium"|"high", "description": "1 sentence" }] },
+  "recommendations": { "topZipCodes": [{ "zipCode": string, "reason": "1 sentence", "score": 0-100 }], "actionItems": ["short phrase"], "avoidZipCodes": [{ "zipCode": string, "reason": "1 sentence" }] },
   "generatedAt": "<ISO timestamp>"
 }
 
-Be data-driven. Reference specific zip codes and metrics. Return ONLY valid JSON.""",
+Be data-driven. Reference specific zip codes and numbers. Return ONLY valid JSON.""",
     on_model_error_callback=fallback_on_error,
 )
 
 # Enhanced area summary agent (with full data sources)
 EnhancedAreaSummaryAgent = LlmAgent(
     name="enhanced_area_summary",
-    model=AgentModels.ENHANCED_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
+    generate_content_config=ThinkingPresets.DEEP,
     description="Enhanced area summary synthesizing 6+ data sources.",
-    instruction="""You are a senior market analyst. Synthesize ALL provided data sources into a comprehensive area-level analysis for a specific business type.
+    instruction="""You are a senior market analyst. Synthesize ALL provided data sources into a concise area-level analysis.
 
-Data sources you may receive:
-1. Zip code research reports (per-zip demographics, business landscape, events, weather)
-2. Industry analysis (sector challenges, opportunities, benchmarks)
-3. Industry news (recent headlines, price trends, regulatory updates)
-4. Google Trends (rising/declining search terms)
-5. FDA enforcement data (food safety recalls, if food-related)
-6. Local sector trends (per-zip sector-specific insights)
-7. BLS Consumer Price Index data (food price indexes with year-over-year changes — REAL government data)
-8. USDA NASS commodity prices (farm-gate prices for agricultural products — REAL government data)
-9. Local Catalysts (forward-looking signals: construction, zoning changes, grants, new developments)
-10. Census/ACS Demographics (authoritative population, income, housing, education data)
+Data sources: zip code reports, industry analysis, news, Google Trends, FDA data, BLS CPI, USDA prices, local catalysts, Census demographics. Use whichever are provided.
 
-When BLS CPI and USDA NASS data are present, use them as CONCRETE EVIDENCE for pricing analysis. Cite specific index values, percent changes, and commodity prices. These are authoritative government statistics — prioritize them over inferred pricing claims.
+Rules:
+- BLS/USDA data = CONCRETE EVIDENCE — cite specific numbers
+- Census/ACS = AUTHORITATIVE demographics — cite with data year
+- Local catalysts = FORWARD-LOOKING signals
+- ALL narrative fields: 1-2 sentences max. Use bullet phrases in arrays, not paragraphs.
 
-When LOCAL CATALYSTS are present, integrate them into marketOpportunity (construction/development = growth signal), risks (road closures, regulatory shifts), and recommendations (grants, incentives the business should apply for). Catalysts are FORWARD-LOOKING — they predict what WILL happen, not what has happened.
+Return JSON with sections: marketOpportunity, demographicFit, competitiveLandscape, trendingInsights, industryIntelligence, localCatalysts, eventImpact, seasonalPatterns, regulatoryAndSafety, pricingEnvironment, risks, recommendations, generatedAt.
 
-When CENSUS/ACS DEMOGRAPHICS are present, use them as the AUTHORITATIVE source for demographicFit. Cite specific numbers (median income, population, age distribution) with the data year. These override any estimates from zip code reports.
+Each section: { "score": 0-100, "narrative": "1-2 sentences", ...arrays of short phrases }.
+recommendations: { "topZipCodes": [{ "zipCode", "reason": "1 sentence", "score" }], "actionItems": ["short phrase"], "avoidZipCodes": [{ "zipCode", "reason": "1 sentence" }] }
 
-Return a JSON object with ALL of these sections:
-{
-  "marketOpportunity": { "score": 0-100, "narrative": string, "keyFactors": [string] },
-  "demographicFit": { "score": 0-100, "narrative": string, "keyMetrics": {} },
-  "competitiveLandscape": { "score": 0-100, "narrative": string, "existingBusinessCount": number, "saturationLevel": "low"|"moderate"|"high"|"saturated", "gaps": [string] },
-  "trendingInsights": { "narrative": string, "risingSearches": [string], "decliningSearches": [string], "seasonalPatterns": [string] },
-  "industryIntelligence": { "score": 0-100, "narrative": string, "topChallenges": [string], "topOpportunities": [string] },
-  "localCatalysts": { "narrative": string, "developments": [string], "incentives": [string], "risks": [string] },
-  "eventImpact": { "narrative": string, "upcomingEvents": [string], "footTrafficDrivers": [string] },
-  "seasonalPatterns": { "narrative": string, "peakSeasons": [string], "slowSeasons": [string], "weatherConsiderations": [string] },
-  "regulatoryAndSafety": { "narrative": string, "keyRegulations": [string], "recallAlerts": [string], "complianceNotes": [string] },
-  "pricingEnvironment": { "narrative": string, "risingCosts": [string], "stableCosts": [string], "pricingOpportunities": [string] },
-  "risks": { "items": [{ "category": string, "severity": "low"|"medium"|"high", "description": string }] },
-  "recommendations": { "topZipCodes": [{ "zipCode": string, "reason": string, "score": 0-100 }], "actionItems": [string], "avoidZipCodes": [{ "zipCode": string, "reason": string }] },
-  "generatedAt": "<ISO timestamp>"
-}
-
-Be specific and data-driven. Cross-reference data sources. Return ONLY valid JSON.""",
+Return ONLY valid JSON.""",
     on_model_error_callback=fallback_on_error,
 )
 

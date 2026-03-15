@@ -252,7 +252,8 @@ async def run_discovery(
         try:
             api_key = os.environ.get("GEMINI_API_KEY")
             if api_key:
-                client = genai.Client(api_key=api_key)
+                from hephae_common.gemini_client import get_genai_client
+                client = get_genai_client()
                 res = await client.aio.models.generate_content(
                     model=AgentModels.PRIMARY_MODEL,
                     contents=(

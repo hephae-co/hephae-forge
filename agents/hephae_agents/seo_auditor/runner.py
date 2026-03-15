@@ -179,14 +179,14 @@ async def run_seo_audit(
     if not _has_valid_sections(report_data):
         logger.warning(
             f"[SEO Runner] Primary model returned empty sections for {identity['officialUrl']}. "
-            f"Retrying with fallback model {AgentModels.ENHANCED_FALLBACK}..."
+            f"Retrying with fallback model {AgentModels.FALLBACK_MODEL}..."
         )
         from google.adk.tools.load_memory_tool import load_memory_tool
         fallback_agent = LlmAgent(
             name="seoAuditorFallback",
             description="SEO Auditor (fallback model)",
             instruction=SEO_AUDITOR_INSTRUCTION,
-            model=AgentModels.ENHANCED_FALLBACK,
+            model=AgentModels.FALLBACK_MODEL,
             tools=[google_search_tool, pagespeed_tool, load_memory_tool],
             on_model_error_callback=fallback_on_error,
         )

@@ -6,7 +6,7 @@ import logging
 
 from google.adk.agents import LlmAgent
 
-from hephae_api.config import AgentModels
+from hephae_api.config import AgentModels, ThinkingPresets
 from hephae_common.adk_helpers import run_agent_to_json
 from hephae_db.schemas import IndustryAnalystOutput
 from hephae_common.model_fallback import fallback_on_error
@@ -15,39 +15,29 @@ logger = logging.getLogger(__name__)
 
 IndustryAnalystAgent = LlmAgent(
     name="industry_analyst",
-    model=AgentModels.ENHANCED_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
+    generate_content_config=ThinkingPresets.DEEP,
     description="Performs deep industry/sector analysis to understand challenges, opportunities, trends, and benchmarks.",
-    instruction="""You are a senior industry analyst with deep expertise across small business sectors.
+    instruction="""You are a senior industry analyst. Analyze the given SECTOR for small businesses.
 
-You will receive a SECTOR name (e.g., "bakeries", "hairdressers", "laundromats", "restaurants").
+Return JSON with: overview (2 sentences), marketSize, growthRate, challenges (top 5), opportunities (top 5), trends (5-7), consumerBehavior, technologyAdoption, regulatoryEnvironment (2 sentences), benchmarks.
 
-Perform a comprehensive industry analysis covering:
+Keep ALL description/impact fields to ONE sentence max. Use specific numbers.
 
-1. **Overview**: What this sector looks like today — key characteristics, business models, customer segments
-2. **Market Size & Growth**: Estimated US market size, annual growth rate, trajectory
-3. **Top Challenges**: The 5 most pressing challenges businesses in this sector face RIGHT NOW
-4. **Top Opportunities**: The 5 most actionable opportunities for a NEW entrant or existing small business
-5. **Industry Trends**: 5-7 key trends with direction (rising/stable/declining)
-6. **Consumer Behavior Shifts**: How customer expectations and behaviors are changing
-7. **Technology Adoption**: Key technologies and their adoption levels
-8. **Regulatory Environment**: Key regulations, compliance requirements, recent changes
-9. **Industry Benchmarks**: Key financial and operational metrics (averages)
-
-Output MUST STRICTLY be a JSON object with this schema:
+Schema:
 {
-  "overview": string,
-  "marketSize": string,
-  "growthRate": string,
-  "challenges": [{ "title": string, "description": string, "severity": "low"|"medium"|"high" }],
-  "opportunities": [{ "title": string, "description": string, "timeframe": "immediate"|"short_term"|"long_term" }],
-  "trends": [{ "name": string, "direction": "rising"|"stable"|"declining", "description": string }],
-  "consumerBehavior": [{ "shift": string, "impact": string }],
-  "technologyAdoption": [{ "technology": string, "adoptionLevel": "early"|"growing"|"mainstream", "relevance": string }],
-  "regulatoryEnvironment": string,
-  "benchmarks": { "gross_margin_pct": ..., "net_margin_pct": ..., "avg_ticket_size": ..., "labor_cost_pct": ..., "rent_pct_revenue": ..., "failure_rate_1yr": ..., "failure_rate_5yr": ..., "avg_startup_cost": ... }
+  "overview": "2 sentences max",
+  "marketSize": "$XB", "growthRate": "X%",
+  "challenges": [{ "title": "short", "description": "1 sentence", "severity": "low|medium|high" }],
+  "opportunities": [{ "title": "short", "description": "1 sentence", "timeframe": "immediate|short_term|long_term" }],
+  "trends": [{ "name": "short", "direction": "rising|stable|declining", "description": "1 sentence" }],
+  "consumerBehavior": [{ "shift": "phrase", "impact": "1 sentence" }],
+  "technologyAdoption": [{ "technology": "name", "adoptionLevel": "early|growing|mainstream", "relevance": "1 sentence" }],
+  "regulatoryEnvironment": "2 sentences",
+  "benchmarks": { "gross_margin_pct": num, "net_margin_pct": num, "avg_ticket_size": num, "labor_cost_pct": num, "rent_pct_revenue": num, "failure_rate_1yr": num, "failure_rate_5yr": num, "avg_startup_cost": num }
 }
 
-Be specific with numbers and data points. Use your knowledge of real industry dynamics.""",
+Return ONLY valid JSON.""",
     on_model_error_callback=fallback_on_error,
 )
 

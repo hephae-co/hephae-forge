@@ -74,16 +74,16 @@ class TestFallbackOnError:
         mock_response.candidates[0].content = mock_content
         mock_response.candidates[0].grounding_metadata = None
 
-        with patch("hephae_common.model_fallback.genai") as mock_genai:
+        with patch("hephae_common.model_fallback.get_genai_client") as mock_get_client:
             mock_client = MagicMock()
             mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
-            mock_genai.Client.return_value = mock_client
+            mock_get_client.return_value = mock_client
 
             result = await fallback_on_error(MagicMock(), request, error)
             assert result is not None
             mock_client.aio.models.generate_content.assert_called_once()
             call_kwargs = mock_client.aio.models.generate_content.call_args
-            assert call_kwargs.kwargs["model"] == "gemini-2.5-flash-lite"
+            assert call_kwargs.kwargs["model"] == "gemini-3-flash-preview"
 
 
 class TestGenerateWithFallback:

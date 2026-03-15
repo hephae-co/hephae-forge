@@ -8,7 +8,6 @@ Two mechanisms:
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any
 
 from google import genai
@@ -17,6 +16,7 @@ from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 
 from hephae_common.model_config import MODEL_FALLBACK_MAP
+from hephae_common.gemini_client import get_genai_client
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ async def fallback_on_error(
     logger.warning(f"[ModelFallback] {primary_model} → {fallback_model} on {error}")
 
     try:
-        client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY", ""))
+        client = get_genai_client()
 
         # Strip response_mime_type when tools are present — Gemini rejects the combo
         config = llm_request.config

@@ -351,7 +351,8 @@ async def _run_llm_classifier(
             f'Return ONLY valid JSON: {{"is_hvt": true/false, "reason": "one sentence explanation"}}'
         )
 
-        client = genai.Client(api_key=api_key)
+        from hephae_common.gemini_client import get_genai_client
+        client = get_genai_client()
         res = await client.aio.models.generate_content(
             model=AgentModels.PRIMARY_MODEL, contents=prompt,
             config={"response_mime_type": "application/json"},

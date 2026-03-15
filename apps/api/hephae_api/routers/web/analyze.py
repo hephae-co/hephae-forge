@@ -312,7 +312,8 @@ async def _extract_menu_items_from_text(menu_text: str, business_name: str) -> l
     if not api_key:
         return []
 
-    client = genai.Client(api_key=api_key)
+    from hephae_common.gemini_client import get_genai_client
+    client = get_genai_client()
     prompt = f"""Extract all menu items with prices from the following text for {business_name}.
 
 Return ONLY a JSON array where each object has:

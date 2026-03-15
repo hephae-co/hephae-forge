@@ -17,7 +17,7 @@ from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from hephae_common.model_config import AgentModels
+from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
 from hephae_common.adk_helpers import user_msg
 from hephae_common.adk_callbacks import log_agent_start, log_agent_complete
@@ -80,7 +80,8 @@ research_compiler_agent = LlmAgent(
 
 blog_writer_agent = LlmAgent(
     name="BlogWriterAgent",
-    model=AgentModels.ENHANCED_MODEL,
+    model=AgentModels.PRIMARY_MODEL,
+    generate_content_config=ThinkingPresets.DEEP,
     instruction=_writer_instruction,
     output_key="blogContent",
     on_model_error_callback=fallback_on_error,

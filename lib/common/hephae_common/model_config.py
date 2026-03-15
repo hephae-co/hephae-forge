@@ -13,23 +13,22 @@ from google.genai.types import GenerateContentConfig, ThinkingConfig
 class AgentModels:
     """Model tier definitions for agent selection."""
 
-    # Primary: cheapest, fastest — default for all agents
+    # Primary: default for all agents (+ thinking presets for complex analysis)
     PRIMARY_MODEL = "gemini-3.1-flash-lite-preview"
 
-    # Enhanced: complex structured output (SEO auditor, evaluators)
-    ENHANCED_MODEL = "gemini-2.5-flash"
-
-    # Fallbacks for 429 / model-unavailable errors
-    PRIMARY_FALLBACK = "gemini-2.5-flash-lite"
-    ENHANCED_FALLBACK = "gemini-2.5-flash"
+    # Fallback: auto-fallback on 429/503/529 (sparingly)
+    FALLBACK_MODEL = "gemini-3-flash-preview"
 
     # Visual Creative Model: image generation prompts
-    CREATIVE_VISION_MODEL = "gemini-3-pro-image-preview"
+    CREATIVE_VISION_MODEL = "gemini-3.1-flash-image-preview"
 
-    # Deprecated aliases — backward compat (web app only)
+    # Deprecated aliases — backward compat
     DEFAULT_FAST_MODEL = PRIMARY_MODEL
-    DEEP_ANALYST_MODEL = ENHANCED_MODEL
-    FALLBACK_LITE_MODEL = PRIMARY_FALLBACK
+    DEEP_ANALYST_MODEL = PRIMARY_MODEL
+    FALLBACK_LITE_MODEL = FALLBACK_MODEL
+    ENHANCED_MODEL = PRIMARY_MODEL
+    ENHANCED_FALLBACK = FALLBACK_MODEL
+    PRIMARY_FALLBACK = FALLBACK_MODEL
 
 
 class ThinkingPresets:
@@ -44,12 +43,14 @@ class ThinkingPresets:
     HIGH = GenerateContentConfig(
         thinking_config=ThinkingConfig(thinking_level="HIGH")
     )
+    DEEP = GenerateContentConfig(
+        thinking_config=ThinkingConfig(thinking_level="HIGH", thinking_budget=8192)
+    )
 
 
 # Fallback model mapping: primary model -> stable fallback
 MODEL_FALLBACK_MAP: dict[str, str] = {
-    AgentModels.PRIMARY_MODEL: AgentModels.PRIMARY_FALLBACK,
-    AgentModels.ENHANCED_MODEL: AgentModels.ENHANCED_FALLBACK,
+    AgentModels.PRIMARY_MODEL: AgentModels.FALLBACK_MODEL,
 }
 
 

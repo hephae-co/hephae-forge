@@ -110,9 +110,8 @@ class TestGetOrCreateCache:
 
         with (
             patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}),
-            patch("hephae_common.gemini_cache.genai") as mock_genai,
+            patch("hephae_common.gemini_cache.get_genai_client", return_value=mock_client),
         ):
-            mock_genai.Client.return_value = mock_client
             result = await get_or_create_cache(ctx, model="gemini-2.5-flash")
             assert result == "cached/new-456"
             assert ctx.gemini_cache_name == "cached/new-456"
@@ -126,9 +125,8 @@ class TestGetOrCreateCache:
 
         with (
             patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}),
-            patch("hephae_common.gemini_cache.genai") as mock_genai,
+            patch("hephae_common.gemini_cache.get_genai_client", return_value=mock_client),
         ):
-            mock_genai.Client.return_value = mock_client
             result = await get_or_create_cache(ctx, model="gemini-2.5-flash")
             assert result is None
 
@@ -145,9 +143,8 @@ class TestDeleteCache:
 
         with (
             patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}),
-            patch("hephae_common.gemini_cache.genai") as mock_genai,
+            patch("hephae_common.gemini_cache.get_genai_client", return_value=mock_client),
         ):
-            mock_genai.Client.return_value = mock_client
             result = await delete_cache("test-biz", "gemini-2.5-flash")
             assert result is True
             assert _get_cached_name("test-biz", "gemini-2.5-flash") is None

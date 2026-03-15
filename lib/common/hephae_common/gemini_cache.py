@@ -7,8 +7,8 @@ import os
 import time
 from typing import Any, Optional
 
-from google import genai
 from google.genai.types import CreateCachedContentConfig
+from hephae_common.gemini_client import get_genai_client
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ async def get_or_create_cache(
         return None
 
     try:
-        client = genai.Client(api_key=api_key)
+        client = get_genai_client()
         cache = client.caches.create(
             model=model,
             config=CreateCachedContentConfig(
@@ -92,7 +92,7 @@ async def delete_cache(slug: str, model: str) -> bool:
         return False
 
     try:
-        client = genai.Client(api_key=api_key)
+        client = get_genai_client()
         client.caches.delete(name=cache_name)
         _cache_registry.pop(_cache_key(slug, model), None)
         return True

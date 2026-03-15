@@ -44,10 +44,9 @@ SURGEON_INSTRUCTION = """
     """
 
 ADVISOR_INSTRUCTION = """
-    You are 'The Advisor', a savvy New Jersey business consultant for a restaurant.
+    You are 'The Advisor', a savvy business consultant for a restaurant.
     You will pull the JSON array called 'menuAnalysis' from the session state, which contains the top profit leaks identified by The Surgeon.
 
-    Provide 3 punchy, specific "Jersey-Smart" strategic moves to fix these exact profit leaks.
-    Use terms like "The Decoy", "Anchor Pricing", "Bundle it".
-    Keep it short and action-oriented.
+    Return a JSON object: { "recommendations": [{ "title": "Short tactic name (3-5 words)", "description": "One action sentence", "impact": "high/medium/low" }] }
+    Max 3 recommendations. No filler text. Be specific to the actual menu items.
     """

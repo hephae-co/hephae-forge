@@ -132,6 +132,7 @@ class FullCapabilityDefinition:
         evaluator: EvaluatorConfig | None = None,
         enabled: bool = True,
         should_run: Callable[[dict], bool] | None = None,
+        eval_compressor: Callable[[dict], dict] | None = None,
     ):
         self.name = name
         self.display_name = display_name
@@ -141,6 +142,35 @@ class FullCapabilityDefinition:
         self.evaluator = evaluator
         self.enabled = enabled
         self.should_run = should_run
+        self.eval_compressor = eval_compressor
+
+
+# --- Eval compressors (strip large fields evaluators don't need) ---
+
+def _compress_seo_output(output: dict) -> dict:
+    """Strip raw PageSpeed JSON and verbose recommendations from SEO output before eval."""
+    compressed = {k: v for k, v in output.items() if k not in ("rawPageSpeed", "pagespeedData", "lighthouseData")}
+    if isinstance(compressed.get("sections"), list):
+        for section in compressed["sections"]:
+            if isinstance(section, dict):
+                # Keep score and summary, truncate recommendations
+                recs = section.get("recommendations", [])
+                if isinstance(recs, list) and len(recs) > 3:
+                    section["recommendations"] = recs[:3]
+    return compressed
+
+
+def _compress_competitive_output(output: dict) -> dict:
+    """Strip full competitor profiles, keep scores and summaries."""
+    compressed = {k: v for k, v in output.items()}
+    competitors = compressed.get("competitors", [])
+    if isinstance(competitors, list):
+        compressed["competitors"] = [
+            {k: c[k] for k in ("name", "threat_level", "summary", "score") if k in c}
+            for c in competitors
+            if isinstance(c, dict)
+        ]
+    return compressed
 
 
 # --- Lazy evaluator factories ---
@@ -177,6 +207,7 @@ CAPABILITY_REGISTRY: list[FullCapabilityDefinition] = [
         evaluator=EvaluatorConfig(_lazy_seo_evaluator, _seo_eval_prompt, "wf_seo_eval"),
         enabled=True,
         should_run=lambda biz: bool(biz.get("officialUrl")),
+        eval_compressor=_compress_seo_output,
     ),
     FullCapabilityDefinition(
         name="traffic",
@@ -195,6 +226,7 @@ CAPABILITY_REGISTRY: list[FullCapabilityDefinition] = [
         runner=_run_competitive,
         evaluator=EvaluatorConfig(_lazy_competitive_evaluator, _competitive_eval_prompt, "wf_comp_eval"),
         enabled=True,
+        eval_compressor=_compress_competitive_output,
     ),
     FullCapabilityDefinition(
         name="margin_surgeon",

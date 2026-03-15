@@ -372,10 +372,10 @@ class TestAgentConfig:
         from hephae_api.config import AgentModels
         assert research_compiler_agent.model == AgentModels.PRIMARY_MODEL
 
-    def test_blog_writer_uses_enhanced_model(self):
+    def test_blog_writer_uses_primary_model(self):
         from hephae_agents.social.blog_writer.agent import blog_writer_agent
         from hephae_api.config import AgentModels
-        assert blog_writer_agent.model == AgentModels.ENHANCED_MODEL
+        assert blog_writer_agent.model == AgentModels.PRIMARY_MODEL
 
     def test_research_compiler_output_key(self):
         from hephae_agents.social.blog_writer.agent import research_compiler_agent

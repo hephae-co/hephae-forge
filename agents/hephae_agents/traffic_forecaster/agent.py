@@ -188,6 +188,7 @@ class ForecasterAgent:
 
       **OUTPUT**:
       Return ONLY valid JSON matching this structure perfectly. Do not include markdown ```json blocks.
+      Keep all text fields SHORT — bullet-style, no paragraphs.
       {{
         "business": {{
           "name": "{name}",
@@ -195,21 +196,21 @@ class ForecasterAgent:
           "coordinates": {{ "lat": {lat}, "lng": {lng} }},
           "type": "String",
           "nearbyPOIs": [
-              {{ "name": "String", "lat": 0, "lng": 0, "type": "String" }}
+              {{ "name": "String", "type": "String" }}
           ]
         }},
-        "summary": "Executive summary of the week.",
+        "summary": "One crisp sentence, max 20 words.",
         "forecast": [
           {{
             "date": "YYYY-MM-DD",
             "dayOfWeek": "String",
-            "localEvents": ["String"],
-            "weatherNote": "String",
+            "localEvents": ["Short event name"],
+            "weatherNote": "5-8 words max",
             "slots": [
-               {{ "label": "Morning", "score": 0, "level": "Low/Medium/High/Closed", "reason": "String" }},
-               {{ "label": "Lunch", "score": 0, "level": "Low/Medium/High/Closed", "reason": "String" }},
-               {{ "label": "Afternoon", "score": 0, "level": "Low/Medium/High/Closed", "reason": "String" }},
-               {{ "label": "Evening", "score": 0, "level": "Low/Medium/High/Closed", "reason": "String" }}
+               {{ "label": "Morning", "score": 0, "level": "Low/Medium/High/Closed", "reason": "5-10 words max" }},
+               {{ "label": "Lunch", "score": 0, "level": "Low/Medium/High/Closed", "reason": "5-10 words max" }},
+               {{ "label": "Afternoon", "score": 0, "level": "Low/Medium/High/Closed", "reason": "5-10 words max" }},
+               {{ "label": "Evening", "score": 0, "level": "Low/Medium/High/Closed", "reason": "5-10 words max" }}
             ]
           }}
         ]

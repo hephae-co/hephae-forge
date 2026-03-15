@@ -152,14 +152,22 @@ async def _geocode_zipcode(zip_code: str, client: httpx.AsyncClient) -> tuple[fl
 
 async def _query_overpass(lat: float, lng: float, client: httpx.AsyncClient, category: str | None = None) -> list[dict]:
     query = _build_overpass_query(lat, lng, category=category)
-    resp = await client.post(
-        _OVERPASS_URL,
-        data={"data": query},
-        headers={"User-Agent": _USER_AGENT},
-    )
-    if resp.status_code != 200:
-        return []
-    return resp.json().get("elements", [])
+    for attempt in range(3):
+        resp = await client.post(
+            _OVERPASS_URL,
+            data={"data": query},
+            headers={"User-Agent": _USER_AGENT},
+        )
+        if resp.status_code == 429:
+            wait = 2 ** attempt * 5  # 5s, 10s, 20s
+            logger.warning(f"[OSM] Overpass 429 rate-limited, retrying in {wait}s (attempt {attempt + 1}/3)")
+            await asyncio.sleep(wait)
+            continue
+        if resp.status_code != 200:
+            return []
+        return resp.json().get("elements", [])
+    logger.error("[OSM] Overpass rate-limited after 3 retries")
+    return []
 
 
 async def discover_businesses(zip_code: str, category: str | None = None) -> list[OsmBusiness]:

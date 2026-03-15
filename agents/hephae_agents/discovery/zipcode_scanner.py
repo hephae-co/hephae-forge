@@ -138,13 +138,22 @@ async def _run_hub_discovery(zip_code: str, category: str | None = None) -> list
     return businesses
 
 
-async def scan_zipcode(zip_code: str, category: str | None = None, force: bool = False) -> list[DiscoveredBusiness]:
+async def scan_zipcode(
+    zip_code: str,
+    category: str | None = None,
+    force: bool = False,
+    known_names: list[str] | None = None,
+) -> list[DiscoveredBusiness]:
     """Discover businesses in a zip code using 3 sources: Google Search + OSM + Municipal Hub.
 
     If category is provided (e.g. 'Bakeries'), discovery is much more targeted.
     Runs all three sources in parallel, merges and deduplicates results.
+
+    Args:
+        known_names: Names of already-discovered businesses. When provided, the ADK agent
+            is instructed to search for NEW businesses not in this list.
     """
-    logger.info(f"[Scanner] Searching for {category or 'all'} businesses in {zip_code} (force={force})...")
+    logger.info(f"[Scanner] Searching for {category or 'all'} businesses in {zip_code} (force={force}, known={len(known_names or [])})...")
 
     # 1. Check Firestore cache (skip if force=True or if searching specific category)
     if not force and not category:
@@ -163,7 +172,7 @@ async def scan_zipcode(zip_code: str, category: str | None = None, force: bool =
     # 2. Run all three discovery sources in parallel
     logger.info(f"[Scanner] Running ADK + OSM + Hub for {zip_code} ({category or 'general'})...")
     osm_task = osm_discover(zip_code, category=category)
-    adk_task = _run_adk_discovery(zip_code, category=category)
+    adk_task = _run_adk_discovery(zip_code, category=category, known_names=known_names)
     hub_task = _run_hub_discovery(zip_code, category=category)
     osm_results, adk_results, hub_results = await asyncio.gather(
         osm_task, adk_task, hub_task, return_exceptions=True,
@@ -232,11 +241,13 @@ async def scan_zipcode(zip_code: str, category: str | None = None, force: bool =
     )
 
     # 4. Persist each business to Firestore
+    cat = category or ""
     for biz in results:
         await save_business(biz.docId, {
             "name": biz.name,
             "address": biz.address,
-            "category": biz.category,
+            "category": biz.category or cat,
+            "businessType": cat,
             "website": biz.website,
             "zipCode": zip_code,
             "discoveryStatus": "scanned",
@@ -245,8 +256,18 @@ async def scan_zipcode(zip_code: str, category: str | None = None, force: bool =
     return results
 
 
-async def _run_adk_discovery(zip_code: str, category: str | None = None) -> list[dict]:
+async def _run_adk_discovery(zip_code: str, category: str | None = None, known_names: list[str] | None = None) -> list[dict]:
     """Run the ADK agent with Google Search grounding to discover businesses."""
+    exclusion_note = ""
+    if known_names:
+        names_str = ", ".join(known_names[:50])  # Cap at 50 to avoid prompt bloat
+        exclusion_note = (
+            f"\n\nIMPORTANT: The following {len(known_names)} businesses have ALREADY been discovered in prior runs. "
+            f"Do NOT include them again. Focus on finding NEW businesses not in this list:\n{names_str}\n\n"
+            f"Search harder — try different search queries, side streets, newer establishments, "
+            f"and less well-known local spots that may not appear in top results."
+        )
+
     if category:
         target = category.lower().rstrip("s")  # "Bakeries" → "bakery"
         query = (
@@ -255,12 +276,14 @@ async def _run_adk_discovery(zip_code: str, category: str | None = None) -> list
             f"local {target} directories, Yelp and Google Maps listings. "
             f"Only include local, independently owned {category.lower()}. "
             f"Exclude all chains, franchises, and national brands."
+            f"{exclusion_note}"
         )
     else:
         query = (
             f"Find real local businesses currently operating in zip code {zip_code}. "
             f"Search for local business directories, chamber of commerce member lists for {zip_code}. "
             f"Focus on independently owned local businesses only. Exclude all chains, franchises, banks, and national retailers."
+            f"{exclusion_note}"
         )
     
     try:

@@ -375,6 +375,10 @@ async def _run_full_probe(
 
         crawl_data = await crawl_web_page(url)
 
+        if not crawl_data:
+            partial_result.scoring_reasons.append("Full probe: crawl returned no data (timeout or error)")
+            return partial_result
+
         extra_score = 0
         extra_reasons: list[str] = []
 

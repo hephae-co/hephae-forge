@@ -98,7 +98,12 @@ def _seo_eval_prompt(identity: dict, output: dict, biz: dict) -> str:
 
 
 def _traffic_eval_prompt(identity: dict, output: dict, biz: dict) -> str:
-    return f"BUSINESS_IDENTITY: {json.dumps(identity)}\nACTUAL_OUTPUT: {json.dumps(output)}"
+    zip_code = identity.get("zipCode") or biz.get("zipCode") or ""
+    return (
+        f"BUSINESS_IDENTITY: {json.dumps(identity)}\n"
+        f"ZIP_CODE: {zip_code}\n"
+        f"ACTUAL_OUTPUT: {json.dumps(output)}"
+    )
 
 
 def _competitive_eval_prompt(identity: dict, output: dict, biz: dict) -> str:

@@ -66,7 +66,7 @@ async def run_heartbeat_cycle(heartbeat: dict) -> dict:
 
     # Build business context for capabilities that need it
     try:
-        business_context = await build_business_context(heartbeat["businessSlug"])
+        business_context = await build_business_context(identity)
     except Exception:
         business_context = None
 

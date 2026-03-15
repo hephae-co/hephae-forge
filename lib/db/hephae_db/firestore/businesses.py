@@ -190,6 +190,32 @@ async def get_businesses_paginated(
     )
 
 
+def _get_businesses_by_zip_and_category_sync(zip_code: str, category: str, limit: int = 200) -> list[dict[str, Any]]:
+    """Fetch businesses by zip code, post-filter by category (case-insensitive partial match)."""
+    try:
+        db = get_db()
+        query = db.collection("businesses").where("zipCode", "==", zip_code)
+        if limit:
+            query = query.limit(limit)
+        docs = query.get()
+        cat_lower = category.lower().rstrip("s")  # "Restaurants" → "restaurant"
+        results = []
+        for doc in docs:
+            d = doc.to_dict() | {"id": doc.id, "docId": doc.id}
+            doc_cat = (d.get("category") or d.get("businessType") or "").lower()
+            if cat_lower in doc_cat or doc_cat in cat_lower:
+                results.append(d)
+        return results
+    except Exception as err:
+        logger.warning(f"[DB] Failed to read businesses for zip {zip_code} category {category}: {err}")
+        return []
+
+
+async def get_businesses_by_zip_and_category(zip_code: str, category: str, limit: int = 200) -> list[dict[str, Any]]:
+    """Read businesses in a zip code filtered by category (async)."""
+    return await asyncio.to_thread(_get_businesses_by_zip_and_category_sync, zip_code, category, limit)
+
+
 def _get_businesses_for_workflow_sync(workflow_id: str) -> list[dict[str, Any]]:
     try:
         db = get_db()

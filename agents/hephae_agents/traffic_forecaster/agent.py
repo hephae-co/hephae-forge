@@ -68,31 +68,56 @@ context_gathering_pipeline = ParallelAgent(
 )
 
 
-def _build_admin_context(business_context: Any) -> str:
-    """Build additional context from admin research data for synthesis."""
-    if not business_context or not getattr(business_context, "has_admin_data", False):
-        return "No additional admin research data available."
+def _build_admin_context(business_context: Any, identity: dict[str, Any] | None = None) -> str:
+    """Build additional context from admin research data for synthesis.
 
-    parts = []
-    zr = getattr(business_context, "zipcode_research", None)
-    if zr and isinstance(zr, dict):
-        sections = zr.get("sections", {})
-        if isinstance(sections, dict):
-            if sections.get("demographics"):
-                parts.append(f"**Demographics**: {json.dumps(sections['demographics'], default=str)[:2000]}")
-            if sections.get("events"):
-                parts.append(f"**Local Events (Admin)**: {json.dumps(sections['events'], default=str)[:2000]}")
-            if sections.get("seasonal_weather"):
-                parts.append(f"**Seasonal Weather**: {json.dumps(sections['seasonal_weather'], default=str)[:1500]}")
-            if sections.get("consumer_market"):
-                parts.append(f"**Consumer Market**: {json.dumps(sections['consumer_market'], default=str)[:1500]}")
+    Checks two sources:
+    1. BusinessContext object (from build_business_context)
+    2. Identity dict keys (zipCodeResearchContext, areaResearchContext) — set by workflow analysis
+    """
+    parts: list[str] = []
 
-    ar = getattr(business_context, "area_research", None)
-    if ar and isinstance(ar, dict):
-        if ar.get("marketOpportunity"):
-            parts.append(f"**Market Opportunity**: {json.dumps(ar['marketOpportunity'], default=str)[:1000]}")
-        if ar.get("competitiveLandscape"):
-            parts.append(f"**Competitive Landscape**: {json.dumps(ar['competitiveLandscape'], default=str)[:1000]}")
+    # Source 1: BusinessContext object
+    if business_context and getattr(business_context, "has_admin_data", False):
+        zr = getattr(business_context, "zipcode_research", None)
+        if zr and isinstance(zr, dict):
+            sections = zr.get("sections", {})
+            if isinstance(sections, dict):
+                if sections.get("demographics"):
+                    parts.append(f"**Demographics**: {json.dumps(sections['demographics'], default=str)[:2000]}")
+                if sections.get("events"):
+                    parts.append(f"**Local Events (Admin)**: {json.dumps(sections['events'], default=str)[:2000]}")
+                if sections.get("seasonal_weather"):
+                    parts.append(f"**Seasonal Weather**: {json.dumps(sections['seasonal_weather'], default=str)[:1500]}")
+                if sections.get("consumer_market"):
+                    parts.append(f"**Consumer Market**: {json.dumps(sections['consumer_market'], default=str)[:1500]}")
+
+        ar = getattr(business_context, "area_research", None)
+        if ar and isinstance(ar, dict):
+            if ar.get("marketOpportunity"):
+                parts.append(f"**Market Opportunity**: {json.dumps(ar['marketOpportunity'], default=str)[:1000]}")
+            if ar.get("competitiveLandscape"):
+                parts.append(f"**Competitive Landscape**: {json.dumps(ar['competitiveLandscape'], default=str)[:1000]}")
+
+    # Source 2: Identity dict (workflow analysis embeds research here)
+    if not parts and identity:
+        zrc = identity.get("zipCodeResearchContext")
+        if zrc and isinstance(zrc, dict):
+            if zrc.get("demographics"):
+                parts.append(f"**Demographics**: {zrc['demographics'][:2000]}")
+            if zrc.get("events"):
+                parts.append(f"**Local Events (Admin)**: {zrc['events'][:2000]}")
+            if zrc.get("weather"):
+                parts.append(f"**Seasonal Weather**: {zrc['weather'][:1500]}")
+
+        arc = identity.get("areaResearchContext")
+        if arc and isinstance(arc, dict):
+            summary = arc.get("summary", {})
+            if isinstance(summary, dict):
+                if summary.get("marketOpportunity"):
+                    parts.append(f"**Market Opportunity**: {json.dumps(summary['marketOpportunity'], default=str)[:1000]}")
+                if summary.get("competitiveLandscape"):
+                    parts.append(f"**Competitive Landscape**: {json.dumps(summary['competitiveLandscape'], default=str)[:1000]}")
 
     return "\n".join(parts) if parts else "No additional admin research data available."
 
@@ -179,7 +204,7 @@ class ForecasterAgent:
       {events_data}
 
       ### 4. ADMIN RESEARCH CONTEXT (if available)
-      {_build_admin_context(business_context)}
+      {_build_admin_context(business_context, identity)}
 
       **ANALYSIS RULES** (MUST follow in order):
       1. **HOURS**: If the business is CLOSED, Traffic Level MUST be "Closed".

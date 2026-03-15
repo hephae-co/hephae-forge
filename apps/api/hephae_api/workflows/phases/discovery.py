@@ -1,4 +1,8 @@
-"""Discovery phase — finds businesses via scan_zipcode (Google Search + OSM)."""
+"""Discovery phase — finds businesses via scan_zipcode (Google Search + OSM).
+
+Implements incremental discovery: loads existing businesses from Firestore first,
+then runs fresh discovery to find NEW businesses, and merges both sets.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +12,7 @@ import re
 from typing import Callable
 
 from hephae_agents.discovery.zipcode_scanner import scan_zipcode
-from hephae_db.firestore.businesses import get_business
+from hephae_db.firestore.businesses import get_business, get_businesses_by_zip_and_category
 from hephae_api.types import BusinessWorkflowState, BusinessPhase
 
 logger = logging.getLogger(__name__)
@@ -31,23 +35,53 @@ async def run_discovery_phase(
 ) -> list[dict]:
     """Discover businesses in a single zip code via scan_zipcode.
 
-    Uses the same code path as the Businesses tab — Google Search + OSM
-    parallel discovery with dedup and Firestore persistence.
+    Incremental discovery:
+    1. Load existing businesses from Firestore for this zip + type
+    2. Run fresh discovery with exclusion list (known names) to find NEW businesses
+    3. Merge existing + new, deduped by slug
     """
     logger.info(f"[Workflow:Discovery] Discovering {business_type} in {zip_code}")
-    results = await scan_zipcode(zip_code, category=business_type, force=True)
 
-    return [
-        {
-            "slug": biz.docId or generate_slug(biz.name),
-            "name": biz.name,
-            "address": biz.address,
-            "officialUrl": getattr(biz, "website", None),
-            "sourceZipCode": zip_code,
-            "businessType": business_type,
-        }
-        for biz in results
-    ]
+    # 1. Load existing businesses from Firestore
+    existing_docs = await get_businesses_by_zip_and_category(zip_code, business_type)
+    existing_by_slug: dict[str, dict] = {}
+    known_names: list[str] = []
+    for doc in existing_docs:
+        slug = doc.get("docId") or doc.get("id") or generate_slug(doc.get("name", ""))
+        if slug and slug not in existing_by_slug:
+            existing_by_slug[slug] = {
+                "slug": slug,
+                "name": doc.get("name", ""),
+                "address": doc.get("address", ""),
+                "officialUrl": doc.get("officialUrl") or doc.get("website"),
+                "sourceZipCode": zip_code,
+                "businessType": business_type,
+            }
+            known_names.append(doc.get("name", ""))
+
+    logger.info(f"[Workflow:Discovery] Found {len(existing_by_slug)} existing businesses in Firestore for {zip_code}/{business_type}")
+
+    # 2. Run fresh discovery — pass known names so ADK agent searches for NEW ones
+    results = await scan_zipcode(zip_code, category=business_type, force=True, known_names=known_names if known_names else None)
+
+    # 3. Merge: start with existing, add newly discovered
+    merged = dict(existing_by_slug)  # copy
+    new_count = 0
+    for biz in results:
+        slug = biz.docId or generate_slug(biz.name)
+        if slug not in merged:
+            merged[slug] = {
+                "slug": slug,
+                "name": biz.name,
+                "address": biz.address,
+                "officialUrl": getattr(biz, "website", None),
+                "sourceZipCode": zip_code,
+                "businessType": business_type,
+            }
+            new_count += 1
+
+    logger.info(f"[Workflow:Discovery] Merged: {len(existing_by_slug)} existing + {new_count} new = {len(merged)} total")
+    return list(merged.values())
 
 
 async def run_multi_zip_discovery_phase(

@@ -60,8 +60,22 @@ async def run_margin_analysis(
     Returns:
         Report dict with identity, menu_items, strategic_advice, overall_score.
     """
+    # Auto-screenshot menu URL if no base64 screenshot provided
+    if not identity.get("menuScreenshotBase64") and identity.get("menuUrl"):
+        logger.info(f"[Margin Runner] No screenshot — capturing menu from URL: {identity['menuUrl']}")
+        try:
+            from hephae_agents.shared_tools.playwright import screenshot_page
+            result = await screenshot_page(identity["menuUrl"], quality=70)
+            if result.get("screenshot_base64"):
+                identity = {**identity, "menuScreenshotBase64": result["screenshot_base64"]}
+                logger.info("[Margin Runner] Menu screenshot captured successfully")
+            else:
+                raise ValueError(f"Screenshot failed: {result.get('error', 'empty result')}")
+        except Exception as e:
+            raise ValueError(f"Could not screenshot menuUrl ({identity['menuUrl']}): {e}")
+
     if not identity.get("menuScreenshotBase64"):
-        raise ValueError("Missing menuScreenshotBase64 for margin analysis")
+        raise ValueError("Missing menuScreenshotBase64 and no menuUrl for margin analysis")
 
     logger.info("[Margin Runner] Commencing margin surgery...")
 

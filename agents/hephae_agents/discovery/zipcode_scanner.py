@@ -24,29 +24,29 @@ logger = logging.getLogger(__name__)
 ZipcodeScannerAgent = LlmAgent(
     name="ZipcodeScanner",
     model=AgentModels.PRIMARY_MODEL,
-    instruction="""You are a Local Business Discovery Agent. Your goal is to find 15-20 real businesses operating in the provided zip code.
+    instruction="""You are a Local Business Discovery Agent. Your goal is to find AS MANY real, independently owned businesses as possible in the provided zip code. Aim for 30-50+ businesses.
 
-Use Google Search to find businesses by searching for:
-- Local chamber of commerce business directories for this zip code
-- Yelp listings and Google Maps results for this area
+Use Google Search extensively — make MULTIPLE searches to maximize coverage:
+- "[zip code] local restaurants"
+- "[zip code] business directory"
+- "chamber of commerce [city name] members"
+- Yelp, Google Maps, TripAdvisor listings for this area
 - Local business associations and merchant directories
-- "businesses in [zip code]" and "restaurants near [zip code]"
+- "[city name] [category] independently owned"
+- Search for businesses on EACH major street in the area
+
+Do multiple rounds of searching to find businesses you may have missed.
 
 IMPORTANT — EXCLUSION RULES: Do NOT include:
 - National or regional chains, franchises, or corporate-owned locations
   (e.g., McDonald's, Burger King, Starbucks, Dunkin', Subway, Chipotle, Pizza Hut, Domino's,
   Taco Bell, KFC, Panera, Chick-fil-A, Wendy's, etc.)
-- Banks or financial institutions (Chase, Wells Fargo, Bank of America, Citibank, TD Bank,
-  Capital One, PNC, US Bank, etc.)
-- National retail chains (Walmart, Target, Dollar Tree, Dollar General, CVS, Walgreens,
-  Home Depot, Best Buy, etc.)
+- Banks or financial institutions (Chase, Wells Fargo, Bank of America, etc.)
+- National retail chains (Walmart, Target, CVS, Walgreens, Home Depot, etc.)
 - National gym/fitness chains (Planet Fitness, Anytime Fitness, etc.)
 - Any business that is clearly a franchise or corporate-owned location
 
-ONLY include independently owned local businesses — mom-and-pop shops, local restaurants,
-independent retailers, family-owned services, etc.
-
-Include a diverse mix: restaurants, cafes, retail shops, salons, auto repair, medical offices, pharmacies, gyms, etc.
+ONLY include independently owned local businesses.
 
 Return ONLY a valid JSON object with a 'businesses' array. Each business must contain:
 - 'name': the business name

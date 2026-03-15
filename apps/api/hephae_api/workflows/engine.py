@@ -249,15 +249,15 @@ class WorkflowEngine:
         self.workflow.progress.qualificationParked = len(results["parked"])
         self.workflow.progress.qualificationDisqualified = len(results["disqualified"])
 
+        # Keep all businesses in state — parked/disqualified are visible but skipped during analysis
         qualified_slugs = {biz.slug for biz in results["qualified"]}
-        self.workflow.businesses = [
-            biz for biz in self.workflow.businesses if biz.slug in qualified_slugs
-        ]
-        self.workflow.progress.totalBusinesses = len(self.workflow.businesses)
+        for biz in self.workflow.businesses:
+            if biz.slug not in qualified_slugs:
+                biz.phase = BusinessPhase.ANALYSIS_DONE  # Skip analysis for non-qualified
 
         await self._checkpoint()
 
-        if not self.workflow.businesses:
+        if not qualified_slugs:
             raise ValueError("No businesses qualified for deep discovery")
 
     async def _execute_analysis(self):

@@ -95,18 +95,22 @@ async def run_single_business_analysis(slug: str) -> dict:
     zip_code = biz_data.get("zipCode")
     business_type = biz_data.get("businessType") or biz_data.get("category")
 
+    def _g(doc, key):
+        return doc.get(key) if isinstance(doc, dict) else getattr(doc, key, None)
+
     if zip_code:
         try:
             from hephae_db.firestore.research import get_area_research_for_zip_code
             area_doc = await get_area_research_for_zip_code(zip_code)
-            if area_doc and area_doc.summary:
-                summary = area_doc.summary
-                identity["areaResearchContext"] = {
-                    "areaName": area_doc.area,
-                    "businessType": area_doc.businessType,
-                    "resolvedState": area_doc.resolvedState or "",
-                    "summary": summary.model_dump(mode="json") if hasattr(summary, "model_dump") else summary,
-                }
+            if area_doc:
+                summary = _g(area_doc, "summary")
+                if summary:
+                    identity["areaResearchContext"] = {
+                        "areaName": _g(area_doc, "area") or "",
+                        "businessType": _g(area_doc, "businessType") or "",
+                        "resolvedState": _g(area_doc, "resolvedState") or "",
+                        "summary": summary.model_dump(mode="json") if hasattr(summary, "model_dump") else summary,
+                    }
         except Exception:
             pass
 
@@ -114,17 +118,22 @@ async def run_single_business_analysis(slug: str) -> dict:
             try:
                 from hephae_db.firestore.research import get_zipcode_report
                 zip_doc = await get_zipcode_report(zip_code)
-                if zip_doc and zip_doc.report:
-                    report = zip_doc.report
-                    sections = report.sections if hasattr(report, "sections") else None
-                    if sections:
-                        identity["zipCodeResearchContext"] = {
-                            "zipCode": zip_code,
-                            "summary": report.summary if hasattr(report, "summary") else "",
-                            "events": getattr(sections.events, "content", "") if sections.events else "",
-                            "weather": getattr(sections.seasonal_weather, "content", "") if sections.seasonal_weather else "",
-                            "demographics": getattr(sections.demographics, "content", "") if hasattr(sections, "demographics") else "",
-                        }
+                if zip_doc:
+                    report = _g(zip_doc, "report")
+                    if report:
+                        sections = _g(report, "sections") if not isinstance(report, dict) else report.get("sections")
+                        if sections:
+                            _sg = lambda s, k: (s.get(k) if isinstance(s, dict) else getattr(s, k, None))
+                            events = _sg(sections, "events")
+                            weather = _sg(sections, "seasonal_weather")
+                            demographics = _sg(sections, "demographics")
+                            identity["zipCodeResearchContext"] = {
+                                "zipCode": zip_code,
+                                "summary": _g(report, "summary") or "",
+                                "events": (_g(events, "content") or "") if events else "",
+                                "weather": (_g(weather, "content") or "") if weather else "",
+                                "demographics": (_g(demographics, "content") or "") if demographics else "",
+                            }
             except Exception:
                 pass
 
@@ -132,14 +141,15 @@ async def run_single_business_analysis(slug: str) -> dict:
         try:
             from hephae_db.firestore.research import get_sector_research_for_type
             sector_doc = await get_sector_research_for_type(business_type)
-            if sector_doc and sector_doc.summary:
-                summary = sector_doc.summary
-                summary_dict = summary.model_dump(mode="json") if hasattr(summary, "model_dump") else summary
-                identity["sectorResearchContext"] = {
-                    "sector": sector_doc.sector,
-                    "synthesis": summary_dict.get("synthesis", {}),
-                    "industryAnalysis": summary_dict.get("industryAnalysis", {}),
-                }
+            if sector_doc:
+                summary = _g(sector_doc, "summary")
+                if summary:
+                    summary_dict = summary.model_dump(mode="json") if hasattr(summary, "model_dump") else (summary if isinstance(summary, dict) else {})
+                    identity["sectorResearchContext"] = {
+                        "sector": _g(sector_doc, "sector") or "",
+                        "synthesis": summary_dict.get("synthesis", {}),
+                        "industryAnalysis": summary_dict.get("industryAnalysis", {}),
+                    }
         except Exception:
             pass
 

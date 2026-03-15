@@ -788,8 +788,8 @@ export default function WorkflowDashboard() {
                                                     ev.score >= 80 && !ev.isHallucinated
                                                         ? 'bg-green-50 text-green-600 border border-green-200'
                                                         : 'bg-amber-50 text-amber-600 border border-amber-200'
-                                                }`}>
-                                                    {cap.slice(0, 3)}: {ev.score}
+                                                }`} title={`${cap} QA eval: ${ev.score}/100${ev.isHallucinated ? ' (hallucinated)' : ''}`}>
+                                                    {cap}: {ev.score}
                                                 </span>
                                             ))}
                                         </div>

@@ -47,21 +47,25 @@ async def get_workflow_research(workflow_id: str):
     for zc in zip_codes:
         try:
             zip_doc = await get_zipcode_report(zc)
-            if zip_doc and zip_doc.report:
-                report = zip_doc.report
-                research["zipReports"][zc] = report.model_dump(mode="json") if hasattr(report, "model_dump") else report
+            if zip_doc:
+                report = zip_doc.get("report") if isinstance(zip_doc, dict) else getattr(zip_doc, "report", None)
+                if report:
+                    research["zipReports"][zc] = report.model_dump(mode="json") if hasattr(report, "model_dump") else report
         except Exception:
             pass
 
         try:
             area_doc = await get_area_research_for_zip_code(zc)
-            if area_doc and area_doc.summary:
-                summary = area_doc.summary
-                research["areaResearch"][zc] = {
-                    "area": area_doc.area,
-                    "businessType": area_doc.businessType,
-                    "summary": summary.model_dump(mode="json") if hasattr(summary, "model_dump") else summary,
-                }
+            if area_doc:
+                summary = area_doc.get("summary") if isinstance(area_doc, dict) else getattr(area_doc, "summary", None)
+                if summary:
+                    area_name = area_doc.get("area", "") if isinstance(area_doc, dict) else getattr(area_doc, "area", "")
+                    biz_type = area_doc.get("businessType", "") if isinstance(area_doc, dict) else getattr(area_doc, "businessType", "")
+                    research["areaResearch"][zc] = {
+                        "area": area_name,
+                        "businessType": biz_type,
+                        "summary": summary.model_dump(mode="json") if hasattr(summary, "model_dump") else summary,
+                    }
         except Exception:
             pass
 

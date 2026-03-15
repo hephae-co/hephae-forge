@@ -24,34 +24,44 @@ async def _load_research_context(
     """Load area, zipcode, and sector research from Firestore for threshold computation."""
     ctx: dict[str, Any] = {}
 
+    def _get(doc, key):
+        """Get a value from dict or model."""
+        if isinstance(doc, dict):
+            return doc.get(key)
+        return getattr(doc, key, None)
+
     try:
         from hephae_db.firestore.research import get_area_research_for_zip_code
         area_doc = await get_area_research_for_zip_code(zip_code)
-        if area_doc and area_doc.summary:
-            summary = area_doc.summary
-            ctx["area_research"] = {
-                "summary": summary.model_dump(mode="json") if hasattr(summary, "model_dump") else summary,
-            }
+        if area_doc:
+            summary = _get(area_doc, "summary")
+            if summary:
+                ctx["area_research"] = {
+                    "summary": summary.model_dump(mode="json") if hasattr(summary, "model_dump") else summary,
+                }
     except Exception as e:
         logger.warning(f"[Qualification] Area research load failed: {e}")
 
     try:
         from hephae_db.firestore.research import get_zipcode_report
         zip_doc = await get_zipcode_report(zip_code)
-        if zip_doc and zip_doc.report:
-            report = zip_doc.report
-            sections = report.sections if hasattr(report, "sections") else None
-            if sections:
-                ctx["zipcode_research"] = {
-                    "report": {
-                        "sections": {
-                            "demographics": sections.demographics.model_dump(mode="json")
-                            if hasattr(sections, "demographics") and sections.demographics
-                            and hasattr(sections.demographics, "model_dump")
-                            else ({"content": getattr(sections.demographics, "content", ""), "key_facts": getattr(sections.demographics, "key_facts", [])} if hasattr(sections, "demographics") and sections.demographics else {}),
-                        },
-                    },
-                }
+        if zip_doc:
+            report = _get(zip_doc, "report")
+            if report:
+                sections = _get(report, "sections") if not isinstance(report, dict) else report.get("sections")
+                if sections:
+                    demographics = _get(sections, "demographics") if not isinstance(sections, dict) else sections.get("demographics")
+                    if demographics:
+                        ctx["zipcode_research"] = {
+                            "report": {
+                                "sections": {
+                                    "demographics": demographics.model_dump(mode="json")
+                                    if hasattr(demographics, "model_dump")
+                                    else demographics if isinstance(demographics, dict)
+                                    else {"content": getattr(demographics, "content", ""), "key_facts": getattr(demographics, "key_facts", [])},
+                                },
+                            },
+                        }
     except Exception as e:
         logger.warning(f"[Qualification] Zipcode research load failed: {e}")
 
@@ -59,11 +69,12 @@ async def _load_research_context(
         try:
             from hephae_db.firestore.research import get_sector_research_for_type
             sector_doc = await get_sector_research_for_type(business_type)
-            if sector_doc and sector_doc.summary:
-                summary = sector_doc.summary
-                ctx["sector_research"] = {
-                    "summary": summary.model_dump(mode="json") if hasattr(summary, "model_dump") else summary,
-                }
+            if sector_doc:
+                summary = _get(sector_doc, "summary")
+                if summary:
+                    ctx["sector_research"] = {
+                        "summary": summary.model_dump(mode="json") if hasattr(summary, "model_dump") else summary,
+                    }
         except Exception as e:
             logger.warning(f"[Qualification] Sector research load failed: {e}")
 

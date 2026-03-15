@@ -903,3 +903,43 @@ class TestFixture(BaseModel):
     businessState: BusinessWorkflowState | None = None
     identity: FixtureIdentity = Field(default_factory=FixtureIdentity)
     latestOutputs: dict[str, Any] = Field(default_factory=dict)
+
+
+# ── Outreach & Marketing ──────────────────────────────────────────────────
+
+
+class OutreachContent(BaseModel):
+    subject: Optional[str] = None
+    body_html: Optional[str] = Field(None, alias="bodyHtml")
+    body_text: Optional[str] = Field(None, alias="bodyText")
+    hashtags: list[str] = Field(default_factory=list)
+    image_prompts: list[str] = Field(default_factory=list, alias="imagePrompts")
+    cta_link: Optional[str] = Field(None, alias="ctaLink")
+
+    model_config = {"populate_by_name": True}
+
+
+class OutreachResponse(BaseModel):
+    email: OutreachContent = Field(default_factory=OutreachContent)
+    contact_form: OutreachContent = Field(default_factory=OutreachContent, alias="contactForm")
+    pitch_angle: str = Field(alias="pitchAngle", default="")
+
+    model_config = {"populate_by_name": True}
+
+
+# ── Industry Intelligence ─────────────────────────────────────────────────
+
+
+class PitchAngle(BaseModel):
+    name: str
+    description: str
+    pain_points: list[str] = Field(default_factory=list)
+    hook: str
+
+
+class IndustryConfig(BaseModel):
+    industry: str
+    primary_pain_points: list[str] = Field(default_factory=list)
+    pitch_angles: list[PitchAngle] = Field(default_factory=list)
+    tone: str = "professional yet approachable"
+    preferred_platforms: list[str] = Field(default_factory=list)

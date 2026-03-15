@@ -70,17 +70,25 @@ async def _find_website(name: str, address: str) -> str:
             agent = LlmAgent(
                 name="WebsiteFinder",
                 model=AgentModels.PRIMARY_MODEL,
-                instruction="""Find the official website URL for the given business.
-                Use Google Search to find it. Return ONLY a JSON object with a single "url" field.
-                Example: {"url": "https://example.com"}
-                If you cannot find a website, return: {"url": ""}""",
+                instruction="""You are a business website finder. Your job is to find the official website URL for a local business.
+
+Search strategy — try MULTIPLE searches to maximize your chances:
+1. Search for the exact business name + city (e.g., "Queen Margherita Trattoria Nutley")
+2. Search for the business name + "official website" (e.g., "Sugar Tree Cafe official website")
+3. Search for the business name + "menu" or "hours" if it's a restaurant
+
+Look for the business's OWN domain (e.g., sugartreecafe.com, bellalucenj.com), NOT a Yelp/Facebook/TripAdvisor/Google Maps page.
+
+IMPORTANT: Many small businesses have websites. Try hard before giving up. If a business has a Facebook page, it likely has a website too.
+
+Return ONLY a JSON object: {"url": "https://example.com"} or {"url": ""} if truly not found.""",
                 tools=[google_search],
                 on_model_error_callback=fallback_on_error,
             )
 
             data = await run_agent_to_json(
                 agent,
-                f"Find the official website for: {name}, located at {address}",
+                f'Find the official website for "{name}" located at {address}. Search for "{name}" + the city name.',
                 app_name="HephaeAdmin",
             )
             if data and isinstance(data, dict):

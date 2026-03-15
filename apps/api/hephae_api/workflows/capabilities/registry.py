@@ -195,7 +195,6 @@ CAPABILITY_REGISTRY: list[FullCapabilityDefinition] = [
         runner=_run_competitive,
         evaluator=EvaluatorConfig(_lazy_competitive_evaluator, _competitive_eval_prompt, "wf_comp_eval"),
         enabled=True,
-        should_run=lambda biz: bool(biz.get("competitors")),
     ),
     FullCapabilityDefinition(
         name="margin_surgeon",

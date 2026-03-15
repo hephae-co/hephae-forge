@@ -126,6 +126,27 @@ class FirestoreSessionService(BaseSessionService):
             logger.info(f"[SessionService] Pruning heavy fields from {session_id}")
             await asyncio.to_thread(doc_ref.update, updates)
 
+    async def append_event(self, session: Session, event) -> Any:
+        """Override to persist state deltas to Firestore after each agent step."""
+        event = await super().append_event(session=session, event=event)
+
+        # Persist state deltas to Firestore
+        if event and hasattr(event, 'actions') and event.actions and event.actions.state_delta:
+            db = get_db()
+            doc_ref = db.collection(COLLECTION).document(session.id)
+            updates = {}
+            for key, value in event.actions.state_delta.items():
+                if not key.startswith("temp:"):
+                    updates[f"state.{key}"] = value
+            if updates:
+                updates["updatedAt"] = datetime.utcnow()
+                try:
+                    await asyncio.to_thread(doc_ref.update, updates)
+                except Exception as e:
+                    logger.warning(f"[SessionService] Failed to persist state delta for {session.id}: {e}")
+
+        return event
+
     async def delete_session(self, *, app_name: str, user_id: str, session_id: str) -> None:
         db = get_db()
         await asyncio.to_thread(db.collection(COLLECTION).document(session_id).delete)

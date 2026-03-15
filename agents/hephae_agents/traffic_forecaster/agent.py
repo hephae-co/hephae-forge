@@ -181,9 +181,9 @@ class ForecasterAgent:
       ### 4. ADMIN RESEARCH CONTEXT (if available)
       {_build_admin_context(business_context)}
 
-      **ANALYSIS RULES**:
+      **ANALYSIS RULES** (MUST follow in order):
       1. **HOURS**: If the business is CLOSED, Traffic Level MUST be "Closed".
-      2. **WEATHER**: If Severe Weather is detected, REDUCE traffic scores.
+      2. **WEATHER — CHECK BOTH SOURCES**: Read Section 2 (real-time weather) AND Section 4 (admin research context, especially "Seasonal Weather" or "seasonal_weather"). If EITHER source mentions storms, severe weather, temperature drops, or hazardous conditions for ANY forecast day, you MUST reflect that in the weatherNote AND reduce traffic scores for that day. Do NOT write "Standard seasonal conditions" if severe weather is documented in any source.
       3. **EVENTS & DISTANCE**: Major nearby events boost traffic scores significantly.
 
       **OUTPUT**:

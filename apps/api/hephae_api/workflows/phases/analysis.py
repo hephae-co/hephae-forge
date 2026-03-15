@@ -323,10 +323,15 @@ async def run_analysis_phase(
 
             # Detect terminal status
             if status == STATUS_COMPLETED and biz.phase != BusinessPhase.ANALYSIS_DONE:
+                # Final sync of capabilities from task metadata
+                biz.capabilitiesCompleted = meta.get("capabilitiesCompleted", biz.capabilitiesCompleted)
+                biz.capabilitiesFailed = meta.get("capabilitiesFailed", biz.capabilitiesFailed)
                 biz.phase = BusinessPhase.ANALYSIS_DONE
                 if callbacks.get("onBusinessDone"):
                     await callbacks["onBusinessDone"](slug)
             elif status == STATUS_FAILED and biz.phase != BusinessPhase.ANALYSIS_DONE:
+                biz.capabilitiesCompleted = meta.get("capabilitiesCompleted", biz.capabilitiesCompleted)
+                biz.capabilitiesFailed = meta.get("capabilitiesFailed", biz.capabilitiesFailed)
                 biz.lastError = task.get("error", "Unknown error")
                 biz.phase = BusinessPhase.ANALYSIS_DONE
                 if callbacks.get("onBusinessDone"):

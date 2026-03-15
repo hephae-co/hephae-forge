@@ -1,0 +1,23 @@
+industry: "Restaurants"
+tone: "warm, appetizing, and locally focused"
+primary_pain_points:
+  - "High aggregator fees (DoorDash/UberEats)"
+  - "Static/Outdated website menus"
+  - "Poor conversion from social media to bookings"
+pitch_angles:
+  - name: "Aggregator Escape"
+    description: "Move customers from 30% commission platforms to direct ordering."
+    pain_points:
+      - "Losing 30% of revenue to marketplaces"
+      - "No customer data ownership"
+    hook: "What if you could keep 100% of your delivery revenue?"
+  - name: "Digital Menu Refresh"
+    description: "Update static PDF menus to SEO-friendly, interactive digital menus."
+    pain_points:
+      - "Customers can't read your menu on mobile"
+      - "Search engines can't index your dishes"
+    hook: "Is your menu hidden from hungry customers?"
+preferred_platforms:
+  - "Instagram"
+  - "Facebook"
+  - "Yelp"

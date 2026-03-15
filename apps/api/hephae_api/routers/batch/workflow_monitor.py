@@ -23,15 +23,15 @@ _TERMINAL = {"completed", "failed", "approval"}
 _DEFAULT_WINDOW_MINUTES = 30
 
 
-def _get_notify_email() -> str | None:
-    """Resolve the email to send digests to."""
-    explicit = os.environ.get("MONITOR_NOTIFY_EMAIL")
+def _get_notify_emails() -> list[str]:
+    """Resolve all emails to send digests to."""
+    explicit = os.environ.get("MONITOR_NOTIFY_EMAILS", "")
     if explicit:
-        return explicit
+        return [e.strip() for e in explicit.split(",") if e.strip()]
     allowlist = settings.ADMIN_EMAIL_ALLOWLIST
     if allowlist:
-        return allowlist.split(",")[0].strip()
-    return None
+        return [e.strip() for e in allowlist.split(",") if e.strip()]
+    return []
 
 
 def _phase_icon(phase: str) -> str:
@@ -169,9 +169,9 @@ async def workflow_monitor(
         return {"digested": 0, "message": "Nothing to report"}
 
     # Build and send digest
-    notify_email = _get_notify_email()
-    if not notify_email:
-        logger.warning("[WorkflowMonitor] No MONITOR_NOTIFY_EMAIL or ADMIN_EMAIL_ALLOWLIST configured")
+    notify_emails = _get_notify_emails()
+    if not notify_emails:
+        logger.warning("[WorkflowMonitor] No MONITOR_NOTIFY_EMAILS or ADMIN_EMAIL_ALLOWLIST configured")
         return {"digested": len(recent), "emailed": False, "reason": "no_email_configured", "workflows": recent}
 
     completed = sum(1 for w in recent if w["phase"] == "completed")
@@ -199,24 +199,31 @@ async def workflow_monitor(
         text_lines.append("")
 
     html = _build_digest_html(recent)
+    text = "\n".join(text_lines)
 
-    try:
-        email_id = await send_email(
-            to=notify_email,
-            subject=subject,
-            text="\n".join(text_lines),
-            html_content=html,
-            from_addr="Hephae Monitor <chris@hephae.co>",
-        )
-        logger.info(f"[WorkflowMonitor] Digest sent to {notify_email} ({len(recent)} workflows, email={email_id})")
-    except Exception as e:
-        logger.error(f"[WorkflowMonitor] Failed to send digest: {e}")
-        return {"digested": len(recent), "emailed": False, "error": str(e), "workflows": recent}
+    # Send to all recipients
+    sent_to = []
+    errors = []
+    for email_addr in notify_emails:
+        try:
+            email_id = await send_email(
+                to=email_addr,
+                subject=subject,
+                text=text,
+                html_content=html,
+                from_addr="Hephae Monitor <chris@hephae.co>",
+            )
+            sent_to.append(email_addr)
+            logger.info(f"[WorkflowMonitor] Digest sent to {email_addr} (email={email_id})")
+        except Exception as e:
+            errors.append({"to": email_addr, "error": str(e)})
+            logger.error(f"[WorkflowMonitor] Failed to send digest to {email_addr}: {e}")
 
     return {
         "digested": len(recent),
-        "emailed": True,
-        "to": notify_email,
+        "emailed": len(sent_to) > 0,
+        "sentTo": sent_to,
+        "errors": errors,
         "completed": completed,
         "failed": failed,
         "paused": paused,

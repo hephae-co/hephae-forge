@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     BATCH_EVAL_FALLBACK_TIMEOUT: int = int(os.getenv("BATCH_EVAL_FALLBACK_TIMEOUT", "300"))
 
     # Monitoring
-    MONITOR_NOTIFY_EMAIL: str = os.getenv("MONITOR_NOTIFY_EMAIL", "")
+    MONITOR_NOTIFY_EMAILS: str = os.getenv("MONITOR_NOTIFY_EMAILS", "")
 
     # Tools
     CRAWL4AI_URL: str = os.getenv("CRAWL4AI_URL", "")

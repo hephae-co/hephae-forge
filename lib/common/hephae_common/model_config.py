@@ -44,7 +44,7 @@ class ThinkingPresets:
         thinking_config=ThinkingConfig(thinking_level="HIGH")
     )
     DEEP = GenerateContentConfig(
-        thinking_config=ThinkingConfig(thinking_level="HIGH", thinking_budget=8192)
+        thinking_config=ThinkingConfig(thinking_budget=8192)
     )
 
 

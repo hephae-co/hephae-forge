@@ -142,19 +142,66 @@ class WorkflowEngine:
     async def _run_research_parallel(self, zip_codes: list[str], business_type: str):
         """Run zipcode, area, and sector research in parallel with scan.
 
-        Non-fatal — research failures don't block discovery. Results are
-        persisted to Firestore and read later by the qualification phase.
+        Staleness policy:
+        - Zipcode research: reuse if < 7 days old, refresh only volatile sections
+          (weather, events, trending) if > 24 hours old
+        - Sector research: reuse if < 7 days old
+        - Area research: reuse if < 7 days old
+
+        Non-fatal — research failures don't block discovery.
         """
+        from hephae_db.firestore.research import (
+            get_zipcode_report, get_area_research_for_zip_code,
+            get_sector_research_for_type,
+        )
+
+        FULL_REFRESH_DAYS = 7
+        VOLATILE_REFRESH_HOURS = 24
+
+        def _age_hours(doc) -> float:
+            """Return age of a research doc in hours."""
+            created = doc.get("createdAt") if isinstance(doc, dict) else getattr(doc, "createdAt", None)
+            if not created:
+                return float("inf")
+            if isinstance(created, str):
+                try:
+                    created = datetime.fromisoformat(created.replace("Z", "+00:00"))
+                except ValueError:
+                    return float("inf")
+            if hasattr(created, "timestamp"):
+                return (datetime.utcnow() - created.replace(tzinfo=None)).total_seconds() / 3600
+            return float("inf")
+
         async def _zip_research():
             for zc in zip_codes:
                 try:
-                    await research_zip_code(zc)
-                    self._emit("workflow:zipcode_research", f"Zip code research cached for {zc}")
+                    existing = await get_zipcode_report(zc)
+                    age_h = _age_hours(existing) if existing else float("inf")
+
+                    if age_h < VOLATILE_REFRESH_HOURS:
+                        self._emit("workflow:zipcode_research", f"Zip research for {zc} is fresh ({int(age_h)}h old) — reusing")
+                        continue
+
+                    if age_h < FULL_REFRESH_DAYS * 24:
+                        # Stable sections still valid — only refresh volatile sections
+                        self._emit("workflow:zipcode_research", f"Refreshing volatile sections for {zc} ({int(age_h)}h old)")
+                        await research_zip_code(zc, force=True)
+                    else:
+                        # Full refresh needed
+                        self._emit("workflow:zipcode_research", f"Full research for {zc} (stale: {int(age_h)}h old)")
+                        await research_zip_code(zc, force=True)
                 except Exception as e:
                     logger.error(f"[WorkflowEngine] Zip code research non-fatal error for {zc}: {e}")
 
         async def _sector_research():
             try:
+                existing = await get_sector_research_for_type(business_type)
+                age_h = _age_hours(existing) if existing else float("inf")
+
+                if age_h < FULL_REFRESH_DAYS * 24:
+                    self._emit("workflow:sector_research", f"Sector research for {business_type} is fresh ({int(age_h)}h old) — reusing")
+                    return
+
                 await run_sector_research(sector=business_type, zip_codes=zip_codes)
                 self._emit("workflow:sector_research", f"Sector research completed for {business_type}")
             except Exception as e:
@@ -162,6 +209,14 @@ class WorkflowEngine:
 
         async def _area_research():
             try:
+                # Check if fresh area research exists for this zip
+                existing = await get_area_research_for_zip_code(zip_codes[0])
+                age_h = _age_hours(existing) if existing else float("inf")
+
+                if age_h < FULL_REFRESH_DAYS * 24:
+                    self._emit("workflow:area_research", f"Area research is fresh ({int(age_h)}h old) — reusing")
+                    return
+
                 from hephae_api.workflows.orchestrators.area_research import start_area_research
                 city_state = None
                 try:

@@ -188,11 +188,12 @@ def _register_routers() -> None:
     app.include_router(tasks.router)
 
     # --- Batch / Cron routers ---
-    from hephae_api.routers.batch import cron, heartbeat_cron, workflow_monitor
+    from hephae_api.routers.batch import cron, heartbeat_cron, workflow_monitor, batch_workflows
 
     app.include_router(cron.router)
     app.include_router(heartbeat_cron.router)
     app.include_router(workflow_monitor.router)
+    app.include_router(batch_workflows.router)
 
 
 _register_routers()

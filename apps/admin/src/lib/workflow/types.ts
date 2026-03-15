@@ -1,4 +1,4 @@
-export type WorkflowPhase = 'discovery' | 'qualification' | 'analysis' | 'evaluation' | 'approval' | 'outreach' | 'completed' | 'failed';
+export type WorkflowPhase = 'queued' | 'discovery' | 'qualification' | 'analysis' | 'evaluation' | 'approval' | 'outreach' | 'completed' | 'failed';
 
 export type BusinessPhase =
     | 'pending'

@@ -374,6 +374,7 @@ class BlogPostResponse(BaseModel):
 
 
 class WorkflowPhase(str, Enum):
+    QUEUED = "queued"
     DISCOVERY = "discovery"
     QUALIFICATION = "qualification"
     ANALYSIS = "analysis"

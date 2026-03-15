@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["workflow-monitor"])
 
-# Terminal phases we report on
+# Phases we report on (terminal + queued for visibility)
 _TERMINAL = {"completed", "failed", "approval"}
 
 # Configurable window (minutes) — should match Cloud Scheduler interval

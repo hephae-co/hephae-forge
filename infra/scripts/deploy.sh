@@ -208,4 +208,29 @@ if [ -n "$CRON_SECRET_VAL" ] && [ -n "$API_URL" ]; then
   echo "    gcloud scheduler jobs update http ${MONITOR_JOB} \\"
   echo "      --schedule '0 * * * *' \\"
   echo "      --location ${REGION} --project ${PROJECT_ID}"
+
+  # --- Workflow Dispatcher (every 5 min) ---
+  DISPATCHER_JOB="workflow-dispatcher"
+  DISPATCHER_SCHEDULE="*/5 * * * *"
+
+  DISPATCHER_BASE_FLAGS=(
+    --schedule "$DISPATCHER_SCHEDULE"
+    --time-zone "America/New_York"
+    --location "$REGION"
+    --project "$PROJECT_ID"
+    --uri "${API_URL}/api/cron/workflow-dispatcher"
+    --http-method GET
+    --oidc-service-account-email "$SERVICE_ACCOUNT"
+  )
+
+  if gcloud scheduler jobs describe "$DISPATCHER_JOB" \
+      --location "$REGION" --project "$PROJECT_ID" &>/dev/null; then
+    gcloud scheduler jobs update http "$DISPATCHER_JOB" "${DISPATCHER_BASE_FLAGS[@]}" \
+      --update-headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}" --quiet
+    echo "  ✓ Updated scheduler: ${DISPATCHER_JOB} (${DISPATCHER_SCHEDULE})"
+  else
+    gcloud scheduler jobs create http "$DISPATCHER_JOB" "${DISPATCHER_BASE_FLAGS[@]}" \
+      --headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}"
+    echo "  ✓ Created scheduler: ${DISPATCHER_JOB} (${DISPATCHER_SCHEDULE})"
+  fi
 fi

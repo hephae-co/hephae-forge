@@ -1,8 +1,7 @@
-"""Batch workflow trigger — kick off multiple workflows via CRON_SECRET auth."""
+"""Batch workflow trigger — queues workflows for sequential execution."""
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
 from fastapi import APIRouter, Header, HTTPException
@@ -17,7 +16,6 @@ router = APIRouter(tags=["batch-workflows"])
 
 class BatchWorkflowRequest(BaseModel):
     jobs: list[dict]  # [{"zipCode": "07017", "businessType": "Restaurants"}, ...]
-    delay_seconds: int = 10  # delay between workflow launches
 
 
 @router.post("/api/cron/batch-workflows")
@@ -26,10 +24,9 @@ async def batch_create_workflows(
     authorization: str | None = Header(None),
     x_cron_secret: str | None = Header(None),
 ):
-    """Create and start multiple workflows. Auth via CRON_SECRET.
+    """Create workflows in QUEUED state for sequential processing.
 
-    Accepts CRON_SECRET in either Authorization header (Cloud Scheduler)
-    or X-Cron-Secret header (CLI calls where Authorization is used by Cloud Run IAM).
+    The workflow-dispatcher cron picks them up one at a time.
     """
     cron_token = x_cron_secret or authorization
     if settings.CRON_SECRET and cron_token != f"Bearer {settings.CRON_SECRET}":
@@ -37,10 +34,9 @@ async def batch_create_workflows(
 
     from hephae_db.firestore.workflows import create_workflow
     from hephae_api.types import WorkflowDocument, WorkflowPhase, WorkflowProgress
-    from hephae_api.workflows.engine import start_workflow_engine
 
     results = []
-    for i, job in enumerate(req.jobs):
+    for job in req.jobs:
         zip_code = job.get("zipCode", "")
         business_type = job.get("businessType")
 
@@ -56,16 +52,20 @@ async def batch_create_workflows(
                 phase_enum=WorkflowPhase,
                 progress_model=WorkflowProgress,
             )
-            await start_workflow_engine(workflow.id)
-            logger.info(f"[BatchWorkflows] Started {i+1}/{len(req.jobs)}: {business_type} in {zip_code} → {workflow.id}")
+            # Override phase to QUEUED (create_workflow sets DISCOVERY by default)
+            from hephae_db.firestore.workflows import save_workflow
+            workflow.phase = WorkflowPhase.QUEUED
+            await save_workflow(workflow)
+
+            logger.info(f"[BatchWorkflows] Queued: {business_type} in {zip_code} → {workflow.id}")
             results.append({
                 "workflowId": workflow.id,
                 "zipCode": zip_code,
                 "businessType": business_type,
-                "status": "started",
+                "status": "queued",
             })
         except Exception as e:
-            logger.error(f"[BatchWorkflows] Failed to start {business_type} in {zip_code}: {e}")
+            logger.error(f"[BatchWorkflows] Failed to queue {business_type} in {zip_code}: {e}")
             results.append({
                 "zipCode": zip_code,
                 "businessType": business_type,
@@ -73,16 +73,12 @@ async def batch_create_workflows(
                 "error": str(e),
             })
 
-        # Stagger launches to avoid rate limits
-        if i < len(req.jobs) - 1 and req.delay_seconds > 0:
-            await asyncio.sleep(req.delay_seconds)
-
-    started = sum(1 for r in results if r.get("status") == "started")
+    queued = sum(1 for r in results if r.get("status") == "queued")
     failed = sum(1 for r in results if r.get("status") == "error")
 
     return {
         "total": len(req.jobs),
-        "started": started,
+        "queued": queued,
         "failed": failed,
         "results": results,
     }

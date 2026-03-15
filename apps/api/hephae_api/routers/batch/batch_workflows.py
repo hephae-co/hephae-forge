@@ -24,9 +24,15 @@ class BatchWorkflowRequest(BaseModel):
 async def batch_create_workflows(
     req: BatchWorkflowRequest,
     authorization: str | None = Header(None),
+    x_cron_secret: str | None = Header(None),
 ):
-    """Create and start multiple workflows. Auth via CRON_SECRET."""
-    if settings.CRON_SECRET and authorization != f"Bearer {settings.CRON_SECRET}":
+    """Create and start multiple workflows. Auth via CRON_SECRET.
+
+    Accepts CRON_SECRET in either Authorization header (Cloud Scheduler)
+    or X-Cron-Secret header (CLI calls where Authorization is used by Cloud Run IAM).
+    """
+    cron_token = x_cron_secret or authorization
+    if settings.CRON_SECRET and cron_token != f"Bearer {settings.CRON_SECRET}":
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     from hephae_db.firestore.workflows import create_workflow

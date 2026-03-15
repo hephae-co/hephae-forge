@@ -195,11 +195,11 @@ if [ -n "$CRON_SECRET_VAL" ] && [ -n "$API_URL" ]; then
   if gcloud scheduler jobs describe "$MONITOR_JOB" \
       --location "$REGION" --project "$PROJECT_ID" &>/dev/null; then
     gcloud scheduler jobs update http "$MONITOR_JOB" "${MONITOR_BASE_FLAGS[@]}" \
-      --update-headers "Authorization=Bearer ${CRON_SECRET_VAL}" --quiet
+      --update-headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}" --quiet
     echo "  ✓ Updated scheduler: ${MONITOR_JOB} (${MONITOR_SCHEDULE})"
   else
     gcloud scheduler jobs create http "$MONITOR_JOB" "${MONITOR_BASE_FLAGS[@]}" \
-      --headers "Authorization=Bearer ${CRON_SECRET_VAL}"
+      --headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}"
     echo "  ✓ Created scheduler: ${MONITOR_JOB} (${MONITOR_SCHEDULE})"
   fi
 

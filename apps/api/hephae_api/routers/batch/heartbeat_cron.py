@@ -15,9 +15,13 @@ router = APIRouter(tags=["heartbeat-cron"])
 
 
 @router.get("/api/cron/heartbeat-cycle")
-async def heartbeat_cycle(authorization: str | None = Header(None)):
+async def heartbeat_cycle(
+    authorization: str | None = Header(None),
+    x_cron_secret: str | None = Header(None),
+):
     """Run all due heartbeat cycles. Called by Cloud Scheduler weekly."""
-    if settings.CRON_SECRET and authorization != f"Bearer {settings.CRON_SECRET}":
+    cron_token = x_cron_secret or authorization
+    if settings.CRON_SECRET and cron_token != f"Bearer {settings.CRON_SECRET}":
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     from hephae_db.firestore.heartbeats import get_due_heartbeats

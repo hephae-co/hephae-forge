@@ -19,9 +19,11 @@ router = APIRouter(prefix="/api/cron", tags=["cron"])
 @router.get("/run-analysis")
 async def cron_run_analysis(
     authorization: str | None = Header(None),
+    x_cron_secret: str | None = Header(None),
     zip: str = Query("10001"),
 ):
-    if settings.CRON_SECRET and authorization != f"Bearer {settings.CRON_SECRET}":
+    cron_token = x_cron_secret or authorization
+    if settings.CRON_SECRET and cron_token != f"Bearer {settings.CRON_SECRET}":
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     logger.info(f"[Cron] Starting Analysis Cycle for Zip Code: {zip}")

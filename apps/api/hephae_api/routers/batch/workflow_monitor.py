@@ -129,13 +129,16 @@ def _build_digest_html(workflows: list[dict[str, Any]]) -> str:
 @router.get("/api/cron/workflow-monitor")
 async def workflow_monitor(
     authorization: str | None = Header(None),
+    x_cron_secret: str | None = Header(None),
     window: int = Query(_DEFAULT_WINDOW_MINUTES, description="Lookback window in minutes"),
 ):
     """Check for recently completed/failed workflows and send digest email.
 
     Called by Cloud Scheduler every 30 minutes.
+    Auth: CRON_SECRET via X-Cron-Secret header (preferred) or Authorization header.
     """
-    if settings.CRON_SECRET and authorization != f"Bearer {settings.CRON_SECRET}":
+    cron_token = x_cron_secret or authorization
+    if settings.CRON_SECRET and cron_token != f"Bearer {settings.CRON_SECRET}":
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     from hephae_db.firestore.workflows import list_workflows

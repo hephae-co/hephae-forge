@@ -364,12 +364,14 @@ async def _run_llm_classifier(
         return {"is_hvt": False, "reason": f"LLM error: {e}"}
 
 
-async def _run_full_probe(
+async def _run_full_probe_crawl_only(
     name: str, url: str, category: str,
     partial_result: QualificationResult,
-    research_context: dict[str, Any] | None = None,
-) -> QualificationResult:
-    """Step B: Full browser crawl + LLM classifier for ambiguous cases."""
+) -> tuple[QualificationResult, bool]:
+    """Step B crawl: browser crawl + scoring, but NO LLM call.
+
+    Returns (updated_result, needs_llm_tiebreaker).
+    """
     try:
         from hephae_agents.shared_tools.playwright import crawl_web_page
 
@@ -377,7 +379,7 @@ async def _run_full_probe(
 
         if not crawl_data:
             partial_result.scoring_reasons.append("Full probe: crawl returned no data (timeout or error)")
-            return partial_result
+            return partial_result, False
 
         extra_score = 0
         extra_reasons: list[str] = []
@@ -415,32 +417,61 @@ async def _run_full_probe(
         all_reasons = partial_result.reasons + extra_reasons
         dyn_threshold = partial_result.threshold
 
-        if new_score >= dyn_threshold:
-            return QualificationResult(
-                outcome=QUALIFIED, score=new_score, threshold=dyn_threshold,
-                reasons=all_reasons, probe_data=partial_result.probe_data,
-            )
-
-        # Still ambiguous — use LLM classifier as tiebreaker
-        if new_score >= dyn_threshold - 10:
-            llm_result = await _run_llm_classifier(name, category, partial_result.probe_data, research_context)
-            if llm_result.get("is_hvt"):
-                all_reasons.append(f"+LLM: {llm_result.get('reason', 'HVT')}")
-                return QualificationResult(
-                    outcome=QUALIFIED, score=new_score, threshold=dyn_threshold,
-                    reasons=all_reasons, probe_data=partial_result.probe_data,
-                )
-            all_reasons.append(f"-LLM: {llm_result.get('reason', 'not HVT')}")
-
-        return QualificationResult(
-            outcome=PARKED, score=new_score, threshold=dyn_threshold,
-            reasons=all_reasons + [f"Full probe score {new_score} still below threshold {dyn_threshold}"],
-            probe_data=partial_result.probe_data,
+        updated = QualificationResult(
+            outcome=QUALIFIED if new_score >= dyn_threshold else PARKED,
+            score=new_score, threshold=dyn_threshold,
+            reasons=all_reasons, probe_data=partial_result.probe_data,
         )
+
+        if new_score >= dyn_threshold:
+            return updated, False
+
+        # Needs LLM tiebreaker if close to threshold
+        needs_llm = new_score >= dyn_threshold - 10
+        if not needs_llm:
+            updated.reasons.append(f"Full probe score {new_score} still below threshold {dyn_threshold}")
+        return updated, needs_llm
 
     except Exception as e:
         logger.error(f"[QualScanner] Full probe failed for {name}: {e}")
-        return partial_result
+        return partial_result, False
+
+
+def _build_classifier_prompt(
+    name: str, category: str, probe_data: dict[str, Any],
+    research_context: dict[str, Any] | None = None,
+) -> str:
+    """Build the LLM classifier prompt for a business (without calling the LLM)."""
+    domain = probe_data.get("domain", {})
+    platform = probe_data.get("platform", {})
+    meta = probe_data.get("meta", {})
+    contact = probe_data.get("contact", {})
+
+    market_signals = ""
+    if research_context:
+        area = research_context.get("area_summary", {})
+        competitive = area.get("competitiveLandscape", {}) if isinstance(area, dict) else {}
+        market_signals = (
+            f"Market saturation: {competitive.get('saturationLevel', 'unknown')}, "
+            f"Business count: {competitive.get('existingBusinessCount', 'unknown')}"
+        )
+
+    return (
+        f"You are a business qualification classifier. Determine if this business is a "
+        f"High-Value Target (HVT) for AI-driven marketing and outreach services.\n\n"
+        f"Business: {name}\nCategory: {category}\n"
+        f"Domain type: {domain.get('domain_type', 'unknown')}\n"
+        f"Platform: {platform.get('platform', 'none')}\n"
+        f"Analytics: {probe_data.get('pixels', {}).get('pixels_found', [])}\n"
+        f"Has contact path: {contact.get('has_contact_path', False)}\n"
+        f"Social links: {len(contact.get('social_links', []))}\n"
+        f"Page title: {meta.get('title', '')}\n"
+        f"Structured data types: {meta.get('jsonld_types', [])}\n"
+        f"{f'Market context: {market_signals}' if market_signals else ''}\n\n"
+        f"An HVT is a local business that would benefit from AI outreach — "
+        f"they have some digital presence but gaps we can fill.\n\n"
+        f'Return ONLY valid JSON: {{"is_hvt": true/false, "reason": "one sentence explanation"}}'
+    )
 
 
 async def qualify_businesses(
@@ -449,11 +480,16 @@ async def qualify_businesses(
     threshold: int | None = None,
     run_full_probe: bool = True,
 ) -> dict[str, list[dict[str, Any]]]:
-    """Qualify a batch of businesses. Returns {qualified, parked, disqualified}."""
+    """Qualify a batch of businesses. Returns {qualified, parked, disqualified}.
+
+    Uses batched LLM calls: collects all ambiguous businesses needing LLM
+    classification, submits them as one batch, then distributes results.
+    """
     dyn_threshold = threshold if threshold is not None else compute_dynamic_threshold(research_context)
 
     results: dict[str, list[dict[str, Any]]] = {"qualified": [], "parked": [], "disqualified": []}
 
+    # Step A: Metadata scan (no LLM, parallel)
     async def _qualify_one(biz: dict[str, Any]) -> tuple[dict[str, Any], QualificationResult]:
         name = biz.get("name", "")
         url = biz.get("url") or biz.get("website") or biz.get("officialUrl") or ""
@@ -481,25 +517,64 @@ async def qualify_businesses(
             entry = {**biz, "qualification": result.to_dict()}
             results[result.outcome.lower()].append(entry)
 
-    if needs_probe:
-        logger.info(f"[QualScanner] Running full probe for {len(needs_probe)} ambiguous businesses")
+    if not needs_probe:
+        q_count = len(results["qualified"])
+        p_count = len(results["parked"])
+        d_count = len(results["disqualified"])
+        logger.info(f"[QualScanner] Results: {q_count} qualified, {p_count} parked, {d_count} disqualified (threshold={dyn_threshold})")
+        return results
 
-        async def _probe_one(biz: dict[str, Any], partial: QualificationResult) -> tuple[dict[str, Any], QualificationResult]:
-            name = biz.get("name", "")
-            url = biz.get("url") or biz.get("website") or biz.get("officialUrl") or ""
+    # Step B: Full probe crawl (no LLM yet, parallel)
+    logger.info(f"[QualScanner] Running full probe crawl for {len(needs_probe)} ambiguous businesses")
+
+    async def _probe_crawl(biz: dict[str, Any], partial: QualificationResult):
+        name = biz.get("name", "")
+        url = biz.get("url") or biz.get("website") or biz.get("officialUrl") or ""
+        updated, needs_llm = await _run_full_probe_crawl_only(name, url, biz.get("category", ""), partial)
+        return biz, updated, needs_llm
+
+    probe_results = await asyncio.gather(
+        *[_probe_crawl(b, r) for b, r in needs_probe], return_exceptions=True,
+    )
+
+    needs_llm: list[tuple[dict[str, Any], QualificationResult]] = []
+    for item in probe_results:
+        if isinstance(item, BaseException):
+            logger.error(f"[QualScanner] Full probe error: {item}")
+            continue
+        biz, result, want_llm = item
+        if want_llm:
+            needs_llm.append((biz, result))
+        else:
+            entry = {**biz, "qualification": result.to_dict()}
+            results[result.outcome.lower()].append(entry)
+
+    # Step C: Batched LLM classification for all ambiguous businesses
+    if needs_llm:
+        logger.info(f"[QualScanner] Batched LLM classification for {len(needs_llm)} businesses")
+
+        from hephae_common.gemini_batch import batch_generate
+
+        prompts = []
+        llm_index: dict[str, tuple[dict, QualificationResult]] = {}
+        for biz, result in needs_llm:
+            slug = biz.get("slug", biz.get("name", "unknown"))
             category = biz.get("category") or biz.get("businessType") or ""
-            result = await _run_full_probe(name, url, category, partial, research_context)
-            return biz, result
+            prompt = _build_classifier_prompt(biz.get("name", ""), category, result.probe_data, research_context)
+            prompts.append({"request_id": slug, "prompt": prompt})
+            llm_index[slug] = (biz, result)
 
-        probe_results = await asyncio.gather(
-            *[_probe_one(b, r) for b, r in needs_probe], return_exceptions=True,
-        )
+        llm_results = await batch_generate(prompts=prompts, timeout_seconds=120)
 
-        for item in probe_results:
-            if isinstance(item, BaseException):
-                logger.error(f"[QualScanner] Full probe error: {item}")
-                continue
-            biz, result = item
+        for slug, (biz, result) in llm_index.items():
+            llm_out = llm_results.get(slug) if llm_results else None
+            if llm_out and isinstance(llm_out, dict) and llm_out.get("is_hvt"):
+                result.outcome = QUALIFIED
+                result.reasons.append(f"+LLM: {llm_out.get('reason', 'HVT')}")
+            else:
+                reason = llm_out.get("reason", "not HVT") if isinstance(llm_out, dict) else "LLM error"
+                result.reasons.append(f"-LLM: {reason}")
+
             entry = {**biz, "qualification": result.to_dict()}
             results[result.outcome.lower()].append(entry)
 

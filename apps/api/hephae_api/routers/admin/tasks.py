@@ -165,7 +165,6 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
     from hephae_api.workflows.phases.enrichment import enrich_business_profile
     from hephae_api.workflows.capabilities.registry import get_enabled_capabilities, get_capability, FullCapabilityDefinition
     from hephae_api.workflows.phases.analysis import _run_capability, RetriableCapabilityError
-    from hephae_agents.insights.insights_agent import generate_insights
 
     db = get_db()
     biz_data = await get_business(slug)
@@ -351,14 +350,7 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
         except Exception as e:
             logger.error(f"[WorkflowAnalyze] Firestore persist error for {slug}: {e}")
 
-    # Step 5: Generate insights (only if we have some outputs)
-    insights = None
-    if completed:
-        try:
-            insights = await generate_insights(slug)
-        except Exception as e:
-            logger.error(f"[WorkflowAnalyze] Insights error for {slug}: {e}")
-
+    # Step 5: Insights deferred to batch (engine level) — skip per-business generation
     await _update_substep("insights_done")
 
     # Step 6: Re-enqueue retriable failures for a later retry

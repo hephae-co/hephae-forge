@@ -348,6 +348,20 @@ class WorkflowEngine:
             workflow_id=self.workflow.id,
         )
 
+        # Batch insights generation for all analyzed businesses
+        analyzed_slugs = [
+            b.slug for b in self.workflow.businesses
+            if b.phase == BusinessPhase.ANALYSIS_DONE and b.capabilitiesCompleted
+        ]
+        if analyzed_slugs:
+            try:
+                from hephae_agents.insights.insights_agent import generate_insights_batch
+                self._emit("workflow:batch_insights", f"Generating insights for {len(analyzed_slugs)} businesses (batch)")
+                await generate_insights_batch(analyzed_slugs)
+                self._emit("workflow:batch_insights_done", f"Batch insights complete for {len(analyzed_slugs)} businesses")
+            except Exception as e:
+                logger.error(f"[WorkflowEngine] Batch insights error: {e}")
+
     async def _on_business_analysis_done(self, slug: str):
         self._emit("business:analysis_done", f"Analysis complete for {slug}", slug)
         await self._checkpoint()

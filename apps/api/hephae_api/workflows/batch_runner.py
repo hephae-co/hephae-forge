@@ -1,23 +1,51 @@
-"""Batch evaluation orchestrator — submits evaluations as a Vertex AI batch job.
+"""Batch orchestrator — collects prompts and submits them as batched Gemini calls.
 
-Two functions:
-  - run_evaluations_batch() — collects all eval prompts, submits as one batch
-  - run_capabilities_batch() — for tool-free capabilities (traffic, competitive)
+Supports batching for:
+  - Qualification classifier (N businesses → 1 batch)
+  - Evaluation agents (N businesses × M capabilities → 1 batch)
+  - Insights generation (N businesses → 1 batch)
+  - Traffic synthesis (N businesses → 1 batch)
 """
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
-from hephae_common.model_config import AgentModels
-from hephae_common.gemini_batch import submit_batch_inference
+from hephae_common.gemini_batch import batch_generate
 
 logger = logging.getLogger(__name__)
 
-# Below this count, sequential is faster than batch overhead
-MIN_BATCH_SIZE = 8
+# Below this count, sequential is fine (batch overhead not worth it)
+MIN_BATCH_SIZE = 3
+
+
+async def run_batch(
+    items: list[dict[str, Any]],
+    timeout_seconds: int = 300,
+) -> dict[str, Any] | None:
+    """Submit a list of prompts as a batch.
+
+    Args:
+        items: List of {"request_id": str, "prompt": str, ...}.
+        timeout_seconds: Max wait time.
+
+    Returns:
+        Dict mapping request_id -> parsed result, or None to fall back.
+    """
+    if len(items) < MIN_BATCH_SIZE:
+        logger.info(f"[BatchRunner] Only {len(items)} items, below threshold — skipping batch")
+        return None
+
+    prompts = [
+        {"request_id": item["request_id"], "prompt": item["prompt"]}
+        for item in items
+    ]
+
+    return await batch_generate(
+        prompts=prompts,
+        timeout_seconds=timeout_seconds,
+    )
 
 
 async def run_evaluations_batch(
@@ -25,67 +53,40 @@ async def run_evaluations_batch(
     timeout_seconds: int = 300,
     gcs_bucket: str = "",
 ) -> dict[str, dict] | None:
-    """Submit all evaluation prompts as a single batch job.
-
-    Args:
-        eval_items: List of dicts with keys: request_id, prompt, capability_name.
-        timeout_seconds: Max wait time before falling back to sequential.
-        gcs_bucket: GCS bucket for batch I/O.
-
-    Returns:
-        Dict mapping request_id -> parsed eval result, or None to fall back.
-    """
-    if len(eval_items) < MIN_BATCH_SIZE:
-        logger.info(f"[BatchRunner] Only {len(eval_items)} items, below threshold {MIN_BATCH_SIZE} — skipping batch")
-        return None
-
-    requests = []
-    for item in eval_items:
-        requests.append({
-            "request_id": item["request_id"],
-            "contents": [{"role": "user", "parts": [{"text": item["prompt"]}]}],
-            "config": {"response_mime_type": "application/json"},
-        })
-
-    return await submit_batch_inference(
-        requests=requests,
-        model=AgentModels.PRIMARY_MODEL,
-        gcs_bucket=gcs_bucket,
-        timeout_seconds=timeout_seconds,
-    )
+    """Submit all evaluation prompts as a batch."""
+    return await run_batch(eval_items, timeout_seconds)
 
 
-async def run_capabilities_batch(
-    cap_items: list[dict[str, Any]],
-    timeout_seconds: int = 300,
-    gcs_bucket: str = "",
+async def run_qualification_batch(
+    businesses: list[dict[str, Any]],
+    timeout_seconds: int = 120,
 ) -> dict[str, dict] | None:
-    """Submit tool-free capability prompts as a batch job.
-
-    Only suitable for capabilities that don't use tools (traffic, competitive).
+    """Batch-classify businesses as HVT or not.
 
     Args:
-        cap_items: List of dicts with keys: request_id, prompt, capability_name.
-        timeout_seconds: Max wait time.
-        gcs_bucket: GCS bucket.
+        businesses: List of {"slug": str, "prompt": str} where prompt is the
+                    classification prompt built by the scanner.
 
     Returns:
-        Dict mapping request_id -> parsed result, or None to fall back.
+        Dict mapping slug -> {"is_hvt": bool, "reason": str}, or None.
     """
-    if len(cap_items) < MIN_BATCH_SIZE:
-        return None
+    items = [
+        {"request_id": biz["slug"], "prompt": biz["prompt"]}
+        for biz in businesses
+    ]
+    return await run_batch(items, timeout_seconds)
 
-    requests = []
-    for item in cap_items:
-        requests.append({
-            "request_id": item["request_id"],
-            "contents": [{"role": "user", "parts": [{"text": item["prompt"]}]}],
-            "config": {"response_mime_type": "application/json"},
-        })
 
-    return await submit_batch_inference(
-        requests=requests,
-        model=AgentModels.PRIMARY_MODEL,
-        gcs_bucket=gcs_bucket,
-        timeout_seconds=timeout_seconds,
-    )
+async def run_insights_batch(
+    items: list[dict[str, Any]],
+    timeout_seconds: int = 180,
+) -> dict[str, dict] | None:
+    """Batch-generate insights for multiple businesses.
+
+    Args:
+        items: List of {"request_id": slug, "prompt": str}.
+
+    Returns:
+        Dict mapping slug -> insights dict, or None.
+    """
+    return await run_batch(items, timeout_seconds)

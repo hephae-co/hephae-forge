@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     BATCH_EVAL_GCS_BUCKET: str = os.getenv("BATCH_EVAL_GCS_BUCKET", "hephae-batch-evaluations")
     BATCH_EVAL_FALLBACK_TIMEOUT: int = int(os.getenv("BATCH_EVAL_FALLBACK_TIMEOUT", "300"))
 
+    # Monitoring
+    MONITOR_NOTIFY_EMAIL: str = os.getenv("MONITOR_NOTIFY_EMAIL", "")
+
     # Tools
     CRAWL4AI_URL: str = os.getenv("CRAWL4AI_URL", "")
 

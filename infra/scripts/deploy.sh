@@ -170,3 +170,41 @@ if [ -n "$CRAWL4AI_URL" ]; then
   echo "  ✓ crawl4ai: ${CRAWL4AI_URL}"
 fi
 echo "══════════════════════════════════════════════"
+
+# ─────────────────────────────────────────────────────────────
+# Cloud Scheduler: Workflow Monitor (every 30 min)
+# ─────────────────────────────────────────────────────────────
+MONITOR_JOB="workflow-monitor"
+MONITOR_SCHEDULE="*/30 * * * *"
+CRON_SECRET_VAL=$(gcloud secrets versions access latest --secret=CRON_SECRET --project="$PROJECT_ID" 2>/dev/null || echo "")
+
+if [ -n "$CRON_SECRET_VAL" ] && [ -n "$API_URL" ]; then
+  echo ""
+  echo "── Setting up Workflow Monitor scheduler..."
+
+  MONITOR_FLAGS=(
+    --schedule "$MONITOR_SCHEDULE"
+    --time-zone "America/New_York"
+    --location "$REGION"
+    --project "$PROJECT_ID"
+    --uri "${API_URL}/api/cron/workflow-monitor"
+    --http-method GET
+    --headers "Authorization=Bearer ${CRON_SECRET_VAL}"
+    --oidc-service-account-email "$SERVICE_ACCOUNT"
+  )
+
+  if gcloud scheduler jobs describe "$MONITOR_JOB" \
+      --location "$REGION" --project "$PROJECT_ID" &>/dev/null; then
+    gcloud scheduler jobs update http "$MONITOR_JOB" "${MONITOR_FLAGS[@]}" --quiet
+    echo "  ✓ Updated scheduler: ${MONITOR_JOB} (${MONITOR_SCHEDULE})"
+  else
+    gcloud scheduler jobs create http "$MONITOR_JOB" "${MONITOR_FLAGS[@]}"
+    echo "  ✓ Created scheduler: ${MONITOR_JOB} (${MONITOR_SCHEDULE})"
+  fi
+
+  echo ""
+  echo "  To change frequency:"
+  echo "    gcloud scheduler jobs update http ${MONITOR_JOB} \\"
+  echo "      --schedule '0 * * * *' \\"
+  echo "      --location ${REGION} --project ${PROJECT_ID}"
+fi

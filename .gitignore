@@ -8,6 +8,7 @@ __pycache__/
 .next/
 .pytest_cache/
 dist/
+site/
 build/
 *.egg-info/
 

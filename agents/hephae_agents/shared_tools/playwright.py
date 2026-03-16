@@ -10,6 +10,10 @@ screenshot_page:
   Full-page JPEG screenshot + raw HTML capture. Returns base64-encoded
   screenshot and HTML string.
 
+When Playwright is not installed (lightweight interactive service), both
+functions delegate to crawl4ai HTTP service via CRAWL4AI_URL. When
+Playwright IS installed (batch job), local Chromium is used as before.
+
 Port of src/agents/tools/playwrightTool.ts.
 """
 
@@ -18,14 +22,25 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import os
 import re as _re
 from typing import Any
 from urllib.parse import urlparse, urljoin
 
 logger = logging.getLogger(__name__)
 
+# Check if Playwright is available
+try:
+    from playwright.async_api import async_playwright
+    _PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    _PLAYWRIGHT_AVAILABLE = False
+    logger.info("[Playwright] Playwright not installed — will delegate to crawl4ai HTTP service")
+
 # Global semaphore — at most 1 Chromium instance at a time to stay under 2GB RAM.
 _browser_semaphore = asyncio.Semaphore(1)
+
+CRAWL4AI_URL = os.environ.get("CRAWL4AI_URL", "")
 
 # ---------------------------------------------------------------------------
 # Deterministic contact extraction helpers (P0.1)
@@ -74,6 +89,325 @@ def _find_contact_page_urls(all_links: list[dict], origin: str) -> list[str]:
     return list(dict.fromkeys(urls))  # dedupe preserving order
 
 
+def _should_use_crawl4ai() -> bool:
+    """Determine whether to delegate to crawl4ai HTTP service."""
+    return not _PLAYWRIGHT_AVAILABLE and bool(CRAWL4AI_URL)
+
+
+# ---------------------------------------------------------------------------
+# crawl4ai HTTP fallback helpers
+# ---------------------------------------------------------------------------
+
+async def _crawl_via_service(url: str, scroll_to_bottom: bool = True, find_menu_link: bool = False) -> dict[str, Any]:
+    """Crawl a page via the crawl4ai HTTP service, post-processing to match Playwright return shape."""
+    import httpx
+
+    logger.info(f"[PlaywrightCrawlTool] Delegating to crawl4ai: {url}")
+    parsed = urlparse(url)
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+
+    crawler_params: dict[str, Any] = {
+        "cache_mode": "bypass",
+        "page_timeout": 45000,
+        "remove_overlay_elements": True,
+        "scan_full_page": scroll_to_bottom,
+    }
+
+    body: dict[str, Any] = {
+        "urls": [url],
+        "priority": 5,
+        "crawler_config": {
+            "type": "CrawlerRunConfig",
+            "params": crawler_params,
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            res = await client.post(f"{CRAWL4AI_URL}/crawl", json=body)
+
+        if res.status_code != 200:
+            logger.warning(f"[PlaywrightCrawlTool] crawl4ai returned {res.status_code}")
+            return _empty_crawl_result(f"crawl4ai returned HTTP {res.status_code}")
+
+        data = res.json()
+        result = data[0] if isinstance(data, list) else data
+
+        # Extract markdown/HTML for text analysis
+        markdown = result.get("markdown") or result.get("result", {}).get("markdown") or ""
+        html = result.get("html") or result.get("result", {}).get("html") or ""
+        raw_links = result.get("links") or result.get("result", {}).get("links") or []
+        media = result.get("media") or result.get("result", {}).get("media") or []
+
+        # Normalize links to the Playwright shape {href, text, ariaLabel}
+        all_links = []
+        for link in raw_links[:200]:
+            if isinstance(link, dict):
+                href = link.get("href") or link.get("url", "")
+                text = link.get("text", "")[:100]
+            elif isinstance(link, str):
+                href = link
+                text = ""
+            else:
+                continue
+            if href and href.startswith("http"):
+                all_links.append({"href": href, "text": text})
+
+        # Extract social links from all_links
+        href_list = [l["href"] for l in all_links]
+        social_anchors = _extract_social_links(href_list)
+        delivery_platforms = _extract_delivery_links(href_list)
+
+        # Extract contact info from markdown/html text
+        body_text = markdown[:5000] or html[:5000]
+        emails = _extract_emails_from_text(body_text) + _extract_emails_from_text(html[:10000])
+        phones = _extract_phones_from_text(body_text)
+
+        # Extract favicon/logo from media
+        favicon = None
+        logo_url = None
+        for m in media:
+            if isinstance(m, dict):
+                src = m.get("src", "")
+                alt = (m.get("alt", "") or "").lower()
+                if not favicon and ("favicon" in src.lower() or "icon" in src.lower()):
+                    favicon = src if src.startswith("http") else (origin + src if src.startswith("/") else None)
+                if not logo_url and ("logo" in src.lower() or "logo" in alt or "brand" in alt):
+                    logo_url = src if src.startswith("http") else (origin + src if src.startswith("/") else None)
+
+        # Try to find menu link from all_links
+        menu_url = None
+        if find_menu_link:
+            menu_url = _find_menu_link_from_links(all_links, origin)
+
+        # Contact page URLs
+        contact_pages = _find_contact_page_urls(all_links, origin)
+
+        # Auto-crawl contact pages for email if we don't have one
+        email = emails[0] if emails else None
+        phone = phones[0] if phones else None
+
+        if not email and contact_pages:
+            for cp_url in contact_pages[:2]:
+                try:
+                    cp_result = await _crawl4ai_simple(cp_url)
+                    cp_text = cp_result.get("markdown", "") + cp_result.get("html", "")
+                    cp_emails = _extract_emails_from_text(cp_text)
+                    if cp_emails:
+                        email = cp_emails[0]
+                        break
+                    if not phone:
+                        cp_phones = _extract_phones_from_text(cp_text)
+                        if cp_phones:
+                            phone = cp_phones[0]
+                except Exception as cp_err:
+                    logger.warning(f"[PlaywrightCrawlTool] Contact page crawl failed for {cp_url}: {cp_err}")
+
+        crawl_result = {
+            "favicon": favicon,
+            "logoUrl": logo_url,
+            "primaryColor": "#4f46e5",
+            "secondaryColor": "#ffffff",
+            "persona": _detect_persona(body_text),
+            "metaTags": {},
+            "socialAnchors": social_anchors,
+            "deliveryPlatforms": delivery_platforms,
+            "phone": phone,
+            "email": email,
+            "hours": None,
+            "jsonLd": None,
+            "sameAs": [],
+            "allLinks": all_links,
+            "menuUrl": menu_url,
+            "bodyTextSample": body_text[:5000],
+            "contactPages": contact_pages,
+            "deterministicContact": {
+                "email": email,
+                "phone": phone,
+                "source": "crawl4ai_regex",
+            },
+        }
+
+        logger.info(
+            "[PlaywrightCrawlTool] crawl4ai extracted: hasLogo=%s, hasFavicon=%s, linkCount=%d",
+            bool(logo_url), bool(favicon), len(all_links),
+        )
+        return crawl_result
+
+    except Exception as error:
+        logger.error(f"[PlaywrightCrawlTool] crawl4ai delegation failed: {error}")
+        return _empty_crawl_result(f"crawl4ai delegation failed: {error}")
+
+
+async def _crawl4ai_simple(url: str) -> dict[str, Any]:
+    """Simple crawl4ai call for a single page (used for contact page follow-ups)."""
+    import httpx
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        res = await client.post(f"{CRAWL4AI_URL}/crawl", json={"urls": [url], "priority": 5})
+    if res.status_code != 200:
+        return {}
+    data = res.json()
+    result = data[0] if isinstance(data, list) else data
+    return {
+        "markdown": result.get("markdown") or result.get("result", {}).get("markdown") or "",
+        "html": result.get("html") or result.get("result", {}).get("html") or "",
+    }
+
+
+async def _screenshot_via_service(url: str, quality: int = 55, wait_seconds: float = 2.0) -> dict[str, Any]:
+    """Take screenshot via crawl4ai service using its screenshot option."""
+    import httpx
+
+    logger.info(f"[ScreenshotTool] Delegating to crawl4ai: {url}")
+
+    body: dict[str, Any] = {
+        "urls": [url],
+        "priority": 5,
+        "crawler_config": {
+            "type": "CrawlerRunConfig",
+            "params": {
+                "cache_mode": "bypass",
+                "page_timeout": 30000,
+                "screenshot": True,
+                "scan_full_page": True,
+            },
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            res = await client.post(f"{CRAWL4AI_URL}/crawl", json=body)
+
+        if res.status_code != 200:
+            return {"screenshot_base64": "", "html": "", "error": f"crawl4ai returned HTTP {res.status_code}"}
+
+        data = res.json()
+        result = data[0] if isinstance(data, list) else data
+        screenshot_b64 = result.get("screenshot") or result.get("result", {}).get("screenshot") or ""
+        html = result.get("html") or result.get("result", {}).get("html") or ""
+
+        if screenshot_b64:
+            logger.info(f"[ScreenshotTool] crawl4ai screenshot: {len(screenshot_b64)} chars base64")
+        else:
+            logger.warning("[ScreenshotTool] crawl4ai returned no screenshot data")
+
+        return {"screenshot_base64": screenshot_b64, "html": html, "error": None}
+
+    except Exception as exc:
+        logger.warning(f"[ScreenshotTool] crawl4ai delegation failed: {exc}")
+        return {"screenshot_base64": "", "html": "", "error": str(exc)}
+
+
+def _extract_social_links(href_list: list[str]) -> dict[str, str | None]:
+    """Extract social media links from a list of URLs."""
+    def find(domain: str) -> str | None:
+        for h in href_list:
+            if domain in h and "share" not in h and "sharer" not in h and "intent" not in h:
+                return h
+        return None
+
+    return {
+        "instagram": find("instagram.com/"),
+        "facebook": find("facebook.com/"),
+        "twitter": find("twitter.com/") or find("x.com/"),
+        "yelp": find("yelp.com/"),
+        "tiktok": find("tiktok.com/"),
+    }
+
+
+def _extract_delivery_links(href_list: list[str]) -> dict[str, str | None]:
+    """Extract delivery platform links from a list of URLs."""
+    def find(domain: str, exclude: list[str] | None = None) -> str | None:
+        for h in href_list:
+            if domain in h and "share" not in h and "sharer" not in h:
+                if exclude and any(ex in h for ex in exclude):
+                    continue
+                return h
+        return None
+
+    return {
+        "grubhub": find("grubhub.com/"),
+        "doordash": find("doordash.com/", ["/business/", "/merchant/"]),
+        "ubereats": find("ubereats.com/"),
+        "seamless": find("seamless.com/"),
+        "toasttab": find("toasttab.com/"),
+    }
+
+
+def _detect_persona(body_text: str) -> str:
+    """Detect business persona from page text."""
+    text = body_text.lower()
+    if _re.search(r"artisanal|craft|organic|farm.to|hand.crafted|locally sourced", text):
+        return "Modern Artisan"
+    if _re.search(r"est\.|family.owned|family owned|since \d{4}|established|generations", text):
+        return "Classic Establishment"
+    if _re.search(r"fast|quick|express|drive.through|delivery", text):
+        return "Quick Service"
+    if _re.search(r"fine dining|michelin|prix fixe|sommelier|tasting menu", text):
+        return "Fine Dining"
+    return "Local Business"
+
+
+def _find_menu_link_from_links(all_links: list[dict], origin: str) -> str | None:
+    """Try to find a menu page URL from extracted links."""
+    menu_text_pattern = _re.compile(
+        r"\b(menu|our menu|full menu|view menu|see menu|food menu|dinner menu|lunch menu|lunch|dinner|"
+        r"lunch.*dinner|food|drinks|eat|dine|dining)\b", _re.I,
+    )
+    menu_href_pattern = _re.compile(
+        r"/menu|/food|/dining|/eat|/drinks|menu\.pdf", _re.I,
+    )
+    exclude_domains = ("instagram.com", "facebook.com", "doordash.com", "ubereats.com", "grubhub.com")
+
+    # Try text match first
+    for link in all_links:
+        text = link.get("text", "").strip()
+        href = link.get("href", "")
+        if not text or len(text) > 40 or not href:
+            continue
+        if any(d in href for d in exclude_domains):
+            continue
+        if menu_text_pattern.search(text):
+            return href
+
+    # Try href match
+    for link in all_links:
+        href = link.get("href", "")
+        if not href:
+            continue
+        if any(d in href for d in exclude_domains):
+            continue
+        if menu_href_pattern.search(href):
+            return href
+
+    return None
+
+
+def _empty_crawl_result(error: str = "") -> dict[str, Any]:
+    """Return an empty crawl result with error."""
+    return {
+        "error": f"Crawl failed: {error}" if error else None,
+        "favicon": None,
+        "logoUrl": None,
+        "primaryColor": "#4f46e5",
+        "secondaryColor": "#ffffff",
+        "persona": "Local Business",
+        "metaTags": {},
+        "socialAnchors": {},
+        "deliveryPlatforms": {},
+        "allLinks": [],
+        "jsonLd": None,
+        "sameAs": [],
+        "bodyTextSample": "",
+        "menuUrl": None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
 async def crawl_web_page(
     url: str,
     scroll_to_bottom: bool = True,
@@ -85,6 +419,8 @@ async def crawl_web_page(
     delivery platform links, contact info (phone/email), and body text.
     Returns structured JSON.
 
+    When Playwright is not installed, delegates to crawl4ai HTTP service.
+
     Args:
         url: The full URL to crawl (e.g. https://example.com).
         scroll_to_bottom: Scroll to bottom to trigger lazy-loaded content (default: True).
@@ -93,11 +429,18 @@ async def crawl_web_page(
     Returns:
         dict with extracted page data.
     """
+    # Delegate to crawl4ai if Playwright is not available
+    if _should_use_crawl4ai():
+        return await _crawl_via_service(url, scroll_to_bottom, find_menu_link)
+
+    if not _PLAYWRIGHT_AVAILABLE:
+        logger.error("[PlaywrightCrawlTool] Neither Playwright nor CRAWL4AI_URL available")
+        return _empty_crawl_result("Playwright not installed and CRAWL4AI_URL not set")
+
+    # --- Local Playwright path ---
     browser = None
     await _browser_semaphore.acquire()
     try:
-        from playwright.async_api import async_playwright
-
         logger.info(f"[PlaywrightCrawlTool] Crawling {url}...")
         parsed = urlparse(url)
         origin = f"{parsed.scheme}://{parsed.netloc}"
@@ -433,22 +776,7 @@ async def crawl_web_page(
 
     except Exception as error:
         logger.error(f"[PlaywrightCrawlTool] Failed: {error}")
-        return {
-            "error": f"Crawl failed: {error}",
-            "favicon": None,
-            "logoUrl": None,
-            "primaryColor": "#4f46e5",
-            "secondaryColor": "#ffffff",
-            "persona": "Local Business",
-            "metaTags": {},
-            "socialAnchors": {},
-            "deliveryPlatforms": {},
-            "allLinks": [],
-            "jsonLd": None,
-            "sameAs": [],
-            "bodyTextSample": "",
-            "menuUrl": None,
-        }
+        return _empty_crawl_result(str(error))
     finally:
         if browser:
             await browser.close()
@@ -472,6 +800,8 @@ async def screenshot_page(
 ) -> dict[str, Any]:
     """Take a full-page JPEG screenshot and capture raw HTML from a URL.
 
+    When Playwright is not installed, delegates to crawl4ai HTTP service.
+
     Args:
         url: The page URL to screenshot.
         quality: JPEG quality 1-100 (default 55 — good for GCS uploads).
@@ -483,11 +813,18 @@ async def screenshot_page(
           html: raw HTML string (empty on failure).
           error: error message string or None.
     """
+    # Delegate to crawl4ai if Playwright is not available
+    if _should_use_crawl4ai():
+        return await _screenshot_via_service(url, quality, wait_seconds)
+
+    if not _PLAYWRIGHT_AVAILABLE:
+        logger.error("[ScreenshotTool] Neither Playwright nor CRAWL4AI_URL available")
+        return {"screenshot_base64": "", "html": "", "error": "Playwright not installed and CRAWL4AI_URL not set"}
+
+    # --- Local Playwright path ---
     browser = None
     await _browser_semaphore.acquire()
     try:
-        from playwright.async_api import async_playwright
-
         logger.info(f"[ScreenshotTool] Capturing {url} (q={quality})...")
         pw = await async_playwright().__aenter__()
         browser = await pw.chromium.launch()

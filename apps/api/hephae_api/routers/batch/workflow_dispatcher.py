@@ -1,12 +1,12 @@
-"""Workflow dispatcher cron — starts the next queued workflow if none are active.
+"""Workflow dispatcher cron — starts the next queued workflow via batch job.
 
 Runs every 5 minutes via Cloud Scheduler. Ensures only one workflow runs at a
-time to stay within memory limits and optimize for cost.
+time. Launches a Cloud Run Job for the actual workflow execution (heavy work
+offloaded to batch service with more memory).
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
 from fastapi import APIRouter, Header, HTTPException
@@ -28,15 +28,16 @@ async def workflow_dispatcher(
 ):
     """Start the next queued workflow if no workflow is currently active.
 
-    Called by Cloud Scheduler every 5 minutes.
+    Called by Cloud Scheduler every 5 minutes. Launches a Cloud Run Job
+    to do the actual work.
     """
     cron_token = x_cron_secret or authorization
     if settings.CRON_SECRET and cron_token != f"Bearer {settings.CRON_SECRET}":
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    from hephae_db.firestore.workflows import list_workflows
+    from hephae_db.firestore.workflows import list_workflows, save_workflow
     from hephae_api.types import WorkflowDocument, WorkflowPhase
-    from hephae_api.workflows.engine import start_workflow_engine
+    from hephae_api.lib.job_launcher import launch_batch_job
 
     # Fetch recent workflows
     all_workflows = await list_workflows(limit=50, model_class=WorkflowDocument)
@@ -72,11 +73,10 @@ async def workflow_dispatcher(
         f"{len(queued) - 1} remaining in queue"
     )
 
-    # Set phase to DISCOVERY and start the engine
+    # Set phase to DISCOVERY and launch batch job
     next_wf.phase = WorkflowPhase.DISCOVERY
-    from hephae_db.firestore.workflows import save_workflow
     await save_workflow(next_wf)
-    await start_workflow_engine(next_wf.id)
+    execution = await launch_batch_job("workflow", [next_wf.id])
 
     return {
         "dispatched": True,
@@ -84,4 +84,5 @@ async def workflow_dispatcher(
         "businessType": next_wf.businessType,
         "zipCode": next_wf.zipCode,
         "remainingQueued": len(queued) - 1,
+        "batchExecution": execution,
     }

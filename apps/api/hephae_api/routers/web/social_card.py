@@ -46,6 +46,9 @@ async def social_card(request: Request):
             highlight=highlight,
         )
 
+        if not image_bytes:
+            return JSONResponse({"error": "Card generation unavailable (Playwright not installed)"}, status_code=503)
+
         return Response(
             content=image_bytes,
             media_type="image/png",

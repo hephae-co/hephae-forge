@@ -362,6 +362,106 @@ class WorkflowEngine:
             except Exception as e:
                 logger.error(f"[WorkflowEngine] Batch insights error: {e}")
 
+        # Batch synthesis — traffic forecaster + competitive positioning
+        if analyzed_slugs:
+            try:
+                await self._batch_synthesis(analyzed_slugs)
+            except Exception as e:
+                logger.error(f"[WorkflowEngine] Batch synthesis error: {e}")
+
+    async def _batch_synthesis(self, analyzed_slugs: list[str]):
+        """Batch traffic synthesis + competitive positioning for all analyzed businesses.
+
+        Reads deferred intel from task metadata, builds prompts, submits as one batch,
+        and writes final outputs to Firestore latestOutputs.
+        """
+        from hephae_db.firestore.tasks import list_active_tasks_for_businesses
+        from hephae_api.workflows.batch_runner import (
+            build_traffic_synthesis_prompt,
+            build_competitive_positioning_prompt,
+            run_synthesis_batch,
+        )
+        from hephae_api.workflows.capabilities.registry import get_capability
+        from hephae_common.firebase import get_db
+
+        db = get_db()
+
+        # Collect deferred synthesis data from task metadata
+        tasks = await list_active_tasks_for_businesses(analyzed_slugs)
+        deferred_by_slug: dict[str, dict] = {}
+        for task in tasks:
+            slug = task.get("businessId") or task.get("metadata", {}).get("slug", "")
+            meta = task.get("metadata", {})
+            ds = meta.get("deferredSynthesis")
+            if ds and slug:
+                deferred_by_slug[slug] = ds
+
+        if not deferred_by_slug:
+            logger.info("[WorkflowEngine] No deferred synthesis data found — skipping batch synthesis")
+            return
+
+        # Build batch prompts
+        batch_items: list[dict] = []
+        for slug, deferred in deferred_by_slug.items():
+            if "traffic" in deferred:
+                batch_items.append({
+                    "request_id": f"traffic:{slug}",
+                    "prompt": build_traffic_synthesis_prompt(deferred["traffic"]),
+                })
+            if "competitive" in deferred:
+                batch_items.append({
+                    "request_id": f"competitive:{slug}",
+                    "prompt": build_competitive_positioning_prompt(deferred["competitive"]),
+                })
+
+        if not batch_items:
+            return
+
+        self._emit(
+            "workflow:batch_synthesis",
+            f"Synthesizing traffic + competitive for {len(deferred_by_slug)} businesses ({len(batch_items)} prompts)",
+        )
+
+        results = await run_synthesis_batch(batch_items)
+
+        # Fallback: if batch returned None (below threshold), run sequentially
+        if results is None:
+            from hephae_common.gemini_batch import batch_generate
+            prompts = [{"request_id": i["request_id"], "prompt": i["prompt"]} for i in batch_items]
+            results = await batch_generate(prompts=prompts, timeout_seconds=300)
+
+        if not results:
+            logger.warning("[WorkflowEngine] Batch synthesis returned no results")
+            return
+
+        # Write results to Firestore latestOutputs
+        traffic_cap = get_capability("traffic")
+        competitive_cap = get_capability("competitive")
+
+        for request_id, parsed in results.items():
+            if not parsed or isinstance(parsed, dict) and "raw_text" in parsed:
+                logger.warning(f"[WorkflowEngine] Synthesis failed for {request_id}")
+                continue
+
+            cap_type, slug = request_id.split(":", 1)
+            try:
+                if cap_type == "traffic" and traffic_cap:
+                    adapted = traffic_cap.response_adapter(parsed)
+                    await asyncio.to_thread(
+                        db.collection("businesses").document(slug).update,
+                        {f"latestOutputs.{traffic_cap.firestore_output_key}": adapted, "updatedAt": datetime.utcnow()},
+                    )
+                elif cap_type == "competitive" and competitive_cap:
+                    adapted = competitive_cap.response_adapter(parsed)
+                    await asyncio.to_thread(
+                        db.collection("businesses").document(slug).update,
+                        {f"latestOutputs.{competitive_cap.firestore_output_key}": adapted, "updatedAt": datetime.utcnow()},
+                    )
+            except Exception as e:
+                logger.error(f"[WorkflowEngine] Failed to persist synthesis for {request_id}: {e}")
+
+        self._emit("workflow:batch_synthesis_done", f"Batch synthesis complete ({len(results)} results)")
+
     async def _on_business_analysis_done(self, slug: str):
         self._emit("business:analysis_done", f"Analysis complete for {slug}", slug)
         await self._checkpoint()

@@ -113,8 +113,8 @@ async def blog_generate(request: Request):
 
         blog_result, hero_bytes = await asyncio.gather(blog_task, hero_task)
 
-        # Upload hero image
-        hero_url = await _upload_hero_image(slug, hero_bytes)
+        # Upload hero image (None if Playwright unavailable)
+        hero_url = await _upload_hero_image(slug, hero_bytes) if hero_bytes else ""
 
         # Fetch identity for template branding
         from hephae_db.firestore.businesses import read_business

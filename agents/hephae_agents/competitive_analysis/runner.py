@@ -65,6 +65,7 @@ def _build_context_data(business_context: Any) -> str:
 async def run_competitive_analysis(
     identity: dict[str, Any],
     business_context: Any | None = None,
+    skip_positioning: bool = False,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Run 2-stage competitive analysis via SequentialAgent pipeline.
@@ -72,9 +73,11 @@ async def run_competitive_analysis(
     Args:
         identity: Enriched identity dict (must have competitors array).
         business_context: Optional BusinessContext with admin research data.
+        skip_positioning: If True, run only the profiler stage and return deferred data.
 
     Returns:
         Competitive report dict with market_summary, competitors, strategies, etc.
+        (or deferred profiler data if skip_positioning).
     """
     competitors = identity.get("competitors", [])
     if not competitors:
@@ -102,6 +105,39 @@ async def run_competitive_analysis(
         session_id=session_id,
         state=initial_state,
     )
+
+    if skip_positioning:
+        # Run only the profiler stage (tool-using), skip positioning synthesis
+        from hephae_agents.competitive_analysis.agent import competitor_profiler_agent
+
+        logger.info("[Competitive Runner] Running profiler only (skip_positioning=True)...")
+        runner = Runner(
+            app_name="competitive-analysis",
+            agent=competitor_profiler_agent,
+            session_service=session_service,
+            memory_service=memory_service,
+        )
+
+        profiler_buffer = ""
+        async for raw_event in runner.run_async(
+            user_id=user_id,
+            session_id=session_id,
+            new_message=user_msg("Analyze competitors and generate competitive positioning report."),
+        ):
+            content = getattr(raw_event, "content", None)
+            if content and hasattr(content, "parts"):
+                for part in content.parts:
+                    if getattr(part, "thought", False):
+                        continue
+                    if getattr(part, "text", None):
+                        profiler_buffer += part.text
+
+        return {
+            "deferred": True,
+            "competitorBrief": profiler_buffer,
+            "identity": identity,
+            "contextData": _build_context_data(business_context),
+        }
 
     logger.info("[Competitive Runner] Running SequentialAgent pipeline...")
 

@@ -111,7 +111,7 @@ async def send_report_email(
         email_html = build_report_email_html(business_name, report_type, report_url, summary)
 
         result = resend.Emails.send({
-            "from": "Chris from Hephae <chris@hephae.co>",
+            "from": os.environ.get("RESEND_FROM_EMAIL", "onboarding@resend.dev"),
             "to": [to],
             "subject": f"{meta['label']} Ready: {business_name}",
             "html": email_html,

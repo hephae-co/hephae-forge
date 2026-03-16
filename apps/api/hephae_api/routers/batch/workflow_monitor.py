@@ -211,7 +211,6 @@ async def workflow_monitor(
             subject=subject,
             text=text,
             html_content=html,
-            from_addr="Hephae Monitor <chris@hephae.co>",
         )
         logger.info(f"[WorkflowMonitor] Digest sent to {notify_emails} (email={email_id})")
         return {

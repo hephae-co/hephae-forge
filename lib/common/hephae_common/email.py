@@ -127,11 +127,15 @@ async def send_report_email(
 
 
 async def send_email(
-    to: str, subject: str, text: str,
+    to: str | list[str], subject: str, text: str,
     html_content: str | None = None,
     from_addr: str | None = None,
 ) -> str:
-    """Send a generic email via Resend. Returns the email ID."""
+    """Send a generic email via Resend. Returns the email ID.
+
+    Args:
+        to: Single email address or list of addresses.
+    """
     api_key = os.environ.get("RESEND_API_KEY")
     if not api_key:
         raise RuntimeError("RESEND_API_KEY is not configured")
@@ -139,11 +143,12 @@ async def send_email(
     resend.api_key = api_key
     from_email = from_addr or os.environ.get("RESEND_FROM_EMAIL", "onboarding@resend.dev")
 
-    logger.info(f"[Resend] Sending email to {to}...")
+    recipients = [to] if isinstance(to, str) else to
+    logger.info(f"[Resend] Sending email to {recipients}...")
 
     params: dict = {
-        "from_": from_email,
-        "to": [to],
+        "from": from_email,
+        "to": recipients,
         "subject": subject,
         "text": text,
     }

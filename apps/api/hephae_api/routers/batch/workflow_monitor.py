@@ -204,30 +204,32 @@ async def workflow_monitor(
     html = _build_digest_html(recent)
     text = "\n".join(text_lines)
 
-    # Send to all recipients
-    sent_to = []
-    errors = []
-    for email_addr in notify_emails:
-        try:
-            email_id = await send_email(
-                to=email_addr,
-                subject=subject,
-                text=text,
-                html_content=html,
-                from_addr="Hephae Monitor <chris@hephae.co>",
-            )
-            sent_to.append(email_addr)
-            logger.info(f"[WorkflowMonitor] Digest sent to {email_addr} (email={email_id})")
-        except Exception as e:
-            errors.append({"to": email_addr, "error": str(e)})
-            logger.error(f"[WorkflowMonitor] Failed to send digest to {email_addr}: {e}")
-
-    return {
-        "digested": len(recent),
-        "emailed": len(sent_to) > 0,
-        "sentTo": sent_to,
-        "errors": errors,
-        "completed": completed,
-        "failed": failed,
-        "paused": paused,
-    }
+    # Send single email to all recipients (avoids Resend rate limits)
+    try:
+        email_id = await send_email(
+            to=notify_emails,
+            subject=subject,
+            text=text,
+            html_content=html,
+            from_addr="Hephae Monitor <chris@hephae.co>",
+        )
+        logger.info(f"[WorkflowMonitor] Digest sent to {notify_emails} (email={email_id})")
+        return {
+            "digested": len(recent),
+            "emailed": True,
+            "sentTo": notify_emails,
+            "emailId": email_id,
+            "completed": completed,
+            "failed": failed,
+            "paused": paused,
+        }
+    except Exception as e:
+        logger.error(f"[WorkflowMonitor] Failed to send digest: {e}")
+        return {
+            "digested": len(recent),
+            "emailed": False,
+            "error": str(e),
+            "completed": completed,
+            "failed": failed,
+            "paused": paused,
+        }

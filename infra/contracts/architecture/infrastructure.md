@@ -16,14 +16,24 @@ All services deploy to a single GCP project and region.
 
 ### Cloud Run Services
 
-| Service | Stack | Cloud Run Name | Port | Public |
-|---------|-------|----------------|------|--------|
-| Unified API | FastAPI | `hephae-forge-api` | 8080 | No (`--no-allow-unauthenticated`) |
-| Web Frontend | Next.js 16 | `hephae-forge-web` | 3000 | Yes (`--allow-unauthenticated`) |
-| Admin Frontend | Next.js 14.1 | `hephae-admin-web` | 3000 | Yes (`--allow-unauthenticated`) |
-| Crawl4AI | crawl4ai | `hephae-crawl4ai` | -- | Referenced by API deploy; deployed separately |
+| Service | Stack | Cloud Run Name | Memory | CPU | Port | Public |
+|---------|-------|----------------|--------|-----|------|--------|
+| API (interactive) | FastAPI | `hephae-forge-api` | 512Mi | 1 | 8080 | No |
+| Web Frontend | Next.js 16 | `hephae-forge-web` | 512Mi | 1 | 3000 | Yes |
+| Admin Frontend | Next.js 14.1 | `hephae-admin-web` | 512Mi | 1 | 3000 | Yes |
+| Crawl4AI | crawl4ai | `hephae-crawl4ai` | 2Gi | 2 | 11235 | No |
 
-> Source: `infra/scripts/deploy.sh`, `apps/web/infra/deploy.sh`, `apps/admin/infra/deploy.sh`
+### Cloud Run Jobs
+
+| Job | Stack | Cloud Run Name | Memory | CPU | Timeout | Purpose |
+|-----|-------|----------------|--------|-----|---------|---------|
+| Batch Runner | Python CLI | `hephae-forge-batch` | 4Gi | 2 | 3600s | Workflows, area research, Playwright-heavy work |
+
+The API service is lightweight (no Playwright/Chromium). It delegates heavy work to the batch job
+via `launch_batch_job()` using the Cloud Run Jobs v2 API. Browser operations (crawl, screenshot) on
+the API service are proxied to the crawl4ai service via HTTP.
+
+> Source: `infra/scripts/deploy.sh`, `infra/docker/Dockerfile.api`, `infra/docker/Dockerfile.batch`
 
 ---
 
@@ -159,25 +169,32 @@ These are injected by deploy scripts or required as build-time env vars:
 
 ## 4. Deployment
 
-### Unified API
+### API Service + Batch Job
 
 ```bash
 bash infra/scripts/deploy.sh              # Full deploy with prerequisite checks
 bash infra/scripts/deploy.sh --skip-checks  # Skip secret/auth verification
 ```
 
-Steps:
-1. Builds Docker image via Cloud Build (`infra/docker/Dockerfile.fastapi`, 900s timeout)
+Deploys two components from one script:
+
+**API Service** (`hephae-forge-api` — lightweight, no Playwright):
+1. Builds Docker image via Cloud Build (`infra/docker/Dockerfile.api`, 900s timeout)
 2. Resolves crawl4ai service URL
-3. Deploys to Cloud Run as `hephae-forge-api`
+3. Deploys to Cloud Run as `hephae-forge-api` (512Mi, 1 vCPU)
 4. Grants service account `roles/run.invoker` on the API service
 5. Creates/updates Cloud Scheduler jobs:
    - `workflow-monitor` — `GET /api/cron/workflow-monitor` every 30 min
    - `workflow-dispatcher` — `GET /api/cron/workflow-dispatcher` every 5 min
 
-Secrets injected at runtime: `GEMINI_API_KEY`, `BLS_API_KEY`, `FRED_API_KEY`, `GOOGLE_MAPS_API_KEY`, `FORGE_API_SECRET`, `FORGE_V1_API_KEY`, `CRON_SECRET`, `RESEND_API_KEY`, `ADMIN_EMAIL_ALLOWLIST`, `MONITOR_NOTIFY_EMAILS`
+**Batch Job** (`hephae-forge-batch` — heavy, with Playwright):
+1. Builds Docker image via Cloud Build (`infra/docker/Dockerfile.batch`, 1200s timeout)
+2. Creates/updates Cloud Run Job (4Gi, 2 vCPU, 3600s timeout)
+3. The API service launches job executions via `launch_batch_job()` (requires `roles/run.developer` on the service account)
 
-> Source: `infra/scripts/deploy.sh`
+Secrets injected at runtime (both): `GEMINI_API_KEY`, `BLS_API_KEY`, `FRED_API_KEY`, `GOOGLE_MAPS_API_KEY`, `FORGE_API_SECRET`, `FORGE_V1_API_KEY`, `CRON_SECRET`, `RESEND_API_KEY`, `ADMIN_EMAIL_ALLOWLIST`, `MONITOR_NOTIFY_EMAILS`
+
+> Source: `infra/scripts/deploy.sh`, `infra/docker/Dockerfile.api`, `infra/docker/Dockerfile.batch`
 
 ### Web Frontend
 
@@ -215,17 +232,45 @@ No secrets injected at runtime (admin uses `BACKEND_URL` only).
 
 ## 5. Cloud Run Configuration
 
-| Setting | API (`hephae-forge-api`) | Web (`hephae-forge-web`) | Admin (`hephae-admin-web`) |
-|---------|--------------------------|--------------------------|----------------------------|
-| Memory | 2Gi | 512Mi | 512Mi |
-| CPU | 2 | 1 | 1 |
-| Timeout | 1800s (30 min) | 300s (5 min) | 60s |
-| Concurrency | 80 | _(default)_ | 100 |
-| Min Instances | 1 | 0 | 0 |
-| Max Instances | 5 | 5 | 3 |
-| Auth | IAM-only | Public | Public |
+### Services
+
+| Setting | API (`hephae-forge-api`) | Web (`hephae-forge-web`) | Admin (`hephae-admin-web`) | crawl4ai (`hephae-crawl4ai`) |
+|---------|--------------------------|--------------------------|----------------------------|------------------------------|
+| Memory | 512Mi | 512Mi | 512Mi | 2Gi |
+| CPU | 1 | 1 | 1 | 2 |
+| Timeout | 300s | 300s | 60s | 300s |
+| Concurrency | 80 | _(default)_ | 100 | 160 |
+| Min Instances | 1 | 0 | 0 | 0 |
+| Max Instances | 5 | 5 | 3 | 3 |
+| Auth | IAM-only | Public | Public | IAM-only |
+| Playwright | No | N/A | N/A | Yes (built-in) |
+
+### Jobs
+
+| Setting | Batch (`hephae-forge-batch`) |
+|---------|------------------------------|
+| Memory | 4Gi |
+| CPU | 2 |
+| Task Timeout | 3600s (1 hour) |
+| Max Retries | 1 |
+| Playwright | Yes |
+| Scale | 0 (scale-to-zero, launched on demand) |
 
 > Source: `infra/scripts/deploy.sh`, `apps/web/infra/deploy.sh`, `apps/admin/infra/deploy.sh`
+
+### Required IAM Roles for Service Account
+
+| Role | Purpose |
+|------|---------|
+| `roles/datastore.user` | Firestore read/write |
+| `roles/bigquery.dataEditor` | BigQuery insert |
+| `roles/bigquery.jobUser` | BigQuery run queries |
+| `roles/storage.objectAdmin` | GCS upload/delete |
+| `roles/secretmanager.secretAccessor` | Read secrets at runtime |
+| `roles/run.invoker` | Invoke Cloud Run services (service-to-service auth) |
+| `roles/run.developer` | Launch Cloud Run Job executions (`run.jobs.run`, `run.jobs.runWithOverrides`) |
+
+> **Note:** `roles/run.developer` is critical — without it, the API service cannot launch batch jobs and workflows will get stuck in `discovery` phase after the dispatcher sets the phase but fails to start the job.
 
 ---
 
@@ -238,9 +283,9 @@ Run `bash infra/setup.sh` to initialize a fresh GCP project. The script is idemp
 | Step | Resource | Details |
 |------|----------|---------|
 | 1 | GCP APIs | Enables 8 APIs: Cloud Run, Cloud Build, Artifact Registry, Secret Manager, Firestore, BigQuery, GCS, Cloud Scheduler, Cloud Tasks |
-| 2 | Service Account | `hephae-forge@$PROJECT_ID.iam.gserviceaccount.com` with 6 IAM roles: `datastore.user`, `bigquery.dataEditor`, `bigquery.jobUser`, `storage.objectAdmin`, `secretmanager.secretAccessor`, `run.invoker` |
+| 2 | Service Account | `hephae-forge@$PROJECT_ID.iam.gserviceaccount.com` with 7 IAM roles (see below) |
 | 3 | Artifact Registry | Docker repo `cloud-run-source-deploy` in `us-central1` |
-| 4 | Secret Manager | Creates 1 required secret (`GEMINI_API_KEY`) and 8 optional secrets (`BLS_API_KEY`, `FRED_API_KEY`, `GOOGLE_MAPS_API_KEY`, `FORGE_API_SECRET`, `FORGE_V1_API_KEY`, `CRON_SECRET`, `RESEND_API_KEY`, `ADMIN_EMAIL_ALLOWLIST`, `FIREBASE_API_KEY`). Optional secrets get a `placeholder` value. |
+| 4 | Secret Manager | Creates 1 required secret (`GEMINI_API_KEY`) and 9 optional secrets (see below) |
 | 5 | GCS Buckets | Legacy bucket (`everything-hephae`) and CDN bucket (`$PROJECT_ID-prod-cdn-assets`), both with public read access |
 | 6 | Firestore | Default database in Native mode, `us-central1` |
 | 7 | Cloud Tasks | Queue `hephae-agent-queue` (10 dispatches/sec, 5 concurrent, 3 max attempts) |

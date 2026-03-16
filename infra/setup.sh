@@ -40,6 +40,7 @@ OPTIONAL_SECRETS=(
   "CRON_SECRET"
   "RESEND_API_KEY"
   "ADMIN_EMAIL_ALLOWLIST"
+  "MONITOR_NOTIFY_EMAILS"
   "FIREBASE_API_KEY"
 )
 ALL_SECRETS=("${REQUIRED_SECRETS[@]}" "${OPTIONAL_SECRETS[@]}")
@@ -64,7 +65,8 @@ SA_ROLES=(
   "roles/bigquery.jobUser"               # BigQuery run queries
   "roles/storage.objectAdmin"            # GCS upload/delete
   "roles/secretmanager.secretAccessor"   # Read secrets at runtime
-  "roles/run.invoker"                    # Invoke Cloud Run services/jobs
+  "roles/run.invoker"                    # Invoke Cloud Run services
+  "roles/run.developer"                  # Launch Cloud Run Jobs (run.jobs.run, run.jobs.runWithOverrides)
 )
 
 # ─────────────────────────────────────────────────────────────
@@ -416,7 +418,7 @@ if [ $FAIL -eq 0 ]; then
   echo "  ✓ All prerequisites met! (${PASS} checks passed, ${CREATED} resources created)"
   echo ""
   echo "  Deploy services:"
-  echo "    bash apps/api/infra/deploy.sh      # Unified API"
+  echo "    bash infra/scripts/deploy.sh       # API service + batch job"
   echo "    bash apps/web/infra/deploy.sh      # Web frontend"
   echo "    bash apps/admin/infra/deploy.sh    # Admin frontend"
 else

@@ -11,7 +11,36 @@ You are a documentation generator for the Hephae pipeline. Your job is to read t
 
 ## Output Location
 
-All generated docs go to `infra/contracts/`. Overwrite existing files with freshly generated content.
+All generated docs go to `infra/contracts/`. The directory structure is:
+
+```
+infra/contracts/
+├── index.md                          # Landing page with quick links
+├── architecture/
+│   ├── overview.md                   # Service topology, dependencies, model tiers
+│   ├── infrastructure.md             # GCP topology, env vars, deploy, Cloud Run config
+│   └── workflow-pipeline.md          # Phase transitions, capabilities, scoring, threshold
+├── firestore-schema.md               # All Firestore collections
+├── bigquery-schema.md                # BigQuery tables
+├── gcs-conventions.md                # GCS bucket paths
+├── api-web.md                        # Web API endpoints
+├── api-admin.md                      # Admin API endpoints
+├── agents/
+│   ├── agent-catalog.md              # All agents, versions, models, tools
+│   └── prompt-catalog.md             # Full instruction text for every LlmAgent
+├── eval-standards.md                 # Evaluator criteria, pass thresholds
+├── qualification-pipeline-design.md  # PRESERVED (human-written design doc)
+├── unified-pipeline-design.md        # PRESERVED (human-written design doc)
+├── eval-ground-truth.md              # PRESERVED (manual test data)
+└── changelog.md                      # PRESERVED (manual version history)
+```
+
+Every auto-generated doc starts with:
+```
+> Auto-generated from codebase on {YYYY-MM-DD}. Do not edit manually — run `/hephae-refresh-docs` to update.
+```
+
+Overwrite existing files with freshly generated content.
 
 ## Arguments
 

@@ -45,8 +45,8 @@ async def run_evaluation_phase(
             identity = (biz_data or {}).get("identity", {"name": biz.name, "address": biz.address})
 
             for cap_def in evaluable:
-                if cap_def.name not in biz.capabilitiesCompleted:
-                    continue
+                # Check actual business doc outputs (not workflow capabilitiesCompleted
+                # which may be stale due to Cloud Tasks polling sync gap)
                 if cap_def.firestore_output_key not in latest_outputs:
                     continue
                 if not cap_def.evaluator:
@@ -73,6 +73,16 @@ async def run_evaluation_phase(
             biz.lastError = str(e)
             biz.phase = BusinessPhase.EVALUATION_DONE
             biz.qualityPassed = False
+            if callbacks.get("onBusinessEvaluated"):
+                await callbacks["onBusinessEvaluated"](biz.slug, biz.qualityPassed)
+
+    # Finalize any pending businesses that had zero evaluable outputs
+    eval_biz_slugs = {item["biz"].slug for item in eval_items}
+    for biz in pending:
+        if biz.slug not in eval_biz_slugs:
+            biz.phase = BusinessPhase.EVALUATION_DONE
+            biz.qualityPassed = False
+            logger.info(f"[Evaluation] {biz.slug}: no evaluable outputs — marked evaluation_done (failed)")
             if callbacks.get("onBusinessEvaluated"):
                 await callbacks["onBusinessEvaluated"](biz.slug, biz.qualityPassed)
 

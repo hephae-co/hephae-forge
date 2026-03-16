@@ -188,8 +188,9 @@ class WorkflowEngine:
                         self._emit("workflow:zipcode_research", f"Refreshing volatile sections for {zc} ({int(age_h)}h old)")
                         await research_zip_code(zc, force=True)
                     else:
-                        # Full refresh needed
-                        self._emit("workflow:zipcode_research", f"Full research for {zc} (stale: {int(age_h)}h old)")
+                        # Full refresh needed (no existing research or stale)
+                        age_str = f"{int(age_h)}h old" if age_h != float("inf") else "no existing research"
+                        self._emit("workflow:zipcode_research", f"Full research for {zc} ({age_str})")
                         await research_zip_code(zc, force=True)
                 except Exception as e:
                     logger.error(f"[WorkflowEngine] Zip code research non-fatal error for {zc}: {e}")

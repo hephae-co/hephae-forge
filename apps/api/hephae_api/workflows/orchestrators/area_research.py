@@ -43,11 +43,12 @@ class AreaResearchOrchestrator:
     def remove_listener(self, fn: Callable[[AreaResearchProgressEvent], None]):
         self._listeners.discard(fn)
 
-    def _build_progress(self) -> AreaResearchProgress:
+    def _build_progress(self, current_zip: str | None = None) -> AreaResearchProgress:
         return AreaResearchProgress(
             totalZipCodes=len(self.doc.zipCodes),
             completedZipCodes=len(self.doc.completedZipCodes),
             failedZipCodes=len(self.doc.failedZipCodes),
+            currentZipCode=current_zip,
         )
 
     def _emit(self, event_type: str, message: str, current_zip: str | None = None):
@@ -56,7 +57,7 @@ class AreaResearchOrchestrator:
             areaId=self.doc.id,
             phase=self.doc.phase,
             message=message,
-            progress=AreaResearchProgress(**self._build_progress().model_dump(), currentZipCode=current_zip),
+            progress=self._build_progress(current_zip=current_zip),
             timestamp=datetime.utcnow().isoformat(),
         )
         for listener in self._listeners:

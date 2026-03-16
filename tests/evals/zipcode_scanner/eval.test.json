@@ -55,6 +55,34 @@
         "user_id": "eval",
         "state": {}
       }
+    },
+    {
+      "eval_id": "scan_07019_east_orange_restaurants",
+      "description": "Real zip code with known businesses. Must discover Europa Bar & Restaurant (website: europabarandrestaurant.com) which was missed in 2026-03-16 run due to name mismatch (listed as 'Europa Bar and Grill' but operates as 'Europa Bar and Restaurant').",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Find real Restaurants businesses currently operating in zip code 07019. Search for local business directories, Yelp listings, and chamber of commerce for 07019."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"businesses\": [{\"name\": \"Europa Bar & Restaurant\", \"address\": \"625 Westfield Ave, Elizabeth, NJ 07208\", \"website\": \"https://europabarandrestaurant.com\", \"category\": \"restaurant\"}, {\"name\": \"Don Felix Bar & Restaurant\", \"address\": \"663 S Broad St, Elizabeth, NJ 07202\", \"website\": \"\", \"category\": \"restaurant\"}, {\"name\": \"La Riqueza Restaurant\", \"address\": \"820 E Jersey St, Elizabeth, NJ 07201\", \"website\": \"\", \"category\": \"restaurant\"}, {\"name\": \"Valen-A Restaurant\", \"address\": \"123 Broad St, Elizabeth, NJ 07201\", \"website\": \"\", \"category\": \"restaurant\"}]}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "restaurants in 07019 East Orange NJ"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "HephaeAdmin",
+        "user_id": "eval",
+        "state": {}
+      }
     }
   ]
 }

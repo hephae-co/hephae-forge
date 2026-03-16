@@ -60,6 +60,37 @@
         "user_id": "eval",
         "state": {}
       }
+    },
+    {
+      "eval_id": "name_mismatch_website_discovery",
+      "description": "Real case: Europa Bar and Grill (listed name) is actually Europa Bar and Restaurant. Website is europabarandrestaurant.com. Discovery should find the website despite the name mismatch. Regression test from 07019 Restaurants workflow (2026-03-16).",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Discover and profile this business:\nName: Europa Bar and Grill\nAddress: 625 Westfield Ave, Elizabeth, NJ 07208\nWebsite: (none known)\n\nSearch for this business online, discover whatever digital presence exists, and return all found details. Note: the business may operate under a slightly different name than listed."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"businessName\": \"Europa Bar & Restaurant\", \"address\": \"625 Westfield Ave, Elizabeth, NJ 07208\", \"phone\": \"(908) 355-2233\", \"email\": \"\", \"officialUrl\": \"https://europabarandrestaurant.com\", \"category\": \"Portuguese Restaurant / Bar\", \"description\": \"Family owned and operated business bringing traditional recipes from Portugal. Known for authentic Portuguese seafood and meat dishes.\", \"hours\": {}, \"socialLinks\": {\"facebook\": \"https://www.facebook.com/p/Europa-Bar-Restaurant-100054515888043/\", \"instagram\": \"\", \"yelp\": \"https://www.yelp.com/biz/europa-bar-and-restaurant-elizabeth\"}, \"menu\": {\"categories\": [\"Seafood\", \"Portuguese\", \"Bar\"]}, \"coordinates\": {\"lat\": 40.6595, \"lng\": -74.2289}, \"discoveryNotes\": \"Business listed as 'Europa Bar and Grill' but operates as 'Europa Bar & Restaurant'. Website domain matches the operating name.\", \"validatedUrls\": {\"officialUrl\": true, \"facebook\": true, \"yelp\": true}}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"id": "call_1", "name": "google_search", "args": {"query": "Europa Bar and Grill Elizabeth NJ 07208"}},
+              {"id": "call_2", "name": "google_search", "args": {"query": "Europa Bar Restaurant Elizabeth NJ website"}},
+              {"id": "call_3", "name": "crawl4ai_tool", "args": {"url": "https://europabarandrestaurant.com"}},
+              {"id": "call_4", "name": "validate_url_tool", "args": {"url": "https://europabarandrestaurant.com"}}
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "discovery_pipeline",
+        "user_id": "eval",
+        "state": {}
+      }
     }
   ]
 }

@@ -1,0 +1,51 @@
+{
+  "description": "Golden dataset of businesses with known websites. Used to measure website discovery accuracy. Each entry represents a real business where the pipeline should find the officialUrl. Add entries from production failures to prevent regressions.",
+  "updated": "2026-03-16",
+  "entries": [
+    {
+      "name": "Europa Bar and Grill",
+      "actual_name": "Europa Bar & Restaurant",
+      "address": "625 Westfield Ave, Elizabeth, NJ 07208",
+      "zip_code": "07019",
+      "business_type": "Restaurants",
+      "expected_url": "https://europabarandrestaurant.com",
+      "phone": "(908) 355-2233",
+      "social": {
+        "facebook": "https://www.facebook.com/p/Europa-Bar-Restaurant-100054515888043/",
+        "yelp": "https://www.yelp.com/biz/europa-bar-and-restaurant-elizabeth"
+      },
+      "failure_reason": "Name mismatch — listed as 'Grill' but operates as 'Restaurant'. Domain europabarandrestaurant.com doesn't match 'Grill' in the listing.",
+      "discovered_in_run": false,
+      "run_date": "2026-03-16",
+      "workflow_id": "iyJU3kj3GF01zdU7JK2mAw"
+    },
+    {
+      "name": "Santillo's Brick Oven Pizza",
+      "address": "639 S Broad St, Elizabeth, NJ 07202",
+      "zip_code": "07019",
+      "business_type": "Restaurants",
+      "expected_url": "https://santillospizza.com",
+      "social": {
+        "yelp": "https://www.yelp.com/biz/santillos-brick-oven-pizza-elizabeth",
+        "instagram": "https://www.instagram.com/santillospizza/"
+      },
+      "failure_reason": null,
+      "discovered_in_run": true,
+      "run_date": "2026-03-16",
+      "workflow_id": "iyJU3kj3GF01zdU7JK2mAw"
+    },
+    {
+      "name": "Bosa Fish",
+      "address": "Elizabeth, NJ",
+      "zip_code": "07019",
+      "business_type": "Restaurants",
+      "expected_url": null,
+      "social": {},
+      "failure_reason": null,
+      "discovered_in_run": true,
+      "run_date": "2026-03-16",
+      "workflow_id": "iyJU3kj3GF01zdU7JK2mAw",
+      "notes": "No website found — likely no web presence. Confirmed no officialUrl in latestOutputs."
+    }
+  ]
+}

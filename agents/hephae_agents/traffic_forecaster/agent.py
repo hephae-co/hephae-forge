@@ -124,12 +124,13 @@ def _build_admin_context(business_context: Any, identity: dict[str, Any] | None 
 
 class ForecasterAgent:
     @staticmethod
-    async def forecast(identity: dict[str, Any], business_context: Any = None, **kwargs) -> dict[str, Any]:
+    async def forecast(identity: dict[str, Any], business_context: Any = None, skip_synthesis: bool = False, **kwargs) -> dict[str, Any]:
         """Run the full traffic forecasting pipeline.
 
         Args:
             identity: Enriched identity dict.
             business_context: Optional BusinessContext with admin data for richer synthesis.
+            skip_synthesis: If True, run gathering only and return deferred intel data.
         """
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
@@ -183,6 +184,18 @@ class ForecasterAgent:
         poi_details = state.get("poiDetails", "No POI data found.")
         weather_data = state.get("weatherData", "No weather data found.")
         events_data = state.get("eventsData", "No events data found.")
+
+        if skip_synthesis:
+            return {
+                "deferred": True,
+                "intel": {
+                    "poi": poi_details,
+                    "weather": weather_data,
+                    "events": events_data,
+                },
+                "identity": identity,
+                "business_context_summary": _build_admin_context(business_context, identity),
+            }
 
         # Synthesis
         logger.info("[ForecasterAgent] Intelligence gathered. Synthesizing report...")

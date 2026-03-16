@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import re
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +11,7 @@ from hephae_api.lib.auth import verify_admin_request
 
 from hephae_db.firestore.workflows import create_workflow, list_workflows
 from hephae_api.types import WorkflowDocument, WorkflowPhase, WorkflowProgress
-from hephae_api.workflows.engine import start_workflow_engine
+from hephae_api.lib.job_launcher import launch_batch_job
 from hephae_agents.discovery.county_resolver import resolve_county_zip_codes
 
 router = APIRouter(prefix="/api/workflows", tags=["workflows"], dependencies=[Depends(verify_admin_request)])
@@ -40,7 +39,7 @@ async def create_workflow_endpoint(req: CreateWorkflowRequest):
     )
 
     # Start engine in background
-    await start_workflow_engine(workflow.id)
+    await launch_batch_job("workflow", [workflow.id])
 
     return {"workflowId": workflow.id, "status": "started"}
 
@@ -67,7 +66,7 @@ async def create_county_workflow(req: CreateCountyWorkflowRequest):
         workflow_model=WorkflowDocument, phase_enum=WorkflowPhase, progress_model=WorkflowProgress,
     )
 
-    await start_workflow_engine(workflow.id)
+    await launch_batch_job("workflow", [workflow.id])
 
     return {
         "workflowId": workflow.id,

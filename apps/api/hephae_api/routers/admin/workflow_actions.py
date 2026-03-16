@@ -13,7 +13,7 @@ from hephae_api.lib.auth import verify_admin_request
 from hephae_db.firestore.workflows import load_workflow, save_workflow, delete_workflow
 from hephae_db.bigquery.feedback import record_approval_feedback
 from hephae_api.types import WorkflowDocument, WorkflowPhase, BusinessPhase
-from hephae_api.workflows.engine import WorkflowEngine, start_workflow_engine
+from hephae_api.lib.job_launcher import launch_batch_job
 
 logger = logging.getLogger(__name__)
 
@@ -127,9 +127,8 @@ async def approve_workflow(workflow_id: str, req: ApproveRequest):
     await save_workflow(workflow)
 
     if any_approved:
-        # Start outreach engine in background
-        engine = WorkflowEngine(workflow)
-        asyncio.create_task(engine.resume_from_outreach())
+        # Launch batch job for outreach (heavy work offloaded to batch service)
+        await launch_batch_job("resume-outreach", [workflow_id])
 
     return {"success": True, "approved": any_approved}
 
@@ -165,6 +164,6 @@ async def resume_workflow(workflow_id: str):
         workflow.phase = WorkflowPhase.DISCOVERY
 
     await save_workflow(workflow)
-    await start_workflow_engine(workflow_id)
+    await launch_batch_job("workflow", [workflow_id])
 
     return {"success": True, "resumePhase": workflow.phase.value}

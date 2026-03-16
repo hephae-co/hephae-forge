@@ -95,6 +95,8 @@ async def _generate_cdn_assets(
                     subtitle=st,
                     highlight=hi,
                 )
+                if not png_bytes:
+                    return rt, ""
                 url = await upload_social_card_to_cdn(slug, rt, png_bytes)
                 return rt, url
             except Exception as e:

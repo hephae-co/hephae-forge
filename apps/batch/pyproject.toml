@@ -1,0 +1,16 @@
+[project]
+name = "hephae-batch"
+version = "0.1.0"
+description = "Cloud Run Job batch runner — workflows, area research, Cloud Tasks"
+requires-python = ">=3.12"
+dependencies = [
+    "hephae-api",
+    "hephae-agents[browser]",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hephae_batch"]

@@ -1,6 +1,8 @@
 """
 Visualizer — generates social card PNG using Playwright.
 Port of src/agents/margin-analyzer/visualizer.ts.
+
+Returns None if Playwright is not installed (lightweight service mode).
 """
 
 from __future__ import annotations
@@ -9,14 +11,22 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+try:
+    from playwright.async_api import async_playwright
+    _PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    _PLAYWRIGHT_AVAILABLE = False
+
 
 async def generate_social_card(
     business_name: str,
     total_leakage: float,
     top_item: str,
-) -> bytes:
+) -> bytes | None:
     """
     Generate a branded social card PNG using Playwright.
+
+    Returns None if Playwright is not installed.
 
     Args:
         business_name: Name of the business.
@@ -24,9 +34,11 @@ async def generate_social_card(
         top_item: Top menu item fix recommendation.
 
     Returns:
-        PNG image as bytes.
+        PNG image as bytes, or None if Playwright unavailable.
     """
-    from playwright.async_api import async_playwright
+    if not _PLAYWRIGHT_AVAILABLE:
+        logger.warning("[Visualizer] Playwright not installed — skipping card generation")
+        return None
 
     html = f"""
     <html>

@@ -1,6 +1,7 @@
 """Universal social card generator — creates branded PNG cards for any report type.
 
 Uses Playwright to render HTML -> PNG at 1200x630 (Open Graph standard).
+When Playwright is not installed, returns None (graceful degradation).
 """
 
 from __future__ import annotations
@@ -8,6 +9,12 @@ from __future__ import annotations
 import logging
 
 logger = logging.getLogger(__name__)
+
+try:
+    from playwright.async_api import async_playwright
+    _PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    _PLAYWRIGHT_AVAILABLE = False
 
 HEPHAE_LOGO_URL = "https://insights.ai.hephae.co/hephae_logo_blue.png"
 
@@ -107,9 +114,14 @@ def _build_card_html(
 async def generate_universal_social_card(
     business_name: str, report_type: str = "profile",
     headline: str = "", subtitle: str = "", highlight: str = "",
-) -> bytes:
-    """Generate a branded social card PNG using Playwright."""
-    from playwright.async_api import async_playwright
+) -> bytes | None:
+    """Generate a branded social card PNG using Playwright.
+
+    Returns None if Playwright is not installed (lightweight service mode).
+    """
+    if not _PLAYWRIGHT_AVAILABLE:
+        logger.warning("[SocialCard] Playwright not installed — skipping card generation")
+        return None
 
     html = _build_card_html(business_name, report_type, headline, subtitle, highlight)
 

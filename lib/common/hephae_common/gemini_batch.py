@@ -30,6 +30,8 @@ async def batch_generate(
     Uses the standard Gemini API but with controlled concurrency to avoid
     rate limits. For true batch pricing, use submit_vertex_batch().
 
+    Set BATCH_DISABLED=true to run sequentially one-at-a-time (debug mode).
+
     Args:
         prompts: List of {"request_id": str, "prompt": str}.
         model: Model ID (defaults to PRIMARY_MODEL).
@@ -44,6 +46,31 @@ async def batch_generate(
 
     if not prompts:
         return {}
+
+    # Debug bypass — run sequentially, one at a time
+    if os.environ.get("BATCH_DISABLED", "").lower() == "true":
+        logger.info(f"[GeminiBatch] BATCH_DISABLED=true, running {len(prompts)} prompts sequentially")
+        client = get_genai_client()
+        _model = model or AgentModels.PRIMARY_MODEL
+        results: dict[str, Any] = {}
+        for item in prompts:
+            request_id = item["request_id"]
+            try:
+                gen_config = config or {"response_mime_type": "application/json"}
+                response = await client.aio.models.generate_content(
+                    model=_model,
+                    contents=item["prompt"],
+                    config=gen_config,
+                )
+                text = response.text
+                try:
+                    results[request_id] = json.loads(text)
+                except (json.JSONDecodeError, ValueError):
+                    results[request_id] = {"raw_text": text}
+            except Exception as e:
+                logger.warning(f"[GeminiBatch] Sequential call failed for {request_id}: {e}")
+                results[request_id] = None
+        return results
 
     model = model or AgentModels.PRIMARY_MODEL
     client = get_genai_client()

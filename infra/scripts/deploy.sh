@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ─────────────────────────────────────────────────────────────
-# deploy.sh — Build & deploy unified API to Cloud Run
+# deploy.sh — Build & deploy API service + batch job to Cloud Run
 #
 # Usage:
 #   bash infra/scripts/deploy.sh
@@ -25,6 +25,9 @@ SERVICE_ACCOUNT="hephae-forge@${PROJECT_ID}.iam.gserviceaccount.com"
 
 API_SERVICE="hephae-forge-api"
 API_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${API_SERVICE}:${TAG}"
+
+BATCH_JOB="hephae-forge-batch"
+BATCH_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${BATCH_JOB}:${TAG}"
 
 CRAWL4AI_SERVICE="hephae-crawl4ai"
 
@@ -84,30 +87,6 @@ if ! $SKIP_CHECKS; then
 fi
 
 # ─────────────────────────────────────────────────────────────
-# Build API image
-# ─────────────────────────────────────────────────────────────
-echo "──── Unified API Deploy ────────────────────────"
-echo "  Project:   ${PROJECT_ID}"
-echo "  Region:    ${REGION}"
-echo "  Service:   ${API_SERVICE}"
-echo "  Image:     ${API_IMAGE}"
-echo "  Context:   ${REPO_ROOT}"
-echo ""
-
-echo "── Building FastAPI image..."
-cat > /tmp/cloudbuild-unified-api.yaml <<YAML
-steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${API_IMAGE}', '-f', 'infra/docker/Dockerfile.fastapi', '.']
-images: ['${API_IMAGE}']
-YAML
-gcloud builds submit \
-  --config /tmp/cloudbuild-unified-api.yaml \
-  --project "$PROJECT_ID" \
-  --region "$BUILD_REGION" \
-  --timeout=900 "$REPO_ROOT"
-
-# ─────────────────────────────────────────────────────────────
 # Get crawl4ai URL (needed for API env var)
 # ─────────────────────────────────────────────────────────────
 CRAWL4AI_URL=$(gcloud run services describe "$CRAWL4AI_SERVICE" \
@@ -115,7 +94,30 @@ CRAWL4AI_URL=$(gcloud run services describe "$CRAWL4AI_SERVICE" \
   --format="value(status.url)" 2>/dev/null || echo "")
 
 # ─────────────────────────────────────────────────────────────
-# Deploy API service
+# Build API image (lightweight — no Playwright)
+# ─────────────────────────────────────────────────────────────
+echo "──── API Service Deploy ─────────────────────────"
+echo "  Project:   ${PROJECT_ID}"
+echo "  Region:    ${REGION}"
+echo "  Service:   ${API_SERVICE}"
+echo "  Image:     ${API_IMAGE}"
+echo ""
+
+echo "── Building API image (lightweight, no Playwright)..."
+cat > /tmp/cloudbuild-api.yaml <<YAML
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${API_IMAGE}', '-f', 'infra/docker/Dockerfile.api', '.']
+images: ['${API_IMAGE}']
+YAML
+gcloud builds submit \
+  --config /tmp/cloudbuild-api.yaml \
+  --project "$PROJECT_ID" \
+  --region "$BUILD_REGION" \
+  --timeout=900 "$REPO_ROOT"
+
+# ─────────────────────────────────────────────────────────────
+# Deploy API service (lightweight interactive)
 # ─────────────────────────────────────────────────────────────
 echo "── Deploying API service (${API_SERVICE})..."
 
@@ -141,9 +143,9 @@ gcloud run deploy "$API_SERVICE" \
   --region "$REGION" \
   --platform managed \
   --port 8080 \
-  --memory 2Gi \
-  --cpu 2 \
-  --timeout 1800 \
+  --memory 512Mi \
+  --cpu 1 \
+  --timeout 300 \
   --concurrency 80 \
   --min-instances 1 \
   --max-instances 5 \
@@ -166,6 +168,83 @@ API_URL=$(gcloud run services describe "$API_SERVICE" \
 echo ""
 echo "══════════════════════════════════════════════"
 echo "  ✓ API: ${API_URL}"
+if [ -n "$CRAWL4AI_URL" ]; then
+  echo "  ✓ crawl4ai: ${CRAWL4AI_URL}"
+fi
+echo "══════════════════════════════════════════════"
+
+# ─────────────────────────────────────────────────────────────
+# Build Batch image (heavy — with Playwright)
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "──── Batch Job Deploy ─────────────────────────"
+echo "  Job:       ${BATCH_JOB}"
+echo "  Image:     ${BATCH_IMAGE}"
+echo ""
+
+echo "── Building batch image (with Playwright)..."
+cat > /tmp/cloudbuild-batch.yaml <<YAML
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${BATCH_IMAGE}', '-f', 'infra/docker/Dockerfile.batch', '.']
+images: ['${BATCH_IMAGE}']
+YAML
+gcloud builds submit \
+  --config /tmp/cloudbuild-batch.yaml \
+  --project "$PROJECT_ID" \
+  --region "$BUILD_REGION" \
+  --timeout=1200 "$REPO_ROOT"
+
+# ─────────────────────────────────────────────────────────────
+# Deploy Batch Cloud Run Job
+# ─────────────────────────────────────────────────────────────
+echo "── Deploying batch job (${BATCH_JOB})..."
+
+BATCH_ENV_VARS="PYTHONUNBUFFERED=1"
+if [ -n "$CRAWL4AI_URL" ]; then
+  BATCH_ENV_VARS="${BATCH_ENV_VARS},CRAWL4AI_URL=${CRAWL4AI_URL}"
+fi
+if [ -n "$API_URL" ]; then
+  BATCH_ENV_VARS="${BATCH_ENV_VARS},API_BASE_URL=${API_URL}"
+fi
+BATCH_ENV_VARS="${BATCH_ENV_VARS},RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL}"
+
+BATCH_SECRETS="GEMINI_API_KEY=GEMINI_API_KEY:latest,BLS_API_KEY=BLS_API_KEY:latest,FRED_API_KEY=FRED_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest,FORGE_API_SECRET=FORGE_API_SECRET:latest,FORGE_V1_API_KEY=FORGE_V1_API_KEY:latest,CRON_SECRET=CRON_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,ADMIN_EMAIL_ALLOWLIST=ADMIN_EMAIL_ALLOWLIST:latest,MONITOR_NOTIFY_EMAILS=MONITOR_NOTIFY_EMAILS:latest"
+
+# Create or update the Cloud Run Job
+if gcloud run jobs describe "$BATCH_JOB" \
+    --region "$REGION" --project "$PROJECT_ID" &>/dev/null; then
+  gcloud run jobs update "$BATCH_JOB" \
+    --image "$BATCH_IMAGE" \
+    --project "$PROJECT_ID" \
+    --region "$REGION" \
+    --memory 4Gi \
+    --cpu 2 \
+    --task-timeout 3600 \
+    --max-retries 1 \
+    --service-account "$SERVICE_ACCOUNT" \
+    --set-env-vars "$BATCH_ENV_VARS" \
+    --set-secrets "$BATCH_SECRETS"
+  echo "  ✓ Updated job: ${BATCH_JOB}"
+else
+  gcloud run jobs create "$BATCH_JOB" \
+    --image "$BATCH_IMAGE" \
+    --project "$PROJECT_ID" \
+    --region "$REGION" \
+    --memory 4Gi \
+    --cpu 2 \
+    --task-timeout 3600 \
+    --max-retries 1 \
+    --service-account "$SERVICE_ACCOUNT" \
+    --set-env-vars "$BATCH_ENV_VARS" \
+    --set-secrets "$BATCH_SECRETS"
+  echo "  ✓ Created job: ${BATCH_JOB}"
+fi
+
+echo ""
+echo "══════════════════════════════════════════════"
+echo "  ✓ API:   ${API_URL} (512Mi, 1 vCPU)"
+echo "  ✓ Batch: ${BATCH_JOB} (4Gi, 2 vCPU, scale-to-zero)"
 if [ -n "$CRAWL4AI_URL" ]; then
   echo "  ✓ crawl4ai: ${CRAWL4AI_URL}"
 fi

@@ -325,12 +325,30 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
     # Shared Firestore session service for all capabilities — persists state for debugging
     wf_session_service = FirestoreSessionService()
 
+    # Deferred synthesis data — traffic and competitive run gathering only,
+    # synthesis is batched at the engine level for cost savings.
+    deferred_synthesis: dict[str, Any] = {}
+
+    # Capabilities that should defer their synthesis to engine-level batch
+    DEFERRED_CAPS = {"traffic", "competitive"}
+
     async def _run_cap(cap_def: FullCapabilityDefinition):
         try:
-            raw = await _run_capability(slug, cap_def, identity, session_service=wf_session_service)
+            extra_kwargs: dict[str, Any] = {"session_service": wf_session_service}
+            if cap_def.name == "traffic":
+                extra_kwargs["skip_synthesis"] = True
+            elif cap_def.name == "competitive":
+                extra_kwargs["skip_positioning"] = True
+
+            raw = await _run_capability(slug, cap_def, identity, **extra_kwargs)
             if raw:
-                completed.append(cap_def.name)
-                latest_outputs[cap_def.firestore_output_key] = cap_def.response_adapter(raw)
+                if raw.get("deferred"):
+                    # Store deferred data for engine-level batch synthesis
+                    deferred_synthesis[cap_def.name] = raw
+                    completed.append(cap_def.name)
+                else:
+                    completed.append(cap_def.name)
+                    latest_outputs[cap_def.firestore_output_key] = cap_def.response_adapter(raw)
             else:
                 failed.append(cap_def.name)
         except RetriableCapabilityError:
@@ -349,6 +367,13 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
             )
         except Exception as e:
             logger.error(f"[WorkflowAnalyze] Firestore persist error for {slug}: {e}")
+
+    # Step 4b: Persist deferred synthesis data in task metadata for engine-level batch
+    if deferred_synthesis:
+        try:
+            await update_task(task_id, {"metadata.deferredSynthesis": deferred_synthesis})
+        except Exception as e:
+            logger.error(f"[WorkflowAnalyze] Failed to persist deferred synthesis for {slug}: {e}")
 
     # Step 5: Insights deferred to batch (engine level) — skip per-business generation
     await _update_substep("insights_done")
@@ -385,5 +410,5 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
         "capabilitiesFailed": failed,
         "retriableFailures": retriable_failed,
         "retryRound": retry_round,
-        "insights": insights is not None,
+        "insights": False,  # deferred to engine-level batch
     }

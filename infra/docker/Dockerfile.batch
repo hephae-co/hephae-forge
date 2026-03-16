@@ -1,0 +1,48 @@
+# ───────────────────────────────────────────────────────────
+# Dockerfile.batch — Heavy batch job (workflows, area research)
+# Build context: repo root (hephae-forge/)
+# Includes Playwright/Chromium for browser operations
+# ───────────────────────────────────────────────────────────
+
+FROM python:3.12-slim-bookworm
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1
+
+# Install system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install shared packages (changes less often → cached layer)
+COPY lib/common/ ./lib/common/
+RUN pip install --no-cache-dir ./lib/common
+
+COPY lib/db/ ./lib/db/
+RUN pip install --no-cache-dir ./lib/db
+
+COPY lib/integrations/ ./lib/integrations/
+RUN pip install --no-cache-dir ./lib/integrations
+
+COPY agents/ ./agents/
+RUN pip install --no-cache-dir "./agents[browser]"   # WITH Playwright
+
+# Install Playwright Chromium
+RUN playwright install --with-deps chromium
+
+# Install API package (batch imports workflow engine from hephae_api)
+COPY apps/api/ ./apps/api/
+RUN pip install --no-cache-dir ./apps/api
+
+# Install batch package
+COPY apps/batch/ ./apps/batch/
+RUN pip install --no-cache-dir ./apps/batch
+
+# Copy tests (evals + unit tests can run in batch context)
+COPY tests/ ./tests/
+RUN pip install --no-cache-dir pytest pytest-asyncio pytest-html
+
+WORKDIR /app/apps/batch
+
+# Default command: dispatcher mode (check queue, run next workflow)
+CMD ["python", "-m", "hephae_batch.main", "dispatcher"]

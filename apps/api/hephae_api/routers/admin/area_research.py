@@ -12,9 +12,10 @@ from pydantic import BaseModel
 from hephae_api.lib.auth import verify_admin_request
 from starlette.responses import StreamingResponse
 
-from hephae_db.firestore.research import load_area_research, list_area_research, delete_area_research
-from hephae_api.workflows.orchestrators.area_research import start_area_research, get_active_orchestrator
-from hephae_api.types import AreaResearchProgressEvent
+from hephae_db.firestore.research import load_area_research, list_area_research, delete_area_research, create_area_research
+from hephae_api.workflows.orchestrators.area_research import get_active_orchestrator
+from hephae_api.types import AreaResearchProgressEvent, AreaResearchDocument
+from hephae_api.lib.job_launcher import launch_batch_job
 from hephae_api.routers.admin import _serialize
 
 logger = logging.getLogger(__name__)
@@ -34,9 +35,13 @@ class CreateAreaResearchRequest(BaseModel):
 async def create_area_research_endpoint(req: CreateAreaResearchRequest):
     max_zips = min(req.maxZipCodes or 10, 15)
 
-    result = await start_area_research(req.area, req.businessType, max_zips)
+    # Create the Firestore document first, then launch batch job
+    raw = await create_area_research(req.area, req.businessType, [])
+    doc = AreaResearchDocument(**raw)
+    await launch_batch_job("area-research", [doc.id, req.area, req.businessType, f"--max-zips={max_zips}"])
+
     return {
-        "areaId": result["areaId"],
+        "areaId": doc.id,
         "status": "started",
         "area": req.area,
         "businessType": req.businessType,

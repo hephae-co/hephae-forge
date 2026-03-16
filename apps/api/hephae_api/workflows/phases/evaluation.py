@@ -120,8 +120,15 @@ async def run_evaluation_phase(
                 logger.error(f"[Evaluation] Sequential eval failed for {biz.slug}/{cap_def.name}: {e}")
 
         if result and isinstance(result, dict):
+            # Coerce score to float — evaluators sometimes return strings like "85/100"
+            raw_score = result.get("score", 0)
+            try:
+                score = float(raw_score) if not isinstance(raw_score, (int, float)) else raw_score
+            except (ValueError, TypeError):
+                logger.warning(f"[Evaluation] Non-numeric score from {cap_def.name} for {biz.slug}: {raw_score!r}")
+                score = 0
             eval_result = EvaluationResult(
-                score=result.get("score", 0),
+                score=score,
                 isHallucinated=result.get("isHallucinated", True),
                 issues=result.get("issues", []),
             )

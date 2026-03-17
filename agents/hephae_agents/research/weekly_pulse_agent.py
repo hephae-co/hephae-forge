@@ -313,6 +313,13 @@ def _build_signal_prompt(
             sections.append(f"- [{notice.get('type', '')}] {notice.get('description', '')} ({notice.get('date', '')})")
         sections.append("")
 
+    # ── Social / Community Pulse ────────────────────────────────────
+    if signals.get("socialPulse"):
+        sp = signals["socialPulse"]
+        sections.append("=== COMMUNITY PULSE (Reddit, X, Patch, TapInto — search grounded) ===")
+        sections.append(sp.get("summary", ""))
+        sections.append("")
+
     # ── Local news ───────────────────────────────────────────────────
     if signals.get("localNews"):
         articles = signals["localNews"].get("articles", [])

@@ -61,6 +61,7 @@ async def generate_pulse(
     from hephae_integrations.news_client import query_local_news
     from hephae_agents.research.weekly_pulse_agent import generate_weekly_pulse
     from hephae_agents.research.local_catalyst import research_local_catalysts
+    from hephae_agents.research.social_pulse import fetch_social_pulse
     from hephae_api.workflows.orchestrators.industry_plugins import fetch_industry_data
     from hephae_api.workflows.orchestrators.zipcode_research import research_zip_code
 
@@ -306,14 +307,33 @@ async def generate_pulse(
             _record("legal_notices", "error", str(e))
             return {}
 
+    async def _fetch_social_pulse() -> dict[str, Any]:
+        loc_city = city if city and city != zip_code else ""
+        if not loc_city:
+            _record("social_pulse", "skipped", "No city name available")
+            return {}
+        try:
+            result = await fetch_social_pulse(loc_city, state, zip_code)
+            if result.get("summary"):
+                _record("social_pulse", "ok",
+                        f"{result.get('queriesUsed', 0)} queries, {len(result['summary'])} chars",
+                        {"summary": result["summary"][:300]})
+                return result
+            _record("social_pulse", "empty", "No significant community chatter found")
+            return {}
+        except Exception as e:
+            _record("social_pulse", "error", str(e))
+            return {}
+
     # Run ALL fetchers in parallel
-    weather, industry_data, news_data, trends_data, catalyst_data, legal_data = await asyncio.gather(
+    weather, industry_data, news_data, trends_data, catalyst_data, legal_data, social_data = await asyncio.gather(
         _fetch_weather(),
         _fetch_industry(),
         _fetch_news(),
         _fetch_trends(),
         _fetch_catalysts(),
         _fetch_legal_notices(),
+        _fetch_social_pulse(),
     )
 
     # Merge results
@@ -341,6 +361,10 @@ async def generate_pulse(
     if legal_data and legal_data.get("notices"):
         signals["legalNotices"] = legal_data
         signals_used.append("legal_notices")
+
+    if social_data and social_data.get("summary"):
+        signals["socialPulse"] = social_data
+        signals_used.append("social_pulse")
 
     # ── 8. Prior week's pulse ────────────────────────────────────────
     prior_pulse = None

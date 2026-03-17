@@ -26,6 +26,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Any
 
@@ -62,6 +63,7 @@ async def generate_pulse(
     from hephae_agents.research.weekly_pulse_agent import generate_weekly_pulse
     from hephae_agents.research.local_catalyst import research_local_catalysts
     from hephae_agents.research.social_pulse import fetch_social_pulse
+    from hephae_agents.research.maps_grounding import fetch_maps_density
     from hephae_api.workflows.orchestrators.industry_plugins import fetch_industry_data
     from hephae_api.workflows.orchestrators.zipcode_research import research_zip_code
 
@@ -325,8 +327,26 @@ async def generate_pulse(
             _record("social_pulse", "error", str(e))
             return {}
 
+    async def _fetch_maps_density() -> dict[str, Any]:
+        loc_city = city if city and city != zip_code else ""
+        if not loc_city or not os.getenv("GOOGLE_MAPS_API_KEY", ""):
+            _record("maps_grounding", "skipped", "No city or no GOOGLE_MAPS_API_KEY")
+            return {}
+        try:
+            result = await fetch_maps_density(loc_city, state, zip_code, business_type)
+            if result and result.get("totalPlaces"):
+                _record("maps_grounding", "ok",
+                        f"{result['totalPlaces']} places, saturation={result.get('saturationAssessment', '?')}",
+                        {"summary": result.get("summary", ""), "topPlaces": result.get("topPlaces", [])[:3]})
+                return result
+            _record("maps_grounding", "empty", "No places returned")
+            return {}
+        except Exception as e:
+            _record("maps_grounding", "error", str(e))
+            return {}
+
     # Run ALL fetchers in parallel
-    weather, industry_data, news_data, trends_data, catalyst_data, legal_data, social_data = await asyncio.gather(
+    weather, industry_data, news_data, trends_data, catalyst_data, legal_data, social_data, maps_data = await asyncio.gather(
         _fetch_weather(),
         _fetch_industry(),
         _fetch_news(),
@@ -334,6 +354,7 @@ async def generate_pulse(
         _fetch_catalysts(),
         _fetch_legal_notices(),
         _fetch_social_pulse(),
+        _fetch_maps_density(),
     )
 
     # Merge results
@@ -365,6 +386,10 @@ async def generate_pulse(
     if social_data and social_data.get("summary"):
         signals["socialPulse"] = social_data
         signals_used.append("social_pulse")
+
+    if maps_data and maps_data.get("totalPlaces"):
+        signals["mapsGrounding"] = maps_data
+        signals_used.append("maps_grounding")
 
     # ── 8. Prior week's pulse ────────────────────────────────────────
     prior_pulse = None

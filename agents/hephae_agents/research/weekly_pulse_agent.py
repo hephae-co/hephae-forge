@@ -261,6 +261,24 @@ def _build_signal_prompt(
             sections.append(f"Top rated: {json.dumps(yelp['topRated'][:5], default=str)}")
         sections.append("")
 
+    # ── Google Maps competitive landscape ──────────────────────────
+    if signals.get("mapsGrounding"):
+        mg = signals["mapsGrounding"]
+        sections.append("=== GOOGLE MAPS COMPETITIVE LANDSCAPE (Grounding Lite) ===")
+        sections.append(f"Total places found: {mg.get('totalPlaces', 'N/A')}")
+        sections.append(f"Saturation: {mg.get('saturationAssessment', 'N/A')}")
+        if mg.get("categories"):
+            sections.append(f"Categories: {json.dumps(mg['categories'])}")
+        if mg.get("topPlaces"):
+            sections.append("Top competitors:")
+            for p in mg["topPlaces"][:5]:
+                rating = f"rating {p.get('rating', '?')}" if p.get('rating') else ""
+                reviews = f"({p.get('userRatingCount', '?')} reviews)" if p.get('userRatingCount') else ""
+                sections.append(f"  - {p.get('name', '?')} {rating} {reviews}")
+        if mg.get("summary"):
+            sections.append(f"Assessment: {mg['summary']}")
+        sections.append("")
+
     # ── SBA loan data ────────────────────────────────────────────────
     if signals.get("sbaLoans"):
         sba = signals["sbaLoans"]

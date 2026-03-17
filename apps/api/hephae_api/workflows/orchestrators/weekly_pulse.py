@@ -1,14 +1,24 @@
 """Weekly Pulse orchestrator — gathers all signals and generates insight-card briefing.
 
 Pipeline:
-1. Load existing zip code research (or run fresh if none exists)
-2. Gather industry-specific data via plugin registry (BLS, USDA, FDA)
-3. Fetch local news via Google News RSS
-4. Query Google Trends via BigQuery
-5. Fetch local catalysts (government signals)
-6. Load prior week's pulse (for delta detection)
-7. Run WeeklyPulseAgent to synthesize all signals into insight cards
-8. Save to Firestore (pulse + raw signal diagnostics for explainability)
+1. Load existing zip code research (or run fresh)
+2. Fetch 7-day weather forecast (NWS API)
+3. Gather industry-specific data via plugin registry:
+   - BLS CPI (food prices, v1 no-key or v2 with key)
+   - USDA NASS (agricultural commodity prices)
+   - FDA (food safety recalls)
+   - Yelp Fusion (competition density, ratings, new entrants)
+   - SBA loans (new business formation signals)
+   - EIA (energy costs — state level)
+   - FBI UCR (crime/safety — county level)
+   - SchoolDigger (education/economic stress)
+4. Fetch local news (Google News RSS)
+5. Query Google Trends (BigQuery DMA data)
+6. Fetch local catalysts (government signals via search + crawl)
+7. Fetch NJ legal notices (if NJ zip)
+8. Load prior week's pulse (delta detection)
+9. Run WeeklyPulseAgent with all signals
+10. Save to Firestore with full diagnostics
 """
 
 from __future__ import annotations
@@ -45,10 +55,7 @@ async def generate_pulse(
         {"pulse": dict, "pulseId": str, "signalsUsed": list[str], "diagnostics": dict}
     """
     from hephae_db.firestore.research import get_zipcode_report
-    from hephae_db.firestore.weekly_pulse import (
-        get_latest_pulse,
-        save_weekly_pulse,
-    )
+    from hephae_db.firestore.weekly_pulse import get_latest_pulse, save_weekly_pulse
     from hephae_db.bigquery.reader import query_google_trends
     from hephae_integrations.news_client import query_local_news
     from hephae_agents.research.weekly_pulse_agent import generate_weekly_pulse
@@ -61,11 +68,11 @@ async def generate_pulse(
 
     logger.info(f"[WeeklyPulse] Starting pulse for {zip_code} / {business_type} / {week_of}")
 
-    # 0. Check for existing pulse this week (skip if force)
+    # 0. Check cache
     if not force:
         existing = await get_latest_pulse(zip_code, business_type)
         if existing and existing.get("weekOf") == week_of:
-            logger.info(f"[WeeklyPulse] Returning existing pulse for {week_of}")
+            logger.info(f"[WeeklyPulse] Returning cached pulse for {week_of}")
             return {
                 "pulse": existing.get("pulse", {}),
                 "pulseId": existing["id"],
@@ -75,25 +82,19 @@ async def generate_pulse(
 
     signals: dict[str, Any] = {}
     signals_used: list[str] = []
-    # Track what happened with each source for explainability
-    diagnostics: dict[str, Any] = {
-        "sources": {},
-        "startedAt": datetime.utcnow().isoformat(),
-    }
+    diagnostics: dict[str, Any] = {"sources": {}, "startedAt": datetime.utcnow().isoformat()}
 
     def _record(source: str, status: str, detail: str = "", data_preview: Any = None):
-        """Record diagnostic info for a data source."""
         entry: dict[str, Any] = {"status": status, "detail": detail}
         if data_preview is not None:
             entry["dataPreview"] = _truncate(data_preview)
         diagnostics["sources"][source] = entry
 
-    # ── 1. Zip code research ─────────────────────────────────────────────
+    # ── 1. Zip code research ─────────────────────────────────────────
     zip_data = await get_zipcode_report(zip_code)
     if zip_data:
         _record("zipcode_research", "ok", "Loaded from Firestore cache")
-    elif not zip_data:
-        # Always run zip research if none exists — this is the base layer
+    else:
         logger.info(f"[WeeklyPulse] No zip research cached — running fresh for {zip_code}")
         try:
             result = await research_zip_code(zip_code, force=True)
@@ -105,6 +106,7 @@ async def generate_pulse(
 
     city = ""
     state = ""
+    county = ""
     dma_name = ""
 
     if zip_data:
@@ -115,72 +117,99 @@ async def generate_pulse(
         sections = report.get("sections", {})
         section_names = [k for k, v in sections.items() if v] if isinstance(sections, dict) else []
         _record("zipcode_research", "ok",
-                f"Loaded with {len(section_names)} sections: {', '.join(section_names)}",
+                f"{len(section_names)} sections: {', '.join(section_names)}",
                 {"summary": (report.get("summary", "") or "")[:300]})
 
-        # Extract city/state from geography section
-        geo = sections.get("geography", {})
+        # Extract city/state/county from geography
+        geo = sections.get("geography", {}) if isinstance(sections, dict) else {}
         if isinstance(geo, dict):
-            facts = geo.get("key_facts", [])
-            content = geo.get("content", "")
-            for fact in facts:
+            for fact in geo.get("key_facts", []):
                 fl = fact.lower()
-                if ("city" in fl or "town" in fl or "village" in fl) and ":" in fact:
+                if ("city" in fl or "town" in fl or "village" in fl or "borough" in fl) and ":" in fact:
                     city = fact.split(":")[-1].strip()
                 if "state" in fl and ":" in fact:
                     state = fact.split(":")[-1].strip()
-            # Fallback: try to extract from content
-            if not city and content:
-                # Often the first sentence mentions the location
-                city = zip_code  # Use zip as fallback location label
+                if "county" in fl and ":" in fact:
+                    county = fact.split(":")[-1].strip()
+            if not city:
+                city = zip_code
 
         # Extract DMA from trending section
-        trending = sections.get("trending", {})
+        trending = sections.get("trending", {}) if isinstance(sections, dict) else {}
         if isinstance(trending, dict):
             for fact in trending.get("key_facts", []):
-                if "DMA" in fact or "dma" in fact.lower() or "market" in fact.lower():
+                if any(k in fact.lower() for k in ["dma", "market area", "designated market"]):
                     if ":" in fact:
                         dma_name = fact.split(":")[-1].strip()
                         break
-            # Also check content
             if not dma_name:
                 tcontent = trending.get("content", "")
-                if "New York" in tcontent:
-                    dma_name = "New York"
-                elif "Philadelphia" in tcontent:
-                    dma_name = "Philadelphia"
+                for metro in ["New York", "Philadelphia", "Los Angeles", "Chicago", "Boston", "San Francisco", "Washington", "Dallas", "Houston", "Atlanta"]:
+                    if metro in tcontent:
+                        dma_name = metro
+                        break
 
-    # ── 2-5. Gather additional signals in parallel ───────────────────────
+    # ── 2-7. Gather ALL signals in parallel ──────────────────────────
+
+    async def _fetch_weather() -> dict[str, Any]:
+        try:
+            from hephae_integrations.nws_client import query_weather_forecast
+            result = await query_weather_forecast(zip_code)
+            if result and result.get("forecast"):
+                _record("weather_nws", "ok",
+                        f"{len(result['forecast'])} periods, outdoor: {result.get('outdoorFavorability', '?')}",
+                        {"summary": result.get("summary", ""), "alerts": result.get("alerts", [])})
+                return result
+            _record("weather_nws", "empty", "No forecast data returned")
+            return {}
+        except ImportError:
+            _record("weather_nws", "skipped", "nws_client not installed")
+            return {}
+        except Exception as e:
+            _record("weather_nws", "error", str(e))
+            return {}
 
     async def _fetch_industry() -> dict[str, Any]:
         try:
-            result = await fetch_industry_data(business_type, state)
+            result = await fetch_industry_data(business_type, state, zip_code, county)
             if result:
                 details = []
                 for k, v in result.items():
                     if k == "priceDeltas":
                         details.append(f"{len(v)} price deltas")
                     elif k == "blsCpi":
-                        series_count = len(v.get("series", []))
-                        highlights = v.get("highlights", [])
-                        details.append(f"BLS: {series_count} series, {len(highlights)} highlights")
+                        series_ct = len(v.get("series", []))
+                        hl_ct = len(v.get("highlights", []))
+                        details.append(f"BLS: {series_ct} series, {hl_ct} highlights")
                     elif k == "fdaRecalls":
                         details.append(f"FDA: {v.get('totalRecalls', 0)} recalls")
                     elif k == "usdaPrices":
                         details.append(f"USDA: {len(v.get('commodities', []))} commodities")
-                _record("industry_data", "ok", "; ".join(details), {k: type(v).__name__ for k, v in result.items()})
+                    elif k == "yelpData":
+                        details.append(f"Yelp: {v.get('totalBusinesses', 0)} businesses")
+                    elif k == "sbaLoans":
+                        details.append(f"SBA: {v.get('recentLoans', 0)} loans")
+                    elif k == "energyCosts":
+                        details.append(f"EIA: {v.get('latestPrice', '?')} c/kWh")
+                    elif k == "crimeStats":
+                        details.append(f"FBI: safety={v.get('safetyLevel', '?')}")
+                    elif k == "educationData":
+                        details.append(f"Edu: stress={v.get('economicStressLevel', '?')}")
+                _record("industry_data", "ok", "; ".join(details))
+                # Record individual source diagnostics
+                for k, v in result.items():
+                    if k not in ("priceDeltas",):
+                        _record(f"industry:{k}", "ok", details[0] if details else "data present",
+                                _truncate(v, 200) if isinstance(v, (dict, list)) else None)
             else:
                 _record("industry_data", "empty", "All industry sources returned empty")
             return result
         except Exception as e:
             _record("industry_data", "error", str(e))
-            logger.error(f"[WeeklyPulse] Industry data failed: {e}")
             return {}
 
     async def _fetch_news() -> dict[str, Any]:
-        location = city if city else zip_code
-        if city and state:
-            location = f"{city}, {state}"
+        location = f"{city}, {state}" if city and state else (city or zip_code)
         try:
             result = await query_local_news(location, business_type)
             article_count = len(result.get("articles", []))
@@ -193,7 +222,6 @@ async def generate_pulse(
             return result
         except Exception as e:
             _record("local_news", "error", str(e))
-            logger.error(f"[WeeklyPulse] News fetch failed: {e}")
             return {}
 
     async def _fetch_trends() -> dict[str, Any]:
@@ -203,46 +231,79 @@ async def generate_pulse(
         try:
             result = await query_google_trends(dma_name)
             data = result.model_dump(mode="json") if hasattr(result, "model_dump") else result
-            top_count = len(data.get("topTerms", []))
-            rising_count = len(data.get("risingTerms", []))
-            if top_count or rising_count:
+            top_ct = len(data.get("topTerms", []))
+            rising_ct = len(data.get("risingTerms", []))
+            if top_ct or rising_ct:
                 _record("google_trends", "ok",
-                        f"DMA '{dma_name}': {top_count} top, {rising_count} rising terms",
-                        {"topTerms": data.get("topTerms", [])[:5]})
+                        f"DMA '{dma_name}': {top_ct} top, {rising_ct} rising terms",
+                        {"topTerms": data.get("topTerms", [])[:5], "risingTerms": data.get("risingTerms", [])[:5]})
             else:
                 _record("google_trends", "empty", f"No trends for DMA '{dma_name}'")
             return data
         except Exception as e:
             _record("google_trends", "error", str(e))
-            logger.error(f"[WeeklyPulse] Trends fetch failed: {e}")
             return {}
 
     async def _fetch_catalysts() -> dict[str, Any]:
-        loc_city = city if city else zip_code
-        loc_state = state if state else "NJ"  # TODO: resolve from zip
+        loc_city = city if city and city != zip_code else ""
+        if not loc_city:
+            _record("local_catalysts", "skipped", "No city name available for catalyst search")
+            return {}
+        loc_state = state or "NJ"
         try:
             result = await research_local_catalysts(loc_city, loc_state, business_type)
             catalyst_count = len(result.get("catalysts", []))
             if catalyst_count > 0:
-                _record("local_catalysts", "ok",
-                        f"{catalyst_count} catalysts found",
-                        {"summary": result.get("summary", ""), "catalysts": result.get("catalysts", [])[:3]})
+                _record("local_catalysts", "ok", f"{catalyst_count} catalysts found",
+                        {"summary": result.get("summary", "")})
             else:
                 _record("local_catalysts", "empty", result.get("summary", "No catalysts found"))
             return result
         except Exception as e:
             _record("local_catalysts", "error", str(e))
-            logger.error(f"[WeeklyPulse] Catalyst fetch failed: {e}")
             return {}
 
-    industry_data, news_data, trends_data, catalyst_data = await asyncio.gather(
+    async def _fetch_legal_notices() -> dict[str, Any]:
+        # Only for NJ zip codes (or states with known legal notice portals)
+        if state and state.upper() not in ("NJ", "NEW JERSEY"):
+            _record("legal_notices", "skipped", f"Legal notice scraping not available for {state}")
+            return {}
+        loc_city = city if city and city != zip_code else ""
+        if not loc_city:
+            _record("legal_notices", "skipped", "No city name available")
+            return {}
+        try:
+            from hephae_integrations.nj_legal_notices_client import query_legal_notices
+            result = await query_legal_notices(loc_city, "NJ", zip_code)
+            notice_count = len(result.get("notices", []))
+            if notice_count > 0:
+                _record("legal_notices", "ok", f"{notice_count} notices found",
+                        {"summary": result.get("summary", "")})
+            else:
+                _record("legal_notices", "empty", "No relevant notices found")
+            return result
+        except ImportError:
+            _record("legal_notices", "skipped", "nj_legal_notices_client not installed")
+            return {}
+        except Exception as e:
+            _record("legal_notices", "error", str(e))
+            return {}
+
+    # Run ALL fetchers in parallel
+    weather, industry_data, news_data, trends_data, catalyst_data, legal_data = await asyncio.gather(
+        _fetch_weather(),
         _fetch_industry(),
         _fetch_news(),
         _fetch_trends(),
         _fetch_catalysts(),
+        _fetch_legal_notices(),
     )
 
-    # Merge results into signals
+    # Merge results
+    if weather and weather.get("forecast"):
+        signals["weather"] = weather
+        signals_used.append("weather_nws")
+
     if industry_data:
         signals.update(industry_data)
         for key in industry_data:
@@ -260,7 +321,11 @@ async def generate_pulse(
         signals["localCatalysts"] = catalyst_data
         signals_used.append("local_catalysts")
 
-    # ── 6. Prior week's pulse for delta detection ────────────────────────
+    if legal_data and legal_data.get("notices"):
+        signals["legalNotices"] = legal_data
+        signals_used.append("legal_notices")
+
+    # ── 8. Prior week's pulse ────────────────────────────────────────
     prior_pulse = None
     try:
         prior = await get_latest_pulse(zip_code, business_type)
@@ -268,11 +333,11 @@ async def generate_pulse(
             prior_pulse = prior
             _record("prior_pulse", "ok", f"Found prior pulse from {prior.get('weekOf', '?')}")
         else:
-            _record("prior_pulse", "skipped", "No prior pulse available (first run or same week)")
+            _record("prior_pulse", "skipped", "No prior pulse available")
     except Exception:
         _record("prior_pulse", "skipped", "Could not load prior pulse")
 
-    # ── 7. Run WeeklyPulseAgent ──────────────────────────────────────────
+    # ── 9. Run WeeklyPulseAgent ──────────────────────────────────────
     diagnostics["signalCount"] = len(signals_used)
     diagnostics["agentInputKeys"] = list(signals.keys())
 
@@ -288,7 +353,7 @@ async def generate_pulse(
     diagnostics["completedAt"] = datetime.utcnow().isoformat()
     diagnostics["insightCount"] = len(pulse.get("insights", []))
 
-    # ── 8. Save to Firestore ─────────────────────────────────────────────
+    # ── 10. Save ─────────────────────────────────────────────────────
     pulse_id = await save_weekly_pulse(
         zip_code=zip_code,
         business_type=business_type,
@@ -298,7 +363,7 @@ async def generate_pulse(
         diagnostics=diagnostics,
     )
 
-    logger.info(f"[WeeklyPulse] Pulse saved as {pulse_id} with {len(pulse.get('insights', []))} insights")
+    logger.info(f"[WeeklyPulse] Pulse saved as {pulse_id} with {len(pulse.get('insights', []))} insights from {len(signals_used)} signals")
 
     return {
         "pulse": pulse,

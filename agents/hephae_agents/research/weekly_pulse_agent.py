@@ -1,8 +1,9 @@
 """WeeklyPulseAgent — cross-signal analysis engine for zipcode weekly briefings.
 
 Takes aggregated signals (zip research, BLS prices, Google Trends, local news,
-local catalysts, industry data) and produces 3-5 ranked insight cards with
-actionable recommendations.
+local catalysts, Yelp competition, SBA loans, energy costs, crime stats,
+education data, weather, legal notices) and produces 3-5 ranked insight cards
+with actionable recommendations.
 
 The agent does NOT gather data — it ANALYZES pre-gathered signals and finds
 cross-correlations, anomalies, and opportunities that a business owner wouldn't
@@ -27,40 +28,72 @@ logger = logging.getLogger(__name__)
 
 WEEKLY_PULSE_INSTRUCTION = """You are a Senior Local Business Intelligence Analyst producing a weekly briefing for a specific business type in a specific zip code.
 
-You will receive PRE-GATHERED SIGNALS from multiple data sources. Your job is NOT to report raw facts — the business owner already lives in their community and knows basic things like weather and local events.
+You will receive PRE-GATHERED SIGNALS from multiple verified data sources (BLS, FDA, Yelp, SBA, EIA, FBI, NWS, Google Trends, news, government filings). Your job is NOT to report raw facts — the business owner already lives in their community.
 
-Your job is to perform CROSS-SIGNAL ANALYSIS and produce insights the owner CANNOT derive on their own:
+## YOUR CORE VALUE: Cross-Signal Analysis
 
-### What makes a VALUABLE insight:
-1. **Cross-Signal Correlation**: Connect dots between unrelated data. "Street fair + 72F + Saturday = historically higher foot traffic 5-8pm. But road closure on Oak St shifts parking east."
-2. **Quantified Impact**: Don't say "prepare for busy weekend". Say "expect 25-35% higher traffic Saturday evening based on similar past events."
-3. **Things They Don't Know**: Competitor permit filings, zoning changes, search trend spikes, supply chain recalls, BLS price movements vs overall inflation.
-4. **Industry-Specific Actionable Recs**: Not "food prices are up" but "Dairy up 12% while poultry DOWN 5% — shift weekly special from cream-based to grilled chicken."
-5. **Anomaly Detection**: What's different this week vs typical? What broke the pattern?
+You connect dots across data sources that no individual person could. Every insight MUST cite which specific data sources it draws from.
 
-### What makes a WORTHLESS insight (NEVER do these):
+### ANALYSIS FRAMEWORK (apply in order):
+
+**1. Cross-Signal Correlation** — Find combinations of signals that create opportunities or threats:
+- Weather + Events + Day-of-week = foot traffic prediction
+- BLS price spike in category X + category Y price drop = substitution opportunity
+- New competitor filing (Yelp/SBA/legal notices) + your area's saturation level = competitive threat assessment
+- Road closure + event location = parking shift → which businesses gain/lose
+- Rising Google search terms + low local supply (Yelp data) = unmet demand signal
+
+**2. Quantified Impact** — ALWAYS include numbers when data supports it:
+- "Dairy CPI up 12.1% YoY vs overall food at 3.2% — that's a 8.9pp gap eating your margins"
+- "Yelp shows 4 new restaurants in 0.5mi radius in 6 months — saturation increasing"
+- "SBA approved 12 new loans in this zip last quarter — 40% above county average"
+- "Weekend forecast 72F + 2 outdoor events = expect 25-35% higher foot traffic (based on seasonal patterns)"
+
+**3. Substitution & Menu Engineering** (food businesses):
+- When ingredient X is up, recommend specific alternatives that are down or stable
+- "Dairy up 12%, poultry DOWN 5.3% → shift weekly special from cream-based to grilled chicken dishes"
+- "Eggs up 8% but tofu stable → consider plant-based breakfast option for price-sensitive segment"
+
+**4. Competition Radar**:
+- New business filings, liquor license applications, SBA loan approvals in the area
+- Yelp new business count, rating changes, price level shifts
+- "A new [type] opened 0.3mi away — they're priced at $$ while you're $$$. Consider a lunch special to compete on value."
+
+**5. Economic Context Overlay**:
+- Energy costs trend → operating cost pressure
+- Free/reduced lunch % (education data) → neighborhood price sensitivity
+- Crime stats → safety perception affecting foot traffic
+- SBA loan volume → local economic health / new business formation rate
+
+**6. Demand Shift Detection** (Google Trends + Yelp):
+- Rising search terms that local businesses could serve
+- "Searches for 'outdoor dining' up 40% in your DMA — do you have patio seating?"
+- "Searches for 'gluten free near me' rising — consider adding 2-3 GF options"
+
+### WHAT MAKES A WORTHLESS INSIGHT (NEVER do these):
 - "It's going to rain Saturday" (they have weather apps)
 - "There's a street fair this weekend" (they probably helped organize it)
 - "Egg prices are up" (they buy eggs every week and know this)
 - Generic advice like "prepare for the weekend" or "check your inventory"
+- ANY insight that cites only ONE signal or no specific data
+- ANYTHING you are not confident about from the provided data — DO NOT hallucinate facts
 
-### Analysis Tasks:
-1. Cross-correlate signals: What combinations create opportunities or threats?
-2. Quantify impact: Based on available data, estimate magnitude.
-3. Detect anomalies: What's unusual compared to baseline?
-4. Generate recommendations: What should a business owner of this type DO?
-5. Prioritize: Rank by actionability and time-sensitivity.
+### CRITICAL RULE: Only use data you were given
+- If a data section is missing or says "empty/skipped", do NOT invent data for it
+- EVERY number you cite MUST come from the provided signals
+- If you don't have enough data for 3 insights, produce fewer rather than hallucinate
+- Mark your confidence: high (multiple corroborating sources), medium (1-2 sources), low (inference)
 
-### Output Rules:
-- Produce exactly 3-5 insight cards, ranked by impactScore (highest first)
-- Each insight must connect at least 2 different signals
+### OUTPUT RULES:
+- Produce 3-5 insight cards, ranked by impactScore (highest first)
+- Each insight MUST connect at least 2 different data sources
 - Each recommendation must be SPECIFIC and ACTIONABLE (not vague)
 - impactScore: 0-100 (80+ = high, 40-79 = medium, <40 = low)
 - timeSensitivity: "this_week" if must act in 7 days, "this_month" if 30 days, "this_quarter" if longer
-- headline: One sentence that captures the week's most important theme
-- quickStats: Fill from available data (trending searches, weather, event count, price alert count)
+- headline: One sentence capturing the week's most important cross-signal theme
+- quickStats: Fill ONLY from actual data provided (trending searches, weather, event count, price alerts)
 
-Return ONLY the structured JSON matching the schema. No markdown fencing."""
+Return ONLY the structured JSON matching the schema."""
 
 WeeklyPulseAgent = LlmAgent(
     name="weekly_pulse",
@@ -88,7 +121,7 @@ def _build_signal_prompt(
         "",
     ]
 
-    # Zip code research report (demographics, events, weather, business landscape)
+    # ── Zip code research report ─────────────────────────────────────
     if signals.get("zipReport"):
         report = signals["zipReport"]
         sections.append("=== ZIP CODE RESEARCH REPORT ===")
@@ -99,85 +132,162 @@ def _build_signal_prompt(
                     sections.append(f"--- {section_name} ---\n{content}")
         sections.append("")
 
-    # Google Trends
+    # ── Weather forecast ─────────────────────────────────────────────
+    if signals.get("weather"):
+        w = signals["weather"]
+        sections.append("=== 7-DAY WEATHER FORECAST (NWS) ===")
+        sections.append(f"Summary: {w.get('summary', 'N/A')}")
+        sections.append(f"Outdoor favorability: {w.get('outdoorFavorability', 'N/A')}")
+        for period in w.get("forecast", [])[:7]:
+            sections.append(f"- {period.get('name', '')}: {period.get('temperature', '')}F, {period.get('shortForecast', '')}, precip {period.get('precipChance', 0)}%, wind {period.get('windSpeed', '')}")
+        if w.get("alerts"):
+            sections.append(f"ALERTS: {json.dumps(w['alerts'], default=str)}")
+        sections.append("")
+
+    # ── Google Trends ────────────────────────────────────────────────
     if signals.get("trends"):
         trends = signals["trends"]
         sections.append("=== GOOGLE TRENDS (DMA-level) ===")
-        sections.append(json.dumps(trends, default=str))
+        sections.append(f"Top terms: {json.dumps(trends.get('topTerms', [])[:15], default=str)}")
+        sections.append(f"Rising terms: {json.dumps(trends.get('risingTerms', [])[:15], default=str)}")
         sections.append("")
 
-    # BLS CPI price data with deltas
+    # ── BLS CPI price deltas ─────────────────────────────────────────
     if signals.get("priceDeltas"):
-        sections.append("=== FOOD/COMMODITY PRICE DELTAS (BLS CPI) ===")
-        sections.append(json.dumps(signals["priceDeltas"], default=str))
+        sections.append("=== FOOD/COMMODITY PRICE CHANGES (BLS CPI — verified government data) ===")
+        for d in signals["priceDeltas"][:12]:
+            yoy = f"YoY: {d['yoyPctChange']:+.1f}%" if d.get("yoyPctChange") is not None else "YoY: N/A"
+            mom = f"MoM: {d['momPctChange']:+.2f}%" if d.get("momPctChange") is not None else ""
+            sections.append(f"- {d['label']}: {yoy} {mom} (index {d['indexValue']:.1f}, {d['latestPeriod']}) [{d['direction']}]")
         sections.append("")
     elif signals.get("blsCpi"):
-        sections.append("=== BLS CPI DATA ===")
-        # Just send highlights to keep prompt focused
         highlights = signals["blsCpi"].get("highlights", [])
-        sections.append("\n".join(highlights) if highlights else "No highlights available")
-        sections.append("")
+        if highlights:
+            sections.append("=== BLS CPI HIGHLIGHTS ===")
+            sections.append("\n".join(highlights))
+            sections.append("")
 
-    # USDA prices
+    # ── USDA commodity prices ────────────────────────────────────────
     if signals.get("usdaPrices"):
-        sections.append("=== USDA COMMODITY PRICES ===")
         usda = signals["usdaPrices"]
-        sections.append(json.dumps(usda.get("highlights", []), default=str))
-        sections.append("")
+        highlights = usda.get("highlights", [])
+        if highlights:
+            sections.append("=== USDA COMMODITY PRICES ===")
+            sections.append("\n".join(highlights) if isinstance(highlights, list) else json.dumps(highlights, default=str))
+            sections.append("")
 
-    # FDA recalls
+    # ── FDA recalls ──────────────────────────────────────────────────
     if signals.get("fdaRecalls"):
-        sections.append("=== FDA FOOD SAFETY ALERTS ===")
         fda = signals["fdaRecalls"]
-        sections.append(f"Total recalls (1yr): {fda.get('totalRecalls', 0)}")
-        sections.append(f"Recent (3mo): {fda.get('recentRecallCount', 0)}")
-        sections.append(f"Top reasons: {json.dumps(fda.get('topReasons', []))}")
-        # Include most recent enforcements
-        enforcements = fda.get("enforcements", [])[:5]
-        if enforcements:
-            sections.append("Recent enforcements:")
-            sections.append(json.dumps(enforcements, default=str))
+        if fda.get("totalRecalls", 0) > 0:
+            sections.append("=== FDA FOOD SAFETY ALERTS ===")
+            sections.append(f"Total recalls (1yr): {fda.get('totalRecalls', 0)}, Recent (3mo): {fda.get('recentRecallCount', 0)}")
+            sections.append(f"Top reasons: {', '.join(fda.get('topReasons', []))}")
+            for e in fda.get("enforcements", [])[:3]:
+                sections.append(f"- {e.get('recalling_firm', 'Unknown')}: {e.get('reason_for_recall', '')[:150]} [{e.get('classification', '')}]")
+            sections.append("")
+
+    # ── Yelp competition data ────────────────────────────────────────
+    if signals.get("yelpData"):
+        yelp = signals["yelpData"]
+        sections.append("=== YELP COMPETITION DATA (verified business listings) ===")
+        sections.append(f"Total businesses in zip: {yelp.get('totalBusinesses', 'N/A')}")
+        sections.append(f"Average rating: {yelp.get('avgRating', 'N/A')}")
+        sections.append(f"Price distribution: {json.dumps(yelp.get('priceDistribution', {}))}")
+        if yelp.get("recentlyOpened"):
+            sections.append(f"Recently opened ({len(yelp['recentlyOpened'])}): {json.dumps(yelp['recentlyOpened'][:5], default=str)}")
+        if yelp.get("topRated"):
+            sections.append(f"Top rated: {json.dumps(yelp['topRated'][:5], default=str)}")
         sections.append("")
 
-    # Local news
+    # ── SBA loan data ────────────────────────────────────────────────
+    if signals.get("sbaLoans"):
+        sba = signals["sbaLoans"]
+        sections.append("=== SBA LOAN DATA (business formation signals) ===")
+        sections.append(f"Recent loans in zip: {sba.get('recentLoans', 0)}")
+        sections.append(f"Total amount: ${sba.get('totalAmount', 0):,.0f}" if sba.get("totalAmount") else "")
+        sections.append(f"Avg loan size: ${sba.get('avgLoanSize', 0):,.0f}" if sba.get("avgLoanSize") else "")
+        sections.append(f"New business signal: {sba.get('newBusinessSignal', 'N/A')}")
+        if sba.get("topIndustries"):
+            sections.append(f"Top industries getting loans: {json.dumps(sba['topIndustries'][:5])}")
+        sections.append("")
+
+    # ── Energy costs ─────────────────────────────────────────────────
+    if signals.get("energyCosts"):
+        energy = signals["energyCosts"]
+        sections.append("=== ENERGY COSTS (EIA — state-level operating cost signal) ===")
+        sections.append(f"Commercial electricity: {energy.get('latestPrice', 'N/A')} cents/kWh")
+        if energy.get("yoyChange") is not None:
+            sections.append(f"Year-over-year change: {energy['yoyChange']:+.1f}% [{energy.get('trend', '')}]")
+        sections.append("")
+
+    # ── Crime/safety data ────────────────────────────────────────────
+    if signals.get("crimeStats"):
+        crime = signals["crimeStats"]
+        sections.append("=== CRIME / SAFETY (FBI UCR — county-level) ===")
+        sections.append(f"Safety level: {crime.get('safetyLevel', 'N/A')}")
+        if crime.get("violentCrimeRate"):
+            sections.append(f"Violent crime rate: {crime['violentCrimeRate']} per 100k")
+        if crime.get("propertyCrimeRate"):
+            sections.append(f"Property crime rate: {crime['propertyCrimeRate']} per 100k")
+        sections.append(f"Trend: {crime.get('trend', 'N/A')}")
+        sections.append("")
+
+    # ── Education/economic stress ────────────────────────────────────
+    if signals.get("educationData"):
+        edu = signals["educationData"]
+        sections.append("=== EDUCATION / ECONOMIC STRESS PROXY (SchoolDigger) ===")
+        sections.append(f"Schools in area: {edu.get('schoolCount', 'N/A')}")
+        sections.append(f"Free/reduced lunch %: {edu.get('freeReducedLunchPct', 'N/A')}% — economic stress level: {edu.get('economicStressLevel', 'N/A')}")
+        sections.append(f"Family friendliness: {edu.get('familyFriendliness', 'N/A')}")
+        sections.append("")
+
+    # ── Legal notices / government filings ───────────────────────────
+    if signals.get("legalNotices"):
+        legal = signals["legalNotices"]
+        sections.append("=== LEGAL NOTICES / GOVERNMENT FILINGS ===")
+        sections.append(f"New business filings: {legal.get('newBusinessFilings', 0)}")
+        sections.append(f"Zoning changes: {legal.get('zoningChanges', 0)}")
+        for notice in legal.get("notices", [])[:5]:
+            sections.append(f"- [{notice.get('type', '')}] {notice.get('description', '')} ({notice.get('date', '')})")
+        sections.append("")
+
+    # ── Local news ───────────────────────────────────────────────────
     if signals.get("localNews"):
-        sections.append("=== LOCAL NEWS ===")
         articles = signals["localNews"].get("articles", [])
-        for article in articles[:8]:
-            sections.append(f"- [{article.get('publishedDate', '')}] {article.get('headline', '')} ({article.get('source', '')})")
-            if article.get("summary"):
-                sections.append(f"  {article['summary'][:200]}")
-        sections.append("")
+        if articles:
+            sections.append("=== LOCAL NEWS (Google News RSS) ===")
+            for article in articles[:8]:
+                sections.append(f"- [{article.get('publishedDate', '')}] {article.get('headline', '')} ({article.get('source', '')})")
+                if article.get("summary"):
+                    sections.append(f"  {article['summary'][:200]}")
+            sections.append("")
 
-    # Local catalysts (government signals)
+    # ── Local government catalysts ───────────────────────────────────
     if signals.get("localCatalysts"):
-        sections.append("=== LOCAL GOVERNMENT CATALYSTS ===")
         catalysts = signals["localCatalysts"]
         if isinstance(catalysts, dict):
+            sections.append("=== LOCAL GOVERNMENT CATALYSTS (planning boards, DPW, grants) ===")
             sections.append(f"Summary: {catalysts.get('summary', '')}")
             for cat in catalysts.get("catalysts", []):
                 sections.append(f"- [{cat.get('type', '')}] {cat.get('signal', '')} (timing: {cat.get('timing', '')}, confidence: {cat.get('confidence', '')})")
-        sections.append("")
+            if catalysts.get("recommendation"):
+                sections.append(f"Analyst note: {catalysts['recommendation']}")
+            sections.append("")
 
-    # Industry news
-    if signals.get("industryNews"):
-        sections.append("=== INDUSTRY NEWS ===")
-        news = signals["industryNews"]
-        if isinstance(news, dict):
-            for item in news.get("recentNews", [])[:5]:
-                sections.append(f"- {item.get('headline', '')}: {item.get('summary', '')}")
-            for trend in news.get("priceTrends", []):
-                sections.append(f"- Price: {trend.get('item', '')} is {trend.get('trend', '')} — {trend.get('detail', '')}")
-        sections.append("")
-
-    # Prior week's pulse (for delta detection)
+    # ── Prior week's pulse (delta detection) ─────────────────────────
     if prior_pulse:
-        sections.append("=== PRIOR WEEK'S BRIEFING (for comparison) ===")
+        sections.append("=== PRIOR WEEK'S BRIEFING (compare for deltas) ===")
         prior = prior_pulse.get("pulse", prior_pulse)
         sections.append(f"Headline: {prior.get('headline', 'N/A')}")
         for insight in prior.get("insights", [])[:3]:
             sections.append(f"- [{insight.get('rank', '')}] {insight.get('title', '')}: {insight.get('analysis', '')[:150]}")
         sections.append("")
+
+    # ── Data availability summary ────────────────────────────────────
+    available = [k for k in signals.keys() if signals[k]]
+    sections.append(f"=== DATA SOURCES AVAILABLE: {', '.join(available)} ===")
+    sections.append("IMPORTANT: Only cite data from the sources listed above. If a source is missing, say so — do NOT invent data.")
 
     return "\n".join(sections)
 
@@ -189,18 +299,7 @@ async def generate_weekly_pulse(
     signals: dict[str, Any],
     prior_pulse: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Run the WeeklyPulseAgent to generate a weekly briefing.
-
-    Args:
-        zip_code: Target zip code.
-        business_type: Business category (e.g. "Restaurants").
-        week_of: ISO date for the week (YYYY-MM-DD).
-        signals: Dict of pre-gathered signal data.
-        prior_pulse: Previous week's pulse for delta detection (optional).
-
-    Returns:
-        WeeklyPulseOutput as a dict.
-    """
+    """Run the WeeklyPulseAgent to generate a weekly briefing."""
     logger.info(f"[WeeklyPulse] Generating pulse for {zip_code} / {business_type} / {week_of}")
 
     prompt = _build_signal_prompt(zip_code, business_type, week_of, signals, prior_pulse)
@@ -227,7 +326,6 @@ async def generate_weekly_pulse(
             "quickStats": {},
         }
 
-    # Ensure required fields are populated
     output.setdefault("zipCode", zip_code)
     output.setdefault("businessType", business_type)
     output.setdefault("weekOf", week_of)

@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     BLS_API_KEY: str = os.getenv("BLS_API_KEY", "")
     USDA_NASS_API_KEY: str = os.getenv("USDA_NASS_API_KEY", "")
 
+    # Data source API keys (optional — many sources work without keys)
+    YELP_API_KEY: str = os.getenv("YELP_API_KEY", "")
+    EIA_API_KEY: str = os.getenv("EIA_API_KEY", "")
+    FBI_API_KEY: str = os.getenv("FBI_API_KEY", "")
+    SCHOOLDIGGER_APP_ID: str = os.getenv("SCHOOLDIGGER_APP_ID", "")
+    SCHOOLDIGGER_APP_KEY: str = os.getenv("SCHOOLDIGGER_APP_KEY", "")
+
     # Social platform credentials
     X_API_KEY: str = os.getenv("X_API_KEY", "")
     X_API_SECRET: str = os.getenv("X_API_SECRET", "")

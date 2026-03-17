@@ -11,7 +11,8 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-BLS_API_URL = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
+BLS_V1_URL = "https://api.bls.gov/publicAPI/v1/timeseries/data/"
+BLS_V2_URL = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
 
 FOOD_CPI_SERIES: dict[str, str] = {
     "Food (all items)": "CUUR0000SAF1",
@@ -224,9 +225,6 @@ async def query_bls_cpi(
     empty: dict[str, Any] = {"series": [], "latestMonth": "", "highlights": []}
 
     api_key = api_key or os.getenv("BLS_API_KEY", "")
-    if not api_key:
-        logger.warning("[BLS] No BLS_API_KEY configured — skipping CPI query")
-        return empty
 
     if cache_reader:
         try:
@@ -244,21 +242,32 @@ async def query_bls_cpi(
         start_year = now.year - 2
         end_year = now.year
 
-        payload = {
-            "seriesid": series_ids[:50],
-            "startyear": str(start_year),
-            "endyear": str(end_year),
-            "catalog": False,
-            "calculations": True,
-            "annualaverage": False,
-            "aspects": False,
-            "registrationkey": api_key,
-        }
-
-        logger.info(f"[BLS] Querying {len(series_ids)} CPI series for industry={industry or 'general'}")
+        # Use v2 (with key, richer data) if available, otherwise v1 (no key, basic data)
+        if api_key:
+            api_url = BLS_V2_URL
+            payload: dict[str, Any] = {
+                "seriesid": series_ids[:50],
+                "startyear": str(start_year),
+                "endyear": str(end_year),
+                "catalog": False,
+                "calculations": True,
+                "annualaverage": False,
+                "aspects": False,
+                "registrationkey": api_key,
+            }
+            logger.info(f"[BLS] Querying v2 API ({len(series_ids)} series, industry={industry or 'general'})")
+        else:
+            # v1: no key needed, max 25 series, no calculations field
+            api_url = BLS_V1_URL
+            payload = {
+                "seriesid": series_ids[:25],
+                "startyear": str(start_year),
+                "endyear": str(end_year),
+            }
+            logger.info(f"[BLS] Querying v1 API (no key, {min(len(series_ids), 25)} series)")
 
         async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(BLS_API_URL, json=payload)
+            response = await client.post(api_url, json=payload)
 
         if response.status_code != 200:
             logger.warning(f"[BLS] API returned {response.status_code}")

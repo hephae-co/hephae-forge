@@ -2,6 +2,16 @@
 
 Each plugin defines which external data sources are relevant for a business type.
 The weekly pulse orchestrator uses this to conditionally fetch industry-specific data.
+
+Data sources:
+- BLS CPI (food price indexes — v1 no key, v2 with key)
+- USDA NASS (agricultural commodity prices)
+- FDA (food safety recalls)
+- Yelp Fusion (competition density, ratings, new entrants)
+- SBA loans (new business entry signals)
+- EIA (energy costs — state level, all business types)
+- FBI UCR (crime/safety — county level)
+- SchoolDigger (education/economic stress proxy)
 """
 
 from __future__ import annotations
@@ -13,7 +23,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Plugin definitions: business type → list of data source keys
+# Business type classification
 # ---------------------------------------------------------------------------
 
 FOOD_TYPES = {
@@ -33,39 +43,55 @@ BEAUTY_TYPES = {
     "nail salon", "beauty", "wellness",
 }
 
+SERVICE_TYPES = {
+    "auto repair", "laundry", "dry cleaning", "fitness", "gym",
+    "tutoring", "daycare", "veterinary", "vet",
+}
+
+
+def _matches(business_type: str, type_set: set[str]) -> bool:
+    normalized = business_type.lower().strip()
+    return normalized in type_set or any(t in normalized for t in type_set)
+
+
+def is_food_business(business_type: str) -> bool:
+    return _matches(business_type, FOOD_TYPES)
+
 
 def get_industry_plugins(business_type: str) -> list[str]:
-    """Return list of data source keys for a business type.
+    """Return list of data source keys relevant for a business type.
 
-    Possible keys: "bls_cpi", "usda_prices", "fda_recalls", "consumer_spending"
+    Base layer (all types): yelp, sba_loans, energy, crime, education
+    Food layer: + bls_cpi, usda_prices, fda_recalls
     """
-    normalized = business_type.lower().strip()
     plugins: list[str] = []
 
-    if normalized in FOOD_TYPES or any(ft in normalized for ft in FOOD_TYPES):
+    # Base layer — every business type gets these
+    plugins.extend(["yelp", "sba_loans", "energy", "crime", "education"])
+
+    # Food-specific
+    if _matches(business_type, FOOD_TYPES):
         plugins.extend(["bls_cpi", "usda_prices", "fda_recalls"])
-    elif normalized in RETAIL_TYPES or any(rt in normalized for rt in RETAIL_TYPES):
+    # Retail gets BLS for consumer price context
+    elif _matches(business_type, RETAIL_TYPES):
         plugins.append("bls_cpi")
-    elif normalized in BEAUTY_TYPES or any(bt in normalized for bt in BEAUTY_TYPES):
+    # Beauty/services get BLS for service price context
+    elif _matches(business_type, BEAUTY_TYPES | SERVICE_TYPES):
         plugins.append("bls_cpi")
 
     return plugins
 
 
-def is_food_business(business_type: str) -> bool:
-    """Check if a business type is food-related."""
-    normalized = business_type.lower().strip()
-    return normalized in FOOD_TYPES or any(ft in normalized for ft in FOOD_TYPES)
-
-
 async def fetch_industry_data(
     business_type: str,
     state: str = "",
+    zip_code: str = "",
+    county: str = "",
 ) -> dict[str, Any]:
     """Fetch all relevant industry data sources for a business type.
 
-    Returns dict with keys like "blsCpi", "usdaPrices", "fdaRecalls"
-    containing the raw data from each source. Failed sources are omitted.
+    Returns dict with source-keyed results. Failed sources are omitted.
+    Each successful source includes its data.
     """
     from hephae_integrations.bls_client import query_bls_cpi, compute_price_deltas
     from hephae_integrations.usda_client import query_usda_prices
@@ -76,6 +102,7 @@ async def fetch_industry_data(
         return {}
 
     tasks: list[tuple[str, Any]] = []
+
     for plugin in plugins:
         if plugin == "bls_cpi":
             tasks.append(("blsCpi", query_bls_cpi(business_type)))
@@ -83,6 +110,41 @@ async def fetch_industry_data(
             tasks.append(("usdaPrices", query_usda_prices(business_type, state)))
         elif plugin == "fda_recalls":
             tasks.append(("fdaRecalls", query_fda_enforcements(state)))
+        elif plugin == "yelp":
+            try:
+                from hephae_integrations.yelp_client import query_yelp_businesses
+                if zip_code:
+                    tasks.append(("yelpData", query_yelp_businesses(zip_code, business_type)))
+            except ImportError:
+                logger.debug("[IndustryPlugins] yelp_client not available")
+        elif plugin == "sba_loans":
+            try:
+                from hephae_integrations.sba_client import query_sba_loans
+                if zip_code:
+                    tasks.append(("sbaLoans", query_sba_loans(zip_code)))
+            except ImportError:
+                logger.debug("[IndustryPlugins] sba_client not available")
+        elif plugin == "energy":
+            try:
+                from hephae_integrations.eia_client import query_energy_costs
+                if state:
+                    tasks.append(("energyCosts", query_energy_costs(state)))
+            except ImportError:
+                logger.debug("[IndustryPlugins] eia_client not available")
+        elif plugin == "crime":
+            try:
+                from hephae_integrations.fbi_ucr_client import query_crime_stats
+                if state:
+                    tasks.append(("crimeStats", query_crime_stats(state, county)))
+            except ImportError:
+                logger.debug("[IndustryPlugins] fbi_ucr_client not available")
+        elif plugin == "education":
+            try:
+                from hephae_integrations.schooldigger_client import query_school_data
+                if zip_code:
+                    tasks.append(("educationData", query_school_data(zip_code)))
+            except ImportError:
+                logger.debug("[IndustryPlugins] schooldigger_client not available")
 
     if not tasks:
         return {}

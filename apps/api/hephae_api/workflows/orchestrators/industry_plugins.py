@@ -1,22 +1,26 @@
 """Industry plugin registry — maps business types to data fetcher functions.
 
-Each plugin defines which external data sources are relevant for a business type.
-The weekly pulse orchestrator uses this to conditionally fetch industry-specific data.
+Architecture: BQ-first with API fallback.
 
-Data sources:
-- BLS CPI (food price indexes — v1 no key, v2 with key)
-- USDA NASS (agricultural commodity prices)
-- FDA (food safety recalls)
-- Yelp Fusion (competition density, ratings, new entrants)
-- SBA loans (new business entry signals)
-- EIA (energy costs — state level, all business types)
-- FBI UCR (crime/safety — county level)
-- SchoolDigger (education/economic stress proxy)
+BigQuery public datasets (free, no keys, always available):
+- census_bureau_acs → demographics, income, poverty, housing (replaces SchoolDigger)
+- geo_openstreetmap → business density, competition count (replaces Yelp)
+- noaa_gsod → historical weather patterns (supplements NWS forecast)
+- utility_us.zipcode_area → geography bridging (zip → lat/lon/county)
+
+API sources (some free, some need keys):
+- BLS CPI v1 (no key) / v2 (with key) → food price indexes
+- USDA NASS (needs key) → agricultural commodity prices
+- FDA (free) → food safety recalls
+- SBA (free) → business formation signals
+- Yelp Fusion (needs key) → ratings, reviews (supplements OSM counts)
+- NWS (free) → 7-day forecast
 """
 
 from __future__ import annotations
 
 import asyncio
+import os
 import logging
 from typing import Any
 
@@ -58,102 +62,66 @@ def is_food_business(business_type: str) -> bool:
     return _matches(business_type, FOOD_TYPES)
 
 
-def get_industry_plugins(business_type: str) -> list[str]:
-    """Return list of data source keys relevant for a business type.
-
-    Base layer (all types): yelp, sba_loans, energy, crime, education
-    Food layer: + bls_cpi, usda_prices, fda_recalls
-    """
-    plugins: list[str] = []
-
-    # Base layer — every business type gets these
-    plugins.extend(["yelp", "sba_loans", "energy", "crime", "education"])
-
-    # Food-specific
-    if _matches(business_type, FOOD_TYPES):
-        plugins.extend(["bls_cpi", "usda_prices", "fda_recalls"])
-    # Retail gets BLS for consumer price context
-    elif _matches(business_type, RETAIL_TYPES):
-        plugins.append("bls_cpi")
-    # Beauty/services get BLS for service price context
-    elif _matches(business_type, BEAUTY_TYPES | SERVICE_TYPES):
-        plugins.append("bls_cpi")
-
-    return plugins
-
-
 async def fetch_industry_data(
     business_type: str,
     state: str = "",
     zip_code: str = "",
     county: str = "",
+    latitude: float = 0.0,
+    longitude: float = 0.0,
 ) -> dict[str, Any]:
-    """Fetch all relevant industry data sources for a business type.
+    """Fetch all relevant data sources for a business type.
 
-    Returns dict with source-keyed results. Failed sources are omitted.
-    Each successful source includes its data.
+    BQ sources run unconditionally (free, reliable).
+    API sources run conditionally (based on key availability + business type).
     """
-    from hephae_integrations.bls_client import query_bls_cpi, compute_price_deltas
-    from hephae_integrations.usda_client import query_usda_prices
-    from hephae_integrations.fda_client import query_fda_enforcements
+    data: dict[str, Any] = {}
 
-    plugins = get_industry_plugins(business_type)
-    if not plugins:
-        return {}
+    # ── BQ sources (always available, run in parallel) ───────────────
+    bq_tasks: list[tuple[str, Any]] = []
 
-    tasks: list[tuple[str, Any]] = []
+    # Census demographics (replaces SchoolDigger)
+    if zip_code:
+        bq_tasks.append(("censusDemographics", _fetch_census(zip_code)))
 
-    for plugin in plugins:
-        if plugin == "bls_cpi":
-            tasks.append(("blsCpi", query_bls_cpi(business_type)))
-        elif plugin == "usda_prices":
-            tasks.append(("usdaPrices", query_usda_prices(business_type, state)))
-        elif plugin == "fda_recalls":
-            tasks.append(("fdaRecalls", query_fda_enforcements(state)))
-        elif plugin == "yelp":
-            try:
-                from hephae_integrations.yelp_client import query_yelp_businesses
-                if zip_code:
-                    tasks.append(("yelpData", query_yelp_businesses(zip_code, business_type)))
-            except ImportError:
-                logger.debug("[IndustryPlugins] yelp_client not available")
-        elif plugin == "sba_loans":
-            try:
-                from hephae_integrations.sba_client import query_sba_loans
-                if zip_code:
-                    tasks.append(("sbaLoans", query_sba_loans(zip_code)))
-            except ImportError:
-                logger.debug("[IndustryPlugins] sba_client not available")
-        elif plugin == "energy":
-            try:
-                from hephae_integrations.eia_client import query_energy_costs
-                if state:
-                    tasks.append(("energyCosts", query_energy_costs(state)))
-            except ImportError:
-                logger.debug("[IndustryPlugins] eia_client not available")
-        elif plugin == "crime":
-            try:
-                from hephae_integrations.fbi_ucr_client import query_crime_stats
-                if state:
-                    tasks.append(("crimeStats", query_crime_stats(state, county)))
-            except ImportError:
-                logger.debug("[IndustryPlugins] fbi_ucr_client not available")
-        elif plugin == "education":
-            try:
-                from hephae_integrations.schooldigger_client import query_school_data
-                if zip_code:
-                    tasks.append(("educationData", query_school_data(zip_code)))
-            except ImportError:
-                logger.debug("[IndustryPlugins] schooldigger_client not available")
+    # OSM business density (replaces Yelp for counts)
+    if latitude and longitude:
+        bq_tasks.append(("osmDensity", _fetch_osm(latitude, longitude, business_type)))
 
-    if not tasks:
-        return {}
+    # NOAA historical weather
+    if latitude and longitude:
+        bq_tasks.append(("weatherHistory", _fetch_noaa(latitude, longitude)))
 
-    labels = [t[0] for t in tasks]
-    coros = [t[1] for t in tasks]
+    # ── API sources (conditional on keys + business type) ────────────
+    api_tasks: list[tuple[str, Any]] = []
+
+    # BLS CPI — always try (v1 needs no key)
+    if _matches(business_type, FOOD_TYPES | RETAIL_TYPES | BEAUTY_TYPES | SERVICE_TYPES):
+        api_tasks.append(("blsCpi", _fetch_bls(business_type)))
+
+    # Food-specific APIs
+    if _matches(business_type, FOOD_TYPES):
+        api_tasks.append(("fdaRecalls", _fetch_fda(state)))
+        if os.getenv("USDA_NASS_API_KEY"):
+            api_tasks.append(("usdaPrices", _fetch_usda(business_type, state)))
+
+    # SBA loans (free, no key)
+    if zip_code:
+        api_tasks.append(("sbaLoans", _fetch_sba(zip_code)))
+
+    # Yelp (supplements OSM with ratings/reviews — only if key present)
+    if zip_code and os.getenv("YELP_API_KEY"):
+        api_tasks.append(("yelpData", _fetch_yelp(zip_code, business_type)))
+
+    # Run all in parallel
+    all_tasks = bq_tasks + api_tasks
+    if not all_tasks:
+        return data
+
+    labels = [t[0] for t in all_tasks]
+    coros = [t[1] for t in all_tasks]
     results = await asyncio.gather(*coros, return_exceptions=True)
 
-    data: dict[str, Any] = {}
     for label, result in zip(labels, results):
         if isinstance(result, Exception):
             logger.error(f"[IndustryPlugins] {label} failed: {result}")
@@ -161,7 +129,52 @@ async def fetch_industry_data(
             data[label] = result
             # Add computed deltas for BLS data
             if label == "blsCpi" and result.get("series"):
+                from hephae_integrations.bls_client import compute_price_deltas
                 data["priceDeltas"] = compute_price_deltas(result["series"])
             logger.info(f"[IndustryPlugins] {label} complete")
 
     return data
+
+
+# ── BQ fetch wrappers ────────────────────────────────────────────────────
+
+async def _fetch_census(zip_code: str) -> dict[str, Any]:
+    from hephae_db.bigquery.public_data import query_census_demographics
+    return await query_census_demographics(zip_code)
+
+
+async def _fetch_osm(lat: float, lon: float, business_type: str) -> dict[str, Any]:
+    from hephae_db.bigquery.public_data import query_osm_business_density
+    return await query_osm_business_density(lat, lon, business_type)
+
+
+async def _fetch_noaa(lat: float, lon: float) -> dict[str, Any]:
+    from hephae_db.bigquery.public_data import query_noaa_weather_history
+    return await query_noaa_weather_history(lat, lon)
+
+
+# ── API fetch wrappers ───────────────────────────────────────────────────
+
+async def _fetch_bls(business_type: str) -> dict[str, Any]:
+    from hephae_integrations.bls_client import query_bls_cpi
+    return await query_bls_cpi(business_type)
+
+
+async def _fetch_fda(state: str) -> dict[str, Any]:
+    from hephae_integrations.fda_client import query_fda_enforcements
+    return await query_fda_enforcements(state)
+
+
+async def _fetch_usda(business_type: str, state: str) -> dict[str, Any]:
+    from hephae_integrations.usda_client import query_usda_prices
+    return await query_usda_prices(business_type, state)
+
+
+async def _fetch_sba(zip_code: str) -> dict[str, Any]:
+    from hephae_integrations.sba_client import query_sba_loans
+    return await query_sba_loans(zip_code)
+
+
+async def _fetch_yelp(zip_code: str, business_type: str) -> dict[str, Any]:
+    from hephae_integrations.yelp_client import query_yelp_businesses
+    return await query_yelp_businesses(zip_code, business_type)

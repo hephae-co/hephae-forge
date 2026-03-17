@@ -275,8 +275,26 @@ async def query_bls_cpi(
 
         data = response.json()
         if data.get("status") != "REQUEST_SUCCEEDED":
-            logger.warning(f"[BLS] API error: {data.get('message', [])}")
-            return empty
+            msgs = data.get("message", [])
+            logger.warning(f"[BLS] API error: {msgs}")
+            # If v2 failed due to invalid key, retry with v1
+            if api_key and api_url == BLS_V2_URL and any("invalid" in str(m).lower() or "key" in str(m).lower() for m in msgs):
+                logger.info("[BLS] v2 key invalid — falling back to v1 (no key)")
+                v1_payload = {
+                    "seriesid": series_ids[:25],
+                    "startyear": str(start_year),
+                    "endyear": str(end_year),
+                }
+                async with httpx.AsyncClient(timeout=30) as v1_client:
+                    response = await v1_client.post(BLS_V1_URL, json=v1_payload)
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("status") != "REQUEST_SUCCEEDED":
+                        return empty
+                else:
+                    return empty
+            else:
+                return empty
 
         results = data.get("Results", {}).get("series", [])
         parsed_series = [_parse_series_data(s) for s in results]

@@ -57,6 +57,7 @@ async def generate_pulse(
     from hephae_db.firestore.research import get_zipcode_report
     from hephae_db.firestore.weekly_pulse import get_latest_pulse, save_weekly_pulse
     from hephae_db.bigquery.reader import query_google_trends
+    from hephae_db.bigquery.public_data import resolve_zip_geography
     from hephae_integrations.news_client import query_local_news
     from hephae_agents.research.weekly_pulse_agent import generate_weekly_pulse
     from hephae_agents.research.local_catalyst import research_local_catalysts
@@ -104,10 +105,28 @@ async def generate_pulse(
             logger.error(f"[WeeklyPulse] Zip research failed: {e}")
             _record("zipcode_research", "error", str(e))
 
+    # ── 1a. BQ geography resolution (authoritative — replaces key_facts parsing)
+    latitude = 0.0
+    longitude = 0.0
     city = ""
     state = ""
     county = ""
     dma_name = ""
+
+    try:
+        geo = await resolve_zip_geography(zip_code)
+        if geo:
+            latitude = geo.latitude
+            longitude = geo.longitude
+            city = geo.city
+            state = geo.state_code
+            county = geo.county
+            _record("bq_geography", "ok",
+                    f"{city}, {state} ({county}), lat={latitude:.4f}, lon={longitude:.4f}")
+        else:
+            _record("bq_geography", "empty", f"No geography found for {zip_code}")
+    except Exception as e:
+        _record("bq_geography", "error", str(e))
 
     if zip_data:
         report = zip_data.get("report", {})
@@ -120,21 +139,7 @@ async def generate_pulse(
                 f"{len(section_names)} sections: {', '.join(section_names)}",
                 {"summary": (report.get("summary", "") or "")[:300]})
 
-        # Extract city/state/county from geography
-        geo = sections.get("geography", {}) if isinstance(sections, dict) else {}
-        if isinstance(geo, dict):
-            for fact in geo.get("key_facts", []):
-                fl = fact.lower()
-                if ("city" in fl or "town" in fl or "village" in fl or "borough" in fl) and ":" in fact:
-                    city = fact.split(":")[-1].strip()
-                if "state" in fl and ":" in fact:
-                    state = fact.split(":")[-1].strip()
-                if "county" in fl and ":" in fact:
-                    county = fact.split(":")[-1].strip()
-            if not city:
-                city = zip_code
-
-        # Extract DMA from trending section
+        # Extract DMA from trending section (still needed for Google Trends)
         trending = sections.get("trending", {}) if isinstance(sections, dict) else {}
         if isinstance(trending, dict):
             for fact in trending.get("key_facts", []):
@@ -171,7 +176,9 @@ async def generate_pulse(
 
     async def _fetch_industry() -> dict[str, Any]:
         try:
-            result = await fetch_industry_data(business_type, state, zip_code, county)
+            result = await fetch_industry_data(
+                business_type, state, zip_code, county, latitude, longitude,
+            )
             if result:
                 details = []
                 for k, v in result.items():

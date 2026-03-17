@@ -144,6 +144,47 @@ def _build_signal_prompt(
             sections.append(f"ALERTS: {json.dumps(w['alerts'], default=str)}")
         sections.append("")
 
+    # ── Census Demographics (BQ — authoritative) ───────────────────
+    if signals.get("censusDemographics"):
+        c = signals["censusDemographics"]
+        sections.append("=== CENSUS DEMOGRAPHICS (ACS 5-Year — verified government data) ===")
+        sections.append(f"Population: {c.get('totalPopulation', 'N/A'):,}")
+        sections.append(f"Median household income: ${c.get('medianHouseholdIncome', 0):,}")
+        sections.append(f"Income per capita: ${c.get('incomePerCapita', 0):,}")
+        sections.append(f"Poverty rate: {c.get('povertyRate', 0)}%")
+        sections.append(f"Economic stress level: {c.get('economicStressLevel', 'N/A')}")
+        sections.append(f"Price sensitivity: {c.get('priceSensitivity', 'N/A')}")
+        sections.append(f"Median age: {c.get('medianAge', 'N/A')}")
+        sections.append(f"Housing units: {c.get('housingUnits', 0):,} (occupancy {c.get('occupancyRate', 0)}%, vacancy {c.get('vacancyRate', 0)}%)")
+        sections.append(f"Median rent: ${c.get('medianRent', 0):,} (rent burden: {c.get('rentBurden', 0)}% of income)")
+        sections.append(f"Median home value: ${c.get('medianHomeValue', 0):,}")
+        sections.append("")
+
+    # ── OSM Business Density (BQ — real business counts) ─────────
+    if signals.get("osmDensity"):
+        osm = signals["osmDensity"]
+        sections.append("=== BUSINESS DENSITY (OpenStreetMap — real POI data) ===")
+        sections.append(f"Total businesses within {osm.get('radiusM', 1500)}m: {osm.get('totalBusinesses', 0)}")
+        sections.append(f"Saturation level: {osm.get('saturationLevel', 'N/A')}")
+        if osm.get("categories"):
+            sections.append(f"Categories: {json.dumps(osm['categories'])}")
+        if osm.get("nearby"):
+            sections.append("Nearest businesses:")
+            for b in osm["nearby"][:5]:
+                sections.append(f"  - {b.get('name', '?')} ({b.get('category', '?')}) — {b.get('distanceM', '?')}m")
+        sections.append("")
+
+    # ── Historical Weather (NOAA GSOD — 5yr seasonal baseline) ───
+    if signals.get("weatherHistory"):
+        wh = signals["weatherHistory"]
+        sections.append("=== HISTORICAL WEATHER BASELINE (NOAA — 5-year average for this month) ===")
+        sections.append(f"Station: {wh.get('station', 'N/A')} ({wh.get('stationDistKm', '?')}km from zip)")
+        sections.append(f"Avg temp: {wh.get('avgTempF', 'N/A')}F (high {wh.get('avgHighF', 'N/A')}F, low {wh.get('avgLowF', 'N/A')}F)")
+        sections.append(f"Rain days: {wh.get('rainDaysPct', 'N/A')}% of days")
+        sections.append(f"Snow days (5yr total): {wh.get('snowDays', 0)}")
+        sections.append("USE THIS: Compare the 7-day forecast against these historical averages to flag unusual weather patterns.")
+        sections.append("")
+
     # ── Google Trends ────────────────────────────────────────────────
     if signals.get("trends"):
         trends = signals["trends"]

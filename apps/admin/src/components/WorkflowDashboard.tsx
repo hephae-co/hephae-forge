@@ -15,6 +15,7 @@ const PHASE_STEPS: WorkflowPhase[] = ['discovery', 'qualification', 'analysis', 
 
 function phaseLabel(phase: WorkflowPhase): string {
     const labels: Record<WorkflowPhase, string> = {
+        queued: 'Queued',
         discovery: 'Discovery',
         qualification: 'Qualification',
         analysis: 'Analysis',

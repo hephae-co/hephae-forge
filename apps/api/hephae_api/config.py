@@ -109,6 +109,9 @@ class AgentVersions:
     LOCAL_CATALYST = "1.1.0"  # MINOR: switched to PRIMARY_MODEL + DEEP thinking
     DEMOGRAPHIC_EXPERT = "1.1.0"  # MINOR: switched to PRIMARY_MODEL + DEEP thinking
 
+    # Weekly Pulse
+    WEEKLY_PULSE = "1.0.0"
+
     # Qualification pipeline
     QUALIFICATION_SCANNER = "1.0.0"
 

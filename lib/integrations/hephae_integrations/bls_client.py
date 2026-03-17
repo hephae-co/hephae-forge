@@ -156,6 +156,54 @@ def _generate_highlights(series_list: list[dict[str, Any]]) -> list[str]:
     return highlights[:10]
 
 
+def compute_price_deltas(series_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Compute month-over-month and year-over-year deltas for each CPI series.
+
+    Returns a list of delta dicts suitable for pulse agent consumption:
+    [{"label": str, "latestPeriod": str, "yoyPctChange": float|None,
+      "momPctChange": float|None, "direction": str, "indexValue": float}]
+    """
+    deltas: list[dict[str, Any]] = []
+    for s in series_list:
+        data = s.get("data", [])
+        if len(data) < 2:
+            continue
+
+        latest = data[-1]
+        prev = data[-2]
+
+        yoy = latest.get("yoyPctChange")
+
+        # Month-over-month from index values
+        mom: float | None = None
+        if prev["indexValue"] > 0 and latest["indexValue"] > 0:
+            mom = round(
+                ((latest["indexValue"] - prev["indexValue"]) / prev["indexValue"]) * 100,
+                2,
+            )
+
+        direction = "stable"
+        ref = yoy if yoy is not None else mom
+        if ref is not None:
+            if ref > 1.0:
+                direction = "rising"
+            elif ref < -1.0:
+                direction = "declining"
+
+        deltas.append({
+            "label": s["label"],
+            "latestPeriod": latest["period"],
+            "indexValue": latest["indexValue"],
+            "yoyPctChange": yoy,
+            "momPctChange": mom,
+            "direction": direction,
+        })
+
+    # Sort by absolute YoY change descending (most impactful first)
+    deltas.sort(key=lambda d: abs(d.get("yoyPctChange") or 0), reverse=True)
+    return deltas
+
+
 async def query_bls_cpi(
     industry: str = "",
     api_key: str = "",

@@ -848,3 +848,38 @@ class EvaluationOutput(_NullSafeModel):
     score: int = 0
     isHallucinated: bool = False
     issues: list[str] = Field(default_factory=list)
+
+
+# ── Weekly Pulse (Zipcode Briefing) ──────────────────────────────────────
+
+
+class PulseInsight(_NullSafeModel):
+    """A single insight card in a weekly pulse briefing."""
+
+    rank: int = 1
+    title: str
+    analysis: str
+    recommendation: str
+    impactScore: int = 50
+    impactLevel: Literal["high", "medium", "low"] = "medium"
+    timeSensitivity: Literal["this_week", "this_month", "this_quarter"] = "this_month"
+
+
+class PulseQuickStats(_NullSafeModel):
+    """Quick-glance statistics for the weekly pulse."""
+
+    trendingSearches: list[str] = Field(default_factory=list)
+    weatherOutlook: str = ""
+    upcomingEvents: int = 0
+    priceAlerts: int = 0
+
+
+class WeeklyPulseOutput(_NullSafeModel):
+    """Output from WeeklyPulseAgent — insight-card-based briefing."""
+
+    zipCode: str
+    businessType: str
+    weekOf: str
+    headline: str
+    insights: list[PulseInsight] = Field(default_factory=list)
+    quickStats: PulseQuickStats = Field(default_factory=PulseQuickStats)

@@ -48,6 +48,10 @@ from hephae_db.schemas.agent_outputs import (
     SeoRecommendation,
     SeoSection,
     SeoAuditorOutput,
+    # Weekly Pulse
+    PulseInsight,
+    PulseQuickStats,
+    WeeklyPulseOutput,
 )
 
 __all__ = [
@@ -98,4 +102,8 @@ __all__ = [
     "SeoRecommendation",
     "SeoSection",
     "SeoAuditorOutput",
+    # Weekly Pulse
+    "PulseInsight",
+    "PulseQuickStats",
+    "WeeklyPulseOutput",
 ]

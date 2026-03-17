@@ -18,6 +18,11 @@ import {
   Search,
   Cloud,
   Sparkles,
+  Database,
+  CheckCircle2,
+  XCircle,
+  MinusCircle,
+  SkipForward,
 } from 'lucide-react';
 
 // ── Types ───────────────────────────────────────────────────────────────
@@ -58,6 +63,21 @@ interface PulseSummary {
   createdAt: string;
 }
 
+interface SourceDiagnostic {
+  status: 'ok' | 'error' | 'empty' | 'skipped';
+  detail: string;
+  dataPreview?: any;
+}
+
+interface PulseDiagnostics {
+  sources: Record<string, SourceDiagnostic>;
+  signalCount?: number;
+  agentInputKeys?: string[];
+  startedAt?: string;
+  completedAt?: string;
+  insightCount?: number;
+}
+
 interface PulseDocument {
   id: string;
   zipCode: string;
@@ -65,6 +85,7 @@ interface PulseDocument {
   weekOf: string;
   pulse: WeeklyPulseData;
   signalsUsed: string[];
+  diagnostics?: PulseDiagnostics;
   createdAt: string;
 }
 
@@ -197,6 +218,104 @@ function QuickStatsBar({ stats }: { stats: PulseQuickStats }) {
   );
 }
 
+// ── Diagnostics Panel ───────────────────────────────────────────────────
+
+const STATUS_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
+  ok: { icon: CheckCircle2, color: 'text-emerald-600', label: 'OK' },
+  error: { icon: XCircle, color: 'text-red-600', label: 'Error' },
+  empty: { icon: MinusCircle, color: 'text-amber-500', label: 'Empty' },
+  skipped: { icon: SkipForward, color: 'text-gray-400', label: 'Skipped' },
+};
+
+function DiagnosticsPanel({ diagnostics }: { diagnostics: PulseDiagnostics }) {
+  const [expanded, setExpanded] = useState(false);
+  const [expandedSource, setExpandedSource] = useState<string | null>(null);
+
+  const sources = diagnostics.sources || {};
+  const sourceEntries = Object.entries(sources);
+  const okCount = sourceEntries.filter(([, s]) => s.status === 'ok').length;
+  const errorCount = sourceEntries.filter(([, s]) => s.status === 'error').length;
+  const emptyCount = sourceEntries.filter(([, s]) => s.status === 'empty').length;
+  const skippedCount = sourceEntries.filter(([, s]) => s.status === 'skipped').length;
+
+  // Compute duration if available
+  let duration = '';
+  if (diagnostics.startedAt && diagnostics.completedAt) {
+    const ms = new Date(diagnostics.completedAt).getTime() - new Date(diagnostics.startedAt).getTime();
+    duration = ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Database className="w-4 h-4 text-gray-400" />
+          <span className="text-sm font-semibold text-gray-700">Signal Provenance</span>
+          <span className="text-xs text-gray-400 ml-1">
+            {okCount} ok{errorCount > 0 && `, ${errorCount} error`}{emptyCount > 0 && `, ${emptyCount} empty`}{skippedCount > 0 && `, ${skippedCount} skipped`}
+          </span>
+          {duration && <span className="text-xs text-gray-300 ml-1">({duration})</span>}
+        </div>
+        {expanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+      </button>
+
+      {expanded && (
+        <div className="border-t border-gray-100 divide-y divide-gray-50">
+          {/* Summary row */}
+          {diagnostics.agentInputKeys && (
+            <div className="px-5 py-3 bg-gray-50/50">
+              <p className="text-xs text-gray-500">
+                <span className="font-medium">Agent received:</span>{' '}
+                {diagnostics.agentInputKeys.join(', ')}
+              </p>
+            </div>
+          )}
+
+          {/* Per-source rows */}
+          {sourceEntries.map(([name, source]) => {
+            const config = STATUS_CONFIG[source.status] || STATUS_CONFIG.skipped;
+            const StatusIcon = config.icon;
+            const isExpanded = expandedSource === name;
+
+            return (
+              <div key={name}>
+                <button
+                  onClick={() => setExpandedSource(isExpanded ? null : name)}
+                  className="w-full px-5 py-3 flex items-center gap-3 hover:bg-gray-50/30 transition-colors text-left"
+                >
+                  <StatusIcon className={`w-4 h-4 shrink-0 ${config.color}`} />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-gray-800">{name.replace(/_/g, ' ')}</span>
+                    <span className="text-xs text-gray-400 ml-2">{config.label}</span>
+                  </div>
+                  <span className="text-xs text-gray-400 max-w-[50%] truncate">{source.detail}</span>
+                  {source.dataPreview && (
+                    isExpanded
+                      ? <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                      : <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                  )}
+                </button>
+                {isExpanded && source.dataPreview && (
+                  <div className="px-5 pb-3 pl-12">
+                    <pre className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3 overflow-x-auto max-h-48 border border-gray-100">
+                      {typeof source.dataPreview === 'string'
+                        ? source.dataPreview
+                        : JSON.stringify(source.dataPreview, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Pulse Viewer ────────────────────────────────────────────────────────
 
 function PulseViewer({ doc, onBack }: { doc: PulseDocument; onBack: () => void }) {
@@ -252,8 +371,13 @@ function PulseViewer({ doc, onBack }: { doc: PulseDocument; onBack: () => void }
         )}
       </div>
 
-      {/* Signal sources */}
-      {doc.signalsUsed?.length > 0 && (
+      {/* Diagnostics / Explainability */}
+      {doc.diagnostics && Object.keys(doc.diagnostics.sources || {}).length > 0 && (
+        <DiagnosticsPanel diagnostics={doc.diagnostics} />
+      )}
+
+      {/* Signal sources fallback (if no diagnostics) */}
+      {(!doc.diagnostics || !Object.keys(doc.diagnostics.sources || {}).length) && doc.signalsUsed?.length > 0 && (
         <div className="pt-4 border-t border-gray-100">
           <p className="text-xs text-gray-400 mb-2">Data sources used:</p>
           <div className="flex flex-wrap gap-1.5">
@@ -333,6 +457,7 @@ export default function WeeklyPulse() {
         weekOf,
         pulse: data.pulse,
         signalsUsed: data.signalsUsed || [],
+        diagnostics: data.diagnostics || undefined,
         createdAt: new Date().toISOString(),
       });
       // Refresh list

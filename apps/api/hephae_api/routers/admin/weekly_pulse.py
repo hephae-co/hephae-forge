@@ -51,6 +51,7 @@ async def generate_weekly_pulse(req: GeneratePulseRequest):
         "pulse": _serialize(result["pulse"]),
         "pulseId": result["pulseId"],
         "signalsUsed": result["signalsUsed"],
+        "diagnostics": result.get("diagnostics", {}),
     }
 
 

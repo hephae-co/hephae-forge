@@ -53,6 +53,7 @@ async def save_weekly_pulse(
     week_of: str,
     pulse: dict[str, Any],
     signals_used: list[str] | None = None,
+    diagnostics: dict[str, Any] | None = None,
 ) -> str:
     """Save a weekly pulse briefing to Firestore.
 
@@ -69,6 +70,7 @@ async def save_weekly_pulse(
         "weekOf": week_of,
         "pulse": pulse,
         "signalsUsed": signals_used or [],
+        "diagnostics": diagnostics or {},
         "createdAt": now,
         "updatedAt": now,
     }

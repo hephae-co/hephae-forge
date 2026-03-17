@@ -121,8 +121,18 @@ async def generate_pulse(
             city = geo.city
             state = geo.state_code
             county = geo.county
+            # Resolve DMA from state (most common mapping)
+            STATE_TO_DMA = {
+                "NJ": "New York", "NY": "New York", "CT": "New York",
+                "PA": "Philadelphia", "DE": "Philadelphia",
+                "CA": "Los Angeles", "IL": "Chicago", "TX": "Dallas",
+                "MA": "Boston", "FL": "Miami", "GA": "Atlanta",
+                "WA": "Seattle", "CO": "Denver", "AZ": "Phoenix",
+                "DC": "Washington", "MD": "Washington", "VA": "Washington",
+            }
+            dma_name = STATE_TO_DMA.get(geo.state_code, "")
             _record("bq_geography", "ok",
-                    f"{city}, {state} ({county}), lat={latitude:.4f}, lon={longitude:.4f}")
+                    f"{city}, {state} ({county}), DMA={dma_name or 'unknown'}, lat={latitude:.4f}, lon={longitude:.4f}")
         else:
             _record("bq_geography", "empty", f"No geography found for {zip_code}")
     except Exception as e:

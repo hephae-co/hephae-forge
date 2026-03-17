@@ -122,11 +122,16 @@ def _parse_series_data(series_data: dict[str, Any]) -> dict[str, Any]:
         except ValueError:
             continue
 
+        try:
+            index_val = float(dp.get("value", 0))
+        except (ValueError, TypeError):
+            continue
+
         data_points.append({
             "year": int(dp.get("year", 0)),
             "month": month,
             "period": f"{dp['year']}-{month:02d}",
-            "indexValue": float(dp.get("value", 0)),
+            "indexValue": index_val,
             "yoyPctChange": yoy,
         })
 

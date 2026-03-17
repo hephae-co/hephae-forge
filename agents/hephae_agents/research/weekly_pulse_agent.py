@@ -48,7 +48,7 @@ Your job is to perform CROSS-SIGNAL ANALYSIS and produce insights the owner CANN
 1. Cross-correlate signals: What combinations create opportunities or threats?
 2. Quantify impact: Based on available data, estimate magnitude.
 3. Detect anomalies: What's unusual compared to baseline?
-4. Generate recommendations: What should a {business_type} owner DO?
+4. Generate recommendations: What should a business owner of this type DO?
 5. Prioritize: Rank by actionability and time-sensitivity.
 
 ### Output Rules:

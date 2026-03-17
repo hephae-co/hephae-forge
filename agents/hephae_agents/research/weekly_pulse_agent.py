@@ -331,6 +331,57 @@ def _build_signal_prompt(
             sections.append(f"- [{notice.get('type', '')}] {notice.get('description', '')} ({notice.get('date', '')})")
         sections.append("")
 
+    # ── CDC PLACES Health Metrics ──────────────────────────────────
+    if signals.get("healthMetrics"):
+        hm = signals["healthMetrics"]
+        metrics = hm.get("metrics", {})
+        if metrics:
+            sections.append("=== CDC PLACES HEALTH METRICS (verified government data, by ZCTA) ===")
+            sections.append(f"Health profile: {hm.get('healthProfile', 'N/A')}")
+            for k, v in metrics.items():
+                if v:
+                    sections.append(f"- {k}: {v}%")
+            if hm.get("consumerDemandSignals"):
+                sections.append(f"Consumer demand signals: {', '.join(hm['consumerDemandSignals'])}")
+            sections.append("")
+
+    # ── FHFA House Price Index ───────────────────────────────────
+    if signals.get("housePriceIndex"):
+        hpi = signals["housePriceIndex"]
+        sections.append("=== FHFA HOUSE PRICE INDEX (ZIP-level, verified government data) ===")
+        sections.append(f"Latest HPI ({hpi.get('latestYear', '?')}): {hpi.get('hpi', 'N/A')}")
+        sections.append(f"Annual change: {hpi.get('annualChangePct', 'N/A')}% [{hpi.get('trend', '')}]")
+        sections.append(f"5-year change: {hpi.get('fiveYearChangePct', 'N/A')}%")
+        sections.append(f"Wealth effect: {hpi.get('wealthEffect', 'N/A')}")
+        sections.append("USE THIS: Rising home prices = wealthier local consumers = potential for premium positioning.")
+        sections.append("")
+
+    # ── IRS SOI Income Data ──────────────────────────────────────
+    if signals.get("irsIncome"):
+        irs = signals["irsIncome"]
+        sections.append("=== IRS ZIP-CODE INCOME DATA (tax year {}) ===".format(irs.get('taxYear', '?')))
+        sections.append(f"Total tax returns: {irs.get('totalReturns', 'N/A'):,}")
+        sections.append(f"Average AGI: ${irs.get('avgAGI', 0):,.0f}")
+        sections.append(f"Average salary: ${irs.get('avgSalary', 0):,.0f}")
+        sections.append(f"Self-employment rate: {irs.get('selfEmploymentRate', 0):.1f}% (entrepreneurship: {irs.get('entrepreneurshipSignal', '?')})")
+        sections.append(f"EITC rate: {irs.get('eitcRate', 0):.1f}% (economic stress indicator)")
+        sections.append(f"Spending power: {irs.get('spendingPower', '?')}")
+        sections.append("")
+
+    # ── BLS QCEW Employment ──────────────────────────────────────
+    if signals.get("qcewEmployment"):
+        qcew = signals["qcewEmployment"]
+        sections.append(f"=== BLS QCEW EMPLOYMENT & WAGES ({qcew.get('county', '?')} County, Q{qcew.get('quarter', '?')} {qcew.get('year', '?')}) ===")
+        tp = qcew.get("totalPrivate", {})
+        if tp:
+            sections.append(f"Total private sector: {tp.get('establishments', 0):,} establishments, {tp.get('employment', 0):,} employees")
+            sections.append(f"Avg weekly wage: ${tp.get('avgWeeklyWage', 0):,}")
+            if tp.get("estabsYoYChangePct") is not None:
+                sections.append(f"Establishments YoY change: {tp['estabsYoYChangePct']:+.1f}%")
+        for hl in qcew.get("highlights", []):
+            sections.append(f"- {hl}")
+        sections.append("")
+
     # ── Social / Community Pulse ────────────────────────────────────
     if signals.get("socialPulse"):
         sp = signals["socialPulse"]

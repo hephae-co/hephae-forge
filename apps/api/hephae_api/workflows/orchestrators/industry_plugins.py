@@ -110,6 +110,22 @@ async def fetch_industry_data(
     if zip_code:
         api_tasks.append(("sbaLoans", _fetch_sba(zip_code)))
 
+    # CDC PLACES health metrics (free, no key, ZIP-level)
+    if zip_code:
+        api_tasks.append(("healthMetrics", _fetch_cdc_places(zip_code)))
+
+    # FHFA House Price Index (free, ZIP-level)
+    if zip_code:
+        api_tasks.append(("housePriceIndex", _fetch_fhfa_hpi(zip_code)))
+
+    # IRS SOI income data (free, ZIP-level)
+    if zip_code:
+        api_tasks.append(("irsIncome", _fetch_irs_income(zip_code)))
+
+    # BLS QCEW employment data (free, county-level)
+    if county and state:
+        api_tasks.append(("qcewEmployment", _fetch_qcew(county, state, business_type)))
+
     # Yelp (supplements OSM with ratings/reviews — only if key present)
     if zip_code and os.getenv("YELP_API_KEY"):
         api_tasks.append(("yelpData", _fetch_yelp(zip_code, business_type)))
@@ -184,3 +200,26 @@ async def _fetch_yelp(zip_code: str, business_type: str) -> dict[str, Any]:
 async def _fetch_usda_fdc(business_type: str) -> dict[str, Any]:
     from hephae_integrations.usda_fdc_client import query_fdc_food_prices
     return await query_fdc_food_prices(business_type)
+
+
+async def _fetch_cdc_places(zip_code: str) -> dict[str, Any]:
+    from hephae_integrations.cdc_places_client import query_health_metrics
+    return await query_health_metrics(zip_code)
+
+
+async def _fetch_fhfa_hpi(zip_code: str) -> dict[str, Any]:
+    from hephae_integrations.fhfa_hpi_client import query_house_price_index
+    return await query_house_price_index(zip_code)
+
+
+async def _fetch_irs_income(zip_code: str) -> dict[str, Any]:
+    try:
+        from hephae_integrations.irs_soi_client import query_zip_income
+        return await query_zip_income(zip_code)
+    except ImportError:
+        return {}
+
+
+async def _fetch_qcew(county: str, state: str, business_type: str) -> dict[str, Any]:
+    from hephae_integrations.bls_qcew_client import query_qcew_employment
+    return await query_qcew_employment(county, state, business_type)

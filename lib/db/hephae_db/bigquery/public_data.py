@@ -132,6 +132,8 @@ async def query_census_demographics(zip_code: str) -> dict[str, Any]:
                 income_per_capita,
                 poverty,
                 pop_determined_poverty_status,
+                employed_pop,
+                unemployed_pop,
                 housing_units,
                 occupied_housing_units,
                 vacant_housing_units,
@@ -139,7 +141,8 @@ async def query_census_demographics(zip_code: str) -> dict[str, Any]:
                 percent_income_spent_on_rent,
                 owner_occupied_housing_units_median_value,
                 children,
-                children_in_single_female_hh
+                children_in_single_female_hh,
+                commuters_by_public_transportation
             FROM `bigquery-public-data.census_bureau_acs.zip_codes_2018_5yr`
             WHERE geo_id = @zcta
             LIMIT 1
@@ -191,6 +194,13 @@ async def query_census_demographics(zip_code: str) -> dict[str, Any]:
             "rentBurden": round(row.get("percent_income_spent_on_rent") or 0, 1),
             "medianHomeValue": int(row.get("owner_occupied_housing_units_median_value") or 0),
             "childrenPop": int(row.get("children") or 0),
+            "employedPop": int(row.get("employed_pop") or 0),
+            "unemployedPop": int(row.get("unemployed_pop") or 0),
+            "unemploymentRate": round(
+                (row.get("unemployed_pop") or 0) /
+                max((row.get("employed_pop") or 0) + (row.get("unemployed_pop") or 0), 1) * 100, 1
+            ),
+            "publicTransitCommuters": int(row.get("commuters_by_public_transportation") or 0),
         }
 
         logger.info(f"[BQ:CENSUS] Got demographics for {zip_code}: pop={int(total_pop)}, income=${int(median_income):,}")

@@ -1,12 +1,15 @@
-"""Google News RSS client for local news aggregation.
+"""Local news client — multiple RSS sources with fallback.
 
-Fetches recent news headlines for a location via Google News RSS feeds.
+Primary: Google News RSS
+Fallback: Bing News RSS (when Google returns 503)
+
 Used by the Weekly Pulse pipeline to provide local news context.
 """
 
 from __future__ import annotations
 
 import logging
+import random
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -19,6 +22,14 @@ import httpx
 logger = logging.getLogger(__name__)
 
 GOOGLE_NEWS_RSS_URL = "https://news.google.com/rss/search"
+BING_NEWS_RSS_URL = "https://www.bing.com/news/search"
+
+# Rotate user agents to reduce 503 from Google
+_USER_AGENTS = [
+    "Mozilla/5.0 (compatible; Hephae/1.0; +https://hephae.co)",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
+]
 
 
 def _clean_html(text: str) -> str:
@@ -72,45 +83,80 @@ def _parse_rss_items(xml_text: str, max_items: int = 10) -> list[dict[str, Any]]
     return items
 
 
+async def _fetch_google_news(
+    client: httpx.AsyncClient, query: str, max_items: int,
+) -> list[dict[str, Any]]:
+    """Try Google News RSS."""
+    encoded = quote(query)
+    url = f"{GOOGLE_NEWS_RSS_URL}?q={encoded}&hl=en-US&gl=US&ceid=US:en"
+    try:
+        response = await client.get(url)
+        if response.status_code == 200:
+            return _parse_rss_items(response.text, max_items=max_items)
+        logger.warning(f"[NewsClient] Google RSS returned {response.status_code} for: {query}")
+    except Exception as e:
+        logger.warning(f"[NewsClient] Google RSS failed for: {query} — {e}")
+    return []
+
+
+async def _fetch_bing_news(
+    client: httpx.AsyncClient, query: str, max_items: int,
+) -> list[dict[str, Any]]:
+    """Fallback: Bing News RSS."""
+    encoded = quote(query)
+    url = f"{BING_NEWS_RSS_URL}?q={encoded}&format=rss&count={max_items}"
+    try:
+        response = await client.get(url)
+        if response.status_code == 200:
+            items = _parse_rss_items(response.text, max_items=max_items)
+            if items:
+                logger.info(f"[NewsClient] Bing fallback returned {len(items)} articles for: {query}")
+            return items
+        logger.warning(f"[NewsClient] Bing RSS returned {response.status_code} for: {query}")
+    except Exception as e:
+        logger.warning(f"[NewsClient] Bing RSS failed for: {query} — {e}")
+    return []
+
+
 async def query_local_news(
     location: str,
     business_type: str = "",
     max_items: int = 10,
 ) -> dict[str, Any]:
-    """Fetch recent local news for a location via Google News RSS.
+    """Fetch recent local news for a location via RSS feeds.
 
-    Args:
-        location: City/town name or "City, State" string.
-        business_type: Optional business type to include in search.
-        max_items: Maximum number of news items to return.
-
-    Returns:
-        Dict with "articles" list and metadata.
+    Tries Google News first, falls back to Bing News if Google returns 503.
+    Uses multiple query variations to maximize coverage.
     """
     empty: dict[str, Any] = {"articles": [], "location": location, "fetchedAt": ""}
 
-    # Build search queries — one general local news, one business-specific
-    queries = [f"{location} local news"]
+    # Build diverse queries for better coverage
+    # Strip "city" suffix for cleaner search (e.g. "Clifton city" → "Clifton")
+    clean_location = re.sub(r"\s+(city|town|village|borough|CDP)\b", "", location, flags=re.IGNORECASE).strip()
+
+    queries = [
+        f"{clean_location} local news",
+        f"{clean_location} business development",
+    ]
     if business_type:
-        queries.append(f"{location} {business_type} business")
+        queries.append(f"{clean_location} {business_type}")
 
     all_articles: list[dict[str, Any]] = []
     seen_titles: set[str] = set()
+    google_failed = False
 
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        headers = {"User-Agent": random.choice(_USER_AGENTS)}
+        async with httpx.AsyncClient(timeout=15, headers=headers) as client:
             for query in queries:
-                encoded_query = quote(query)
-                url = f"{GOOGLE_NEWS_RSS_URL}?q={encoded_query}&hl=en-US&gl=US&ceid=US:en"
+                # Try Google first
+                items = await _fetch_google_news(client, query, max_items)
+                if not items:
+                    google_failed = True
+                    # Fallback to Bing
+                    items = await _fetch_bing_news(client, query, max_items)
 
-                response = await client.get(url)
-                if response.status_code != 200:
-                    logger.warning(f"[NewsClient] RSS returned {response.status_code} for query: {query}")
-                    continue
-
-                items = _parse_rss_items(response.text, max_items=max_items)
                 for item in items:
-                    # Deduplicate by title
                     title_key = item["headline"].lower().strip()
                     if title_key not in seen_titles:
                         seen_titles.add(title_key)
@@ -120,11 +166,12 @@ async def query_local_news(
         all_articles.sort(key=lambda a: a.get("publishedDate", ""), reverse=True)
         all_articles = all_articles[:max_items]
 
-        logger.info(f"[NewsClient] Fetched {len(all_articles)} articles for {location}")
+        source_note = " (via Bing fallback)" if google_failed and all_articles else ""
+        logger.info(f"[NewsClient] Fetched {len(all_articles)} articles for {clean_location}{source_note}")
 
         return {
             "articles": all_articles,
-            "location": location,
+            "location": clean_location,
             "fetchedAt": datetime.utcnow().isoformat(),
         }
 

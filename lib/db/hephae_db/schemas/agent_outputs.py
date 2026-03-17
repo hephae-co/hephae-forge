@@ -860,6 +860,7 @@ class PulseInsight(_NullSafeModel):
     title: str
     analysis: str
     recommendation: str
+    dataSources: list[str] = Field(default_factory=list)
     impactScore: int = 50
     impactLevel: Literal["high", "medium", "low"] = "medium"
     timeSensitivity: Literal["this_week", "this_month", "this_quarter"] = "this_month"

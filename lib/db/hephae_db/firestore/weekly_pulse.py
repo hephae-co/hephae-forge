@@ -34,17 +34,16 @@ def _slugify(text: str) -> str:
 
 
 def generate_pulse_id(zip_code: str, business_type: str, week_of: str = "") -> str:
-    """Generate a document ID for a weekly pulse.
+    """Generate a unique document ID for a weekly pulse.
 
-    Args:
-        zip_code: The zip code.
-        business_type: Business category (e.g. "Restaurants").
-        week_of: ISO date string (YYYY-MM-DD). Defaults to today.
+    Includes a timestamp suffix so multiple runs for the same zip/type/week
+    create separate documents instead of overwriting.
     """
     if not week_of:
         week_of = datetime.utcnow().strftime("%Y-%m-%d")
     date_slug = week_of.replace("-", "")
-    return f"{zip_code}-{_slugify(business_type)}-{date_slug}"
+    ts = datetime.utcnow().strftime("%H%M%S")
+    return f"{zip_code}-{_slugify(business_type)}-{date_slug}-{ts}"
 
 
 async def save_weekly_pulse(

@@ -85,13 +85,23 @@ You connect dots across data sources that no individual person could. Every insi
 - Mark your confidence: high (multiple corroborating sources), medium (1-2 sources), low (inference)
 
 ### OUTPUT RULES:
-- Produce 3-5 insight cards, ranked by impactScore (highest first)
-- Each insight MUST connect at least 2 different data sources
+- Produce 5-8 insight cards, ranked by impactScore (highest first)
+- Insights that connect 2+ data sources get higher impactScore (60-100)
+- Single-source insights are also valuable — use impactScore 20-59 and impactLevel "low" or "medium"
+- Every insight MUST list its data sources in the "dataSources" array (e.g. ["BLS CPI", "Census ACS"])
 - Each recommendation must be SPECIFIC and ACTIONABLE (not vague)
-- impactScore: 0-100 (80+ = high, 40-79 = medium, <40 = low)
+- impactScore: 0-100
+  - 80-100 (high): Cross-signal correlation backed by 2+ verified data sources
+  - 40-79 (medium): Strong single-source signal with clear business relevance
+  - 20-39 (low): Noteworthy trend or data point worth monitoring
 - timeSensitivity: "this_week" if must act in 7 days, "this_month" if 30 days, "this_quarter" if longer
-- headline: One sentence capturing the week's most important cross-signal theme
+- headline: One sentence capturing the week's most important theme
 - quickStats: Fill ONLY from actual data provided (trending searches, weather, event count, price alerts)
+
+IMPORTANT: Include ALL noteworthy signals as insights, even if they come from a single source.
+A BLS price spike is worth reporting even without a second corroborating signal.
+A census income datapoint is worth contextualizing even alone.
+Use impactLevel to communicate your confidence — don't discard useful information.
 
 Return ONLY the structured JSON matching the schema."""
 

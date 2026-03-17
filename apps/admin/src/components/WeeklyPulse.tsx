@@ -32,6 +32,7 @@ interface PulseInsight {
   title: string;
   analysis: string;
   recommendation: string;
+  dataSources?: string[];
   impactScore: number;
   impactLevel: 'high' | 'medium' | 'low';
   timeSensitivity: 'this_week' | 'this_month' | 'this_quarter';
@@ -165,6 +166,16 @@ function InsightCard({ insight }: { insight: PulseInsight }) {
             <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-1">Recommendation</p>
             <p className="text-sm text-indigo-900 leading-relaxed">{insight.recommendation}</p>
           </div>
+          {insight.dataSources && insight.dataSources.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs text-gray-400">Sources:</span>
+              {insight.dataSources.map((src, i) => (
+                <span key={i} className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
+                  {src}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

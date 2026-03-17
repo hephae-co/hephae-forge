@@ -102,8 +102,9 @@ async def fetch_industry_data(
     # Food-specific APIs
     if _matches(business_type, FOOD_TYPES):
         api_tasks.append(("fdaRecalls", _fetch_fda(state)))
-        if os.getenv("USDA_NASS_API_KEY"):
-            api_tasks.append(("usdaPrices", _fetch_usda(business_type, state)))
+        api_tasks.append(("usdaPrices", _fetch_usda(business_type, state)))
+        if os.getenv("USDA_FDC_API_KEY"):
+            api_tasks.append(("usdaFoodData", _fetch_usda_fdc(business_type)))
 
     # SBA loans (free, no key)
     if zip_code:
@@ -178,3 +179,8 @@ async def _fetch_sba(zip_code: str) -> dict[str, Any]:
 async def _fetch_yelp(zip_code: str, business_type: str) -> dict[str, Any]:
     from hephae_integrations.yelp_client import query_yelp_businesses
     return await query_yelp_businesses(zip_code, business_type)
+
+
+async def _fetch_usda_fdc(business_type: str) -> dict[str, Any]:
+    from hephae_integrations.usda_fdc_client import query_fdc_food_prices
+    return await query_fdc_food_prices(business_type)

@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     USDA_NASS_API_KEY: str = os.getenv("USDA_NASS_API_KEY", "")
 
     # Data source API keys (optional — many sources work without keys)
+    USDA_FDC_API_KEY: str = os.getenv("USDA_FDC_API_KEY", "")
     YELP_API_KEY: str = os.getenv("YELP_API_KEY", "")
     EIA_API_KEY: str = os.getenv("EIA_API_KEY", "")
     FBI_API_KEY: str = os.getenv("FBI_API_KEY", "")

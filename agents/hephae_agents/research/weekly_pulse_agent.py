@@ -238,6 +238,16 @@ def _build_signal_prompt(
                 sections.append(f"- {e.get('recalling_firm', 'Unknown')}: {e.get('reason_for_recall', '')[:150]} [{e.get('classification', '')}]")
             sections.append("")
 
+    # ── USDA FoodData Central ──────────────────────────────────────
+    if signals.get("usdaFoodData"):
+        fdc = signals["usdaFoodData"]
+        ingredients = fdc.get("ingredients", [])
+        if ingredients:
+            sections.append("=== USDA FOODDATA CENTRAL (ingredient profiles) ===")
+            for ing in ingredients:
+                sections.append(f"- {ing.get('ingredient', '')}: {ing.get('description', '')} (cal: {ing.get('calories', 0)}, protein: {ing.get('protein', 0)}g, fat: {ing.get('fat', 0)}g)")
+            sections.append("")
+
     # ── Yelp competition data ────────────────────────────────────────
     if signals.get("yelpData"):
         yelp = signals["yelpData"]

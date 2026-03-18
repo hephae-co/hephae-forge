@@ -328,6 +328,10 @@ async def generate_pulse(
             return {}
 
     async def _fetch_maps_density() -> dict[str, Any]:
+        # Maps Grounding Lite MCP requires explicit API enablement.
+        # Disabled until Maps Grounding Lite is enabled on the GCP project.
+        _record("maps_grounding", "skipped", "Disabled — requires Maps Grounding Lite API enablement")
+        return {}
         loc_city = city if city and city != zip_code else ""
         if not loc_city or not os.getenv("GOOGLE_MAPS_API_KEY", ""):
             _record("maps_grounding", "skipped", "No city or no GOOGLE_MAPS_API_KEY")
@@ -346,8 +350,8 @@ async def generate_pulse(
             return {}
 
     # Run ALL fetchers in parallel — LLM agents use RunConfig(max_llm_calls=N)
-    # to limit execution natively via ADK instead of asyncio timeouts
-    weather, industry_data, news_data, trends_data, catalyst_data, legal_data, social_data, maps_data = await asyncio.gather(
+    # return_exceptions=True prevents one failing fetcher from killing the rest
+    results = await asyncio.gather(
         _fetch_weather(),
         _fetch_industry(),
         _fetch_news(),
@@ -356,7 +360,25 @@ async def generate_pulse(
         _fetch_legal_notices(),
         _fetch_social_pulse(),
         _fetch_maps_density(),
+        return_exceptions=True,
     )
+
+    # Unpack results, treating exceptions as empty dicts
+    def _safe(r, label: str) -> dict[str, Any]:
+        if isinstance(r, Exception):
+            logger.error(f"[WeeklyPulse] {label} raised: {r}")
+            _record(label, "error", str(r))
+            return {}
+        return r or {}
+
+    weather = _safe(results[0], "weather")
+    industry_data = _safe(results[1], "industry_data")
+    news_data = _safe(results[2], "local_news")
+    trends_data = _safe(results[3], "google_trends")
+    catalyst_data = _safe(results[4], "local_catalysts")
+    legal_data = _safe(results[5], "legal_notices")
+    social_data = _safe(results[6], "social_pulse")
+    maps_data = _safe(results[7], "maps_grounding")
 
     # Merge results
     if weather and weather.get("forecast"):

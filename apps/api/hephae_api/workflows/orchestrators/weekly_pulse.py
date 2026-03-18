@@ -112,11 +112,12 @@ async def generate_pulse(
     from google.adk.runners import Runner
     from google.adk.sessions import InMemorySessionService
     from hephae_common.adk_helpers import user_msg
-    from hephae_agents.research.pulse_orchestrator import pulse_orchestrator
+    from hephae_agents.research.pulse_orchestrator import create_pulse_orchestrator
 
+    orchestrator = create_pulse_orchestrator()
     session_service = InMemorySessionService()
     runner = Runner(
-        agent=pulse_orchestrator,
+        agent=orchestrator,
         app_name="weekly_pulse",
         session_service=session_service,
     )

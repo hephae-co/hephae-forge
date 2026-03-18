@@ -345,16 +345,25 @@ async def generate_pulse(
             _record("maps_grounding", "error", str(e))
             return {}
 
-    # Run ALL fetchers in parallel
+    # Wrap slow LLM-based agents with timeouts to prevent overall request timeout
+    async def _with_timeout(coro, timeout_s: float, label: str):
+        try:
+            return await asyncio.wait_for(coro, timeout=timeout_s)
+        except asyncio.TimeoutError:
+            logger.warning(f"[WeeklyPulse] {label} timed out after {timeout_s}s")
+            _record(label, "error", f"Timed out after {timeout_s}s")
+            return {}
+
+    # Run ALL fetchers in parallel — LLM agents get 25s timeout
     weather, industry_data, news_data, trends_data, catalyst_data, legal_data, social_data, maps_data = await asyncio.gather(
         _fetch_weather(),
         _fetch_industry(),
         _fetch_news(),
         _fetch_trends(),
-        _fetch_catalysts(),
+        _with_timeout(_fetch_catalysts(), 25, "local_catalysts"),
         _fetch_legal_notices(),
-        _fetch_social_pulse(),
-        _fetch_maps_density(),
+        _with_timeout(_fetch_social_pulse(), 25, "social_pulse"),
+        _with_timeout(_fetch_maps_density(), 20, "maps_grounding"),
     )
 
     # Merge results

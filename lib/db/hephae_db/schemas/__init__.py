@@ -54,6 +54,11 @@ from hephae_db.schemas.agent_outputs import (
     WeeklyPulseOutput,
 )
 
+from hephae_db.schemas.pulse_outputs import (  # noqa: F401
+    InsightCritique,
+    CritiqueResult,
+)
+
 __all__ = [
     "DiscoveredBusinessItem",
     "ZipcodeScannerOutput",
@@ -106,4 +111,7 @@ __all__ = [
     "PulseInsight",
     "PulseQuickStats",
     "WeeklyPulseOutput",
+    # Pulse Critique
+    "InsightCritique",
+    "CritiqueResult",
 ]

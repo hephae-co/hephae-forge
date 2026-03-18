@@ -1,32 +1,17 @@
-"""Weekly Pulse orchestrator — gathers all signals and generates insight-card briefing.
+"""Weekly Pulse orchestrator — ADK multi-agent pipeline for insight generation.
 
-Pipeline:
-1. Load existing zip code research (or run fresh)
-2. Fetch 7-day weather forecast (NWS API)
-3. Gather industry-specific data via plugin registry:
-   - BLS CPI (food prices, v1 no-key or v2 with key)
-   - USDA NASS (agricultural commodity prices)
-   - FDA (food safety recalls)
-   - Yelp Fusion (competition density, ratings, new entrants)
-   - SBA loans (new business formation signals)
-   - EIA (energy costs — state level)
-   - FBI UCR (crime/safety — county level)
-   - SchoolDigger (education/economic stress)
-4. Fetch local news (Google News RSS)
-5. Query Google Trends (BigQuery DMA data)
-6. Fetch local catalysts (government signals via search + crawl)
-7. Fetch NJ legal notices (if NJ zip)
-8. Load prior week's pulse (delta detection)
-9. Run WeeklyPulseAgent with all signals
-10. Save to Firestore with full diagnostics
+Replaced the previous 463-line asyncio.gather implementation with an ADK
+SequentialAgent tree (PulseOrchestrator) that runs 4 stages:
+  1. DataGatherer (parallel fetch + research)
+  2. PreSynthesis (domain experts: economist, local scout, historian)
+  3. Synthesis (WeeklyPulseAgent with DEEP thinking)
+  4. Critique Loop (quality gate, max 2 iterations)
 """
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
-import os
 from datetime import datetime
 from typing import Any
 
@@ -44,33 +29,33 @@ def _truncate(obj: Any, max_len: int = 500) -> Any:
     return obj
 
 
+def _current_iso_week() -> str:
+    """Return current ISO week string like '2026-W12'."""
+    now = datetime.utcnow()
+    return f"{now.year}-W{now.isocalendar()[1]:02d}"
+
+
 async def generate_pulse(
     zip_code: str,
     business_type: str,
     week_of: str = "",
     force: bool = False,
 ) -> dict[str, Any]:
-    """Main entry point for weekly pulse generation.
+    """Main entry point for weekly pulse generation via ADK agent tree.
 
     Returns:
         {"pulse": dict, "pulseId": str, "signalsUsed": list[str], "diagnostics": dict}
     """
-    from hephae_db.firestore.research import get_zipcode_report
     from hephae_db.firestore.weekly_pulse import get_latest_pulse, save_weekly_pulse
-    from hephae_db.bigquery.reader import query_google_trends
+    from hephae_db.firestore.signal_archive import save_signal_archive
     from hephae_db.bigquery.public_data import resolve_zip_geography
-    from hephae_integrations.news_client import query_local_news
-    from hephae_agents.research.weekly_pulse_agent import generate_weekly_pulse
-    from hephae_agents.research.local_catalyst import research_local_catalysts
-    from hephae_agents.research.social_pulse import fetch_social_pulse
-    from hephae_agents.research.maps_grounding import fetch_maps_density
-    from hephae_api.workflows.orchestrators.industry_plugins import fetch_industry_data
-    from hephae_api.workflows.orchestrators.zipcode_research import research_zip_code
+    from hephae_db.firestore.weekly_pulse import get_pulse_history
 
     if not week_of:
-        week_of = datetime.utcnow().strftime("%Y-%m-%d")
+        week_of = _current_iso_week()
 
     logger.info(f"[WeeklyPulse] Starting pulse for {zip_code} / {business_type} / {week_of}")
+    started_at = datetime.utcnow()
 
     # 0. Check cache
     if not force:
@@ -84,378 +69,170 @@ async def generate_pulse(
                 "diagnostics": existing.get("diagnostics", {}),
             }
 
-    signals: dict[str, Any] = {}
-    signals_used: list[str] = []
-    diagnostics: dict[str, Any] = {"sources": {}, "startedAt": datetime.utcnow().isoformat()}
+    # 1. Resolve geography (BQ — authoritative)
+    geo = await resolve_zip_geography(zip_code)
+    city = geo.city if geo else ""
+    state = geo.state_code if geo else ""
+    county = geo.county if geo else ""
+    latitude = geo.latitude if geo else 0.0
+    longitude = geo.longitude if geo else 0.0
 
-    def _record(source: str, status: str, detail: str = "", data_preview: Any = None):
-        entry: dict[str, Any] = {"status": status, "detail": detail}
-        if data_preview is not None:
-            entry["dataPreview"] = _truncate(data_preview)
-        diagnostics["sources"][source] = entry
+    # DMA mapping
+    STATE_TO_DMA = {
+        "NJ": "New York", "NY": "New York", "CT": "New York",
+        "PA": "Philadelphia", "DE": "Philadelphia",
+        "CA": "Los Angeles", "IL": "Chicago", "TX": "Dallas",
+        "MA": "Boston", "FL": "Miami", "GA": "Atlanta",
+        "WA": "Seattle", "CO": "Denver", "AZ": "Phoenix",
+        "DC": "Washington", "MD": "Washington", "VA": "Washington",
+    }
+    dma_name = STATE_TO_DMA.get(state, "")
 
-    # ── 1. Zip code research ─────────────────────────────────────────
-    zip_data = await get_zipcode_report(zip_code)
-    if zip_data:
-        _record("zipcode_research", "ok", "Loaded from Firestore cache")
-    else:
-        logger.info(f"[WeeklyPulse] No zip research cached — running fresh for {zip_code}")
-        try:
-            result = await research_zip_code(zip_code, force=True)
-            zip_data = {"report": result.get("report", {})}
-            _record("zipcode_research", "ok", "Ran fresh research pipeline")
-        except Exception as e:
-            logger.error(f"[WeeklyPulse] Zip research failed: {e}")
-            _record("zipcode_research", "error", str(e))
+    # 2. Load pulse history for longitudinal context
+    history = await get_pulse_history(zip_code, business_type, limit=12)
 
-    # ── 1a. BQ geography resolution (authoritative — replaces key_facts parsing)
-    latitude = 0.0
-    longitude = 0.0
-    city = ""
-    state = ""
-    county = ""
-    dma_name = ""
+    # 3. Build initial session state
+    initial_state = {
+        "zipCode": zip_code,
+        "businessType": business_type,
+        "weekOf": week_of,
+        "city": city,
+        "state": state,
+        "county": county,
+        "latitude": latitude,
+        "longitude": longitude,
+        "dmaName": dma_name,
+        "pulseHistory": [p.get("diagnostics", {}) for p in history],
+        "pulseHistoryInsights": [
+            p.get("pulse", {}).get("insights", []) for p in history
+        ],
+    }
 
-    try:
-        geo = await resolve_zip_geography(zip_code)
-        if geo:
-            latitude = geo.latitude
-            longitude = geo.longitude
-            city = geo.city
-            state = geo.state_code
-            county = geo.county
-            # Resolve DMA from state (most common mapping)
-            STATE_TO_DMA = {
-                "NJ": "New York", "NY": "New York", "CT": "New York",
-                "PA": "Philadelphia", "DE": "Philadelphia",
-                "CA": "Los Angeles", "IL": "Chicago", "TX": "Dallas",
-                "MA": "Boston", "FL": "Miami", "GA": "Atlanta",
-                "WA": "Seattle", "CO": "Denver", "AZ": "Phoenix",
-                "DC": "Washington", "MD": "Washington", "VA": "Washington",
-            }
-            dma_name = STATE_TO_DMA.get(geo.state_code, "")
-            _record("bq_geography", "ok",
-                    f"{city}, {state} ({county}), DMA={dma_name or 'unknown'}, lat={latitude:.4f}, lon={longitude:.4f}")
-        else:
-            _record("bq_geography", "empty", f"No geography found for {zip_code}")
-    except Exception as e:
-        _record("bq_geography", "error", str(e))
+    # 4. Run ADK agent tree
+    from google.adk.runners import Runner
+    from google.adk.sessions import InMemorySessionService
+    from hephae_common.adk_helpers import user_msg
+    from hephae_agents.research.pulse_orchestrator import pulse_orchestrator
 
-    if zip_data:
-        report = zip_data.get("report", {})
-        signals["zipReport"] = report
-        signals_used.append("zipcode_research")
-
-        sections = report.get("sections", {})
-        section_names = [k for k, v in sections.items() if v] if isinstance(sections, dict) else []
-        _record("zipcode_research", "ok",
-                f"{len(section_names)} sections: {', '.join(section_names)}",
-                {"summary": (report.get("summary", "") or "")[:300]})
-
-        # Extract DMA from trending section (still needed for Google Trends)
-        trending = sections.get("trending", {}) if isinstance(sections, dict) else {}
-        if isinstance(trending, dict):
-            for fact in trending.get("key_facts", []):
-                if any(k in fact.lower() for k in ["dma", "market area", "designated market"]):
-                    if ":" in fact:
-                        dma_name = fact.split(":")[-1].strip()
-                        break
-            if not dma_name:
-                tcontent = trending.get("content", "")
-                for metro in ["New York", "Philadelphia", "Los Angeles", "Chicago", "Boston", "San Francisco", "Washington", "Dallas", "Houston", "Atlanta"]:
-                    if metro in tcontent:
-                        dma_name = metro
-                        break
-
-    # ── 2-7. Gather ALL signals in parallel ──────────────────────────
-
-    async def _fetch_weather() -> dict[str, Any]:
-        try:
-            from hephae_integrations.nws_client import query_weather_forecast
-            result = await query_weather_forecast(zip_code)
-            if result and result.get("forecast"):
-                _record("weather_nws", "ok",
-                        f"{len(result['forecast'])} periods, outdoor: {result.get('outdoorFavorability', '?')}",
-                        {"summary": result.get("summary", ""), "alerts": result.get("alerts", [])})
-                return result
-            _record("weather_nws", "empty", "No forecast data returned")
-            return {}
-        except ImportError:
-            _record("weather_nws", "skipped", "nws_client not installed")
-            return {}
-        except Exception as e:
-            _record("weather_nws", "error", str(e))
-            return {}
-
-    async def _fetch_industry() -> dict[str, Any]:
-        try:
-            result = await fetch_industry_data(
-                business_type, state, zip_code, county, latitude, longitude,
-            )
-            if result:
-                details = []
-                for k, v in result.items():
-                    if k == "priceDeltas":
-                        details.append(f"{len(v)} price deltas")
-                    elif k == "blsCpi":
-                        series_ct = len(v.get("series", []))
-                        hl_ct = len(v.get("highlights", []))
-                        details.append(f"BLS: {series_ct} series, {hl_ct} highlights")
-                    elif k == "fdaRecalls":
-                        details.append(f"FDA: {v.get('totalRecalls', 0)} recalls")
-                    elif k == "usdaPrices":
-                        details.append(f"USDA: {len(v.get('commodities', []))} commodities")
-                    elif k == "yelpData":
-                        details.append(f"Yelp: {v.get('totalBusinesses', 0)} businesses")
-                    elif k == "sbaLoans":
-                        details.append(f"SBA: {v.get('recentLoans', 0)} loans")
-                    elif k == "energyCosts":
-                        details.append(f"EIA: {v.get('latestPrice', '?')} c/kWh")
-                    elif k == "crimeStats":
-                        details.append(f"FBI: safety={v.get('safetyLevel', '?')}")
-                    elif k == "educationData":
-                        details.append(f"Edu: stress={v.get('economicStressLevel', '?')}")
-                _record("industry_data", "ok", "; ".join(details))
-                # Record individual source diagnostics
-                for k, v in result.items():
-                    if k not in ("priceDeltas",):
-                        _record(f"industry:{k}", "ok", details[0] if details else "data present",
-                                _truncate(v, 200) if isinstance(v, (dict, list)) else None)
-            else:
-                _record("industry_data", "empty", "All industry sources returned empty")
-            return result
-        except Exception as e:
-            _record("industry_data", "error", str(e))
-            return {}
-
-    async def _fetch_news() -> dict[str, Any]:
-        location = f"{city}, {state}" if city and state else (city or zip_code)
-        try:
-            result = await query_local_news(location, business_type)
-            article_count = len(result.get("articles", []))
-            if article_count > 0:
-                headlines = [a.get("headline", "") for a in result["articles"][:5]]
-                _record("local_news", "ok", f"{article_count} articles for '{location}'",
-                        {"headlines": headlines})
-            else:
-                _record("local_news", "empty", f"No articles found for '{location}'")
-            return result
-        except Exception as e:
-            _record("local_news", "error", str(e))
-            return {}
-
-    async def _fetch_trends() -> dict[str, Any]:
-        if not dma_name:
-            _record("google_trends", "skipped", "No DMA name extracted from zip report")
-            return {}
-        try:
-            result = await query_google_trends(dma_name)
-            data = result.model_dump(mode="json") if hasattr(result, "model_dump") else result
-            top_ct = len(data.get("topTerms", []))
-            rising_ct = len(data.get("risingTerms", []))
-            if top_ct or rising_ct:
-                _record("google_trends", "ok",
-                        f"DMA '{dma_name}': {top_ct} top, {rising_ct} rising terms",
-                        {"topTerms": data.get("topTerms", [])[:5], "risingTerms": data.get("risingTerms", [])[:5]})
-            else:
-                _record("google_trends", "empty", f"No trends for DMA '{dma_name}'")
-            return data
-        except Exception as e:
-            _record("google_trends", "error", str(e))
-            return {}
-
-    async def _fetch_catalysts() -> dict[str, Any]:
-        loc_city = city if city and city != zip_code else ""
-        if not loc_city:
-            _record("local_catalysts", "skipped", "No city name available for catalyst search")
-            return {}
-        loc_state = state or "NJ"
-        try:
-            result = await research_local_catalysts(loc_city, loc_state, business_type)
-            catalyst_count = len(result.get("catalysts", []))
-            if catalyst_count > 0:
-                _record("local_catalysts", "ok", f"{catalyst_count} catalysts found",
-                        {"summary": result.get("summary", "")})
-            else:
-                _record("local_catalysts", "empty", result.get("summary", "No catalysts found"))
-            return result
-        except Exception as e:
-            _record("local_catalysts", "error", str(e))
-            return {}
-
-    async def _fetch_legal_notices() -> dict[str, Any]:
-        # Only for NJ zip codes (or states with known legal notice portals)
-        if state and state.upper() not in ("NJ", "NEW JERSEY"):
-            _record("legal_notices", "skipped", f"Legal notice scraping not available for {state}")
-            return {}
-        loc_city = city if city and city != zip_code else ""
-        if not loc_city:
-            _record("legal_notices", "skipped", "No city name available")
-            return {}
-        try:
-            from hephae_integrations.nj_legal_notices_client import query_legal_notices
-            result = await query_legal_notices(loc_city, "NJ", zip_code)
-            notice_count = len(result.get("notices", []))
-            if notice_count > 0:
-                _record("legal_notices", "ok", f"{notice_count} notices found",
-                        {"summary": result.get("summary", "")})
-            else:
-                _record("legal_notices", "empty", "No relevant notices found")
-            return result
-        except ImportError:
-            _record("legal_notices", "skipped", "nj_legal_notices_client not installed")
-            return {}
-        except Exception as e:
-            _record("legal_notices", "error", str(e))
-            return {}
-
-    async def _fetch_social_pulse() -> dict[str, Any]:
-        loc_city = city if city and city != zip_code else ""
-        if not loc_city:
-            _record("social_pulse", "skipped", "No city name available")
-            return {}
-        try:
-            result = await fetch_social_pulse(loc_city, state, zip_code)
-            if result.get("summary"):
-                _record("social_pulse", "ok",
-                        f"{result.get('queriesUsed', 0)} queries, {len(result['summary'])} chars",
-                        {"summary": result["summary"][:300]})
-                return result
-            _record("social_pulse", "empty", "No significant community chatter found")
-            return {}
-        except Exception as e:
-            _record("social_pulse", "error", str(e))
-            return {}
-
-    async def _fetch_maps_density() -> dict[str, Any]:
-        # Maps Grounding Lite MCP requires explicit API enablement.
-        # Disabled until Maps Grounding Lite is enabled on the GCP project.
-        _record("maps_grounding", "skipped", "Disabled — requires Maps Grounding Lite API enablement")
-        return {}
-        loc_city = city if city and city != zip_code else ""
-        if not loc_city or not os.getenv("GOOGLE_MAPS_API_KEY", ""):
-            _record("maps_grounding", "skipped", "No city or no GOOGLE_MAPS_API_KEY")
-            return {}
-        try:
-            result = await fetch_maps_density(loc_city, state, zip_code, business_type)
-            if result and result.get("totalPlaces"):
-                _record("maps_grounding", "ok",
-                        f"{result['totalPlaces']} places, saturation={result.get('saturationAssessment', '?')}",
-                        {"summary": result.get("summary", ""), "topPlaces": result.get("topPlaces", [])[:3]})
-                return result
-            _record("maps_grounding", "empty", "No places returned")
-            return {}
-        except Exception as e:
-            _record("maps_grounding", "error", str(e))
-            return {}
-
-    # Run ALL fetchers in parallel — LLM agents use RunConfig(max_llm_calls=N)
-    # return_exceptions=True prevents one failing fetcher from killing the rest
-    results = await asyncio.gather(
-        _fetch_weather(),
-        _fetch_industry(),
-        _fetch_news(),
-        _fetch_trends(),
-        _fetch_catalysts(),
-        _fetch_legal_notices(),
-        _fetch_social_pulse(),
-        _fetch_maps_density(),
-        return_exceptions=True,
+    session_service = InMemorySessionService()
+    runner = Runner(
+        agent=pulse_orchestrator,
+        app_name="weekly_pulse",
+        session_service=session_service,
+    )
+    session = await session_service.create_session(
+        app_name="weekly_pulse",
+        user_id="system",
+        state=initial_state,
     )
 
-    # Unpack results, treating exceptions as empty dicts
-    def _safe(r, label: str) -> dict[str, Any]:
-        if isinstance(r, Exception):
-            logger.error(f"[WeeklyPulse] {label} raised: {r}")
-            _record(label, "error", str(r))
-            return {}
-        return r or {}
+    logger.info(f"[WeeklyPulse] Running ADK pipeline for {zip_code}")
+    async for event in runner.run_async(
+        user_id="system",
+        session_id=session.id,
+        new_message=user_msg(
+            f"Generate weekly pulse for {zip_code} ({business_type}), week of {week_of}."
+        ),
+    ):
+        pass  # Pipeline runs through all 4 stages
 
-    weather = _safe(results[0], "weather")
-    industry_data = _safe(results[1], "industry_data")
-    news_data = _safe(results[2], "local_news")
-    trends_data = _safe(results[3], "google_trends")
-    catalyst_data = _safe(results[4], "local_catalysts")
-    legal_data = _safe(results[5], "legal_notices")
-    social_data = _safe(results[6], "social_pulse")
-    maps_data = _safe(results[7], "maps_grounding")
+    # 5. Extract results from session state
+    final_state = dict(session.state or {})
 
-    # Merge results
-    if weather and weather.get("forecast"):
-        signals["weather"] = weather
-        signals_used.append("weather_nws")
+    pulse_output = final_state.get("pulseOutput")
+    critique_result = final_state.get("critiqueResult")
+    raw_signals = final_state.get("rawSignals", {})
+    signals_used = final_state.get("signalsUsed", [])
+    pre_computed = final_state.get("preComputedImpact", {})
+    matched_playbooks = final_state.get("matchedPlaybooks", [])
 
-    if industry_data:
-        signals.update(industry_data)
-        for key in industry_data:
-            signals_used.append(f"industry:{key}")
+    # Parse pulse output
+    if isinstance(pulse_output, str):
+        try:
+            pulse_output = json.loads(pulse_output)
+        except (json.JSONDecodeError, ValueError):
+            pulse_output = {}
 
-    if news_data and news_data.get("articles"):
-        signals["localNews"] = news_data
-        signals_used.append("local_news")
+    if not pulse_output or not isinstance(pulse_output, dict):
+        pulse_output = {
+            "zipCode": zip_code,
+            "businessType": business_type,
+            "weekOf": week_of,
+            "headline": "Insufficient data to generate pulse this week.",
+            "insights": [],
+            "quickStats": {},
+        }
 
-    if trends_data:
-        signals["trends"] = trends_data
-        signals_used.append("google_trends")
+    pulse_output.setdefault("zipCode", zip_code)
+    pulse_output.setdefault("businessType", business_type)
+    pulse_output.setdefault("weekOf", week_of)
 
-    if catalyst_data and catalyst_data.get("catalysts"):
-        signals["localCatalysts"] = catalyst_data
-        signals_used.append("local_catalysts")
+    # Parse critique
+    critique_pass = True
+    critique_score = 0
+    if critique_result:
+        if isinstance(critique_result, str):
+            try:
+                critique_result = json.loads(critique_result)
+            except (json.JSONDecodeError, ValueError):
+                critique_result = {}
+        if isinstance(critique_result, dict):
+            critique_pass = critique_result.get("overall_pass", True)
+            insight_critiques = critique_result.get("insights", [])
+            if insight_critiques:
+                scores = [
+                    ic.get("actionability_score", 0) + ic.get("cross_signal_score", 0)
+                    - ic.get("obviousness_score", 0)
+                    for ic in insight_critiques
+                ]
+                critique_score = int(sum(scores) / len(scores)) if scores else 0
 
-    if legal_data and legal_data.get("notices"):
-        signals["legalNotices"] = legal_data
-        signals_used.append("legal_notices")
+    # 6. Build diagnostics
+    diagnostics: dict[str, Any] = {
+        "startedAt": started_at.isoformat(),
+        "completedAt": datetime.utcnow().isoformat(),
+        "signalCount": len(signals_used),
+        "insightCount": len(pulse_output.get("insights", [])),
+        "critiquePass": critique_pass,
+        "critiqueScore": critique_score,
+        "playbooksMatched": [pb.get("name", "") for pb in matched_playbooks],
+        "preComputedKeys": list(pre_computed.keys()),
+        "pipeline": "adk_multi_agent_v2",
+    }
 
-    if social_data and social_data.get("summary"):
-        signals["socialPulse"] = social_data
-        signals_used.append("social_pulse")
+    # 7. Save pulse + archive signals
+    from hephae_api.config import AgentVersions
 
-    if maps_data and maps_data.get("totalPlaces"):
-        signals["mapsGrounding"] = maps_data
-        signals_used.append("maps_grounding")
-
-    # ── 8. Prior week's pulse ────────────────────────────────────────
-    prior_pulse = None
-    try:
-        prior = await get_latest_pulse(zip_code, business_type)
-        if prior and prior.get("weekOf") != week_of:
-            prior_pulse = prior
-            _record("prior_pulse", "ok", f"Found prior pulse from {prior.get('weekOf', '?')}")
-        else:
-            _record("prior_pulse", "skipped", "No prior pulse available")
-    except Exception:
-        _record("prior_pulse", "skipped", "Could not load prior pulse")
-
-    # ── 9. Run WeeklyPulseAgent ──────────────────────────────────────
-    diagnostics["signalCount"] = len(signals_used)
-    diagnostics["agentInputKeys"] = list(signals.keys())
-
-    logger.info(f"[WeeklyPulse] Gathered {len(signals_used)} signals — running analysis agent")
-    pulse = await generate_weekly_pulse(
-        zip_code=zip_code,
-        business_type=business_type,
-        week_of=week_of,
-        signals=signals,
-        prior_pulse=prior_pulse,
-    )
-
-    diagnostics["completedAt"] = datetime.utcnow().isoformat()
-    diagnostics["insightCount"] = len(pulse.get("insights", []))
-
-    # ── 10. Save ─────────────────────────────────────────────────────
     pulse_id = await save_weekly_pulse(
         zip_code=zip_code,
         business_type=business_type,
         week_of=week_of,
-        pulse=pulse,
+        pulse=pulse_output,
         signals_used=signals_used,
         diagnostics=diagnostics,
     )
 
-    logger.info(f"[WeeklyPulse] Pulse saved as {pulse_id} with {len(pulse.get('insights', []))} insights from {len(signals_used)} signals")
+    # Archive raw signals for retroactive recomputation
+    if raw_signals:
+        archive_sources = {}
+        for source_name, data in raw_signals.items():
+            if data:
+                archive_sources[source_name] = {
+                    "raw": _truncate(data, 5000),
+                    "fetchedAt": datetime.utcnow().isoformat(),
+                    "version": "v1",
+                }
+        await save_signal_archive(zip_code, week_of, archive_sources, pre_computed)
+
+    logger.info(
+        f"[WeeklyPulse] Pulse saved as {pulse_id} — "
+        f"{len(pulse_output.get('insights', []))} insights, "
+        f"critique={'PASS' if critique_pass else 'FAIL'}, "
+        f"{len(signals_used)} signals"
+    )
 
     return {
-        "pulse": pulse,
+        "pulse": pulse_output,
         "pulseId": pulse_id,
         "signalsUsed": signals_used,
         "diagnostics": diagnostics,

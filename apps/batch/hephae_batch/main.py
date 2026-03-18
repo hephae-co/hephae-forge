@@ -5,6 +5,7 @@ Commands:
   python -m hephae_batch.main workflow <id>   — run specific workflow by ID
   python -m hephae_batch.main area-research <area_id> <area> <business_type> <max_zips>
                                                — run area research pipeline
+  python -m hephae_batch.main pulse-batch <batch_id>  — run pulse batch pipeline
   python -m hephae_batch.main monitor         — run workflow monitor digest
 """
 
@@ -90,6 +91,15 @@ async def cmd_resume_outreach(workflow_id: str):
     await engine.resume_from_outreach()
 
 
+async def cmd_pulse_batch(batch_id: str):
+    """Run pulse batch pipeline for a batch ID."""
+    from hephae_api.workflows.orchestrators.pulse_batch_processor import run_pulse_batch
+
+    logger.info(f"[Batch] Running pulse batch {batch_id}")
+    result = await run_pulse_batch(batch_id)
+    logger.info(f"[Batch] Pulse batch complete: {result}")
+
+
 async def cmd_area_research(area_id: str, area: str, business_type: str, max_zips: int):
     """Run area research pipeline."""
     from hephae_db.firestore.research import load_area_research
@@ -129,6 +139,9 @@ def main():
     ar_parser.add_argument("business_type", help="Business type (e.g. 'restaurant')")
     ar_parser.add_argument("--max-zips", type=int, default=10, help="Max zip codes to research")
 
+    pb_parser = sub.add_parser("pulse-batch", help="Run pulse batch pipeline")
+    pb_parser.add_argument("batch_id", help="Pulse batch ID (e.g. 'pulse-essex-2026-W12')")
+
     args = parser.parse_args()
 
     if args.command == "dispatcher":
@@ -139,6 +152,8 @@ def main():
         asyncio.run(cmd_resume_outreach(args.workflow_id))
     elif args.command == "area-research":
         asyncio.run(cmd_area_research(args.area_id, args.area, args.business_type, args.max_zips))
+    elif args.command == "pulse-batch":
+        asyncio.run(cmd_pulse_batch(args.batch_id))
 
 
 if __name__ == "__main__":

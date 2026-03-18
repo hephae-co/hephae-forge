@@ -111,6 +111,38 @@ async def resolve_zip_geography(zip_code: str) -> ZipGeography | None:
         return None
 
 
+async def query_zips_in_county(county: str, state: str) -> list[str]:
+    """Return all zip codes in a county via BQ utility_us.
+
+    Args:
+        county: County name (e.g., "Essex").
+        state: State code (e.g., "NJ").
+
+    Returns:
+        List of 5-digit zip code strings.
+    """
+    try:
+        rows = await _run_query(
+            """
+            SELECT DISTINCT zipcode
+            FROM `bigquery-public-data.utility_us.zipcode_area`
+            WHERE LOWER(county) = LOWER(@county)
+              AND state_code = @state
+            ORDER BY zipcode
+            """,
+            params=[
+                bigquery.ScalarQueryParameter("county", "STRING", county),
+                bigquery.ScalarQueryParameter("state", "STRING", state.upper()),
+            ],
+        )
+        zips = [r["zipcode"] for r in rows if r.get("zipcode")]
+        logger.info(f"[BQ:GEO] Found {len(zips)} zips in {county} County, {state}")
+        return zips
+    except Exception as e:
+        logger.error(f"[BQ:GEO] Failed to query zips in {county}, {state}: {e}")
+        return []
+
+
 # ── Census ACS Demographics ──────────────────────────────────────────────
 
 async def query_census_demographics(zip_code: str) -> dict[str, Any]:

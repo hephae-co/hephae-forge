@@ -165,6 +165,8 @@ async def submit_vertex_batch(
         }
         if req.get("config"):
             line["generation_config"] = req["config"]
+        if req.get("tools"):
+            line["tools"] = req["tools"]
         jsonl_lines.append(json.dumps(line))
 
     jsonl_content = "\n".join(jsonl_lines)

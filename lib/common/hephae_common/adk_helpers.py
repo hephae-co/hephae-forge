@@ -16,6 +16,7 @@ from google.adk import Runner
 from google.adk.agents import LlmAgent
 from google.adk.agents.context_cache_config import ContextCacheConfig
 from google.adk.apps.app import App
+from google.adk.runners import RunConfig
 from google.adk.sessions import InMemorySessionService
 from google.genai import types as genai_types
 from pydantic import BaseModel
@@ -72,8 +73,14 @@ async def run_agent_to_text(
     prompt: str,
     app_name: str = "Hephae",
     state: dict | None = None,
+    run_config: RunConfig | None = None,
 ) -> str:
-    """Run an agent and return the last text output."""
+    """Run an agent and return the last text output.
+
+    Args:
+        run_config: Optional RunConfig for controlling execution limits.
+            Use RunConfig(max_llm_calls=N) to limit agent tool-call rounds.
+    """
     session_id = f"{agent.name}-{uuid.uuid4().hex[:8]}"
     user_id = "system"
 
@@ -90,6 +97,7 @@ async def run_agent_to_text(
         user_id=user_id,
         session_id=session.id,
         new_message=user_msg(prompt),
+        run_config=run_config,
     ):
         if event.content and event.content.parts:
             for part in event.content.parts:
@@ -105,6 +113,7 @@ async def run_agent_to_json(
     app_name: str = "Hephae",
     state: dict | None = None,
     response_schema: type[BaseModel] | None = None,
+    run_config: RunConfig | None = None,
 ) -> dict | list | BaseModel | None:
     """Run an agent and return structured JSON using Gemini's native JSON mode.
 
@@ -149,6 +158,7 @@ async def run_agent_to_json(
         user_id=user_id,
         session_id=session.id,
         new_message=user_msg(prompt),
+        run_config=run_config,
     ):
         if event.content and event.content.parts:
             for part in event.content.parts:

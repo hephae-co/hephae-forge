@@ -16,6 +16,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import google_search
 
 from hephae_api.config import AgentModels
+from google.adk.runners import RunConfig
 from hephae_common.adk_helpers import run_agent_to_text
 from hephae_common.model_fallback import fallback_on_error
 
@@ -121,6 +122,7 @@ Remember: Only report what you actually find. Do not fabricate information."""
             SocialPulseAgent,
             prompt,
             app_name="social_pulse",
+            run_config=RunConfig(max_llm_calls=5),
         )
 
         if result and len(result) > 20:

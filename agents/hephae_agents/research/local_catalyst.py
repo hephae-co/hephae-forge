@@ -16,6 +16,7 @@ from datetime import datetime
 from google.adk.agents import LlmAgent
 
 from hephae_api.config import AgentModels
+from google.adk.runners import RunConfig
 from hephae_common.adk_helpers import run_agent_to_json
 from hephae_agents.shared_tools import google_search_tool, crawl4ai_advanced_tool
 from hephae_common.model_fallback import fallback_on_error
@@ -92,7 +93,8 @@ async def research_local_catalysts(city: str, state: str, business_type: str) ->
     prompt = f"TOWN/CITY: {city}\nSTATE: {state}\nBUSINESS TYPE: {business_type}\nCURRENT DATE: {datetime.now().strftime('%Y-%m-%d')}"
 
     result = await run_agent_to_json(
-        LocalCatalystAgent, prompt, app_name="local_catalyst"
+        LocalCatalystAgent, prompt, app_name="local_catalyst",
+        run_config=RunConfig(max_llm_calls=5),
     )
 
     if not result:

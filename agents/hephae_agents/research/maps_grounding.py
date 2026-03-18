@@ -20,6 +20,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools.mcp_tool import McpToolset, StreamableHTTPConnectionParams
 
 from hephae_api.config import AgentModels
+from google.adk.runners import RunConfig
 from hephae_common.adk_helpers import run_agent_to_json
 from hephae_common.model_fallback import fallback_on_error
 
@@ -119,6 +120,7 @@ Provide the structured competitive analysis."""
             agent,
             prompt,
             app_name="maps_grounding",
+            run_config=RunConfig(max_llm_calls=3),
         )
 
         await toolset.close()

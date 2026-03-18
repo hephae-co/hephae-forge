@@ -143,12 +143,10 @@ class CritiqueRouter(BaseAgent):
 
         if overall_pass:
             logger.info("[CritiqueRouter] All insights passed — escalating to exit loop")
-            # Clear any stale rewrite feedback
-            ctx.session.state["rewriteFeedback"] = ""
             yield Event(
                 author=self.name,
                 invocation_id=ctx.invocation_id,
-                actions=EventActions(escalate=True),
+                actions=EventActions(escalate=True, state_delta={"rewriteFeedback": ""}),
             )
             return
 
@@ -169,7 +167,6 @@ class CritiqueRouter(BaseAgent):
                 )
 
         rewrite_feedback = "\n".join(feedback_parts) if feedback_parts else "Some insights need improvement."
-        ctx.session.state["rewriteFeedback"] = rewrite_feedback
 
         logger.info(
             f"[CritiqueRouter] {len(feedback_parts)} insights need rewrite — "
@@ -179,6 +176,7 @@ class CritiqueRouter(BaseAgent):
         yield Event(
             author=self.name,
             invocation_id=ctx.invocation_id,
+            actions=EventActions(state_delta={"rewriteFeedback": rewrite_feedback}),
         )
 
 

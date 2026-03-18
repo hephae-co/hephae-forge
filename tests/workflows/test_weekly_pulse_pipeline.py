@@ -674,7 +674,7 @@ class TestCritiqueRouter:
 
         assert len(events) == 1
         assert events[0].actions.escalate is True
-        assert ctx.session.state["rewriteFeedback"] == ""
+        assert events[0].actions.state_delta["rewriteFeedback"] == ""
 
     @pytest.mark.asyncio
     async def test_writes_feedback_on_fail(self):
@@ -710,7 +710,7 @@ class TestCritiqueRouter:
 
         assert len(events) == 1
         assert events[0].actions.escalate is not True
-        feedback = ctx.session.state["rewriteFeedback"]
+        feedback = events[0].actions.state_delta["rewriteFeedback"]
         assert "Insight #1" in feedback
         assert "REWRITE" in feedback
         assert "Too obvious, not actionable" in feedback
@@ -750,7 +750,7 @@ class TestCritiqueRouter:
 
         # Should default to fail path (overall_pass defaults to False)
         assert len(events) == 1
-        assert ctx.session.state["rewriteFeedback"] == "Some insights need improvement."
+        assert events[0].actions.state_delta["rewriteFeedback"] == "Some insights need improvement."
 
 
 # ═══════════════════════════════════════════════════════════════════════════

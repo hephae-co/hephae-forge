@@ -22,6 +22,7 @@ from typing import Any, AsyncGenerator
 from google.adk.agents import BaseAgent, LlmAgent, ParallelAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event
+from google.adk.events.event_actions import EventActions
 from google.adk.tools import google_search
 
 from hephae_api.config import AgentModels
@@ -95,17 +96,13 @@ class BaseLayerFetcher(BaseAgent):
         pre_computed = compute_impact_multipliers(signals)
         matched_playbooks = match_playbooks(pre_computed, signals, business_type)
 
-        # Write everything to session state
+        # Write everything to session state via state_delta
         state_delta = {
             "rawSignals": signals,
             "signalsUsed": [k for k, v in signals.items() if v],
             "preComputedImpact": pre_computed,
             "matchedPlaybooks": matched_playbooks,
         }
-
-        # Update session state
-        for key, value in state_delta.items():
-            ctx.session.state[key] = value
 
         logger.info(
             f"[BaseLayerFetcher] Done: {len(signals)} signals, "
@@ -115,6 +112,7 @@ class BaseLayerFetcher(BaseAgent):
         yield Event(
             author=self.name,
             invocation_id=ctx.invocation_id,
+            actions=EventActions(state_delta=state_delta),
         )
 
 

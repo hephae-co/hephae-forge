@@ -137,8 +137,16 @@ async def generate_pulse(
     ):
         pass  # Pipeline runs through all 4 stages
 
-    # 5. Extract results from session state
+    # 5. Re-fetch session to get final state (local object may be stale)
+    session = await session_service.get_session(
+        app_name="weekly_pulse",
+        user_id="system",
+        session_id=session.id,
+    )
     final_state = dict(session.state or {})
+    logger.info(
+        f"[WeeklyPulse] Pipeline complete — state keys: {list(final_state.keys())}"
+    )
 
     pulse_output = final_state.get("pulseOutput")
     critique_result = final_state.get("critiqueResult")

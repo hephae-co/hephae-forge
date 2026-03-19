@@ -209,38 +209,7 @@ async def generate_pulse(
         "pipeline": "adk_multi_agent_v2",
     }
 
-    # 7. Save pulse + archive signals
-    from hephae_api.config import AgentVersions
-
-    pulse_id = await save_weekly_pulse(
-        zip_code=zip_code,
-        business_type=business_type,
-        week_of=week_of,
-        pulse=pulse_output,
-        signals_used=signals_used,
-        diagnostics=diagnostics,
-    )
-
-    # Archive raw signals for retroactive recomputation
-    if raw_signals:
-        archive_sources = {}
-        for source_name, data in raw_signals.items():
-            if data:
-                archive_sources[source_name] = {
-                    "raw": _truncate(data, 5000),
-                    "fetchedAt": datetime.utcnow().isoformat(),
-                    "version": "v1",
-                }
-        await save_signal_archive(zip_code, week_of, archive_sources, pre_computed)
-
-    logger.info(
-        f"[WeeklyPulse] Pulse saved as {pulse_id} — "
-        f"{len(pulse_output.get('insights', []))} insights, "
-        f"critique={'PASS' if critique_pass else 'FAIL'}, "
-        f"{len(signals_used)} signals"
-    )
-
-    # 8. Parse domain expert reports from state (strings from output_key)
+    # 7. Build pipeline details from session state
     def _parse_state_text(key: str) -> str:
         val = final_state.get(key, "")
         if isinstance(val, dict):
@@ -258,6 +227,35 @@ async def generate_pulse(
         "critiqueResult": critique_result if isinstance(critique_result, dict) else {},
         "rawSignals": {k: _truncate(v, 2000) for k, v in raw_signals.items() if v},
     }
+
+    # 8. Save pulse + pipeline details + archive signals
+    pulse_id = await save_weekly_pulse(
+        zip_code=zip_code,
+        business_type=business_type,
+        week_of=week_of,
+        pulse=pulse_output,
+        signals_used=signals_used,
+        diagnostics=diagnostics,
+        pipeline_details=pipeline_details,
+    )
+
+    if raw_signals:
+        archive_sources = {}
+        for source_name, data in raw_signals.items():
+            if data:
+                archive_sources[source_name] = {
+                    "raw": _truncate(data, 5000),
+                    "fetchedAt": datetime.utcnow().isoformat(),
+                    "version": "v1",
+                }
+        await save_signal_archive(zip_code, week_of, archive_sources, pre_computed)
+
+    logger.info(
+        f"[WeeklyPulse] Pulse saved as {pulse_id} — "
+        f"{len(pulse_output.get('insights', []))} insights, "
+        f"critique={'PASS' if critique_pass else 'FAIL'}, "
+        f"{len(signals_used)} signals"
+    )
 
     return {
         "pulse": pulse_output,

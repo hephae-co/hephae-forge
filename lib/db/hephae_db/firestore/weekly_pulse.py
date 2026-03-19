@@ -53,6 +53,7 @@ async def save_weekly_pulse(
     pulse: dict[str, Any],
     signals_used: list[str] | None = None,
     diagnostics: dict[str, Any] | None = None,
+    pipeline_details: dict[str, Any] | None = None,
 ) -> str:
     """Save a weekly pulse briefing to Firestore.
 
@@ -73,6 +74,8 @@ async def save_weekly_pulse(
         "createdAt": now,
         "updatedAt": now,
     }
+    if pipeline_details:
+        data["pipelineDetails"] = pipeline_details
     await asyncio.to_thread(doc_ref.set, data)
     logger.info(f"[WeeklyPulse] Saved pulse {doc_id}")
     return doc_id

@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     # Monitoring
     MONITOR_NOTIFY_EMAILS: str = os.getenv("MONITOR_NOTIFY_EMAILS", "")
 
+    # Anthropic (dual-model synthesis)
+    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+
     # Tools
     CRAWL4AI_URL: str = os.getenv("CRAWL4AI_URL", "")
 

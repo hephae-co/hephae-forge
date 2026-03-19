@@ -16,6 +16,9 @@ class AgentModels:
     # Primary: default for all agents (+ thinking presets for complex analysis)
     PRIMARY_MODEL = "gemini-3.1-flash-lite-preview"
 
+    # Synthesis: higher-quality model for final synthesis stage
+    SYNTHESIS_MODEL = "gemini-3-flash-preview"
+
     # Fallback: auto-fallback on 429/503/529 (sparingly)
     FALLBACK_MODEL = "gemini-3-flash-preview"
 

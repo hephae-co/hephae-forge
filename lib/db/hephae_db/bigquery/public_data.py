@@ -67,13 +67,44 @@ class ZipGeography:
 
 
 async def resolve_zip_geography(zip_code: str) -> ZipGeography | None:
-    """Resolve a zip code to its geographic context via BQ utility_us.
+    """Resolve a zip code to its geographic context.
+
+    Uses Zippopotam (USPS-authoritative city names) for city/state, and BQ
+    utility_us for lat/lon/county. The BQ table sometimes returns the wrong
+    city for multi-city zip codes (e.g., 07110 → Clifton instead of Nutley).
 
     Returns ZipGeography with lat/lon, city, state, county. Cached in-memory.
     """
     if zip_code in _geo_cache:
         return _geo_cache[zip_code]
 
+    city = ""
+    state_code = ""
+    state_name = ""
+    latitude = 0.0
+    longitude = 0.0
+    county = ""
+    state_fips = ""
+
+    # 1. Zippopotam API (USPS-authoritative city name)
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(f"https://api.zippopotam.us/us/{zip_code}")
+            if resp.status_code == 200:
+                zdata = resp.json()
+                places = zdata.get("places", [])
+                if places:
+                    city = places[0].get("place name", "")
+                    state_code = places[0].get("state abbreviation", "")
+                    state_name = places[0].get("state", "")
+                    latitude = float(places[0].get("latitude", 0))
+                    longitude = float(places[0].get("longitude", 0))
+                    logger.info(f"[GEO:Zippo] {zip_code} → {city}, {state_code} ({latitude:.4f}, {longitude:.4f})")
+    except Exception as e:
+        logger.warning(f"[GEO:Zippo] Zippopotam fallback failed for {zip_code}: {e}")
+
+    # 2. BQ utility_us for county + higher-precision lat/lon
     try:
         rows = await _run_query(
             """
@@ -86,29 +117,40 @@ async def resolve_zip_geography(zip_code: str) -> ZipGeography | None:
             params=[bigquery.ScalarQueryParameter("zipCode", "STRING", zip_code)],
         )
 
-        if not rows:
-            logger.warning(f"[BQ:GEO] No geography found for zip {zip_code}")
-            _geo_cache[zip_code] = None
-            return None
-
-        row = rows[0]
-        geo = ZipGeography(
-            zip_code=zip_code,
-            latitude=row.get("latitude", 0.0),
-            longitude=row.get("longitude", 0.0),
-            city=row.get("city", ""),
-            state_code=row.get("state_code", ""),
-            state_name=row.get("state_name", ""),
-            state_fips=row.get("state_fips", ""),
-            county=row.get("county", ""),
-        )
-        _geo_cache[zip_code] = geo
-        logger.info(f"[BQ:GEO] Resolved {zip_code} → {geo.city}, {geo.state_code} ({geo.county} County)")
-        return geo
-
+        if rows:
+            row = rows[0]
+            # BQ lat/lon is typically more precise
+            if row.get("latitude"):
+                latitude = row["latitude"]
+                longitude = row["longitude"]
+            county = row.get("county", "")
+            state_fips = row.get("state_fips", "")
+            # Only use BQ city if Zippopotam didn't give us one
+            if not city:
+                city = row.get("city", "")
+                state_code = row.get("state_code", "")
+                state_name = row.get("state_name", "")
     except Exception as e:
-        logger.error(f"[BQ:GEO] Geography resolution failed for {zip_code}: {e}")
+        logger.warning(f"[GEO:BQ] BQ geography query failed for {zip_code}: {e}")
+
+    if not city:
+        logger.warning(f"[BQ:GEO] No geography found for zip {zip_code}")
+        _geo_cache[zip_code] = None
         return None
+
+    geo = ZipGeography(
+        zip_code=zip_code,
+        latitude=latitude,
+        longitude=longitude,
+        city=city,
+        state_code=state_code,
+        state_name=state_name,
+        state_fips=state_fips,
+        county=county,
+    )
+    _geo_cache[zip_code] = geo
+    logger.info(f"[BQ:GEO] Resolved {zip_code} → {geo.city}, {geo.state_code} ({geo.county} County)")
+    return geo
 
 
 async def query_zips_in_county(county: str, state: str) -> list[str]:

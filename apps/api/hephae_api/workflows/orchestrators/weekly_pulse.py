@@ -240,9 +240,29 @@ async def generate_pulse(
         f"{len(signals_used)} signals"
     )
 
+    # 8. Parse domain expert reports from state (strings from output_key)
+    def _parse_state_text(key: str) -> str:
+        val = final_state.get(key, "")
+        if isinstance(val, dict):
+            return json.dumps(val, default=str)
+        return str(val) if val else ""
+
+    pipeline_details = {
+        "macroReport": _parse_state_text("macroReport"),
+        "localReport": _parse_state_text("localReport"),
+        "trendNarrative": _parse_state_text("trendNarrative"),
+        "socialPulse": _parse_state_text("socialPulse"),
+        "localCatalysts": _parse_state_text("localCatalysts"),
+        "preComputedImpact": pre_computed,
+        "matchedPlaybooks": matched_playbooks,
+        "critiqueResult": critique_result if isinstance(critique_result, dict) else {},
+        "rawSignals": {k: _truncate(v, 2000) for k, v in raw_signals.items() if v},
+    }
+
     return {
         "pulse": pulse_output,
         "pulseId": pulse_id,
         "signalsUsed": signals_used,
         "diagnostics": diagnostics,
+        "pipelineDetails": pipeline_details,
     }

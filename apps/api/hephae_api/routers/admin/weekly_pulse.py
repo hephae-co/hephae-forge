@@ -73,6 +73,7 @@ async def _run_pulse_job(job_id: str, zip_code: str, business_type: str, week_of
                 "headline": result.get("pulse", {}).get("headline", ""),
                 "diagnostics": result.get("diagnostics", {}),
             },
+            "pipelineDetails": result.get("pipelineDetails", {}),
         })
         logger.info(f"[PulseJob] {job_id} completed — {result['pulseId']}")
 
@@ -146,6 +147,7 @@ async def get_pulse_job_status(job_id: str):
                 response["signalsUsed"] = job["result"].get("signalsUsed", [])
                 response["diagnostics"] = job["result"].get("diagnostics", {})
         response["result"] = job["result"]
+        response["pipelineDetails"] = job.get("pipelineDetails", {})
 
     if job["status"] == "FAILED":
         response["error"] = job.get("error", "Unknown error")

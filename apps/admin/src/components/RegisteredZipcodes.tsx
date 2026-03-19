@@ -12,6 +12,9 @@ import {
   Zap,
   CheckCircle2,
   AlertTriangle,
+  Clock,
+  Calendar,
+  XCircle,
 } from 'lucide-react';
 
 // ── Types ───────────────────────────────────────────────────────────────
@@ -29,6 +32,24 @@ interface RegisteredZipcode {
   lastPulseId: string | null;
   pulseCount: number;
   nextScheduledAt: string | null;
+}
+
+interface CronRun {
+  jobId: string;
+  zipCode: string;
+  businessType: string;
+  status: string;
+  createdAt: string | null;
+  completedAt: string | null;
+  error: string | null;
+}
+
+interface CronStatus {
+  activeZipcodes: number;
+  pausedZipcodes: number;
+  nextRunAt: string;
+  schedule: string;
+  recentRuns: CronRun[];
 }
 
 const BUSINESS_TYPES = [
@@ -66,6 +87,10 @@ export default function RegisteredZipcodes() {
   // Action loading states
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
+  // Cron status
+  const [cronStatus, setCronStatus] = useState<CronStatus | null>(null);
+  const [cronLoading, setCronLoading] = useState(true);
+
   const fetchZipcodes = useCallback(async () => {
     try {
       const res = await fetch('/api/registered-zipcodes');
@@ -73,7 +98,14 @@ export default function RegisteredZipcodes() {
     } catch { /* ignore */ } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchZipcodes(); }, [fetchZipcodes]);
+  const fetchCronStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/registered-zipcodes/cron-status');
+      if (res.ok) setCronStatus(await res.json());
+    } catch { /* ignore */ } finally { setCronLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchZipcodes(); fetchCronStatus(); }, [fetchZipcodes, fetchCronStatus]);
 
   const handleRegister = async () => {
     if (!zipInput.match(/^\d{5}$/)) {
@@ -349,6 +381,107 @@ export default function RegisteredZipcodes() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+
+      {/* Cron Status */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-gray-400" />
+            Weekly Cron Status
+          </h3>
+          <button
+            onClick={() => { setCronLoading(true); fetchCronStatus(); }}
+            className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Refresh
+          </button>
+        </div>
+
+        {cronLoading ? (
+          <div className="p-10 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 text-gray-300 animate-spin" />
+          </div>
+        ) : cronStatus ? (
+          <div className="p-6 space-y-5">
+            {/* Schedule overview */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
+                <p className="text-xs text-gray-400">Schedule</p>
+                <p className="text-sm font-semibold text-gray-800">{cronStatus.schedule}</p>
+              </div>
+              <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
+                <p className="text-xs text-gray-400">Next Run</p>
+                <p className="text-sm font-semibold text-gray-800">
+                  {new Date(cronStatus.nextRunAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  {' '}
+                  {new Date(cronStatus.nextRunAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                </p>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3">
+                <p className="text-xs text-emerald-500">Active in Cron</p>
+                <p className="text-sm font-semibold text-emerald-800">{cronStatus.activeZipcodes} zipcodes</p>
+              </div>
+              <div className="bg-amber-50 border border-amber-100 rounded-lg p-3">
+                <p className="text-xs text-amber-500">Paused</p>
+                <p className="text-sm font-semibold text-amber-800">{cronStatus.pausedZipcodes} zipcodes</p>
+              </div>
+            </div>
+
+            {/* Recent cron runs */}
+            {cronStatus.recentRuns.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Recent Cron Runs</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                        <th className="text-left px-4 py-2">Zip / Type</th>
+                        <th className="text-center px-4 py-2">Status</th>
+                        <th className="text-left px-4 py-2">Started</th>
+                        <th className="text-left px-4 py-2">Completed</th>
+                        <th className="text-left px-4 py-2">Job ID</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {cronStatus.recentRuns.map((run, i) => (
+                        <tr key={i} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-2">
+                            <span className="text-xs font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">{run.zipCode}</span>
+                            <span className="text-xs text-gray-400 ml-1">{run.businessType}</span>
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            {run.status === 'COMPLETED' ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium">Completed</span>
+                            ) : run.status === 'FAILED' ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-700 font-medium" title={run.error || ''}>Failed</span>
+                            ) : run.status === 'RUNNING' ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium">Running</span>
+                            ) : (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">{run.status}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-xs text-gray-500">{run.createdAt ? relativeTime(run.createdAt) : '-'}</td>
+                          <td className="px-4 py-2 text-xs text-gray-500">{run.completedAt ? relativeTime(run.completedAt) : '-'}</td>
+                          <td className="px-4 py-2 text-xs font-mono text-gray-400 truncate max-w-[120px]">{run.jobId}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {cronStatus.recentRuns.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-4">No cron runs yet. The first run will happen at the next scheduled time.</p>
+            )}
+          </div>
+        ) : (
+          <div className="p-10 text-center text-gray-400 text-sm">
+            Could not load cron status.
           </div>
         )}
       </div>

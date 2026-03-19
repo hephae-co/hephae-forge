@@ -143,3 +143,45 @@ async def resume_zipcode(zip_code: str, business_type: str):
 
     await db_resume(zip_code, business_type)
     return {"success": True}
+
+
+@router.get("/cron-status")
+async def get_cron_status():
+    """Get weekly pulse cron status — active/paused counts, next run, recent jobs."""
+    from datetime import datetime, timedelta
+    from hephae_db.firestore.registered_zipcodes import (
+        list_registered_zipcodes as db_list,
+    )
+    from hephae_db.firestore.pulse_jobs import list_pulse_jobs
+
+    active = await db_list(status="active")
+    paused = await db_list(status="paused")
+
+    recent_jobs = await list_pulse_jobs(limit=20)
+    cron_jobs = [j for j in recent_jobs if not j.get("testMode")]
+
+    # Next Monday 6am ET (11:00 UTC)
+    now = datetime.utcnow()
+    days_until_monday = (7 - now.weekday()) % 7 or 7
+    next_monday = (now + timedelta(days=days_until_monday)).replace(
+        hour=11, minute=0, second=0, microsecond=0,
+    )
+
+    return {
+        "activeZipcodes": len(active),
+        "pausedZipcodes": len(paused),
+        "nextRunAt": next_monday.isoformat() + "Z",
+        "schedule": "Every Monday 6:00 AM ET",
+        "recentRuns": [
+            {
+                "jobId": j.get("id", ""),
+                "zipCode": j.get("zipCode", ""),
+                "businessType": j.get("businessType", ""),
+                "status": j.get("status", ""),
+                "createdAt": j.get("createdAt"),
+                "completedAt": j.get("completedAt"),
+                "error": j.get("error"),
+            }
+            for j in cron_jobs[:10]
+        ],
+    }

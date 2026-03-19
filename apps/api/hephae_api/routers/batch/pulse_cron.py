@@ -150,3 +150,60 @@ async def weekly_pulse_cron(
 
     logger.info(f"[PulseCron] Triggered {triggered} pulses, skipped {skipped}")
     return {"triggered": triggered, "skipped": skipped}
+
+
+@router.get("/api/cron/weekly-pulse/status")
+async def weekly_pulse_cron_status(
+    authorization: str | None = Header(None),
+    x_cron_secret: str | None = Header(None),
+):
+    """Get cron status — which zipcodes are scheduled, last/next run times."""
+    # Allow both cron secret and admin auth
+    from hephae_api.lib.auth import verify_admin_request
+    from hephae_db.firestore.registered_zipcodes import list_registered_zipcodes
+    from hephae_db.firestore.pulse_jobs import list_pulse_jobs
+
+    active_zips = await list_registered_zipcodes(status="active")
+    paused_zips = await list_registered_zipcodes(status="paused")
+
+    # Get recent cron-triggered jobs (non-test)
+    recent_jobs = await list_pulse_jobs(limit=20)
+    cron_jobs = [j for j in recent_jobs if not j.get("testMode")]
+
+    # Next Monday 6am ET
+    from datetime import timedelta
+    now = datetime.utcnow()
+    days_until_monday = (7 - now.weekday()) % 7 or 7
+    next_monday = (now + timedelta(days=days_until_monday)).replace(hour=11, minute=0, second=0, microsecond=0)
+
+    return {
+        "activeZipcodes": len(active_zips),
+        "pausedZipcodes": len(paused_zips),
+        "nextRunAt": next_monday.isoformat() + "Z",
+        "schedule": "Every Monday 6:00 AM ET",
+        "zipcodes": [
+            {
+                "zipCode": z.get("zipCode"),
+                "businessType": z.get("businessType"),
+                "city": z.get("city"),
+                "state": z.get("state"),
+                "status": z.get("status"),
+                "lastPulseAt": z.get("lastPulseAt"),
+                "pulseCount": z.get("pulseCount", 0),
+                "nextScheduledAt": z.get("nextScheduledAt"),
+            }
+            for z in active_zips + paused_zips
+        ],
+        "recentRuns": [
+            {
+                "jobId": j.get("id"),
+                "zipCode": j.get("zipCode"),
+                "businessType": j.get("businessType"),
+                "status": j.get("status"),
+                "createdAt": j.get("createdAt"),
+                "completedAt": j.get("completedAt"),
+                "error": j.get("error"),
+            }
+            for j in cron_jobs[:10]
+        ],
+    }

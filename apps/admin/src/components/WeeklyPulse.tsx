@@ -599,7 +599,7 @@ export default function WeeklyPulse() {
       const { jobId } = await res.json();
       setGenStatus('Pipeline running...');
 
-      for (let i = 0; i < 60; i++) {
+      for (let i = 0; i < 120; i++) {
         await new Promise((r) => setTimeout(r, 3000));
         const pollRes = await fetch(`/api/weekly-pulse/jobs/${jobId}`);
         if (!pollRes.ok) continue;
@@ -627,7 +627,7 @@ export default function WeeklyPulse() {
         }
         if (job.status === 'FAILED') throw new Error(job.error || 'Generation failed');
       }
-      throw new Error('Timed out after 3 minutes');
+      throw new Error('Timed out after 6 minutes');
     } catch (e: any) {
       setGenError(e.message);
       setGenStatus('');

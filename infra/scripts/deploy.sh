@@ -143,8 +143,8 @@ gcloud run deploy "$API_SERVICE" \
   --region "$REGION" \
   --platform managed \
   --port 8080 \
-  --memory 512Mi \
-  --cpu 1 \
+  --memory 1Gi \
+  --cpu 2 \
   --timeout 300 \
   --concurrency 80 \
   --min-instances 1 \

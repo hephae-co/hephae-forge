@@ -136,15 +136,30 @@ def verify_firebase_token(
 
 def verify_admin_request(
     x_firebase_token: Optional[str] = Header(None),
+    x_api_key: Optional[str] = Header(None),
 ) -> dict:
-    """Verify Firebase token AND check email against admin allowlist.
+    """Verify admin access via Firebase token OR API key.
 
-    Returns user dict. Raises 401 if token invalid, 403 if not allowlisted.
+    Accepts either:
+    1. X-Firebase-Token header (Firebase auth + admin allowlist check)
+    2. X-API-Key header matching FORGE_V1_API_KEY (programmatic/CI access)
+
+    Returns user dict. Raises 401 if neither auth method succeeds.
     """
+    # Try API key first (programmatic access — CI, scripts, tests)
+    if x_api_key:
+        if FORGE_V1_API_KEY and hmac.compare_digest(x_api_key, FORGE_V1_API_KEY):
+            return {"uid": "api-key", "email": "api@hephae.co", "name": "API Key"}
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    # Fall back to Firebase token (browser/UI access)
+    if not x_firebase_token:
+        raise HTTPException(status_code=401, detail="Missing Firebase token or API key")
+
     user = verify_firebase_token(x_firebase_token)
 
     if not ADMIN_EMAIL_ALLOWLIST:
-        return user  # No allowlist configured — allow all authenticated users
+        return user
 
     if user.get("email") not in ADMIN_EMAIL_ALLOWLIST:
         raise HTTPException(

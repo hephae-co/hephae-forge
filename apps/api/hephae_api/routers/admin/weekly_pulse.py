@@ -99,7 +99,12 @@ async def generate_weekly_pulse(req: GeneratePulseRequest):
 
     from hephae_db.firestore.pulse_jobs import create_pulse_job
 
-    week_of = req.weekOf or datetime.utcnow().strftime("%Y-%m-%d")
+    # Use ISO week format for consistent dedup across cron + manual runs
+    if req.weekOf:
+        week_of = req.weekOf
+    else:
+        now = datetime.utcnow()
+        week_of = f"{now.year}-W{now.isocalendar()[1]:02d}"
 
     job_id = await create_pulse_job(
         zip_code=req.zipCode,

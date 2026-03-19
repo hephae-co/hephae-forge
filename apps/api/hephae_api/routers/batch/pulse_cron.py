@@ -25,12 +25,10 @@ def _slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower().strip()).strip("-")
 
 
-def _current_week_prefix(zip_code: str, business_type: str) -> str:
-    """Generate the doc ID prefix for the current week to check for existing pulses."""
+def _current_iso_week() -> str:
+    """Return current ISO week string like '2026-W13'."""
     now = datetime.utcnow()
-    # ISO week: Monday-based
-    iso_year, iso_week, _ = now.isocalendar()
-    return f"{zip_code}-{_slugify(business_type)}-{iso_year}W{iso_week:02d}"
+    return f"{now.year}-W{now.isocalendar()[1]:02d}"
 
 
 async def _run_single_pulse(
@@ -117,7 +115,9 @@ async def weekly_pulse_cron(
         logger.info("[PulseCron] No active registered zipcodes")
         return {"triggered": 0, "skipped": 0}
 
-    week_of = datetime.utcnow().strftime("%Y-%m-%d")
+    # Use ISO week for consistent dedup — same format as generate_pulse()
+    now = datetime.utcnow()
+    week_of = f"{now.year}-W{now.isocalendar()[1]:02d}"
     triggered = 0
     skipped = 0
 

@@ -27,6 +27,7 @@ class InsightCritique(_NullSafeModel):
     obviousness_score: int = 50  # 0-100, higher = more obvious (bad)
     actionability_score: int = 50  # 0-100, higher = more actionable (good)
     cross_signal_score: int = 50  # 0-100, higher = better reasoning (good)
+    local_briefing_score: int = 50  # 0-100, higher = better local content
     verdict: Literal["PASS", "REWRITE", "DROP"] = "PASS"
     rewrite_instruction: str = ""
 
@@ -35,5 +36,6 @@ class CritiqueResult(_NullSafeModel):
     """Output from PulseCritiqueAgent — evaluation of all insights."""
 
     overall_pass: bool = False
+    local_briefing_pass: bool = True
     insights: list[InsightCritique] = Field(default_factory=list)
     summary: str = ""

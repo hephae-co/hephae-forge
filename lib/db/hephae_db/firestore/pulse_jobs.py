@@ -25,7 +25,7 @@ JobStatus = Literal["QUEUED", "RUNNING", "COMPLETED", "FAILED"]
 
 def _serialize_ts(data: dict[str, Any]) -> dict[str, Any]:
     """Convert Firestore timestamps to ISO strings for JSON serialization."""
-    for field in ("createdAt", "startedAt", "completedAt"):
+    for field in ("createdAt", "startedAt", "completedAt", "timeoutAt"):
         val = data.get(field)
         if val and hasattr(val, "seconds"):
             data[field] = datetime.utcfromtimestamp(val.seconds + val.nanoseconds / 1e9).isoformat()
@@ -76,7 +76,7 @@ async def update_pulse_job(
 
 
 async def get_pulse_job(job_id: str) -> dict[str, Any] | None:
-    """Get a pulse job by ID."""
+    """Get a pulse job by ID. Auto-fails RUNNING jobs that have timed out."""
     db = get_db()
     doc = await asyncio.to_thread(
         db.collection(JOBS_COLLECTION).document(job_id).get
@@ -85,6 +85,30 @@ async def get_pulse_job(job_id: str) -> dict[str, Any] | None:
         return None
     data = doc.to_dict()
     data["id"] = doc.id
+
+    # Check for timeout on RUNNING jobs
+    if data.get("status") == "RUNNING" and data.get("timeoutAt"):
+        timeout_at = data["timeoutAt"]
+        # Handle both Firestore timestamp and datetime objects
+        if hasattr(timeout_at, "seconds"):
+            timeout_dt = datetime.utcfromtimestamp(timeout_at.seconds + timeout_at.nanoseconds / 1e9)
+        elif hasattr(timeout_at, "timestamp"):
+            timeout_dt = timeout_at
+        else:
+            timeout_dt = None
+
+        if timeout_dt and datetime.utcnow() > timeout_dt:
+            logger.warning(f"[PulseJobs] Job {job_id} timed out — marking as FAILED")
+            updates = {
+                "status": "FAILED",
+                "completedAt": datetime.utcnow(),
+                "error": "Pipeline timeout (exceeded 15 minutes)",
+            }
+            await asyncio.to_thread(
+                db.collection(JOBS_COLLECTION).document(job_id).update, updates
+            )
+            data.update(updates)
+
     return _serialize_ts(data)
 
 

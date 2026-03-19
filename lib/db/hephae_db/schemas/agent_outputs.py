@@ -877,6 +877,34 @@ class PulseQuickStats(_NullSafeModel):
     priceAlerts: int = 0
 
 
+class LocalEvent(_NullSafeModel):
+    """A local event happening this week that could affect foot traffic."""
+
+    what: str = ""
+    where: str = ""
+    when: str = ""
+    businessImpact: str = ""
+    source: str = ""
+
+
+class CompetitorNote(_NullSafeModel):
+    """An observation about a named local competitor."""
+
+    business: str = ""
+    observation: str = ""
+    implication: str = ""
+    source: str = ""
+
+
+class LocalBriefing(_NullSafeModel):
+    """Structured local context section — events, competitors, community."""
+
+    thisWeekInTown: list[LocalEvent] = Field(default_factory=list)
+    competitorWatch: list[CompetitorNote] = Field(default_factory=list)
+    communityBuzz: str = ""
+    governmentWatch: str = ""
+
+
 class WeeklyPulseOutput(_NullSafeModel):
     """Output from WeeklyPulseAgent — insight-card-based briefing."""
 
@@ -884,5 +912,6 @@ class WeeklyPulseOutput(_NullSafeModel):
     businessType: str
     weekOf: str
     headline: str
+    localBriefing: LocalBriefing = Field(default_factory=LocalBriefing)
     insights: list[PulseInsight] = Field(default_factory=list)
     quickStats: PulseQuickStats = Field(default_factory=PulseQuickStats)

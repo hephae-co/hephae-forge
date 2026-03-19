@@ -160,8 +160,24 @@ Current date: {datetime.now().strftime('%Y-%m-%d')}
 LOCAL SIGNALS:
 {signal_text}
 
-Write a structured local report (3-5 paragraphs). Be specific about timing.
-Do NOT make up data — if a source is missing, skip that section."""
+Write a structured local report. Be specific about timing.
+Do NOT make up data — if a source is missing, skip that section.
+
+Structure your report with these CLEARLY LABELED sections:
+## EVENTS THIS WEEK
+List each event with: name, venue, address (if known), date/time, relevance to {business_type}
+
+## COMPETITOR OBSERVATIONS
+List each named business with what they're doing (new menu, promotion, event, closure, opening)
+
+## COMMUNITY SENTIMENT
+What are locals saying on social media, Patch, Reddit?
+
+## GOVERNMENT & INFRASTRUCTURE
+Any road work, permits, zoning changes, planning board items?
+
+## WEATHER IMPACT
+This week's forecast vs historical baseline, impact on foot traffic"""
 
 
 # ---------------------------------------------------------------------------

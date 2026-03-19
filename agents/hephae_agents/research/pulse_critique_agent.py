@@ -45,8 +45,29 @@ def _critique_instruction(ctx) -> str:
         else:
             pulse_text = json.dumps(pulse_output, default=str, indent=2)
 
+    # Also pass local report and social pulse for cross-checking
+    local_report = state.get("localReport", "")
+    social_pulse = state.get("socialPulse", "")
+    local_context_text = ""
+    if local_report:
+        lr = local_report if isinstance(local_report, str) else json.dumps(local_report, default=str)
+        local_context_text += f"\n\n=== LOCAL SCOUT REPORT (for cross-check) ===\n{lr[:2000]}"
+    if social_pulse:
+        sp = social_pulse if isinstance(social_pulse, str) else json.dumps(social_pulse, default=str)
+        local_context_text += f"\n\n=== SOCIAL PULSE (for cross-check) ===\n{sp[:2000]}"
+
     return f"""You are a restaurant owner with 15 years experience reviewing an intelligence briefing someone wrote for you. You paid good money for this and you're pissed if it's vague.
 
+## Pass A: Local Briefing Quality
+Check the localBriefing section:
+- thisWeekInTown: Are events specific? Must have venue name + date. Score 0-100 (higher = better). THRESHOLD: >= 50 if local data exists in the reports.
+- competitorWatch: Are businesses NAMED? (not "local competitors"). THRESHOLD: >= 50 if competitor data exists.
+- communityBuzz: Based on actual social data? (not generic filler). THRESHOLD: >= 40.
+- If the Local Scout Report or Social Pulse contains specific events/businesses but localBriefing is empty, set overall_pass = false with instruction to populate it.
+
+Include a "local_briefing_score" (0-100) in your output. If < 50 and local data was available, set overall_pass = false and local_briefing_pass = false.
+
+## Pass B: Insight Quality
 Score each insight on THREE tests. Be brutal — flowery business-school language is an automatic fail.
 
 ## Test 1: "Do I Already Know This?" (Obviousness)
@@ -85,7 +106,8 @@ Score 0-100, HIGHER = MORE DATA = BETTER.
 - If an insight has zero specific numbers from the data → automatic DROP
 - If an insight reads like a business school essay → automatic REWRITE with instruction to strip the fluff
 
-Return ONLY the structured JSON matching the CritiqueResult schema."""
+Return ONLY the structured JSON matching the CritiqueResult schema.
+{local_context_text}"""
 
 
 # ---------------------------------------------------------------------------

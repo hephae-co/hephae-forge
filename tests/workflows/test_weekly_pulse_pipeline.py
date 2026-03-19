@@ -39,6 +39,11 @@ class TestPulseOutputSchemas:
         )
         assert output.zipCode == "07110"
         assert output.headline == "Delivery adoption hits tipping point"
+        assert output.localBriefing is not None
+        assert output.localBriefing.thisWeekInTown == []
+        assert output.localBriefing.competitorWatch == []
+        assert output.localBriefing.communityBuzz == ""
+        assert output.localBriefing.governmentWatch == ""
 
     def test_weekly_pulse_output_null_safety(self):
         """Gemini sometimes returns null for non-nullable fields."""
@@ -51,9 +56,11 @@ class TestPulseOutputSchemas:
             headline="Test",
             insights=None,  # Gemini might return null
             quickStats=None,  # Gemini might return null
+            localBriefing=None,  # Gemini might return null
         )
         assert output.insights == []
         assert output.quickStats is not None
+        assert output.localBriefing is not None
 
     def test_pulse_insight_with_signal_sources(self):
         from hephae_db.schemas import PulseInsight
@@ -144,6 +151,7 @@ class TestPulseOutputSchemas:
         assert "zipCode" in schema["properties"]
         assert "insights" in schema["properties"]
         assert "headline" in schema["properties"]
+        assert "localBriefing" in schema["properties"]
 
     def test_critique_result_json_schema(self):
         from hephae_db.schemas import CritiqueResult
@@ -152,6 +160,180 @@ class TestPulseOutputSchemas:
         assert "properties" in schema
         assert "overall_pass" in schema["properties"]
         assert "insights" in schema["properties"]
+
+
+class TestLocalBriefingSchemas:
+    """LocalBriefing, LocalEvent, CompetitorNote schema validation."""
+
+    def test_local_event_defaults(self):
+        from hephae_db.schemas import LocalEvent
+
+        evt = LocalEvent()
+        assert evt.what == ""
+        assert evt.where == ""
+        assert evt.when == ""
+        assert evt.businessImpact == ""
+        assert evt.source == ""
+
+    def test_local_event_populated(self):
+        from hephae_db.schemas import LocalEvent
+
+        evt = LocalEvent(
+            what="Italian Language Exchange",
+            where="246 Washington Ave",
+            when="Saturday March 21",
+            businessImpact="Foot traffic boost",
+            source="Social Pulse",
+        )
+        assert evt.what == "Italian Language Exchange"
+        assert evt.source == "Social Pulse"
+
+    def test_local_event_null_safety(self):
+        from hephae_db.schemas import LocalEvent
+
+        evt = LocalEvent(what=None, where=None, when=None, businessImpact=None, source=None)
+        assert evt.what == ""
+        assert evt.where == ""
+
+    def test_competitor_note_defaults(self):
+        from hephae_db.schemas import CompetitorNote
+
+        note = CompetitorNote()
+        assert note.business == ""
+        assert note.observation == ""
+        assert note.implication == ""
+        assert note.source == ""
+
+    def test_competitor_note_populated(self):
+        from hephae_db.schemas import CompetitorNote
+
+        note = CompetitorNote(
+            business="Luna Wood Fire Tavern",
+            observation="Shifting to spring events",
+            implication="Add a catering page",
+            source="Social Pulse",
+        )
+        assert note.business == "Luna Wood Fire Tavern"
+
+    def test_competitor_note_null_safety(self):
+        from hephae_db.schemas import CompetitorNote
+
+        note = CompetitorNote(business=None, observation=None, implication=None, source=None)
+        assert note.business == ""
+
+    def test_local_briefing_defaults(self):
+        from hephae_db.schemas import LocalBriefing
+
+        lb = LocalBriefing()
+        assert lb.thisWeekInTown == []
+        assert lb.competitorWatch == []
+        assert lb.communityBuzz == ""
+        assert lb.governmentWatch == ""
+
+    def test_local_briefing_null_safety(self):
+        from hephae_db.schemas import LocalBriefing
+
+        lb = LocalBriefing(thisWeekInTown=None, competitorWatch=None, communityBuzz=None, governmentWatch=None)
+        assert lb.thisWeekInTown == []
+        assert lb.competitorWatch == []
+        assert lb.communityBuzz == ""
+        assert lb.governmentWatch == ""
+
+    def test_local_briefing_with_events(self):
+        from hephae_db.schemas import LocalBriefing, LocalEvent, CompetitorNote
+
+        lb = LocalBriefing(
+            thisWeekInTown=[
+                LocalEvent(what="Farmers Market", where="Town Square", when="Saturday"),
+            ],
+            competitorWatch=[
+                CompetitorNote(business="Cafe 101", observation="New menu launch"),
+            ],
+            communityBuzz="Locals excited about spring festival",
+            governmentWatch="No changes this week",
+        )
+        assert len(lb.thisWeekInTown) == 1
+        assert lb.thisWeekInTown[0].what == "Farmers Market"
+        assert len(lb.competitorWatch) == 1
+        assert lb.competitorWatch[0].business == "Cafe 101"
+
+    def test_weekly_pulse_output_with_local_briefing(self):
+        from hephae_db.schemas import WeeklyPulseOutput, LocalBriefing, LocalEvent
+
+        output = WeeklyPulseOutput(
+            zipCode="07110",
+            businessType="restaurants",
+            weekOf="2026-W12",
+            headline="Test",
+            localBriefing=LocalBriefing(
+                thisWeekInTown=[LocalEvent(what="Test Event")],
+                communityBuzz="Test buzz",
+            ),
+        )
+        assert len(output.localBriefing.thisWeekInTown) == 1
+        assert output.localBriefing.communityBuzz == "Test buzz"
+
+    def test_local_briefing_json_schema(self):
+        from hephae_db.schemas import LocalBriefing
+
+        schema = LocalBriefing.model_json_schema()
+        assert "properties" in schema
+        assert "thisWeekInTown" in schema["properties"]
+        assert "competitorWatch" in schema["properties"]
+        assert "communityBuzz" in schema["properties"]
+        assert "governmentWatch" in schema["properties"]
+
+
+class TestCritiqueLocalFields:
+    """InsightCritique.local_briefing_score and CritiqueResult.local_briefing_pass."""
+
+    def test_insight_critique_local_briefing_score_default(self):
+        from hephae_db.schemas import InsightCritique
+
+        ic = InsightCritique()
+        assert ic.local_briefing_score == 50
+
+    def test_insight_critique_local_briefing_score_set(self):
+        from hephae_db.schemas import InsightCritique
+
+        ic = InsightCritique(local_briefing_score=85)
+        assert ic.local_briefing_score == 85
+
+    def test_insight_critique_local_briefing_score_null_safety(self):
+        from hephae_db.schemas import InsightCritique
+
+        ic = InsightCritique(local_briefing_score=None)
+        assert ic.local_briefing_score == 50
+
+    def test_critique_result_local_briefing_pass_default(self):
+        from hephae_db.schemas import CritiqueResult
+
+        cr = CritiqueResult()
+        assert cr.local_briefing_pass is True
+
+    def test_critique_result_local_briefing_pass_false(self):
+        from hephae_db.schemas import CritiqueResult
+
+        cr = CritiqueResult(local_briefing_pass=False)
+        assert cr.local_briefing_pass is False
+
+    def test_critique_result_local_briefing_pass_null_safety(self):
+        from hephae_db.schemas import CritiqueResult
+
+        cr = CritiqueResult(local_briefing_pass=None)
+        assert cr.local_briefing_pass is True  # default
+
+    def test_critique_result_json_schema_includes_local_fields(self):
+        from hephae_db.schemas import CritiqueResult
+
+        schema = CritiqueResult.model_json_schema()
+        assert "local_briefing_pass" in schema["properties"]
+
+    def test_insight_critique_json_schema_includes_local_score(self):
+        from hephae_db.schemas import InsightCritique
+
+        schema = InsightCritique.model_json_schema()
+        assert "local_briefing_score" in schema["properties"]
 
 
 class TestImpactMultipliers:

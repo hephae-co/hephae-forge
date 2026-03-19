@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -55,6 +55,7 @@ async def _run_pulse_job(job_id: str, zip_code: str, business_type: str, week_of
         await update_pulse_job(job_id, {
             "status": "RUNNING",
             "startedAt": datetime.utcnow(),
+            "timeoutAt": datetime.utcnow() + timedelta(minutes=15),
         })
 
         result = await generate_pulse(

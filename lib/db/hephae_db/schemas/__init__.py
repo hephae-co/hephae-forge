@@ -51,6 +51,9 @@ from hephae_db.schemas.agent_outputs import (
     # Weekly Pulse
     PulseInsight,
     PulseQuickStats,
+    LocalEvent,
+    CompetitorNote,
+    LocalBriefing,
     WeeklyPulseOutput,
 )
 
@@ -110,6 +113,9 @@ __all__ = [
     # Weekly Pulse
     "PulseInsight",
     "PulseQuickStats",
+    "LocalEvent",
+    "CompetitorNote",
+    "LocalBriefing",
     "WeeklyPulseOutput",
     # Pulse Critique
     "InsightCritique",

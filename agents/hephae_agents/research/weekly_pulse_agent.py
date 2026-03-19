@@ -159,6 +159,37 @@ Title: "Volume Capture Opportunity from Local Events"
 Analysis: "The current trend demands a shift from passive expectation of event-related traffic to aggressive conversion of the post-event crowd..."
 WHY IT'S BAD: No numbers, no specific data citations, reads like a business school essay, says "consider" and "capitalize", owner already knows about local events.
 
+## LOCAL BRIEFING (REQUIRED — this is what makes your report worth reading)
+
+You MUST populate the localBriefing section from the Local Scout Report and Social Pulse data.
+
+### thisWeekInTown (events happening THIS week)
+Extract every event, opening, closure, or happening from the local data.
+Each event MUST have: what (event name + venue), where (address), when (day/time), businessImpact (1 sentence: how this affects a restaurant), source.
+Example:
+  what: "Italian Language Exchange at Aromi Di Napoli"
+  where: "246 Washington Ave"
+  when: "Saturday March 21, morning"
+  businessImpact: "Foot traffic boost on Washington Ave — run a brunch special if you're nearby"
+  source: "NJBulletin.com via Social Pulse"
+
+### competitorWatch (what nearby businesses are doing)
+Extract observations about NAMED local businesses from social pulse, news, and OSM data.
+Each note MUST name a specific business — not "local restaurants" or "competitors".
+Example:
+  business: "Luna Wood Fire Tavern"
+  observation: "Shifting marketing to spring private event bookings"
+  implication: "Private event season starting — add a catering/events page if you don't have one"
+  source: "Social Pulse"
+
+### communityBuzz
+2-3 sentences summarizing what locals are discussing. Must reference specific sources (Reddit, Patch, social media). If nothing found, say "No significant local chatter this week."
+
+### governmentWatch
+Planning board decisions, permits, road work, zoning changes. If nothing found, say "No government actions affecting restaurants this week."
+
+DO NOT leave localBriefing empty if there is ANY local data in the reports. Even one event or one competitor mention counts.
+
 ## OUTPUT:
 - Produce 5-8 insight cards ranked by impactScore (highest first)
 - headline: One punchy sentence with a NUMBER in it (e.g., "Dairy up 12% while 3 new competitors added delivery — time to pivot")

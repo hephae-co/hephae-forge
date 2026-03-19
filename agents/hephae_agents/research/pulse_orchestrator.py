@@ -4,13 +4,12 @@ ADK agents can only have one parent. Since generate_pulse() may be called
 multiple times in the same process, we use a factory function that creates
 fresh agent instances each invocation.
 
-Stage 3 uses dual-model synthesis: Gemini Flash + Claude run in parallel,
-then a deterministic combiner merges and deduplicates their insights.
+Stage 3 uses dual-model synthesis: Gemini Flash + Claude (via LiteLlm) run
+in parallel, then a deterministic InsightMerger combines their outputs.
 """
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from typing import Any, AsyncGenerator
@@ -25,6 +24,7 @@ from google.adk.agents import (
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event
 from google.adk.events.event_actions import EventActions
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import google_search
 
 from hephae_api.config import AgentModels, ThinkingPresets
@@ -57,56 +57,80 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Stage 3: Dual-Model Synthesis (Gemini Flash + Claude in parallel)
+# Stage 3: InsightMerger — deterministic merge of dual-model outputs
 # ---------------------------------------------------------------------------
 
 
-class DualModelSynthesis(BaseAgent):
-    """Runs Gemini Flash and Claude in parallel, merges best insights.
+class InsightMerger(BaseAgent):
+    """Deterministic merge of Gemini + Claude synthesis outputs.
 
-    Gemini runs as an ADK LlmAgent (structured output via response_schema).
-    Claude runs as a plain async HTTP call (no ADK needed).
-    A deterministic combiner merges insights, deduplicates by title similarity,
-    and keeps the highest-scored version of each.
+    Reads geminiPulseOutput and claudePulseOutput from session state,
+    merges localBriefing + insights, deduplicates, and writes combined
+    result to pulseOutput.
     """
 
-    name: str = "DualModelSynthesis"
-    description: str = "Dual-model synthesis: Gemini Flash + Claude in parallel."
+    name: str = "InsightMerger"
+    description: str = "Merges dual-model synthesis outputs deterministically."
 
     async def _run_async_impl(
         self, ctx: InvocationContext
     ) -> AsyncGenerator[Event, None]:
         state = ctx.session.state
 
-        # Build the prompt context from state (same for both models)
-        context = _synthesis_instruction(ctx)
-        full_prompt = f"{WEEKLY_PULSE_CORE_INSTRUCTION}\n\n{context}"
+        gemini_raw = state.get("geminiPulseOutput", {})
+        claude_raw = state.get("claudePulseOutput", {})
 
-        # Run both models in parallel
-        gemini_task = asyncio.create_task(self._run_gemini(full_prompt, state))
-        claude_task = asyncio.create_task(self._run_claude(full_prompt, state))
+        # Parse if string
+        gemini_output = self._parse_output(gemini_raw)
+        claude_output = self._parse_output(claude_raw)
 
-        gemini_insights, claude_insights = await asyncio.gather(
-            gemini_task, claude_task, return_exceptions=True,
+        # Merge local briefings
+        merged_local = self._merge_local_briefing(
+            gemini_output.get("localBriefing", {}),
+            claude_output.get("localBriefing", {}),
         )
 
-        # Handle errors gracefully
-        if isinstance(gemini_insights, Exception):
-            logger.error(f"[DualSynthesis] Gemini failed: {gemini_insights}")
-            gemini_insights = []
-        if isinstance(claude_insights, Exception):
-            logger.error(f"[DualSynthesis] Claude failed: {claude_insights}")
-            claude_insights = []
+        # Merge insights
+        gemini_insights = gemini_output.get("insights", [])
+        claude_insights = claude_output.get("insights", [])
+        merged_insights = self._merge_insights(gemini_insights, claude_insights)
 
-        # Combine and deduplicate
-        combined = self._merge_insights(
-            gemini_insights or [], claude_insights or [], state,
-        )
+        # Pick best headline (longer, more specific)
+        gemini_headline = gemini_output.get("headline", "")
+        claude_headline = claude_output.get("headline", "")
+        headline = gemini_headline if len(gemini_headline) >= len(claude_headline) else claude_headline
+        if not headline:
+            zip_code = state.get("zipCode", "")
+            business_type = state.get("businessType", "")
+            week_of = state.get("weekOf", "")
+            headline = f"{len(merged_insights)} insights for {zip_code} ({business_type}) — week of {week_of}"
+
+        # Merge quickStats (prefer non-empty values)
+        gemini_qs = gemini_output.get("quickStats", {})
+        claude_qs = claude_output.get("quickStats", {})
+        merged_qs = {
+            "trendingSearches": gemini_qs.get("trendingSearches") or claude_qs.get("trendingSearches", []),
+            "weatherOutlook": gemini_qs.get("weatherOutlook") or claude_qs.get("weatherOutlook", ""),
+            "upcomingEvents": max(gemini_qs.get("upcomingEvents", 0), claude_qs.get("upcomingEvents", 0)),
+            "priceAlerts": max(gemini_qs.get("priceAlerts", 0), claude_qs.get("priceAlerts", 0)),
+        }
+
+        combined = {
+            "zipCode": state.get("zipCode", ""),
+            "businessType": state.get("businessType", ""),
+            "weekOf": state.get("weekOf", ""),
+            "headline": headline,
+            "localBriefing": merged_local,
+            "insights": merged_insights,
+            "quickStats": merged_qs,
+        }
 
         logger.info(
-            f"[DualSynthesis] Gemini: {len(gemini_insights or [])} insights, "
-            f"Claude: {len(claude_insights or [])} insights, "
-            f"Combined: {len(combined.get('insights', []))} insights"
+            f"[InsightMerger] Gemini: {len(gemini_insights)} insights, "
+            f"Claude: {len(claude_insights)} insights, "
+            f"Combined: {len(merged_insights)} insights, "
+            f"LocalEvents: {len(merged_local.get('thisWeekInTown', []))}, "
+            f"Competitors: {len(merged_local.get('competitorWatch', []))}"
         )
 
         yield Event(
@@ -115,76 +139,76 @@ class DualModelSynthesis(BaseAgent):
             actions=EventActions(state_delta={"pulseOutput": combined}),
         )
 
-    async def _run_gemini(self, prompt: str, state: dict) -> list[dict]:
-        """Run Gemini Flash synthesis via google-genai client."""
-        try:
-            from hephae_common.gemini_client import get_genai_client
+    def _parse_output(self, raw: Any) -> dict:
+        """Parse raw output from state (may be str, dict, or Pydantic model)."""
+        if not raw:
+            return {}
+        if isinstance(raw, str):
+            try:
+                return json.loads(raw)
+            except (json.JSONDecodeError, ValueError):
+                return {}
+        if isinstance(raw, dict):
+            return raw
+        # Pydantic model
+        if hasattr(raw, "model_dump"):
+            return raw.model_dump()
+        return {}
 
-            client = get_genai_client()
-            response = await client.aio.models.generate_content(
-                model=AgentModels.SYNTHESIS_MODEL,
-                contents=prompt,
-                config={
-                    "response_mime_type": "application/json",
-                    "thinking_config": {"thinking_level": "HIGH"},
-                },
-            )
-            text = response.text
-            if text:
-                parsed = json.loads(text)
-                insights = parsed.get("insights", [])
-                for ins in insights:
-                    ins["_source"] = "gemini"
-                return insights
-        except Exception as e:
-            logger.error(f"[DualSynthesis:Gemini] Failed: {e}")
-        return []
+    def _merge_local_briefing(self, a: dict, b: dict) -> dict:
+        """Merge localBriefing from two model outputs."""
+        # Events: dedupe by venue+date
+        events_a = a.get("thisWeekInTown", []) if isinstance(a, dict) else []
+        events_b = b.get("thisWeekInTown", []) if isinstance(b, dict) else []
+        seen_events: dict[str, dict] = {}
+        for evt in events_a + events_b:
+            if not isinstance(evt, dict):
+                continue
+            key = f"{evt.get('where', '').lower().strip()[:30]}|{evt.get('when', '').lower().strip()[:20]}"
+            if key not in seen_events or len(evt.get("businessImpact", "")) > len(seen_events[key].get("businessImpact", "")):
+                seen_events[key] = evt
 
-    async def _run_claude(self, prompt: str, state: dict) -> list[dict]:
-        """Run Claude synthesis via Anthropic API."""
-        try:
-            from hephae_common.anthropic_client import generate_claude
+        # Competitors: dedupe by business name
+        comps_a = a.get("competitorWatch", []) if isinstance(a, dict) else []
+        comps_b = b.get("competitorWatch", []) if isinstance(b, dict) else []
+        seen_comps: dict[str, dict] = {}
+        for comp in comps_a + comps_b:
+            if not isinstance(comp, dict):
+                continue
+            key = comp.get("business", "").lower().strip()
+            if key not in seen_comps or len(comp.get("observation", "")) > len(seen_comps[key].get("observation", "")):
+                seen_comps[key] = comp
 
-            result = await generate_claude(
-                prompt=prompt,
-                system=(
-                    "You are a data analyst writing a weekly intelligence briefing. "
-                    "Return ONLY valid JSON matching this structure: "
-                    '{"insights": [{"rank": 1, "title": "...", "analysis": "...", '
-                    '"recommendation": "...", "dataSources": [...], "signalSources": [...], '
-                    '"impactScore": 85, "impactLevel": "high", "timeSensitivity": "this_week", '
-                    '"playbookUsed": ""}], "headline": "...", '
-                    '"quickStats": {"trendingSearches": [], "weatherOutlook": "", '
-                    '"upcomingEvents": 0, "priceAlerts": 0}}'
-                ),
-                response_format="json",
-            )
-            if result and isinstance(result, dict):
-                insights = result.get("insights", [])
-                for ins in insights:
-                    ins["_source"] = "claude"
-                return insights
-        except Exception as e:
-            logger.error(f"[DualSynthesis:Claude] Failed: {e}")
-        return []
+        # communityBuzz: pick the longer version
+        buzz_a = a.get("communityBuzz", "") if isinstance(a, dict) else ""
+        buzz_b = b.get("communityBuzz", "") if isinstance(b, dict) else ""
+        community_buzz = buzz_a if len(buzz_a) >= len(buzz_b) else buzz_b
 
-    def _merge_insights(
-        self,
-        gemini: list[dict],
-        claude: list[dict],
-        state: dict,
-    ) -> dict:
+        # governmentWatch: pick the longer version
+        gov_a = a.get("governmentWatch", "") if isinstance(a, dict) else ""
+        gov_b = b.get("governmentWatch", "") if isinstance(b, dict) else ""
+        government_watch = gov_a if len(gov_a) >= len(gov_b) else gov_b
+
+        return {
+            "thisWeekInTown": list(seen_events.values()),
+            "competitorWatch": list(seen_comps.values()),
+            "communityBuzz": community_buzz,
+            "governmentWatch": government_watch,
+        }
+
+    def _merge_insights(self, gemini: list, claude: list) -> list[dict]:
         """Merge insights from both models, deduplicate, rank by score."""
-        all_insights = gemini + claude
+        all_insights = list(gemini) + list(claude)
 
-        # Deduplicate by title similarity (if titles overlap >60%, keep higher score)
+        # Deduplicate by title similarity
         seen_titles: dict[str, dict] = {}
         for ins in all_insights:
+            if not isinstance(ins, dict):
+                continue
             title = ins.get("title", "").lower().strip()
-            key = title[:40]  # rough dedup key
+            key = title[:40]
             existing = seen_titles.get(key)
             if existing:
-                # Keep the one with higher impactScore
                 if ins.get("impactScore", 0) > existing.get("impactScore", 0):
                     seen_titles[key] = ins
             else:
@@ -200,32 +224,8 @@ class DualModelSynthesis(BaseAgent):
         # Re-rank
         for i, ins in enumerate(deduped, 1):
             ins["rank"] = i
-            ins.pop("_source", None)
 
-        # Build the full output
-        zip_code = state.get("zipCode", "")
-        business_type = state.get("businessType", "")
-        week_of = state.get("weekOf", "")
-
-        # Use the best headline from either model
-        headline = ""
-        if gemini:
-            # Try to extract headline from Gemini's full response
-            headline = f"{len(deduped)} insights for {zip_code} ({business_type}) — week of {week_of}"
-
-        return {
-            "zipCode": zip_code,
-            "businessType": business_type,
-            "weekOf": week_of,
-            "headline": headline,
-            "insights": deduped,
-            "quickStats": {
-                "trendingSearches": [],
-                "weatherOutlook": "",
-                "upcomingEvents": 0,
-                "priceAlerts": 0,
-            },
-        }
+        return deduped
 
 
 def create_pulse_orchestrator() -> SequentialAgent:
@@ -289,8 +289,34 @@ def create_pulse_orchestrator() -> SequentialAgent:
         sub_agents=[historian, economist, local_scout],
     )
 
-    # ── Stage 3: Dual-Model Synthesis (Gemini Flash + Claude) ─────
-    synthesis = DualModelSynthesis()
+    # ── Stage 3: Dual-Model Synthesis (Gemini + Claude via LiteLlm) ──
+    gemini_synth = LlmAgent(
+        name="GeminiSynthesis",
+        model=AgentModels.SYNTHESIS_MODEL,
+        generate_content_config=ThinkingPresets.HIGH,
+        description="Gemini synthesis — generates pulse with local briefing.",
+        instruction=_full_instruction,
+        output_key="geminiPulseOutput",
+        output_schema=WeeklyPulseOutput,
+        on_model_error_callback=fallback_on_error,
+    )
+    claude_synth = LlmAgent(
+        name="ClaudeSynthesis",
+        model=LiteLlm(model="anthropic/claude-sonnet-4-20250514"),
+        description="Claude synthesis — generates pulse with local briefing.",
+        instruction=_full_instruction,
+        output_key="claudePulseOutput",
+        output_schema=WeeklyPulseOutput,
+        on_model_error_callback=fallback_on_error,
+    )
+    dual_synthesis = ParallelAgent(
+        name="DualSynthesis",
+        sub_agents=[gemini_synth, claude_synth],
+    )
+    synthesis_stage = SequentialAgent(
+        name="SynthesisStage",
+        sub_agents=[dual_synthesis, InsightMerger()],
+    )
 
     # ── Stage 4: Critique Loop ─────────────────────────────────────
     critique = LlmAgent(
@@ -327,5 +353,5 @@ def create_pulse_orchestrator() -> SequentialAgent:
     return SequentialAgent(
         name="PulseOrchestrator",
         description="5-stage weekly pulse pipeline with dual-model synthesis.",
-        sub_agents=[data_gatherer, pre_synthesis, synthesis, critique_loop],
+        sub_agents=[data_gatherer, pre_synthesis, synthesis_stage, critique_loop],
     )

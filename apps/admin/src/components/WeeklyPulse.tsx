@@ -32,6 +32,28 @@ import {
 
 // ── Types ───────────────────────────────────────────────────────────────
 
+interface LocalEvent {
+  what: string;
+  where: string;
+  when: string;
+  businessImpact: string;
+  source: string;
+}
+
+interface CompetitorNote {
+  business: string;
+  observation: string;
+  implication: string;
+  source: string;
+}
+
+interface LocalBriefing {
+  thisWeekInTown?: LocalEvent[];
+  competitorWatch?: CompetitorNote[];
+  communityBuzz?: string;
+  governmentWatch?: string;
+}
+
 interface PulseInsight {
   rank: number;
   title: string;
@@ -57,6 +79,7 @@ interface WeeklyPulseData {
   businessType: string;
   weekOf: string;
   headline: string;
+  localBriefing?: LocalBriefing;
   insights: PulseInsight[];
   quickStats: PulseQuickStats;
 }
@@ -309,6 +332,89 @@ function JsonBlock({ data, maxHeight = 'max-h-64' }: { data: any; maxHeight?: st
   );
 }
 
+// ── Local Briefing Card ─────────────────────────────────────────────────
+
+function LocalBriefingCard({ briefing, zipCode }: { briefing: LocalBriefing; zipCode: string }) {
+  const events = briefing.thisWeekInTown || [];
+  const competitors = briefing.competitorWatch || [];
+  const buzz = briefing.communityBuzz || '';
+  const gov = briefing.governmentWatch || '';
+
+  const hasContent = events.length > 0 || competitors.length > 0 || buzz || gov;
+  if (!hasContent) return null;
+
+  return (
+    <div className="border border-emerald-200 rounded-xl overflow-hidden bg-emerald-50/30">
+      <div className="px-5 py-3.5 bg-emerald-50 border-b border-emerald-100 flex items-center gap-2">
+        <Calendar className="w-4 h-4 text-emerald-600" />
+        <h3 className="text-sm font-semibold text-emerald-800">This Week in {zipCode}</h3>
+        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
+          {events.length} events, {competitors.length} competitors
+        </span>
+      </div>
+
+      <div className="p-5 space-y-4">
+        {/* Events */}
+        {events.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Events This Week</p>
+            <div className="space-y-2">
+              {events.map((evt, i) => (
+                <div key={i} className="bg-white border border-gray-100 rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <h4 className="text-sm font-medium text-gray-900">{evt.what}</h4>
+                    {evt.when && (
+                      <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full whitespace-nowrap shrink-0">{evt.when}</span>
+                    )}
+                  </div>
+                  {evt.where && <p className="text-xs text-gray-500 mb-1">{evt.where}</p>}
+                  {evt.businessImpact && <p className="text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded">{evt.businessImpact}</p>}
+                  {evt.source && <p className="text-[10px] text-gray-400 mt-1">Source: {evt.source}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Competitor Watch */}
+        {competitors.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Competitor Watch</p>
+            <div className="space-y-2">
+              {competitors.map((comp, i) => (
+                <div key={i} className="bg-white border border-gray-100 rounded-lg p-3">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-0.5">{comp.business}</h4>
+                  <p className="text-sm text-gray-700 mb-1">{comp.observation}</p>
+                  {comp.implication && (
+                    <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded">{comp.implication}</p>
+                  )}
+                  {comp.source && <p className="text-[10px] text-gray-400 mt-1">Source: {comp.source}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Community Buzz */}
+        {buzz && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Community Buzz</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{buzz}</p>
+          </div>
+        )}
+
+        {/* Government Watch */}
+        {gov && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Government Watch</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{gov}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Pulse Viewer ────────────────────────────────────────────────────────
 
 function PulseViewer({ doc, onBack }: { doc: PulseDocument; onBack: () => void }) {
@@ -352,6 +458,9 @@ function PulseViewer({ doc, onBack }: { doc: PulseDocument; onBack: () => void }
 
       {/* Quick stats */}
       {pulse.quickStats && <QuickStatsBar stats={pulse.quickStats} />}
+
+      {/* ═══ LOCAL BRIEFING ═══ */}
+      {pulse.localBriefing && <LocalBriefingCard briefing={pulse.localBriefing} zipCode={pulse.zipCode} />}
 
       {/* ═══ INSIGHTS (with critique scores) ═══ */}
       <div className="space-y-3">

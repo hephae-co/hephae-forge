@@ -251,6 +251,11 @@ async def generate_pulse(
         expire_at=test_ttl,
     )
 
+    logger.info(
+        f"[WeeklyPulse] rawSignals keys: {list(raw_signals.keys())}, "
+        f"total size: {sum(len(str(v)) for v in raw_signals.values())}"
+    )
+
     if raw_signals:
         archive_sources = {}
         for source_name, data in raw_signals.items():

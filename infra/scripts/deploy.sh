@@ -151,7 +151,7 @@ gcloud run deploy "$API_SERVICE" \
   --max-instances 5 \
   --service-account "$SERVICE_ACCOUNT" \
   --set-env-vars "$ENV_VARS" \
-  --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,BLS_API_KEY=BLS_API_KEY:latest,FRED_API_KEY=FRED_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest,FORGE_API_SECRET=FORGE_API_SECRET:latest,FORGE_V1_API_KEY=FORGE_V1_API_KEY:latest,CRON_SECRET=CRON_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,ADMIN_EMAIL_ALLOWLIST=ADMIN_EMAIL_ALLOWLIST:latest,MONITOR_NOTIFY_EMAILS=MONITOR_NOTIFY_EMAILS:latest,USDA_NASS_API_KEY=USDA_NASS_API_KEY:latest,USDA_FDC_API_KEY=USDA_FDC_API_KEY:latest" \
+  --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,BLS_API_KEY=BLS_API_KEY:latest,FRED_API_KEY=FRED_API_KEY:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest,FORGE_API_SECRET=FORGE_API_SECRET:latest,FORGE_V1_API_KEY=FORGE_V1_API_KEY:latest,CRON_SECRET=CRON_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,ADMIN_EMAIL_ALLOWLIST=ADMIN_EMAIL_ALLOWLIST:latest,MONITOR_NOTIFY_EMAILS=MONITOR_NOTIFY_EMAILS:latest,USDA_NASS_API_KEY=USDA_NASS_API_KEY:latest,USDA_FDC_API_KEY=USDA_FDC_API_KEY:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest" \
   --no-allow-unauthenticated
 
 # Grant service account invoker role
@@ -243,7 +243,7 @@ fi
 
 echo ""
 echo "══════════════════════════════════════════════"
-echo "  ✓ API:   ${API_URL} (512Mi, 1 vCPU)"
+echo "  ✓ API:   ${API_URL} (1Gi, 2 vCPU)"
 echo "  ✓ Batch: ${BATCH_JOB} (4Gi, 2 vCPU, scale-to-zero)"
 if [ -n "$CRAWL4AI_URL" ]; then
   echo "  ✓ crawl4ai: ${CRAWL4AI_URL}"

@@ -171,6 +171,7 @@ def _register_routers() -> None:
         tasks,
         weekly_pulse,
         pulse_admin,
+        registered_zipcodes,
     )
 
     app.include_router(workflows.router)
@@ -190,9 +191,10 @@ def _register_routers() -> None:
     app.include_router(tasks.router)
     app.include_router(weekly_pulse.router)
     app.include_router(pulse_admin.router)
+    app.include_router(registered_zipcodes.router)
 
     # --- Batch / Cron routers ---
-    from hephae_api.routers.batch import cron, heartbeat_cron, workflow_monitor, batch_workflows, workflow_dispatcher, pulse_batch
+    from hephae_api.routers.batch import cron, heartbeat_cron, workflow_monitor, batch_workflows, workflow_dispatcher, pulse_batch, pulse_cron
 
     app.include_router(cron.router)
     app.include_router(heartbeat_cron.router)
@@ -200,6 +202,7 @@ def _register_routers() -> None:
     app.include_router(batch_workflows.router)
     app.include_router(workflow_dispatcher.router)
     app.include_router(pulse_batch.router)
+    app.include_router(pulse_cron.router)
 
 
 _register_routers()

@@ -10,12 +10,13 @@ import WorkflowDashboard from '@/components/WorkflowDashboard';
 import TestFixturesBrowser from '@/components/TestFixturesBrowser';
 import ContentStudio from '@/components/ContentStudio';
 import WeeklyPulse from '@/components/WeeklyPulse';
+import RegisteredZipcodes from '@/components/RegisteredZipcodes';
 import DashboardOverview from '@/components/DashboardOverview';
 import { RunSummary } from '@/lib/tester/storage';
-import { PlayCircle, RefreshCw, ServerCrash, Store, Workflow, FlaskConical, Users, PenSquare, LayoutDashboard, Settings, X, LogOut, Zap } from 'lucide-react';
+import { PlayCircle, RefreshCw, ServerCrash, Store, Workflow, FlaskConical, Users, PenSquare, LayoutDashboard, Settings, X, LogOut, Zap, MapPin } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-type Tab = 'dashboard' | 'businesses' | 'workflows' | 'content' | 'pulse';
+type Tab = 'dashboard' | 'businesses' | 'workflows' | 'content' | 'pulse' | 'zipcodes';
 
 export default function HephaeAdminDashboard() {
   const { user, signOut } = useAuth();
@@ -93,6 +94,7 @@ export default function HephaeAdminDashboard() {
     { key: 'workflows', label: 'Workflows', icon: Workflow },
     { key: 'content', label: 'Content', icon: PenSquare },
     { key: 'pulse', label: 'Pulse', icon: Zap },
+    { key: 'zipcodes', label: 'Zipcodes', icon: MapPin },
   ];
 
   return (
@@ -189,6 +191,12 @@ export default function HephaeAdminDashboard() {
 
         {activeTab === 'pulse' && (
           <WeeklyPulse />
+        )}
+
+        {activeTab === 'zipcodes' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <RegisteredZipcodes />
+          </div>
         )}
       </div>
 

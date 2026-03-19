@@ -706,7 +706,7 @@ export default function WeeklyPulse() {
         throw new Error(err.detail || 'Submission failed');
       }
       const { jobId } = await res.json();
-      setGenStatus('Pipeline running...');
+      setGenStatus(`Pipeline running — Job: ${jobId}`);
 
       for (let i = 0; i < 120; i++) {
         await new Promise((r) => setTimeout(r, 3000));
@@ -715,7 +715,7 @@ export default function WeeklyPulse() {
         const job = await pollRes.json();
 
         if (job.status === 'RUNNING') {
-          setGenStatus('Agents running — fetching signals, expert analysis, synthesis...');
+          setGenStatus(`Agents running — Job: ${jobId}`);
         }
 
         if (job.status === 'COMPLETED') {

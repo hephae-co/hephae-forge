@@ -90,10 +90,11 @@ export default function HephaeAdminDashboard() {
 
   const tabs: { key: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { key: 'zipcodes', label: 'Zipcodes', icon: MapPin },
+    { key: 'pulse', label: 'Pulse', icon: Zap },
     { key: 'businesses', label: 'Businesses', icon: Store },
     { key: 'workflows', label: 'Workflows', icon: Workflow },
     { key: 'content', label: 'Content', icon: PenSquare },
-    { key: 'pulse', label: 'Pulse', icon: Zap },
     { key: 'zipcodes', label: 'Zipcodes', icon: MapPin },
   ];
 

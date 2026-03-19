@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Literal
 
 from hephae_common.firebase import get_db
@@ -39,12 +39,13 @@ async def create_pulse_job(
     business_type: str,
     week_of: str,
     force: bool = False,
+    test_mode: bool = False,
 ) -> str:
     """Create a new pulse job document. Returns the job ID."""
     db = get_db()
     now = datetime.utcnow()
     doc_ref = db.collection(JOBS_COLLECTION).document()
-    data = {
+    data: dict[str, Any] = {
         "zipCode": zip_code,
         "businessType": business_type,
         "weekOf": week_of,
@@ -56,8 +57,11 @@ async def create_pulse_job(
         "result": None,
         "error": None,
     }
+    if test_mode:
+        data["testMode"] = True
+        data["expireAt"] = now + timedelta(hours=24)
     await asyncio.to_thread(doc_ref.set, data)
-    logger.info(f"[PulseJobs] Created job {doc_ref.id} for {zip_code}/{business_type}")
+    logger.info(f"[PulseJobs] Created job {doc_ref.id} for {zip_code}/{business_type}{' (test)' if test_mode else ''}")
     return doc_ref.id
 
 

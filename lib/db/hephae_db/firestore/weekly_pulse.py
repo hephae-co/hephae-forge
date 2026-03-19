@@ -54,8 +54,14 @@ async def save_weekly_pulse(
     signals_used: list[str] | None = None,
     diagnostics: dict[str, Any] | None = None,
     pipeline_details: dict[str, Any] | None = None,
+    test_mode: bool = False,
+    expire_at: datetime | None = None,
 ) -> str:
     """Save a weekly pulse briefing to Firestore.
+
+    Args:
+        test_mode: Marks document as test data.
+        expire_at: If set, Firestore TTL policy auto-deletes after this time.
 
     Returns the document ID.
     """
@@ -76,8 +82,12 @@ async def save_weekly_pulse(
     }
     if pipeline_details:
         data["pipelineDetails"] = pipeline_details
+    if test_mode:
+        data["testMode"] = True
+    if expire_at:
+        data["expireAt"] = expire_at
     await asyncio.to_thread(doc_ref.set, data)
-    logger.info(f"[WeeklyPulse] Saved pulse {doc_id}")
+    logger.info(f"[WeeklyPulse] Saved pulse {doc_id}{' (test mode, 24h TTL)' if test_mode else ''}")
     return doc_id
 
 

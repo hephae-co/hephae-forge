@@ -558,6 +558,7 @@ export default function WeeklyPulse() {
   const [zipCode, setZipCode] = useState('');
   const [businessType, setBusinessType] = useState('Restaurants');
   const [weekOf, setWeekOf] = useState(() => new Date().toISOString().split('T')[0]);
+  const [testMode, setTestMode] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
   const [genStatus, setGenStatus] = useState('');
@@ -589,7 +590,7 @@ export default function WeeklyPulse() {
       const res = await fetch('/api/weekly-pulse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zipCode, businessType, weekOf, force: true }),
+        body: JSON.stringify({ zipCode, businessType, weekOf, force: true, testMode }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: 'Submission failed' }));
@@ -691,17 +692,29 @@ export default function WeeklyPulse() {
             onChange={(e) => setWeekOf(e.target.value)}
             className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-sm"
           />
-          <button
-            onClick={handleGenerate}
-            disabled={generating || !zipCode}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-lg shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
-          >
-            {generating ? (
-              <><Loader2 className="w-4 h-4 animate-spin" />Generating...</>
-            ) : (
-              <><Zap className="w-4 h-4" />Generate</>
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={testMode}
+                onChange={(e) => setTestMode(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-200"
+              />
+              <span className="text-xs text-gray-500">Test mode</span>
+              <span className="text-[10px] text-gray-400">(24h TTL)</span>
+            </label>
+            <button
+              onClick={handleGenerate}
+              disabled={generating || !zipCode}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-lg shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+            >
+              {generating ? (
+                <><Loader2 className="w-4 h-4 animate-spin" />Generating...</>
+              ) : (
+                <><Zap className="w-4 h-4" />Generate</>
+              )}
+            </button>
+          </div>
         </div>
 
         {genStatus && (

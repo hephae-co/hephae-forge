@@ -40,8 +40,14 @@ async def generate_pulse(
     business_type: str,
     week_of: str = "",
     force: bool = False,
+    test_mode: bool = False,
 ) -> dict[str, Any]:
     """Main entry point for weekly pulse generation via ADK agent tree.
+
+    Args:
+        test_mode: When True, all persisted data gets a 24h TTL via expireAt
+                   field and a testMode=True marker. Keeps test data separate
+                   from production weekly runs.
 
     Returns:
         {"pulse": dict, "pulseId": str, "signalsUsed": list[str], "diagnostics": dict}
@@ -229,6 +235,10 @@ async def generate_pulse(
     }
 
     # 8. Save pulse + pipeline details + archive signals
+    #    In test mode, set a 24h TTL so test data auto-cleans
+    from datetime import timedelta
+    test_ttl = datetime.utcnow() + timedelta(hours=24) if test_mode else None
+
     pulse_id = await save_weekly_pulse(
         zip_code=zip_code,
         business_type=business_type,
@@ -237,6 +247,8 @@ async def generate_pulse(
         signals_used=signals_used,
         diagnostics=diagnostics,
         pipeline_details=pipeline_details,
+        test_mode=test_mode,
+        expire_at=test_ttl,
     )
 
     if raw_signals:

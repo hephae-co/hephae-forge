@@ -43,9 +43,10 @@ class GeneratePulseRequest(BaseModel):
     businessType: str
     weekOf: str = ""
     force: bool = False
+    testMode: bool = False
 
 
-async def _run_pulse_job(job_id: str, zip_code: str, business_type: str, week_of: str, force: bool):
+async def _run_pulse_job(job_id: str, zip_code: str, business_type: str, week_of: str, force: bool, test_mode: bool = False):
     """Background task that runs the pulse pipeline and updates the job doc."""
     from hephae_db.firestore.pulse_jobs import update_pulse_job
     from hephae_api.workflows.orchestrators.weekly_pulse import generate_pulse
@@ -61,6 +62,7 @@ async def _run_pulse_job(job_id: str, zip_code: str, business_type: str, week_of
             business_type=business_type,
             week_of=week_of,
             force=force,
+            test_mode=test_mode,
         )
 
         await update_pulse_job(job_id, {
@@ -103,17 +105,19 @@ async def generate_weekly_pulse(req: GeneratePulseRequest):
         business_type=req.businessType,
         week_of=week_of,
         force=req.force,
+        test_mode=req.testMode,
     )
 
     # Fire and forget — pipeline runs in background
     asyncio.create_task(_run_pulse_job(
-        job_id, req.zipCode, req.businessType, week_of, req.force,
+        job_id, req.zipCode, req.businessType, week_of, req.force, req.testMode,
     ))
 
     return {
         "success": True,
         "jobId": job_id,
         "status": "QUEUED",
+        "testMode": req.testMode,
     }
 
 

@@ -445,6 +445,7 @@ export default function WeeklyPulse() {
     setGenerating(true);
     setGenError(null);
     try {
+      // 1. Submit job — returns immediately with jobId
       const res = await fetch('/api/weekly-pulse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -456,23 +457,45 @@ export default function WeeklyPulse() {
         }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: 'Generation failed' }));
-        throw new Error(err.detail || 'Generation failed');
+        const err = await res.json().catch(() => ({ detail: 'Submission failed' }));
+        throw new Error(err.detail || 'Submission failed');
       }
-      const data = await res.json();
-      // Show the generated pulse
-      setSelectedPulse({
-        id: data.pulseId,
-        zipCode,
-        businessType,
-        weekOf,
-        pulse: data.pulse,
-        signalsUsed: data.signalsUsed || [],
-        diagnostics: data.diagnostics || undefined,
-        createdAt: new Date().toISOString(),
-      });
-      // Refresh list
-      fetchPulses();
+      const { jobId } = await res.json();
+
+      // 2. Poll for completion every 3s
+      const maxAttempts = 60; // 3 min max
+      for (let i = 0; i < maxAttempts; i++) {
+        await new Promise((r) => setTimeout(r, 3000));
+
+        const pollRes = await fetch(`/api/weekly-pulse/jobs/${jobId}`);
+        if (!pollRes.ok) continue;
+
+        const job = await pollRes.json();
+
+        if (job.status === 'COMPLETED') {
+          if (job.pulse) {
+            setSelectedPulse({
+              id: job.pulseId || jobId,
+              zipCode,
+              businessType,
+              weekOf,
+              pulse: job.pulse,
+              signalsUsed: job.signalsUsed || [],
+              diagnostics: job.diagnostics || undefined,
+              createdAt: new Date().toISOString(),
+            });
+          }
+          fetchPulses();
+          return;
+        }
+
+        if (job.status === 'FAILED') {
+          throw new Error(job.error || 'Generation failed');
+        }
+        // Still QUEUED or RUNNING — keep polling
+      }
+
+      throw new Error('Generation timed out after 3 minutes');
     } catch (e: any) {
       setGenError(e.message);
     } finally {

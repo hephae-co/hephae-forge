@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // 5 min — pulse pipeline takes ~40s, allow headroom
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 

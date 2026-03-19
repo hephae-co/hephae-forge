@@ -16,7 +16,33 @@ import { RunSummary } from '@/lib/tester/storage';
 import { PlayCircle, RefreshCw, ServerCrash, Store, Workflow, FlaskConical, Users, PenSquare, LayoutDashboard, Settings, X, LogOut, Zap, MapPin } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-type Tab = 'dashboard' | 'businesses' | 'workflows' | 'content' | 'pulse' | 'zipcodes';
+type Tab = 'dashboard' | 'businesses' | 'workflows' | 'content' | 'zipcodes';
+
+type ZipSubTab = 'manage' | 'pulse';
+
+function ZipcodesSection() {
+  const [subTab, setSubTab] = useState<ZipSubTab>('manage');
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+      <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-gray-200 shadow-sm w-fit">
+        <button
+          onClick={() => setSubTab('manage')}
+          className={`px-4 py-2 rounded-md text-sm font-semibold flex items-center gap-2 transition-all ${subTab === 'manage' ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 hover:text-gray-900'}`}
+        >
+          <MapPin className="w-4 h-4" /> Manage Zipcodes
+        </button>
+        <button
+          onClick={() => setSubTab('pulse')}
+          className={`px-4 py-2 rounded-md text-sm font-semibold flex items-center gap-2 transition-all ${subTab === 'pulse' ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 hover:text-gray-900'}`}
+        >
+          <Zap className="w-4 h-4" /> Weekly Pulse
+        </button>
+      </div>
+      {subTab === 'manage' && <RegisteredZipcodes />}
+      {subTab === 'pulse' && <WeeklyPulse />}
+    </div>
+  );
+}
 
 export default function HephaeAdminDashboard() {
   const { user, signOut } = useAuth();
@@ -30,6 +56,7 @@ export default function HephaeAdminDashboard() {
     if (typeof window !== 'undefined') {
       let saved = localStorage.getItem('hephae_active_tab') as string | null;
       if (saved === 'research') saved = 'businesses';
+      if (saved === 'pulse') saved = 'zipcodes';
       if (saved) setActiveTabState(saved as Tab);
     }
   }, []);
@@ -91,11 +118,9 @@ export default function HephaeAdminDashboard() {
   const tabs: { key: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { key: 'zipcodes', label: 'Zipcodes', icon: MapPin },
-    { key: 'pulse', label: 'Pulse', icon: Zap },
     { key: 'businesses', label: 'Businesses', icon: Store },
     { key: 'workflows', label: 'Workflows', icon: Workflow },
     { key: 'content', label: 'Content', icon: PenSquare },
-    { key: 'zipcodes', label: 'Zipcodes', icon: MapPin },
   ];
 
   return (
@@ -190,14 +215,8 @@ export default function HephaeAdminDashboard() {
           <ContentStudio />
         )}
 
-        {activeTab === 'pulse' && (
-          <WeeklyPulse />
-        )}
-
         {activeTab === 'zipcodes' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <RegisteredZipcodes />
-          </div>
+          <ZipcodesSection />
         )}
       </div>
 

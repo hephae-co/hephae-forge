@@ -1022,7 +1022,7 @@ async def run_zipcode_profile_discovery(zip_code: str) -> dict[str, Any]:
 
     # Step 2: Spin up 5 ephemeral crawl4ai instances (one per crawl-required verifier)
     import os
-    from infra.crawl4ai.ephemeral import create_ephemeral_crawl4ai, destroy_ephemeral_crawl4ai
+    from hephae_api.lib.crawl4ai.ephemeral import create_ephemeral_crawl4ai, destroy_ephemeral_crawl4ai
 
     ephemeral_names: list[str] = []
     ephemeral_url: str | None = None

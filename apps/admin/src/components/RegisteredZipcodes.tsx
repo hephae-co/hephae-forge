@@ -41,7 +41,7 @@ import {
 interface RegisteredZipcode {
   id: string;
   zipCode: string;
-  businessType: string;
+  businessTypes: string[];
   city: string;
   state: string;
   county: string;
@@ -709,7 +709,6 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
 
   // ── Onboarded tab state ───────────────────────────────────────────────
   const [zipInput, setZipInput] = useState('');
-  const [bizType, setBizType] = useState('Restaurants');
   const [registering, setRegistering] = useState(false);
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
   const [cronStatus, setCronStatus] = useState<CronStatus | null>(null);
@@ -784,14 +783,14 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
       const res = await fetch('/api/registered-zipcodes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zipCode: zipInput, businessType: bizType }),
+        body: JSON.stringify({ zipCode: zipInput }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: 'Registration failed' }));
         throw new Error(err.detail || 'Registration failed');
       }
       const data = await res.json();
-      setRegSuccess(`Registered ${zipInput} (${data.city}, ${data.state}) for ${bizType}`);
+      setRegSuccess(`Registered ${zipInput} (${data.city}, ${data.state})`);
       setZipInput('');
       fetchZipcodes();
     } catch (e: any) {
@@ -802,11 +801,11 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
   };
 
   const handleUnregister = async (zip: RegisteredZipcode) => {
-    if (!confirm(`Unregister ${zip.zipCode} / ${zip.businessType}? This cannot be undone.`)) return;
+    if (!confirm(`Unregister ${zip.zipCode}? This cannot be undone.`)) return;
     const key = `del-${zip.id}`;
     setActionLoading(prev => ({ ...prev, [key]: true }));
     try {
-      const res = await fetch(`/api/registered-zipcodes/${zip.zipCode}/${zip.businessType}`, { method: 'DELETE' });
+      const res = await fetch(`/api/registered-zipcodes/${zip.zipCode}`, { method: 'DELETE' });
       if (res.ok) setZipcodes(prev => prev.filter(z => z.id !== zip.id));
     } catch { /* ignore */ } finally {
       setActionLoading(prev => ({ ...prev, [key]: false }));
@@ -818,7 +817,7 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
     const key = `toggle-${zip.id}`;
     setActionLoading(prev => ({ ...prev, [key]: true }));
     try {
-      const res = await fetch(`/api/registered-zipcodes/${zip.zipCode}/${zip.businessType}/${action}`, { method: 'POST' });
+      const res = await fetch(`/api/registered-zipcodes/${zip.zipCode}/${action}`, { method: 'POST' });
       if (res.ok) {
         setZipcodes(prev => prev.map(z =>
           z.id === zip.id ? { ...z, status: action === 'pause' ? 'paused' : 'active' } : z
@@ -833,7 +832,7 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
     const key = `approve-${zip.id}`;
     setActionLoading(prev => ({ ...prev, [key]: true }));
     try {
-      const res = await fetch(`/api/registered-zipcodes/${zip.zipCode}/${zip.businessType}/approve`, { method: 'POST' });
+      const res = await fetch(`/api/registered-zipcodes/${zip.zipCode}/approve`, { method: 'POST' });
       if (res.ok) {
         setZipcodes(prev => prev.map(z =>
           z.id === zip.id ? { ...z, onboardingStatus: 'onboarded' as const, onboardedAt: new Date().toISOString() } : z
@@ -853,7 +852,7 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           zipCode: zip.zipCode,
-          businessType: zip.businessType,
+          businessType: (zip.businessTypes || ['Restaurants'])[0],
           force: true,
         }),
       });
@@ -1005,13 +1004,6 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
               onChange={(e) => setZipInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
               className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-sm w-48"
             />
-            <select
-              value={bizType}
-              onChange={(e) => setBizType(e.target.value)}
-              className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-sm"
-            >
-              {BUSINESS_TYPES.map(bt => <option key={bt} value={bt}>{bt}</option>)}
-            </select>
             <button
               onClick={handleRegister}
               disabled={registering || !zipInput}
@@ -1078,7 +1070,7 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
                   <tr className="text-xs text-gray-400 uppercase tracking-wider border-b border-gray-100">
                     <th className="text-left px-6 py-3">Zip Code</th>
                     <th className="text-left px-4 py-3">City / State</th>
-                    <th className="text-left px-4 py-3">Business Type</th>
+                    <th className="text-left px-4 py-3">Business Types</th>
                     <th className="text-center px-4 py-3">Status</th>
                     <th className="text-left px-4 py-3">Last Pulse</th>
                     <th className="text-left px-4 py-3">Next Run</th>
@@ -1100,7 +1092,15 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
                           <span className="text-xs text-gray-400 ml-1">({zip.county})</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-700">{zip.businessType}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {(zip.businessTypes || ['Restaurants']).map(bt => (
+                            <span key={bt} className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
+                              {bt}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex flex-col items-center gap-1">
                           {/* Onboarding status */}
@@ -1381,7 +1381,7 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
                   </div>
                   <button
                     onClick={() => {
-                      const zip = zipcodes.find(z => z.zipCode === run.zipCode && z.businessType === run.businessType);
+                      const zip = zipcodes.find(z => z.zipCode === run.zipCode);
                       if (zip) handleRunNow(zip);
                     }}
                     className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors font-medium"
@@ -1444,7 +1444,7 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
                   <div className="flex items-center gap-3 text-xs text-gray-400">
                     <span>{zip.lastPulseInsightCount} insights</span>
                     <span>{relativeTime(zip.lastPulseAt)}</span>
-                    <span>{zip.businessType}</span>
+                    <span>{(zip.businessTypes || ['Restaurants']).join(', ')}</span>
                   </div>
                   <button
                     onClick={() => handleViewPulse(zip.lastPulseId!)}

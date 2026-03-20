@@ -1,10 +1,13 @@
 """Registered Zipcodes admin endpoints — CRUD for weekly pulse onboarding.
 
-POST   /api/registered-zipcodes                           — Register a new zipcode
-GET    /api/registered-zipcodes                           — List all registered zipcodes
-DELETE /api/registered-zipcodes/{zip_code}/{business_type} — Unregister
-POST   /api/registered-zipcodes/{zip_code}/{business_type}/pause  — Pause
-POST   /api/registered-zipcodes/{zip_code}/{business_type}/resume — Resume
+POST   /api/registered-zipcodes                                      — Register a new zipcode
+GET    /api/registered-zipcodes                                      — List all registered zipcodes
+DELETE /api/registered-zipcodes/{zip_code}                           — Unregister
+POST   /api/registered-zipcodes/{zip_code}/pause                    — Pause
+POST   /api/registered-zipcodes/{zip_code}/resume                   — Resume
+POST   /api/registered-zipcodes/{zip_code}/approve                  — Approve (onboard)
+POST   /api/registered-zipcodes/{zip_code}/business-types           — Add a business type
+DELETE /api/registered-zipcodes/{zip_code}/business-types/{biz_type} — Remove a business type
 """
 
 from __future__ import annotations
@@ -29,16 +32,17 @@ router = APIRouter(
 
 class RegisterZipcodeRequest(BaseModel):
     zipCode: str
+
+
+class AddBusinessTypeRequest(BaseModel):
     businessType: str
 
 
 @router.post("")
 async def register_zipcode(req: RegisterZipcodeRequest):
-    """Register a new zipcode + business type for weekly pulse generation."""
+    """Register a new zipcode for weekly pulse generation."""
     if not re.match(r"^\d{5}$", req.zipCode):
         raise HTTPException(status_code=400, detail="Invalid zip code — must be 5 digits")
-    if not req.businessType.strip():
-        raise HTTPException(status_code=400, detail="businessType is required")
 
     from hephae_db.bigquery.public_data import resolve_zip_geography
     from hephae_db.firestore.registered_zipcodes import (
@@ -47,11 +51,11 @@ async def register_zipcode(req: RegisterZipcodeRequest):
     )
 
     # Check if already registered
-    existing = await get_registered_zipcode(req.zipCode, req.businessType)
+    existing = await get_registered_zipcode(req.zipCode)
     if existing:
         raise HTTPException(
             status_code=409,
-            detail=f"Already registered: {req.zipCode} / {req.businessType}",
+            detail=f"Already registered: {req.zipCode}",
         )
 
     # Resolve geography
@@ -64,7 +68,6 @@ async def register_zipcode(req: RegisterZipcodeRequest):
 
     doc_id = await db_register(
         zip_code=req.zipCode,
-        business_type=req.businessType,
         city=geo.city,
         state=geo.state_code,
         county=geo.county,
@@ -73,7 +76,7 @@ async def register_zipcode(req: RegisterZipcodeRequest):
     # Kick off zipcode profile discovery in background (non-blocking)
     import asyncio
 
-    async def _run_discovery_and_update(zip_code: str, business_type: str):
+    async def _run_discovery_and_update(zip_code: str):
         try:
             from hephae_agents.research.zipcode_profile_discovery import (
                 run_zipcode_profile_discovery,
@@ -82,14 +85,14 @@ async def register_zipcode(req: RegisterZipcodeRequest):
 
             profile = await run_zipcode_profile_discovery(zip_code)
             if profile and not profile.get("error"):
-                await approve_zipcode(zip_code, business_type)
-                logger.info(f"[RegisteredZips] Discovery complete + auto-approved: {zip_code}/{business_type}")
+                await approve_zipcode(zip_code)
+                logger.info(f"[RegisteredZips] Discovery complete + auto-approved: {zip_code}")
             else:
                 logger.warning(f"[RegisteredZips] Discovery returned error for {zip_code}: {profile.get('error')}")
         except Exception as e:
             logger.error(f"[RegisteredZips] Background discovery failed for {zip_code}: {e}")
 
-    asyncio.create_task(_run_discovery_and_update(req.zipCode, req.businessType))
+    asyncio.create_task(_run_discovery_and_update(req.zipCode))
 
     return {
         "success": True,
@@ -115,73 +118,118 @@ async def list_registered_zipcodes(status: str | None = Query(None)):
     return [_serialize(d) for d in docs]
 
 
-@router.delete("/{zip_code}/{business_type}")
-async def unregister_zipcode(zip_code: str, business_type: str):
-    """Unregister a zipcode + business type from weekly pulse generation."""
+@router.delete("/{zip_code}")
+async def unregister_zipcode(zip_code: str):
+    """Unregister a zipcode from weekly pulse generation."""
     from hephae_db.firestore.registered_zipcodes import (
         get_registered_zipcode,
         unregister_zipcode as db_unregister,
     )
 
-    existing = await get_registered_zipcode(zip_code, business_type)
+    existing = await get_registered_zipcode(zip_code)
     if not existing:
         raise HTTPException(status_code=404, detail="Not found")
 
-    await db_unregister(zip_code, business_type)
+    await db_unregister(zip_code)
     return {"success": True}
 
 
-@router.post("/{zip_code}/{business_type}/pause")
-async def pause_zipcode(zip_code: str, business_type: str):
+@router.post("/{zip_code}/pause")
+async def pause_zipcode(zip_code: str):
     """Pause weekly pulse generation for a zipcode."""
     from hephae_db.firestore.registered_zipcodes import (
         get_registered_zipcode,
         pause_zipcode as db_pause,
     )
 
-    existing = await get_registered_zipcode(zip_code, business_type)
+    existing = await get_registered_zipcode(zip_code)
     if not existing:
         raise HTTPException(status_code=404, detail="Not found")
     if existing.get("status") == "paused":
         raise HTTPException(status_code=400, detail="Already paused")
 
-    await db_pause(zip_code, business_type)
+    await db_pause(zip_code)
     return {"success": True}
 
 
-@router.post("/{zip_code}/{business_type}/resume")
-async def resume_zipcode(zip_code: str, business_type: str):
+@router.post("/{zip_code}/resume")
+async def resume_zipcode(zip_code: str):
     """Resume weekly pulse generation for a zipcode."""
     from hephae_db.firestore.registered_zipcodes import (
         get_registered_zipcode,
         resume_zipcode as db_resume,
     )
 
-    existing = await get_registered_zipcode(zip_code, business_type)
+    existing = await get_registered_zipcode(zip_code)
     if not existing:
         raise HTTPException(status_code=404, detail="Not found")
     if existing.get("status") == "active":
         raise HTTPException(status_code=400, detail="Already active")
 
-    await db_resume(zip_code, business_type)
+    await db_resume(zip_code)
     return {"success": True}
 
 
-@router.post("/{zip_code}/{business_type}/approve")
-async def approve_zipcode_endpoint(zip_code: str, business_type: str):
+@router.post("/{zip_code}/approve")
+async def approve_zipcode_endpoint(zip_code: str):
     """Human approval — marks zip as onboarded."""
     from hephae_db.firestore.registered_zipcodes import (
         approve_zipcode as db_approve,
         get_registered_zipcode,
     )
 
-    existing = await get_registered_zipcode(zip_code, business_type)
+    existing = await get_registered_zipcode(zip_code)
     if not existing:
         raise HTTPException(status_code=404, detail="Not found")
     if existing.get("onboardingStatus") == "onboarded":
         raise HTTPException(status_code=400, detail="Already onboarded")
 
-    await db_approve(zip_code, business_type)
+    await db_approve(zip_code)
+    return {"success": True}
+
+
+@router.post("/{zip_code}/business-types")
+async def add_business_type(zip_code: str, req: AddBusinessTypeRequest):
+    """Add a business type to a registered zipcode."""
+    from hephae_db.firestore.registered_zipcodes import (
+        add_business_type as db_add_biz_type,
+        get_registered_zipcode,
+    )
+
+    if not req.businessType.strip():
+        raise HTTPException(status_code=400, detail="businessType is required")
+
+    existing = await get_registered_zipcode(zip_code)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    current_types = existing.get("businessTypes", [])
+    if req.businessType in current_types:
+        raise HTTPException(status_code=409, detail=f"Business type '{req.businessType}' already exists")
+
+    await db_add_biz_type(zip_code, req.businessType)
+    return {"success": True}
+
+
+@router.delete("/{zip_code}/business-types/{biz_type}")
+async def remove_business_type(zip_code: str, biz_type: str):
+    """Remove a business type from a registered zipcode."""
+    from hephae_db.firestore.registered_zipcodes import (
+        get_registered_zipcode,
+        remove_business_type as db_remove_biz_type,
+    )
+
+    existing = await get_registered_zipcode(zip_code)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    current_types = existing.get("businessTypes", [])
+    if biz_type not in current_types:
+        raise HTTPException(status_code=404, detail=f"Business type '{biz_type}' not found")
+    if len(current_types) <= 1:
+        raise HTTPException(status_code=400, detail="Cannot remove the last business type")
+
+    await db_remove_biz_type(zip_code, biz_type)
     return {"success": True}
 
 

@@ -1,8 +1,8 @@
 """Weekly pulse cron — auto-generates pulses for all registered active zipcodes.
 
 GET /api/cron/weekly-pulse — Triggered by Cloud Scheduler every Monday 6am ET.
-Queries all active registered zipcodes and kicks off pulse generation for each,
-staggering starts by 30 seconds to avoid rate limits.
+Queries all active registered zipcodes and kicks off pulse generation for each
+zip x businessType combination, staggering starts by 30 seconds to avoid rate limits.
 """
 
 from __future__ import annotations
@@ -77,10 +77,10 @@ async def _run_single_pulse(
             },
         })
 
-        # Update the registered zipcode entry
+        # Update the registered zipcode entry (single doc per zip)
         pulse_data = result.get("pulse", {})
         await update_last_pulse(
-            zip_code, business_type, result["pulseId"],
+            zip_code, result["pulseId"],
             headline=pulse_data.get("headline", ""),
             insight_count=len(pulse_data.get("insights", [])),
         )
@@ -88,15 +88,15 @@ async def _run_single_pulse(
         # Auto-onboard if first successful run with quality gate
         try:
             from hephae_db.firestore.registered_zipcodes import get_registered_zipcode, approve_zipcode
-            reg = await get_registered_zipcode(zip_code, business_type)
+            reg = await get_registered_zipcode(zip_code)
             if reg and reg.get("onboardingStatus") == "onboarding":
                 insights = pulse_data.get("insights", [])
                 local_briefing = pulse_data.get("localBriefing", {})
                 events = local_briefing.get("thisWeekInTown", []) if isinstance(local_briefing, dict) else []
                 critique_pass = result.get("diagnostics", {}).get("critiquePass", False)
                 if critique_pass and len(insights) >= 3 and len(events) >= 1:
-                    await approve_zipcode(zip_code, business_type)
-                    logger.info(f"[PulseCron] Auto-onboarded {zip_code}/{business_type}")
+                    await approve_zipcode(zip_code)
+                    logger.info(f"[PulseCron] Auto-onboarded {zip_code}")
         except Exception as e:
             logger.warning(f"[PulseCron] Auto-onboard check failed: {e}")
 
@@ -122,6 +122,9 @@ async def weekly_pulse_cron(
 
     Called by Cloud Scheduler every Monday at 6am ET. Idempotent — skips
     zipcodes that already have a pulse for the current week.
+
+    For each registered zip, iterates its businessTypes list and runs a
+    pulse for each zip x businessType combination.
     """
     cron_token = x_cron_secret or authorization
     if settings.CRON_SECRET and cron_token != f"Bearer {settings.CRON_SECRET}":
@@ -141,22 +144,23 @@ async def weekly_pulse_cron(
     triggered = 0
     skipped = 0
 
-    # Check each zipcode for existing pulse this week
+    # Build list of zip x businessType combinations to run
     to_run: list[dict] = []
     for reg in active_zips:
         zip_code = reg["zipCode"]
-        business_type = reg["businessType"]
+        business_types = reg.get("businessTypes", ["Restaurants"])
 
-        # Check if pulse already exists for this week
-        latest = await get_latest_pulse(zip_code, business_type)
-        if latest:
-            latest_week = latest.get("weekOf", "")
-            if latest_week == week_of:
-                logger.info(f"[PulseCron] Skipping {zip_code}/{business_type} — pulse already exists for {week_of}")
-                skipped += 1
-                continue
+        for business_type in business_types:
+            # Check if pulse already exists for this week + business type
+            latest = await get_latest_pulse(zip_code, business_type)
+            if latest:
+                latest_week = latest.get("weekOf", "")
+                if latest_week == week_of:
+                    logger.info(f"[PulseCron] Skipping {zip_code}/{business_type} — pulse already exists for {week_of}")
+                    skipped += 1
+                    continue
 
-        to_run.append({"zipCode": zip_code, "businessType": business_type})
+            to_run.append({"zipCode": zip_code, "businessType": business_type})
 
     # Stagger pulse generation — 30 seconds apart
     for i, entry in enumerate(to_run):
@@ -204,7 +208,7 @@ async def weekly_pulse_cron_status(
         "zipcodes": [
             {
                 "zipCode": z.get("zipCode"),
-                "businessType": z.get("businessType"),
+                "businessTypes": z.get("businessTypes", ["Restaurants"]),
                 "city": z.get("city"),
                 "state": z.get("state"),
                 "status": z.get("status"),

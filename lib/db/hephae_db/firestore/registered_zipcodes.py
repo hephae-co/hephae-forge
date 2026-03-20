@@ -1,16 +1,15 @@
 """Firestore persistence for registered_zipcodes collection.
 
-Tracks zip code + business type pairs registered for weekly pulse generation.
-The cron system uses this collection to determine which pulses to auto-generate.
+Tracks zip codes registered for weekly pulse generation.
+Business types are stored as a list on each zip doc for pulse iteration.
 
-Document ID pattern: {zipCode}-{businessType_slug} (e.g., "07110-restaurants")
+Document ID pattern: {zipCode} (e.g., "07110")
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-import re
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -19,14 +18,6 @@ from hephae_common.firebase import get_db
 logger = logging.getLogger(__name__)
 
 COLLECTION = "registered_zipcodes"
-
-
-def _slugify(text: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", text.lower().strip()).strip("-")
-
-
-def _doc_id(zip_code: str, business_type: str) -> str:
-    return f"{zip_code}-{_slugify(business_type)}"
 
 
 def _next_monday() -> datetime:
@@ -53,20 +44,19 @@ def _deserialize_ts(data: dict[str, Any]) -> dict[str, Any]:
 
 async def register_zipcode(
     zip_code: str,
-    business_type: str,
     city: str,
     state: str,
     county: str,
 ) -> str:
-    """Register a zipcode + business type for weekly pulse generation. Returns doc ID."""
+    """Register a zipcode for weekly pulse generation. Returns doc ID."""
     db = get_db()
-    doc_id = _doc_id(zip_code, business_type)
+    doc_id = zip_code
     now = datetime.utcnow()
 
     doc_ref = db.collection(COLLECTION).document(doc_id)
     data = {
         "zipCode": zip_code,
-        "businessType": business_type,
+        "businessTypes": ["Restaurants"],
         "city": city,
         "state": state,
         "county": county,
@@ -87,34 +77,31 @@ async def register_zipcode(
     return doc_id
 
 
-async def unregister_zipcode(zip_code: str, business_type: str) -> None:
+async def unregister_zipcode(zip_code: str) -> None:
     """Delete a registered zipcode entry."""
     db = get_db()
-    doc_id = _doc_id(zip_code, business_type)
-    doc_ref = db.collection(COLLECTION).document(doc_id)
+    doc_ref = db.collection(COLLECTION).document(zip_code)
     await asyncio.to_thread(doc_ref.delete)
-    logger.info(f"[RegisteredZips] Unregistered {doc_id}")
+    logger.info(f"[RegisteredZips] Unregistered {zip_code}")
 
 
-async def pause_zipcode(zip_code: str, business_type: str) -> None:
+async def pause_zipcode(zip_code: str) -> None:
     """Pause weekly pulse generation for a zipcode."""
     db = get_db()
-    doc_id = _doc_id(zip_code, business_type)
-    doc_ref = db.collection(COLLECTION).document(doc_id)
+    doc_ref = db.collection(COLLECTION).document(zip_code)
     await asyncio.to_thread(doc_ref.update, {"status": "paused"})
-    logger.info(f"[RegisteredZips] Paused {doc_id}")
+    logger.info(f"[RegisteredZips] Paused {zip_code}")
 
 
-async def resume_zipcode(zip_code: str, business_type: str) -> None:
+async def resume_zipcode(zip_code: str) -> None:
     """Resume weekly pulse generation for a zipcode."""
     db = get_db()
-    doc_id = _doc_id(zip_code, business_type)
-    doc_ref = db.collection(COLLECTION).document(doc_id)
+    doc_ref = db.collection(COLLECTION).document(zip_code)
     await asyncio.to_thread(doc_ref.update, {
         "status": "active",
         "nextScheduledAt": _next_monday(),
     })
-    logger.info(f"[RegisteredZips] Resumed {doc_id}")
+    logger.info(f"[RegisteredZips] Resumed {zip_code}")
 
 
 async def list_registered_zipcodes(status: str | None = None) -> list[dict[str, Any]]:
@@ -133,12 +120,11 @@ async def list_registered_zipcodes(status: str | None = None) -> list[dict[str, 
     return results
 
 
-async def get_registered_zipcode(zip_code: str, business_type: str) -> dict[str, Any] | None:
+async def get_registered_zipcode(zip_code: str) -> dict[str, Any] | None:
     """Get a single registered zipcode entry."""
     db = get_db()
-    doc_id = _doc_id(zip_code, business_type)
     doc = await asyncio.to_thread(
-        db.collection(COLLECTION).document(doc_id).get
+        db.collection(COLLECTION).document(zip_code).get
     )
     if not doc.exists:
         return None
@@ -147,30 +133,27 @@ async def get_registered_zipcode(zip_code: str, business_type: str) -> dict[str,
     return _deserialize_ts(data)
 
 
-async def approve_zipcode(zip_code: str, business_type: str) -> None:
+async def approve_zipcode(zip_code: str) -> None:
     """Mark zipcode as onboarded (human or auto approval)."""
     db = get_db()
-    doc_id = _doc_id(zip_code, business_type)
-    doc_ref = db.collection(COLLECTION).document(doc_id)
+    doc_ref = db.collection(COLLECTION).document(zip_code)
     now = datetime.utcnow()
     await asyncio.to_thread(doc_ref.update, {
         "onboardingStatus": "onboarded",
         "onboardedAt": now,
     })
-    logger.info(f"[RegisteredZips] Approved (onboarded) {doc_id}")
+    logger.info(f"[RegisteredZips] Approved (onboarded) {zip_code}")
 
 
 async def update_last_pulse(
     zip_code: str,
-    business_type: str,
     pulse_id: str,
     headline: str = "",
     insight_count: int = 0,
 ) -> None:
     """Update lastPulseAt, lastPulseId, headline, insight count, increment pulseCount, set next schedule."""
     db = get_db()
-    doc_id = _doc_id(zip_code, business_type)
-    doc_ref = db.collection(COLLECTION).document(doc_id)
+    doc_ref = db.collection(COLLECTION).document(zip_code)
     from google.cloud.firestore_v1 import Increment
 
     now = datetime.utcnow()
@@ -182,4 +165,28 @@ async def update_last_pulse(
         "pulseCount": Increment(1),
         "nextScheduledAt": _next_monday(),
     })
-    logger.info(f"[RegisteredZips] Updated last pulse for {doc_id} → {pulse_id}")
+    logger.info(f"[RegisteredZips] Updated last pulse for {zip_code} -> {pulse_id}")
+
+
+async def add_business_type(zip_code: str, business_type: str) -> None:
+    """Add a business type to a registered zipcode's list."""
+    from google.cloud.firestore_v1 import ArrayUnion
+
+    db = get_db()
+    doc_ref = db.collection(COLLECTION).document(zip_code)
+    await asyncio.to_thread(doc_ref.update, {
+        "businessTypes": ArrayUnion([business_type]),
+    })
+    logger.info(f"[RegisteredZips] Added business type '{business_type}' to {zip_code}")
+
+
+async def remove_business_type(zip_code: str, business_type: str) -> None:
+    """Remove a business type from a registered zipcode's list."""
+    from google.cloud.firestore_v1 import ArrayRemove
+
+    db = get_db()
+    doc_ref = db.collection(COLLECTION).document(zip_code)
+    await asyncio.to_thread(doc_ref.update, {
+        "businessTypes": ArrayRemove([business_type]),
+    })
+    logger.info(f"[RegisteredZips] Removed business type '{business_type}' from {zip_code}")

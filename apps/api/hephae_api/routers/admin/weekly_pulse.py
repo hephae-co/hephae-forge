@@ -85,7 +85,7 @@ async def _run_pulse_job(job_id: str, zip_code: str, business_type: str, week_of
             from hephae_db.firestore.registered_zipcodes import update_last_pulse
             pulse_data = result.get("pulse", {})
             await update_last_pulse(
-                zip_code, business_type, result["pulseId"],
+                zip_code, result["pulseId"],
                 headline=pulse_data.get("headline", ""),
                 insight_count=len(pulse_data.get("insights", [])),
             )
@@ -96,7 +96,7 @@ async def _run_pulse_job(job_id: str, zip_code: str, business_type: str, week_of
         if not test_mode:
             try:
                 from hephae_db.firestore.registered_zipcodes import get_registered_zipcode, approve_zipcode
-                reg = await get_registered_zipcode(zip_code, business_type)
+                reg = await get_registered_zipcode(zip_code)
                 if reg and reg.get("onboardingStatus") == "onboarding":
                     pulse_output = result.get("pulse", {})
                     insights = pulse_output.get("insights", [])
@@ -104,8 +104,8 @@ async def _run_pulse_job(job_id: str, zip_code: str, business_type: str, week_of
                     events = local_briefing.get("thisWeekInTown", []) if isinstance(local_briefing, dict) else []
                     critique_pass = result.get("diagnostics", {}).get("critiquePass", False)
                     if critique_pass and len(insights) >= 3 and len(events) >= 1:
-                        await approve_zipcode(zip_code, business_type)
-                        logger.info(f"[PulseJob] Auto-onboarded {zip_code}/{business_type}")
+                        await approve_zipcode(zip_code)
+                        logger.info(f"[PulseJob] Auto-onboarded {zip_code}")
             except Exception as e:
                 logger.warning(f"[PulseJob] Auto-onboard check failed: {e}")
 

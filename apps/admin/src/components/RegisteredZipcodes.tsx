@@ -1070,7 +1070,6 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
                   <tr className="text-xs text-gray-400 uppercase tracking-wider border-b border-gray-100">
                     <th className="text-left px-6 py-3">Zip Code</th>
                     <th className="text-left px-4 py-3">City / State</th>
-                    <th className="text-left px-4 py-3">Business Types</th>
                     <th className="text-center px-4 py-3">Status</th>
                     <th className="text-left px-4 py-3">Last Pulse</th>
                     <th className="text-left px-4 py-3">Next Run</th>
@@ -1091,15 +1090,6 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
                         {zip.county && (
                           <span className="text-xs text-gray-400 ml-1">({zip.county})</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {(zip.businessTypes || ['Restaurants']).map(bt => (
-                            <span key={bt} className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
-                              {bt}
-                            </span>
-                          ))}
-                        </div>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex flex-col items-center gap-1">
@@ -1444,7 +1434,6 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
                   <div className="flex items-center gap-3 text-xs text-gray-400">
                     <span>{zip.lastPulseInsightCount} insights</span>
                     <span>{relativeTime(zip.lastPulseAt)}</span>
-                    <span>{(zip.businessTypes || ['Restaurants']).join(', ')}</span>
                   </div>
                   <button
                     onClick={() => handleViewPulse(zip.lastPulseId!)}

@@ -1020,7 +1020,20 @@ async def run_zipcode_profile_discovery(zip_code: str) -> dict[str, Any]:
         f"DMA: {dma_name or 'N/A'}"
     )
 
-    # Step 2: Build initial session state
+    # Step 2: Spin up ephemeral crawl4ai instance
+    ephemeral_crawl4ai_url = None
+    ephemeral_name = f"disc-{zip_code}"
+    try:
+        from infra.crawl4ai.ephemeral import create_ephemeral_crawl4ai
+        ephemeral_crawl4ai_url = await create_ephemeral_crawl4ai(ephemeral_name)
+        if ephemeral_crawl4ai_url:
+            logger.info(f"[ProfileDiscovery] Ephemeral crawl4ai: {ephemeral_crawl4ai_url}")
+    except Exception as e:
+        logger.warning(f"[ProfileDiscovery] Ephemeral crawl4ai failed, using shared: {e}")
+        import os
+        ephemeral_crawl4ai_url = os.environ.get("CRAWL4AI_URL", "")
+
+    # Step 3: Build initial session state
     initial_state = {
         "zipCode": zip_code,
         "city": city,
@@ -1029,9 +1042,10 @@ async def run_zipcode_profile_discovery(zip_code: str) -> dict[str, Any]:
         "latitude": latitude,
         "longitude": longitude,
         "dmaName": dma_name,
+        "crawl4aiUrl": ephemeral_crawl4ai_url or "",
     }
 
-    # Step 3: Run ADK agent tree
+    # Step 4: Run ADK agent tree
     from google.adk.runners import Runner
     from google.adk.sessions import InMemorySessionService
     from hephae_common.adk_helpers import user_msg
@@ -1085,5 +1099,13 @@ async def run_zipcode_profile_discovery(zip_code: str) -> dict[str, Any]:
         f"[ProfileDiscovery] Complete for {zip_code}: "
         f"{confirmed} confirmed, {unavailable} unavailable (out of {total} total)"
     )
+
+    # Step 6: Destroy ephemeral crawl4ai instance
+    if ephemeral_crawl4ai_url and ephemeral_name:
+        try:
+            from infra.crawl4ai.ephemeral import destroy_ephemeral_crawl4ai
+            await destroy_ephemeral_crawl4ai(ephemeral_name)
+        except Exception as e:
+            logger.warning(f"[ProfileDiscovery] Ephemeral crawl4ai cleanup failed: {e}")
 
     return profile

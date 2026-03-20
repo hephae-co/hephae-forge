@@ -62,6 +62,12 @@ from hephae_db.schemas.pulse_outputs import (  # noqa: F401
     CritiqueResult,
 )
 
+from hephae_db.schemas.zipcode_profile import (  # noqa: F401
+    SourceCandidate,
+    SourceEntry,
+    ZipcodeProfile,
+)
+
 __all__ = [
     "DiscoveredBusinessItem",
     "ZipcodeScannerOutput",
@@ -120,4 +126,8 @@ __all__ = [
     # Pulse Critique
     "InsightCritique",
     "CritiqueResult",
+    # Zipcode Profile
+    "SourceCandidate",
+    "SourceEntry",
+    "ZipcodeProfile",
 ]

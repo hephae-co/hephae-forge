@@ -70,12 +70,34 @@ async def register_zipcode(req: RegisterZipcodeRequest):
         county=geo.county,
     )
 
+    # Kick off zipcode profile discovery in background (non-blocking)
+    import asyncio
+
+    async def _run_discovery_and_update(zip_code: str, business_type: str):
+        try:
+            from hephae_agents.research.zipcode_profile_discovery import (
+                run_zipcode_profile_discovery,
+            )
+            from hephae_db.firestore.registered_zipcodes import approve_zipcode
+
+            profile = await run_zipcode_profile_discovery(zip_code)
+            if profile and not profile.get("error"):
+                await approve_zipcode(zip_code, business_type)
+                logger.info(f"[RegisteredZips] Discovery complete + auto-approved: {zip_code}/{business_type}")
+            else:
+                logger.warning(f"[RegisteredZips] Discovery returned error for {zip_code}: {profile.get('error')}")
+        except Exception as e:
+            logger.error(f"[RegisteredZips] Background discovery failed for {zip_code}: {e}")
+
+    asyncio.create_task(_run_discovery_and_update(req.zipCode, req.businessType))
+
     return {
         "success": True,
         "id": doc_id,
         "city": geo.city,
         "state": geo.state_code,
         "county": geo.county,
+        "discoveryStarted": True,
     }
 
 

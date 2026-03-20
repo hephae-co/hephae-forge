@@ -80,6 +80,35 @@ async def _run_pulse_job(job_id: str, zip_code: str, business_type: str, week_of
         })
         logger.info(f"[PulseJob] {job_id} completed — {result['pulseId']}")
 
+        # Update last pulse on registered zip doc (headline + insight count)
+        try:
+            from hephae_db.firestore.registered_zipcodes import update_last_pulse
+            pulse_data = result.get("pulse", {})
+            await update_last_pulse(
+                zip_code, business_type, result["pulseId"],
+                headline=pulse_data.get("headline", ""),
+                insight_count=len(pulse_data.get("insights", [])),
+            )
+        except Exception as e:
+            logger.warning(f"[PulseJob] Failed to update last pulse on zip doc: {e}")
+
+        # Auto-onboard if first successful run with quality gate
+        if not test_mode:
+            try:
+                from hephae_db.firestore.registered_zipcodes import get_registered_zipcode, approve_zipcode
+                reg = await get_registered_zipcode(zip_code, business_type)
+                if reg and reg.get("onboardingStatus") == "onboarding":
+                    pulse_output = result.get("pulse", {})
+                    insights = pulse_output.get("insights", [])
+                    local_briefing = pulse_output.get("localBriefing", {})
+                    events = local_briefing.get("thisWeekInTown", []) if isinstance(local_briefing, dict) else []
+                    critique_pass = result.get("diagnostics", {}).get("critiquePass", False)
+                    if critique_pass and len(insights) >= 3 and len(events) >= 1:
+                        await approve_zipcode(zip_code, business_type)
+                        logger.info(f"[PulseJob] Auto-onboarded {zip_code}/{business_type}")
+            except Exception as e:
+                logger.warning(f"[PulseJob] Auto-onboard check failed: {e}")
+
     except Exception as e:
         logger.error(f"[PulseJob] {job_id} failed: {e}")
         await update_pulse_job(job_id, {
@@ -166,9 +195,12 @@ async def get_pulse_job_status(job_id: str):
 
 
 @router.get("")
-async def list_all_pulses(limit: int = Query(20, ge=1, le=100)):
-    """List all recent pulses across zip codes."""
-    pulses = await list_pulses(limit=limit)
+async def list_all_pulses(
+    limit: int = Query(20, ge=1, le=100),
+    testMode: bool | None = Query(None),
+):
+    """List all recent pulses across zip codes. Filter by testMode if provided."""
+    pulses = await list_pulses(limit=limit, test_mode=testMode)
     return [_serialize(p) for p in pulses]
 
 

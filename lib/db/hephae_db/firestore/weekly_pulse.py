@@ -151,19 +151,43 @@ async def get_pulse_by_id(pulse_id: str) -> dict[str, Any] | None:
     return data
 
 
-async def list_pulses(limit: int = 20) -> list[dict[str, Any]]:
-    """List all recent pulses across all zip codes."""
+async def list_pulses(limit: int = 20, test_mode: bool | None = None) -> list[dict[str, Any]]:
+    """List all recent pulses across all zip codes.
+
+    Args:
+        limit: Max number of results.
+        test_mode: If True, only test pulses. If False, only non-test pulses.
+                   If None, return all (existing behavior).
+    """
     db = get_db()
-    query = (
-        db.collection(PULSE_COLLECTION)
-        .order_by("createdAt", direction="DESCENDING")
-        .limit(limit)
-    )
+    if test_mode is True:
+        # Firestore can filter where testMode == True
+        query = (
+            db.collection(PULSE_COLLECTION)
+            .where("testMode", "==", True)
+            .order_by("createdAt", direction="DESCENDING")
+            .limit(limit)
+        )
+    else:
+        # For test_mode=False or None, query all and filter in Python
+        # (Firestore != queries don't work well for missing fields)
+        fetch_limit = limit if test_mode is None else limit * 3
+        query = (
+            db.collection(PULSE_COLLECTION)
+            .order_by("createdAt", direction="DESCENDING")
+            .limit(fetch_limit)
+        )
+
     docs = await asyncio.to_thread(query.get)
     results = []
     for doc in docs:
         data = doc.to_dict()
         data["id"] = doc.id
+
+        # Filter for test_mode=False: skip docs with testMode=True
+        if test_mode is False and data.get("testMode") is True:
+            continue
+
         _deserialize_ts(data, ["createdAt", "updatedAt"])
         # Return summary without full pulse data
         pulse = data.get("pulse", {})
@@ -174,8 +198,11 @@ async def list_pulses(limit: int = 20) -> list[dict[str, Any]]:
             "weekOf": data.get("weekOf", ""),
             "headline": pulse.get("headline", ""),
             "insightCount": len(pulse.get("insights", [])),
+            "testMode": data.get("testMode", False),
             "createdAt": data.get("createdAt"),
         })
+        if len(results) >= limit:
+            break
     return results
 
 

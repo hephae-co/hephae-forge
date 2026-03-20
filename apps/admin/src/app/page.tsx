@@ -9,7 +9,6 @@ import MarketResearchSection from '@/components/MarketResearchSection';
 import WorkflowDashboard from '@/components/WorkflowDashboard';
 import TestFixturesBrowser from '@/components/TestFixturesBrowser';
 import ContentStudio from '@/components/ContentStudio';
-import WeeklyPulse from '@/components/WeeklyPulse';
 import RegisteredZipcodes from '@/components/RegisteredZipcodes';
 import DashboardOverview from '@/components/DashboardOverview';
 import { RunSummary } from '@/lib/tester/storage';
@@ -18,28 +17,33 @@ import { useAuth } from '@/contexts/AuthContext';
 
 type Tab = 'dashboard' | 'businesses' | 'workflows' | 'content' | 'zipcodes';
 
-type ZipSubTab = 'manage' | 'pulse';
+type ZipSubTab = 'onboarded' | 'weekly' | 'tests';
 
 function ZipcodesSection() {
-  const [subTab, setSubTab] = useState<ZipSubTab>('manage');
+  const [subTab, setSubTab] = useState<ZipSubTab>('onboarded');
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
       <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-gray-200 shadow-sm w-fit">
         <button
-          onClick={() => setSubTab('manage')}
-          className={`px-4 py-2 rounded-md text-sm font-semibold flex items-center gap-2 transition-all ${subTab === 'manage' ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 hover:text-gray-900'}`}
+          onClick={() => setSubTab('onboarded')}
+          className={`px-4 py-2 rounded-md text-sm font-semibold flex items-center gap-2 transition-all ${subTab === 'onboarded' ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 hover:text-gray-900'}`}
         >
-          <MapPin className="w-4 h-4" /> Manage Zipcodes
+          <MapPin className="w-4 h-4" /> Onboarded Zips
         </button>
         <button
-          onClick={() => setSubTab('pulse')}
-          className={`px-4 py-2 rounded-md text-sm font-semibold flex items-center gap-2 transition-all ${subTab === 'pulse' ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 hover:text-gray-900'}`}
+          onClick={() => setSubTab('weekly')}
+          className={`px-4 py-2 rounded-md text-sm font-semibold flex items-center gap-2 transition-all ${subTab === 'weekly' ? 'bg-indigo-600 text-white shadow' : 'text-gray-500 hover:text-gray-900'}`}
         >
-          <Zap className="w-4 h-4" /> Weekly Pulse
+          <Zap className="w-4 h-4" /> Weekly Runs
+        </button>
+        <button
+          onClick={() => setSubTab('tests')}
+          className={`px-4 py-2 rounded-md text-sm font-semibold flex items-center gap-2 transition-all ${subTab === 'tests' ? 'bg-amber-500 text-white shadow' : 'text-gray-500 hover:text-gray-900'}`}
+        >
+          <FlaskConical className="w-4 h-4" /> Test Runs
         </button>
       </div>
-      {subTab === 'manage' && <RegisteredZipcodes />}
-      {subTab === 'pulse' && <WeeklyPulse />}
+      <RegisteredZipcodes activeSubTab={subTab} />
     </div>
   );
 }

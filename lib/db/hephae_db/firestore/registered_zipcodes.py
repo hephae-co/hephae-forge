@@ -41,7 +41,7 @@ def _next_monday() -> datetime:
 
 def _deserialize_ts(data: dict[str, Any]) -> dict[str, Any]:
     """Convert Firestore timestamps to ISO strings for JSON serialization."""
-    ts_fields = ("registeredAt", "lastPulseAt", "nextScheduledAt")
+    ts_fields = ("registeredAt", "lastPulseAt", "nextScheduledAt", "onboardedAt")
     for field in ts_fields:
         val = data.get(field)
         if val and hasattr(val, "seconds"):
@@ -71,9 +71,13 @@ async def register_zipcode(
         "state": state,
         "county": county,
         "status": "active",
+        "onboardingStatus": "onboarding",
+        "onboardedAt": None,
         "registeredAt": now,
         "lastPulseAt": None,
         "lastPulseId": None,
+        "lastPulseHeadline": "",
+        "lastPulseInsightCount": 0,
         "pulseCount": 0,
         "nextScheduledAt": _next_monday(),
         "createdBy": "admin",
@@ -143,12 +147,27 @@ async def get_registered_zipcode(zip_code: str, business_type: str) -> dict[str,
     return _deserialize_ts(data)
 
 
+async def approve_zipcode(zip_code: str, business_type: str) -> None:
+    """Mark zipcode as onboarded (human or auto approval)."""
+    db = get_db()
+    doc_id = _doc_id(zip_code, business_type)
+    doc_ref = db.collection(COLLECTION).document(doc_id)
+    now = datetime.utcnow()
+    await asyncio.to_thread(doc_ref.update, {
+        "onboardingStatus": "onboarded",
+        "onboardedAt": now,
+    })
+    logger.info(f"[RegisteredZips] Approved (onboarded) {doc_id}")
+
+
 async def update_last_pulse(
     zip_code: str,
     business_type: str,
     pulse_id: str,
+    headline: str = "",
+    insight_count: int = 0,
 ) -> None:
-    """Update lastPulseAt, lastPulseId, increment pulseCount, set next schedule."""
+    """Update lastPulseAt, lastPulseId, headline, insight count, increment pulseCount, set next schedule."""
     db = get_db()
     doc_id = _doc_id(zip_code, business_type)
     doc_ref = db.collection(COLLECTION).document(doc_id)
@@ -158,6 +177,8 @@ async def update_last_pulse(
     await asyncio.to_thread(doc_ref.update, {
         "lastPulseAt": now,
         "lastPulseId": pulse_id,
+        "lastPulseHeadline": headline,
+        "lastPulseInsightCount": insight_count,
         "pulseCount": Increment(1),
         "nextScheduledAt": _next_monday(),
     })

@@ -78,7 +78,27 @@ async def _run_single_pulse(
         })
 
         # Update the registered zipcode entry
-        await update_last_pulse(zip_code, business_type, result["pulseId"])
+        pulse_data = result.get("pulse", {})
+        await update_last_pulse(
+            zip_code, business_type, result["pulseId"],
+            headline=pulse_data.get("headline", ""),
+            insight_count=len(pulse_data.get("insights", [])),
+        )
+
+        # Auto-onboard if first successful run with quality gate
+        try:
+            from hephae_db.firestore.registered_zipcodes import get_registered_zipcode, approve_zipcode
+            reg = await get_registered_zipcode(zip_code, business_type)
+            if reg and reg.get("onboardingStatus") == "onboarding":
+                insights = pulse_data.get("insights", [])
+                local_briefing = pulse_data.get("localBriefing", {})
+                events = local_briefing.get("thisWeekInTown", []) if isinstance(local_briefing, dict) else []
+                critique_pass = result.get("diagnostics", {}).get("critiquePass", False)
+                if critique_pass and len(insights) >= 3 and len(events) >= 1:
+                    await approve_zipcode(zip_code, business_type)
+                    logger.info(f"[PulseCron] Auto-onboarded {zip_code}/{business_type}")
+        except Exception as e:
+            logger.warning(f"[PulseCron] Auto-onboard check failed: {e}")
 
         logger.info(f"[PulseCron] Completed pulse for {zip_code}/{business_type} -> {result['pulseId']}")
         return {"zipCode": zip_code, "businessType": business_type, "status": "completed", "pulseId": result["pulseId"]}

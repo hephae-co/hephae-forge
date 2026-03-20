@@ -145,6 +145,24 @@ async def resume_zipcode(zip_code: str, business_type: str):
     return {"success": True}
 
 
+@router.post("/{zip_code}/{business_type}/approve")
+async def approve_zipcode_endpoint(zip_code: str, business_type: str):
+    """Human approval — marks zip as onboarded."""
+    from hephae_db.firestore.registered_zipcodes import (
+        approve_zipcode as db_approve,
+        get_registered_zipcode,
+    )
+
+    existing = await get_registered_zipcode(zip_code, business_type)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Not found")
+    if existing.get("onboardingStatus") == "onboarded":
+        raise HTTPException(status_code=400, detail="Already onboarded")
+
+    await db_approve(zip_code, business_type)
+    return {"success": True}
+
+
 @router.get("/cron-status")
 async def get_cron_status():
     """Get weekly pulse cron status — active/paused counts, next run, recent jobs."""

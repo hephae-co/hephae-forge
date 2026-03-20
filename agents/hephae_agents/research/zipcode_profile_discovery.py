@@ -712,7 +712,7 @@ def _verify_instruction(category_name: str):
         if subpages_hint:
             subpages_text = f"\nLook for these subpages: {', '.join(subpages_hint)}"
 
-        return f"""You are a source verification agent. Verify this data source for {city}, {st}:
+        return f"""Verify this data source for {city}, {st}. Be FAST — use at most 1 search + 1 crawl, then respond.
 
 Category: {candidate['category']}
 Description: {meta.get('description', category_name)}
@@ -720,7 +720,12 @@ URL: {candidate.get('candidateUrl', '')}
 Evidence: {candidate.get('searchEvidence', '')}
 {subpages_text}
 
-Navigate to the URL, verify it's active, and return a JSON object:
+Steps (MAX 2 tool calls total):
+1. If URL is provided, crawl it once. If no URL, do ONE google search.
+2. Based on the result, return your JSON verdict immediately.
+DO NOT do multiple searches or crawl multiple pages. One verification attempt is enough.
+
+Return JSON:
 {{
   "category": "{category_name}",
   "status": "verified" or "not_found" or "pdf_only",
@@ -731,14 +736,11 @@ Navigate to the URL, verify it's active, and return a JSON object:
   "accessType": "api" or "searchable_portal" or "pdf_only" or "none",
   "eventsUrl": "",
   "calendarUrl": "",
-  "note": "any relevant observations"
+  "note": "brief observation"
 }}
 
-Rules:
-- "verified" = real, active, usable page
-- "not_found" = URL is dead, generic, or not actually for this source
-- "pdf_only" = data exists but only as downloadable PDFs (not machine-readable)
-- Only include subpages you actually found — don't guess
+"verified" = real, active page. "not_found" = dead/generic/wrong. "pdf_only" = PDFs only.
+Only include subpages you actually found.
 """
 
     return builder
@@ -934,6 +936,7 @@ def create_discovery_agent() -> SequentialAgent:
             tools=[google_search_tool, crawl4ai_advanced_tool],
             output_key=f"verified_{category_name}",
             on_model_error_callback=fallback_on_error,
+            disallow_transfer_to_parent=True,
         )
         crawl_verifier_agents.append(agent)
 
@@ -947,6 +950,7 @@ def create_discovery_agent() -> SequentialAgent:
             tools=[google_search_tool],
             output_key=f"verified_{category_name}",
             on_model_error_callback=fallback_on_error,
+            disallow_transfer_to_parent=True,
         )
         search_verifier_agents.append(agent)
 

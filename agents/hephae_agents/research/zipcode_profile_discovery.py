@@ -933,7 +933,6 @@ def create_discovery_agent() -> SequentialAgent:
             instruction=_verify_instruction(category_name),
             tools=[google_search_tool, crawl4ai_advanced_tool],
             output_key=f"verified_{category_name}",
-            max_llm_calls=5,
             on_model_error_callback=fallback_on_error,
         )
         crawl_verifier_agents.append(agent)
@@ -947,7 +946,6 @@ def create_discovery_agent() -> SequentialAgent:
             instruction=_verify_instruction(category_name),
             tools=[google_search_tool],
             output_key=f"verified_{category_name}",
-            max_llm_calls=3,
             on_model_error_callback=fallback_on_error,
         )
         search_verifier_agents.append(agent)
@@ -1034,19 +1032,36 @@ async def run_zipcode_profile_discovery(zip_code: str) -> dict[str, Any]:
     # Spin up crawlers — use the first one that succeeds as the primary URL
     # Cloud Run auto-scales, so one service with max-instances=5 is better than 5 services
     ephemeral_name = f"disc-{zip_code}"
+    is_ephemeral = False  # Track whether we created an ephemeral or fell back to shared
+
     try:
+        from google.cloud import run_v2 as _run_v2  # noqa: F401 — test import availability
+
         ephemeral_url = await create_ephemeral_crawl4ai(ephemeral_name)
         if ephemeral_url:
-            ephemeral_names.append(ephemeral_name)
-            logger.info(f"[ProfileDiscovery] Ephemeral crawl4ai ready: {ephemeral_url}")
+            # Check if this is the shared URL (fallback) or a real ephemeral
+            shared_url = os.environ.get("CRAWL4AI_URL", "")
+            if ephemeral_url != shared_url:
+                is_ephemeral = True
+                ephemeral_names.append(ephemeral_name)
+                logger.info(f"[ProfileDiscovery] Ephemeral crawl4ai ready: {ephemeral_url}")
+            else:
+                logger.info(f"[ProfileDiscovery] Using shared crawl4ai (ephemeral creation failed): {ephemeral_url}")
         else:
-            raise RuntimeError("create_ephemeral_crawl4ai returned None")
+            # No ephemeral and no shared fallback — try shared URL directly
+            ephemeral_url = os.environ.get("CRAWL4AI_URL", "")
+            if not ephemeral_url:
+                raise RuntimeError("No crawl4ai available (ephemeral failed, no shared)")
+            logger.info(f"[ProfileDiscovery] Using shared crawl4ai: {ephemeral_url}")
+    except RuntimeError:
+        raise
     except Exception as e:
-        logger.error(f"[ProfileDiscovery] FAILED to create ephemeral crawl4ai: {e}")
-        raise RuntimeError(
-            f"Discovery requires ephemeral crawl4ai but failed to create: {e}. "
-            f"Check Cloud Run permissions and crawl4ai image availability."
-        )
+        # Fallback to shared crawl4ai
+        ephemeral_url = os.environ.get("CRAWL4AI_URL", "")
+        if ephemeral_url:
+            logger.warning(f"[ProfileDiscovery] Ephemeral creation failed ({e}), using shared: {ephemeral_url}")
+        else:
+            raise RuntimeError(f"Discovery requires crawl4ai but none available: {e}")
 
     # Override the module-level CRAWL4AI_URL so the tool uses our ephemeral instance
     os.environ["CRAWL4AI_URL"] = ephemeral_url

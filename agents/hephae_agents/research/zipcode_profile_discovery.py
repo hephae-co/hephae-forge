@@ -5,7 +5,8 @@ Architecture (factory pattern — fresh tree per invocation):
     Stage 1: APISourceChecker (BaseAgent, no LLM) — deterministic API/BQ checks
     Stage 2: SourceEnumerator (LlmAgent + google_search) — searches all non-API categories
     Stage 3: VerificationRouter (BaseAgent, no LLM) — splits into light vs deep
-    Stage 4: DeepVerifierFanOut (ParallelAgent) — crawl-verifies deep sources
+    Stage 4a: CrawlVerifierFanOut (ParallelAgent, 5 agents) — google_search + crawl4ai
+    Stage 4b: SearchVerifierFanOut (ParallelAgent, 7 agents) — google_search only
     Stage 5: ProfileAssembler (BaseAgent, no LLM) — merges + saves to Firestore
 
 Executed via Runner + InMemorySessionService (same pattern as generate_pulse).
@@ -15,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 from typing import Any, AsyncGenerator
 
@@ -30,6 +32,45 @@ from hephae_agents.shared_tools import google_search_tool, crawl4ai_advanced_too
 from hephae_db.schemas.zipcode_profile import SourceCandidate, SourceEntry, ZipcodeProfile
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# State → DMA mapping (deterministic, no BQ query needed)
+# ---------------------------------------------------------------------------
+
+STATE_TO_DMA: dict[str, str] = {
+    "NJ": "New York", "NY": "New York", "CT": "New York",
+    "PA": "Philadelphia", "DE": "Philadelphia",
+    "CA": "Los Angeles", "IL": "Chicago", "TX": "Dallas",
+    "MA": "Boston", "FL": "Miami", "GA": "Atlanta",
+    "WA": "Seattle", "CO": "Denver", "AZ": "Phoenix",
+    "DC": "Washington", "MD": "Washington", "VA": "Washington",
+}
+
+
+# ---------------------------------------------------------------------------
+# Deep verification: crawl vs search-only classification
+# ---------------------------------------------------------------------------
+
+# These 5 categories need crawl4ai for proper verification
+CRAWL_DEEP_CATEGORIES = frozenset({
+    "municipal_website",
+    "planning_zoning_board",
+    "public_works_dpw",
+    "chamber_of_commerce",
+    "county_health_dept",
+})
+
+# These 7 categories only need google_search (no crawl4ai)
+SEARCH_ONLY_DEEP_CATEGORIES = frozenset({
+    "building_permits",
+    "county_clerk",
+    "county_planning",
+    "county_economic_dev",
+    "business_improvement_district",
+    "downtown_development",
+    "merchants_association",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -253,7 +294,8 @@ class APISourceChecker(BaseAgent):
         county = state.get("county", "")
         latitude = state.get("latitude", 0.0)
         longitude = state.get("longitude", 0.0)
-        dma_name = state.get("dmaName", "")
+        # Use STATE_TO_DMA map instead of BQ query (column doesn't exist)
+        dma_name = state.get("dmaName", "") or STATE_TO_DMA.get(st, "")
 
         logger.info(f"[APISourceChecker] Running API checks for {zip_code}")
 
@@ -464,22 +506,118 @@ class VerificationRouter(BaseAgent):
     name: str = "VerificationRouter"
     description: str = "Routes sources to light vs deep verification paths."
 
+    @staticmethod
+    def _parse_enumerated(raw: Any, state: dict) -> list[dict]:
+        """Parse enumeratedSources with multiple fallback strategies."""
+
+        # If already a list, use it
+        if isinstance(raw, list):
+            return raw
+
+        if not isinstance(raw, str) or not raw.strip():
+            return []
+
+        text = raw.strip()
+
+        # Strategy 1: Direct JSON parse
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, list):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+        # Strategy 2: Extract JSON from markdown fences ```json ... ```
+        fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", text, re.DOTALL)
+        if fence_match:
+            try:
+                parsed = json.loads(fence_match.group(1))
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        # Strategy 3: Extract URLs from free-form text and build candidates
+        urls = re.findall(r"https?://[^\s\"',\]>)]+", text)
+        if urls:
+            logger.info(
+                f"[VerificationRouter] JSON parse failed, extracted {len(urls)} URLs from text"
+            )
+            # Try to match URLs to categories by keyword heuristics
+            candidates = []
+            used_urls = set()
+            for cat, meta in MASTER_SOURCE_TAXONOMY.items():
+                if meta.get("check") in ("api_call", "dma_lookup"):
+                    continue
+                # Look for a URL that might match this category
+                keywords = cat.replace("_", " ").split()
+                best_url = ""
+                for url in urls:
+                    url_lower = url.lower()
+                    if any(kw in url_lower for kw in keywords) and url not in used_urls:
+                        best_url = url
+                        used_urls.add(url)
+                        break
+                if best_url:
+                    candidates.append({
+                        "category": cat,
+                        "exists": True,
+                        "searchEvidence": f"URL extracted from enumeration text",
+                        "candidateUrl": best_url,
+                    })
+            if candidates:
+                return candidates
+
+        # Strategy 4 (ultimate fallback): No parseable output at all —
+        # create candidates from MASTER_SOURCE_TAXONOMY for always_exists
+        # and fill search_template URLs so deep verification can still run
+        logger.warning(
+            "[VerificationRouter] All parse strategies failed — "
+            "falling back to taxonomy-based candidates"
+        )
+        return VerificationRouter._taxonomy_fallback_candidates(state)
+
+    @staticmethod
+    def _taxonomy_fallback_candidates(state: dict) -> list[dict]:
+        """Build candidates from MASTER_SOURCE_TAXONOMY when enumeration fails entirely."""
+        city = state.get("city", "unknown")
+        st = state.get("state", "")
+        county = state.get("county", "")
+        city_slug = city.lower().replace(" ", "")
+        state_slug = st.lower().replace(" ", "")
+
+        candidates = []
+        for cat, meta in MASTER_SOURCE_TAXONOMY.items():
+            if meta.get("check") in ("api_call", "dma_lookup"):
+                continue
+
+            template = meta.get("search_template", "")
+            query = (
+                template.replace("{city}", city)
+                .replace("{state}", st)
+                .replace("{county}", county)
+                .replace("{city_slug}", city_slug)
+                .replace("{state_slug}", state_slug)
+            )
+
+            # always_exists categories are marked exists=True
+            always = meta.get("always_exists", False)
+            candidates.append({
+                "category": cat,
+                "exists": always or (cat in DEEP_VERIFICATION_CATEGORIES),
+                "searchEvidence": f"Fallback from taxonomy — search: {query}",
+                "candidateUrl": "",
+            })
+        return candidates
+
     async def _run_async_impl(
         self, ctx: InvocationContext
     ) -> AsyncGenerator[Event, None]:
         state = ctx.session.state
         raw_enumerated = state.get("enumeratedSources", "")
 
-        # Parse enumeratedSources (may be JSON string from output_key)
-        if isinstance(raw_enumerated, str):
-            try:
-                enumerated = json.loads(raw_enumerated)
-            except (json.JSONDecodeError, ValueError):
-                enumerated = []
-        elif isinstance(raw_enumerated, list):
-            enumerated = raw_enumerated
-        else:
-            enumerated = []
+        # Parse enumeratedSources with robust fallback strategies
+        enumerated = self._parse_enumerated(raw_enumerated, dict(state))
 
         now = datetime.utcnow().isoformat()
         light_verified: dict[str, dict[str, Any]] = {}
@@ -783,12 +921,11 @@ def create_discovery_agent() -> SequentialAgent:
     # -- Stage 3: VerificationRouter (BaseAgent, no LLM)
     verification_router = VerificationRouter()
 
-    # -- Stage 4: DeepVerifierFanOut (ParallelAgent)
-    # Create one sub-agent per deep category. Each agent checks state
-    # to see if its category exists in deepCandidates; if not, it returns
-    # a "skipped" status and exits quickly.
-    deep_verifier_agents = []
-    for category_name in sorted(DEEP_VERIFICATION_CATEGORIES):
+    # -- Stage 4: Deep verification split into crawl vs search-only
+    # CrawlVerifierFanOut: 5 categories that need crawl4ai (google_search + crawl4ai)
+    # SearchVerifierFanOut: 7 categories with google_search only (no crawl4ai)
+    crawl_verifier_agents = []
+    for category_name in sorted(CRAWL_DEEP_CATEGORIES):
         agent = LlmAgent(
             name=f"DeepVerify_{category_name}",
             model=AgentModels.PRIMARY_MODEL,
@@ -796,19 +933,39 @@ def create_discovery_agent() -> SequentialAgent:
             instruction=_verify_instruction(category_name),
             tools=[google_search_tool, crawl4ai_advanced_tool],
             output_key=f"verified_{category_name}",
+            max_llm_calls=5,
             on_model_error_callback=fallback_on_error,
         )
-        deep_verifier_agents.append(agent)
+        crawl_verifier_agents.append(agent)
 
-    deep_verifier_fan_out = ParallelAgent(
-        name="DeepVerifierFanOut",
-        sub_agents=deep_verifier_agents,
+    search_verifier_agents = []
+    for category_name in sorted(SEARCH_ONLY_DEEP_CATEGORIES):
+        agent = LlmAgent(
+            name=f"DeepVerify_{category_name}",
+            model=AgentModels.PRIMARY_MODEL,
+            description=f"Verifies {category_name} source via search.",
+            instruction=_verify_instruction(category_name),
+            tools=[google_search_tool],
+            output_key=f"verified_{category_name}",
+            max_llm_calls=3,
+            on_model_error_callback=fallback_on_error,
+        )
+        search_verifier_agents.append(agent)
+
+    crawl_verifier_fan_out = ParallelAgent(
+        name="CrawlVerifierFanOut",
+        sub_agents=crawl_verifier_agents,
+    )
+    search_verifier_fan_out = ParallelAgent(
+        name="SearchVerifierFanOut",
+        sub_agents=search_verifier_agents,
     )
 
     # -- Stage 5: ProfileAssembler (BaseAgent, no LLM)
     assembler = ProfileAssembler()
 
     # -- Wire all stages sequentially
+    # Stage 4 is split: crawl-based verifiers run first, then search-only verifiers
     return SequentialAgent(
         name="ZipcodeProfileDiscovery",
         description="5-stage zipcode profile discovery pipeline.",
@@ -816,7 +973,8 @@ def create_discovery_agent() -> SequentialAgent:
             api_checker,
             source_enumerator,
             verification_router,
-            deep_verifier_fan_out,
+            crawl_verifier_fan_out,
+            search_verifier_fan_out,
             assembler,
         ],
     )
@@ -854,23 +1012,8 @@ async def run_zipcode_profile_discovery(zip_code: str) -> dict[str, Any]:
     latitude = geo.latitude
     longitude = geo.longitude
 
-    # Resolve DMA (best effort)
-    dma_name = ""
-    try:
-        from hephae_db.bigquery.public_data import _run_query
-        from google.cloud import bigquery as bq
-
-        dma_rows = await _run_query(
-            """
-            SELECT dma_name FROM `bigquery-public-data.utility_us.zipcode_area`
-            WHERE zipcode = @zip LIMIT 1
-            """,
-            params=[bq.ScalarQueryParameter("zip", "STRING", zip_code)],
-        )
-        if dma_rows and dma_rows[0].get("dma_name"):
-            dma_name = dma_rows[0]["dma_name"]
-    except Exception:
-        pass
+    # Resolve DMA using deterministic STATE_TO_DMA map
+    dma_name = STATE_TO_DMA.get(state, "")
 
     logger.info(
         f"[ProfileDiscovery] Geography: {city}, {state} ({county} County), "

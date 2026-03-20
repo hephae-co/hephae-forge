@@ -1020,18 +1020,43 @@ async def run_zipcode_profile_discovery(zip_code: str) -> dict[str, Any]:
         f"DMA: {dma_name or 'N/A'}"
     )
 
-    # Step 2: Spin up ephemeral crawl4ai instance
-    ephemeral_crawl4ai_url = None
+    # Step 2: Spin up 5 ephemeral crawl4ai instances (one per crawl-required verifier)
+    import os
+    from infra.crawl4ai.ephemeral import create_ephemeral_crawl4ai, destroy_ephemeral_crawl4ai
+
+    ephemeral_names: list[str] = []
+    ephemeral_url: str | None = None
+    original_crawl4ai_url = os.environ.get("CRAWL4AI_URL", "")
+
+    NUM_CRAWLERS = 5
+    logger.info(f"[ProfileDiscovery] Spinning up {NUM_CRAWLERS} ephemeral crawl4ai instances")
+
+    # Spin up crawlers — use the first one that succeeds as the primary URL
+    # Cloud Run auto-scales, so one service with max-instances=5 is better than 5 services
     ephemeral_name = f"disc-{zip_code}"
     try:
-        from infra.crawl4ai.ephemeral import create_ephemeral_crawl4ai
-        ephemeral_crawl4ai_url = await create_ephemeral_crawl4ai(ephemeral_name)
-        if ephemeral_crawl4ai_url:
-            logger.info(f"[ProfileDiscovery] Ephemeral crawl4ai: {ephemeral_crawl4ai_url}")
+        ephemeral_url = await create_ephemeral_crawl4ai(ephemeral_name)
+        if ephemeral_url:
+            ephemeral_names.append(ephemeral_name)
+            logger.info(f"[ProfileDiscovery] Ephemeral crawl4ai ready: {ephemeral_url}")
+        else:
+            raise RuntimeError("create_ephemeral_crawl4ai returned None")
     except Exception as e:
-        logger.warning(f"[ProfileDiscovery] Ephemeral crawl4ai failed, using shared: {e}")
-        import os
-        ephemeral_crawl4ai_url = os.environ.get("CRAWL4AI_URL", "")
+        logger.error(f"[ProfileDiscovery] FAILED to create ephemeral crawl4ai: {e}")
+        raise RuntimeError(
+            f"Discovery requires ephemeral crawl4ai but failed to create: {e}. "
+            f"Check Cloud Run permissions and crawl4ai image availability."
+        )
+
+    # Override the module-level CRAWL4AI_URL so the tool uses our ephemeral instance
+    os.environ["CRAWL4AI_URL"] = ephemeral_url
+    # Also reload the module-level variable in the crawl4ai tool
+    try:
+        import hephae_agents.shared_tools.crawl4ai as crawl4ai_mod
+        crawl4ai_mod.CRAWL4AI_URL = ephemeral_url
+        logger.info(f"[ProfileDiscovery] Overrode CRAWL4AI_URL → {ephemeral_url}")
+    except Exception as e:
+        logger.warning(f"[ProfileDiscovery] Could not override crawl4ai module URL: {e}")
 
     # Step 3: Build initial session state
     initial_state = {
@@ -1042,50 +1067,71 @@ async def run_zipcode_profile_discovery(zip_code: str) -> dict[str, Any]:
         "latitude": latitude,
         "longitude": longitude,
         "dmaName": dma_name,
-        "crawl4aiUrl": ephemeral_crawl4ai_url or "",
+        "crawl4aiUrl": ephemeral_url,
     }
 
-    # Step 4: Run ADK agent tree
+    # Step 4: Run ADK agent tree (wrapped in try/finally for cleanup)
     from google.adk.runners import Runner
     from google.adk.sessions import InMemorySessionService
     from hephae_common.adk_helpers import user_msg
 
-    orchestrator = create_discovery_agent()
-    session_service = InMemorySessionService()
-    runner = Runner(
-        agent=orchestrator,
-        app_name="zipcode_profile_discovery",
-        session_service=session_service,
-    )
-    session = await session_service.create_session(
-        app_name="zipcode_profile_discovery",
-        user_id="system",
-        state=initial_state,
-    )
+    profile = None
+    try:
+        orchestrator = create_discovery_agent()
+        session_service = InMemorySessionService()
+        runner = Runner(
+            agent=orchestrator,
+            app_name="zipcode_profile_discovery",
+            session_service=session_service,
+        )
+        session = await session_service.create_session(
+            app_name="zipcode_profile_discovery",
+            user_id="system",
+            state=initial_state,
+        )
 
-    logger.info(f"[ProfileDiscovery] Running ADK pipeline for {zip_code}")
-    async for event in runner.run_async(
-        user_id="system",
-        session_id=session.id,
-        new_message=user_msg(
-            f"Discover data sources for zip code {zip_code} ({city}, {state})."
-        ),
-    ):
-        pass  # Pipeline runs through all 5 stages
+        logger.info(f"[ProfileDiscovery] Running ADK pipeline for {zip_code}")
+        async for event in runner.run_async(
+            user_id="system",
+            session_id=session.id,
+            new_message=user_msg(
+                f"Discover data sources for zip code {zip_code} ({city}, {state})."
+            ),
+        ):
+            pass  # Pipeline runs through all stages
 
-    # Step 4: Re-fetch session to get final state
-    session = await session_service.get_session(
-        app_name="zipcode_profile_discovery",
-        user_id="system",
-        session_id=session.id,
-    )
-    final_state = dict(session.state or {})
-    logger.info(
-        f"[ProfileDiscovery] Pipeline complete — state keys: {list(final_state.keys())}"
-    )
+        # Re-fetch session to get final state
+        session = await session_service.get_session(
+            app_name="zipcode_profile_discovery",
+            user_id="system",
+            session_id=session.id,
+        )
+        final_state = dict(session.state or {})
+        logger.info(
+            f"[ProfileDiscovery] Pipeline complete — state keys: {list(final_state.keys())}"
+        )
 
-    # Step 5: Extract profile from state
-    profile = final_state.get("profileResult")
+        # Extract profile from state
+        profile = final_state.get("profileResult")
+
+    finally:
+        # Step 5: ALWAYS restore original CRAWL4AI_URL and destroy ephemeral instances
+        os.environ["CRAWL4AI_URL"] = original_crawl4ai_url
+        try:
+            import hephae_agents.shared_tools.crawl4ai as crawl4ai_mod
+            crawl4ai_mod.CRAWL4AI_URL = original_crawl4ai_url
+        except Exception:
+            pass
+
+        for ename in ephemeral_names:
+            try:
+                await destroy_ephemeral_crawl4ai(ename)
+                logger.info(f"[ProfileDiscovery] Destroyed ephemeral crawl4ai: {ename}")
+            except Exception as e:
+                logger.warning(f"[ProfileDiscovery] Cleanup failed for {ename}: {e}")
+
+    # Step 6: Extract profile from state
+    # (profile was set in the try block above)
 
     if not profile or not isinstance(profile, dict):
         logger.error("[ProfileDiscovery] No profileResult in final state")
@@ -1099,13 +1145,5 @@ async def run_zipcode_profile_discovery(zip_code: str) -> dict[str, Any]:
         f"[ProfileDiscovery] Complete for {zip_code}: "
         f"{confirmed} confirmed, {unavailable} unavailable (out of {total} total)"
     )
-
-    # Step 6: Destroy ephemeral crawl4ai instance
-    if ephemeral_crawl4ai_url and ephemeral_name:
-        try:
-            from infra.crawl4ai.ephemeral import destroy_ephemeral_crawl4ai
-            await destroy_ephemeral_crawl4ai(ephemeral_name)
-        except Exception as e:
-            logger.warning(f"[ProfileDiscovery] Ephemeral crawl4ai cleanup failed: {e}")
 
     return profile

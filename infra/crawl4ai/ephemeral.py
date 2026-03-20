@@ -56,7 +56,7 @@ async def create_ephemeral_crawl4ai(name: str) -> str | None:
             template=run_v2.RevisionTemplate(
                 scaling=run_v2.RevisionScaling(
                     min_instance_count=1,
-                    max_instance_count=2,
+                    max_instance_count=5,  # 5 parallel crawlers
                 ),
                 containers=[
                     run_v2.Container(

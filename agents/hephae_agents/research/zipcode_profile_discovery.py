@@ -1,27 +1,30 @@
-"""Zipcode Profile Discovery — two-phase source enumeration + verification.
+"""Zipcode Profile Discovery — ADK agent tree for source enumeration + verification.
 
-Phase 1: Enumerate sources (deterministic API checks + LLM google_search)
-Phase 2: Verify each confirmed source (LLM + crawl4ai, semaphore of 3)
-Output:  ZipcodeProfile saved to Firestore zipcode_profiles collection
+Architecture (factory pattern — fresh tree per invocation):
+  create_discovery_agent() -> SequentialAgent:
+    Stage 1: APISourceChecker (BaseAgent, no LLM) — deterministic API/BQ checks
+    Stage 2: SourceEnumerator (LlmAgent + google_search) — searches all non-API categories
+    Stage 3: VerificationRouter (BaseAgent, no LLM) — splits into light vs deep
+    Stage 4: DeepVerifierFanOut (ParallelAgent) — crawl-verifies deep sources
+    Stage 5: ProfileAssembler (BaseAgent, no LLM) — merges + saves to Firestore
 
-This is NOT an ADK agent tree — it's a plain async orchestrator that uses
-run_agent_to_json for standalone LLM calls.
+Executed via Runner + InMemorySessionService (same pattern as generate_pulse).
 """
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, AsyncGenerator
 
-from google.adk.agents import LlmAgent
-from google.adk.runners import RunConfig
+from google.adk.agents import BaseAgent, LlmAgent, ParallelAgent, SequentialAgent
+from google.adk.agents.invocation_context import InvocationContext
+from google.adk.events import Event
+from google.adk.events.event_actions import EventActions
 from google.adk.tools import google_search
 
-from hephae_common.adk_helpers import run_agent_to_json
-from hephae_common.model_config import AgentModels
+from hephae_api.config import AgentModels
 from hephae_common.model_fallback import fallback_on_error
 from hephae_agents.shared_tools import google_search_tool, crawl4ai_advanced_tool
 from hephae_db.schemas.zipcode_profile import SourceCandidate, SourceEntry, ZipcodeProfile
@@ -186,8 +189,183 @@ MASTER_SOURCE_TAXONOMY: dict[str, dict[str, Any]] = {
 
 
 # ---------------------------------------------------------------------------
-# LLM Agent definitions (standalone — not part of an agent tree)
+# Light vs Deep classification
 # ---------------------------------------------------------------------------
+
+LIGHT_VERIFICATION_CATEGORIES = frozenset({
+    "patch_com",
+    "tapinto",
+    "local_newspaper",
+    "municipal_newsletter",
+    "local_subreddit",
+    "state_subreddit",
+    "facebook_community_groups",
+    "state_legal_notices",
+    "state_business_registry",
+    "school_district",
+    "library_system",
+    "community_calendar",
+    "recreation_events",
+    "municipal_budget",
+    "meeting_minutes",
+    "municipal_rss",
+    "economic_development_corp",
+})
+
+DEEP_VERIFICATION_CATEGORIES = frozenset({
+    "municipal_website",
+    "planning_zoning_board",
+    "public_works_dpw",
+    "chamber_of_commerce",
+    "county_health_dept",
+    "building_permits",
+    "business_improvement_district",
+    "downtown_development",
+    "merchants_association",
+    "county_clerk",
+    "county_planning",
+    "county_economic_dev",
+})
+
+
+# ---------------------------------------------------------------------------
+# Stage 1: APISourceChecker (BaseAgent — deterministic, no LLM)
+# ---------------------------------------------------------------------------
+
+
+class APISourceChecker(BaseAgent):
+    """Deterministic API/BQ checks for Census, OSM, NWS, Trends, FEMA.
+
+    Reads zipCode, city, state, county, latitude, longitude, dmaName from
+    session state. Writes results to state via state_delta: {"apiSources": {...}}.
+    """
+
+    name: str = "APISourceChecker"
+    description: str = "Deterministic API source checks — no LLM."
+
+    async def _run_async_impl(
+        self, ctx: InvocationContext
+    ) -> AsyncGenerator[Event, None]:
+        state = ctx.session.state
+        zip_code = state.get("zipCode", "")
+        city = state.get("city", "")
+        st = state.get("state", "")
+        county = state.get("county", "")
+        latitude = state.get("latitude", 0.0)
+        longitude = state.get("longitude", 0.0)
+        dma_name = state.get("dmaName", "")
+
+        logger.info(f"[APISourceChecker] Running API checks for {zip_code}")
+
+        results: dict[str, dict[str, Any]] = {}
+        now = datetime.utcnow().isoformat()
+
+        # Census ACS
+        try:
+            from hephae_db.bigquery.public_data import query_census_demographics
+
+            data = await query_census_demographics(zip_code)
+            if data and data.get("totalPopulation", 0) > 0:
+                results["census_acs"] = {
+                    "status": "verified", "active": True, "lastVerified": now,
+                    "note": f"pop={data.get('totalPopulation', 0)}, income=${data.get('medianHouseholdIncome', 0):,}",
+                }
+            else:
+                results["census_acs"] = {"status": "not_found", "lastVerified": now}
+        except Exception as e:
+            logger.warning(f"[APISourceChecker] Census ACS check failed: {e}")
+            results["census_acs"] = {"status": "not_found", "note": str(e)}
+
+        # OSM Business Density
+        try:
+            from hephae_db.bigquery.public_data import query_osm_business_density
+
+            data = await query_osm_business_density(latitude, longitude)
+            total = data.get("totalBusinesses", 0) if data else 0
+            if total > 0:
+                results["osm_businesses"] = {
+                    "status": "verified", "active": True, "lastVerified": now,
+                    "note": f"{total} businesses within 1500m",
+                }
+            else:
+                results["osm_businesses"] = {"status": "not_found", "lastVerified": now}
+        except Exception as e:
+            logger.warning(f"[APISourceChecker] OSM check failed: {e}")
+            results["osm_businesses"] = {"status": "not_found", "note": str(e)}
+
+        # NWS Weather (via NOAA historical)
+        try:
+            from hephae_db.bigquery.public_data import query_noaa_weather_history
+
+            data = await query_noaa_weather_history(latitude, longitude)
+            if data and data.get("observationDays", 0) > 0:
+                results["nws_weather"] = {
+                    "status": "verified", "active": True, "lastVerified": now,
+                    "note": f"station={data.get('station', '')}, dist={data.get('stationDistKm', 0)}km",
+                }
+            else:
+                results["nws_weather"] = {"status": "not_found", "lastVerified": now}
+        except Exception as e:
+            logger.warning(f"[APISourceChecker] NWS check failed: {e}")
+            results["nws_weather"] = {"status": "not_found", "note": str(e)}
+
+        # Google Trends (DMA lookup)
+        if dma_name:
+            results["google_trends"] = {
+                "status": "verified", "active": True, "lastVerified": now,
+                "note": f"DMA: {dma_name}",
+            }
+        else:
+            results["google_trends"] = {
+                "status": "not_found", "lastVerified": now,
+                "note": "No DMA mapping available",
+            }
+
+        # FEMA Declarations
+        try:
+            import httpx
+
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries",
+                    params={
+                        "$filter": f"state eq '{st}'",
+                        "$top": 1,
+                        "$orderby": "declarationDate desc",
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    declarations = data.get("DisasterDeclarationsSummaries", [])
+                    if declarations:
+                        results["fema_declarations"] = {
+                            "status": "verified", "active": True, "lastVerified": now,
+                            "note": f"Latest: {declarations[0].get('declarationTitle', 'N/A')}",
+                        }
+                    else:
+                        results["fema_declarations"] = {"status": "not_found", "lastVerified": now}
+                else:
+                    results["fema_declarations"] = {"status": "not_found", "lastVerified": now}
+        except Exception as e:
+            logger.warning(f"[APISourceChecker] FEMA check failed: {e}")
+            results["fema_declarations"] = {"status": "not_found", "note": str(e)}
+
+        logger.info(
+            f"[APISourceChecker] Done: {len(results)} API sources checked, "
+            f"{sum(1 for v in results.values() if v.get('status') == 'verified')} verified"
+        )
+
+        yield Event(
+            author=self.name,
+            invocation_id=ctx.invocation_id,
+            actions=EventActions(state_delta={"apiSources": results}),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Stage 2: SourceEnumerator instruction builder
+# ---------------------------------------------------------------------------
+
 
 ENUMERATOR_INSTRUCTION = """You are a local data source researcher. Your job is to determine which
 data sources exist for a specific city/town/locality.
@@ -221,194 +399,31 @@ IMPORTANT:
 - searchEvidence should be a brief (1-sentence) explanation of what you found or didn't find
 """
 
-_source_enumerator = LlmAgent(
-    name="source_enumerator",
-    model=AgentModels.PRIMARY_MODEL,
-    instruction=ENUMERATOR_INSTRUCTION,
-    tools=[google_search],
-    on_model_error_callback=fallback_on_error,
-)
 
+def _enumerator_instruction(ctx) -> str:
+    """Build enumeration prompt from session state."""
+    state = getattr(ctx, "state", {})
+    city = state.get("city", "unknown")
+    st = state.get("state", "")
+    county = state.get("county", "")
 
-VERIFIER_INSTRUCTION = """You are a source verification agent. Given a candidate data source (category + URL),
-verify it exists, is active, and capture its specific details.
+    # Determine which categories were already API-checked
+    api_sources = state.get("apiSources", {})
+    api_checked = set(api_sources.keys())
 
-Your verification steps:
-1. Navigate to the candidateUrl
-2. Confirm it's a real, active page (not a 404 or redirect to a generic page)
-3. Look for key subpages, feeds, or features specific to this source type
-4. Capture specific URLs for subpages, events calendars, feeds, etc.
-
-Return a JSON object with the verified source details:
-{
-  "category": "municipal_website",
-  "status": "verified",
-  "url": "https://www.nutleynj.org",
-  "subpages": {
-    "planning_board": "https://www.nutleynj.org/planning-board",
-    "dpw": "https://www.nutleynj.org/dpw"
-  },
-  "active": true,
-  "hasOnlinePortal": false,
-  "accessType": "",
-  "eventsUrl": "",
-  "calendarUrl": "",
-  "note": ""
-}
-
-Rules:
-- status must be one of: "verified", "not_found", "pdf_only"
-- "verified" = real, active, usable page
-- "not_found" = URL is dead, generic, or not actually for this source
-- "pdf_only" = data exists but only as downloadable PDFs (not machine-readable)
-- Only include subpages you actually found — don't guess
-- eventsUrl/calendarUrl should be direct links to events/calendar pages if found
-- note should explain any caveats (e.g., "permit applications require in-person visit")
-"""
-
-_source_verifier = LlmAgent(
-    name="source_verifier",
-    model=AgentModels.PRIMARY_MODEL,
-    instruction=VERIFIER_INSTRUCTION,
-    tools=[google_search_tool, crawl4ai_advanced_tool],
-    on_model_error_callback=fallback_on_error,
-)
-
-
-# ---------------------------------------------------------------------------
-# Phase 1: Deterministic API checks
-# ---------------------------------------------------------------------------
-
-
-async def _check_api_sources(
-    zip_code: str,
-    city: str,
-    state: str,
-    county: str,
-    latitude: float,
-    longitude: float,
-    dma_name: str,
-) -> dict[str, SourceEntry]:
-    """Run deterministic API checks for sources marked check: 'api_call' / 'dma_lookup'."""
-    results: dict[str, SourceEntry] = {}
-    now = datetime.utcnow().isoformat()
-
-    # Census ACS
-    try:
-        from hephae_db.bigquery.public_data import query_census_demographics
-
-        data = await query_census_demographics(zip_code)
-        if data and data.get("totalPopulation", 0) > 0:
-            results["census_acs"] = SourceEntry(
-                status="verified", active=True, lastVerified=now,
-                note=f"pop={data.get('totalPopulation', 0)}, income=${data.get('medianHouseholdIncome', 0):,}",
-            )
-        else:
-            results["census_acs"] = SourceEntry(status="not_found", lastVerified=now)
-    except Exception as e:
-        logger.warning(f"[ProfileDiscovery] Census ACS check failed: {e}")
-        results["census_acs"] = SourceEntry(status="not_found", note=str(e))
-
-    # OSM Business Density
-    try:
-        from hephae_db.bigquery.public_data import query_osm_business_density
-
-        data = await query_osm_business_density(latitude, longitude)
-        total = data.get("totalBusinesses", 0) if data else 0
-        if total > 0:
-            results["osm_businesses"] = SourceEntry(
-                status="verified", active=True, lastVerified=now,
-                note=f"{total} businesses within 1500m",
-            )
-        else:
-            results["osm_businesses"] = SourceEntry(status="not_found", lastVerified=now)
-    except Exception as e:
-        logger.warning(f"[ProfileDiscovery] OSM check failed: {e}")
-        results["osm_businesses"] = SourceEntry(status="not_found", note=str(e))
-
-    # NWS Weather (via NOAA historical)
-    try:
-        from hephae_db.bigquery.public_data import query_noaa_weather_history
-
-        data = await query_noaa_weather_history(latitude, longitude)
-        if data and data.get("observationDays", 0) > 0:
-            results["nws_weather"] = SourceEntry(
-                status="verified", active=True, lastVerified=now,
-                note=f"station={data.get('station', '')}, dist={data.get('stationDistKm', 0)}km",
-            )
-        else:
-            results["nws_weather"] = SourceEntry(status="not_found", lastVerified=now)
-    except Exception as e:
-        logger.warning(f"[ProfileDiscovery] NWS check failed: {e}")
-        results["nws_weather"] = SourceEntry(status="not_found", note=str(e))
-
-    # Google Trends (DMA lookup)
-    if dma_name:
-        results["google_trends"] = SourceEntry(
-            status="verified", active=True, lastVerified=now,
-            note=f"DMA: {dma_name}",
-        )
-    else:
-        results["google_trends"] = SourceEntry(
-            status="not_found", lastVerified=now,
-            note="No DMA mapping available",
-        )
-
-    # FEMA Declarations
-    try:
-        import httpx
-
-        async with httpx.AsyncClient(timeout=10) as client:
-            fips = f"{state}"  # Simplified — uses state-level check
-            resp = await client.get(
-                f"https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries",
-                params={"$filter": f"state eq '{state}'", "$top": 1, "$orderby": "declarationDate desc"},
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                declarations = data.get("DisasterDeclarationsSummaries", [])
-                if declarations:
-                    results["fema_declarations"] = SourceEntry(
-                        status="verified", active=True, lastVerified=now,
-                        note=f"Latest: {declarations[0].get('declarationTitle', 'N/A')}",
-                    )
-                else:
-                    results["fema_declarations"] = SourceEntry(status="not_found", lastVerified=now)
-            else:
-                results["fema_declarations"] = SourceEntry(status="not_found", lastVerified=now)
-    except Exception as e:
-        logger.warning(f"[ProfileDiscovery] FEMA check failed: {e}")
-        results["fema_declarations"] = SourceEntry(status="not_found", note=str(e))
-
-    return results
-
-
-# ---------------------------------------------------------------------------
-# Phase 1: LLM enumeration of search-based sources
-# ---------------------------------------------------------------------------
-
-
-def _build_enumeration_prompt(
-    city: str,
-    state: str,
-    county: str,
-    taxonomy: dict[str, dict[str, Any]],
-    api_checked: set[str],
-) -> str:
-    """Build the enumeration prompt for the LLM agent."""
     categories_to_check = []
-    for cat, meta in taxonomy.items():
+    for cat, meta in MASTER_SOURCE_TAXONOMY.items():
         if cat in api_checked:
-            continue  # Already checked via API
+            continue
         if meta.get("check") in ("api_call", "dma_lookup"):
-            continue  # Will be checked via API
+            continue
 
         # Substitute template variables
         template = meta.get("search_template", "")
         city_slug = city.lower().replace(" ", "")
-        state_slug = state.lower().replace(" ", "")
+        state_slug = st.lower().replace(" ", "")
         template = template.replace("{city}", city)
-        template = template.replace("{state}", state)
+        template = template.replace("{state}", st)
         template = template.replace("{county}", county)
         template = template.replace("{city_slug}", city_slug)
         template = template.replace("{state_slug}", state_slug)
@@ -421,7 +436,8 @@ def _build_enumeration_prompt(
         })
 
     return (
-        f"Research data sources for: {city}, {state} (County: {county})\n\n"
+        f"{ENUMERATOR_INSTRUCTION}\n\n"
+        f"Research data sources for: {city}, {st} (County: {county})\n\n"
         f"Check each of the following {len(categories_to_check)} source categories.\n"
         f"For categories marked always_exists=true, add them as exists=true but still find the URL.\n"
         f"For all others, use the search_query to determine if a real source exists.\n\n"
@@ -430,143 +446,380 @@ def _build_enumeration_prompt(
     )
 
 
-async def _enumerate_sources(
-    city: str,
-    state: str,
-    county: str,
-    api_checked: set[str],
-) -> list[SourceCandidate]:
-    """Phase 1: Use LLM + google_search to enumerate which sources exist."""
-    prompt = _build_enumeration_prompt(city, state, county, MASTER_SOURCE_TAXONOMY, api_checked)
-
-    result = await run_agent_to_json(
-        agent=_source_enumerator,
-        prompt=prompt,
-        app_name="ZipcodeProfileDiscovery",
-        run_config=RunConfig(max_llm_calls=15),
-    )
-
-    if not result:
-        logger.error("[ProfileDiscovery] Enumerator returned no results")
-        return []
-
-    # Parse result — could be list of dicts or list of SourceCandidate
-    candidates = []
-    items = result if isinstance(result, list) else [result]
-    for item in items:
-        if isinstance(item, dict):
-            candidates.append(SourceCandidate(**item))
-        elif isinstance(item, SourceCandidate):
-            candidates.append(item)
-
-    logger.info(
-        f"[ProfileDiscovery] Enumerated {len(candidates)} sources, "
-        f"{sum(1 for c in candidates if c.exists)} confirmed"
-    )
-    return candidates
-
-
 # ---------------------------------------------------------------------------
-# Phase 2: Verify each confirmed source
+# Stage 3: VerificationRouter (BaseAgent — deterministic, no LLM)
 # ---------------------------------------------------------------------------
 
 
-async def _verify_single_source(
-    candidate: SourceCandidate,
-    city: str,
-    state: str,
-    semaphore: asyncio.Semaphore,
-) -> SourceEntry:
-    """Verify a single source candidate via LLM + crawl4ai."""
-    async with semaphore:
-        meta = MASTER_SOURCE_TAXONOMY.get(candidate.category, {})
-        subpages_hint = meta.get("subpages", [])
+class VerificationRouter(BaseAgent):
+    """Splits enumerated sources into light-verified vs deep-verification-needed.
 
-        prompt = (
-            f"Verify this data source for {city}, {state}:\n"
-            f"Category: {candidate.category}\n"
-            f"Description: {meta.get('description', candidate.category)}\n"
-            f"Candidate URL: {candidate.candidateUrl}\n"
-            f"Search evidence: {candidate.searchEvidence}\n"
-        )
-        if subpages_hint:
-            prompt += f"Look for these subpages: {', '.join(subpages_hint)}\n"
-        prompt += "\nVerify the URL is real and active, then capture specific details."
+    Light sources: URL from enumeration is sufficient, mark verified immediately.
+    Deep sources: need LLM + crawl4ai verification in Stage 4.
 
-        try:
-            result = await run_agent_to_json(
-                agent=_source_verifier,
-                prompt=prompt,
-                app_name="ZipcodeProfileDiscovery",
-                run_config=RunConfig(max_llm_calls=8),
-            )
+    Reads enumeratedSources from state. Writes lightVerified + deepCandidates
+    to state via state_delta.
+    """
 
-            if result and isinstance(result, dict):
-                # Ensure category is correct
-                result["category"] = candidate.category
-                return SourceEntry(
-                    status=result.get("status", "not_found"),
-                    url=result.get("url", candidate.candidateUrl),
-                    lastVerified=datetime.utcnow().isoformat(),
-                    subpages=result.get("subpages", {}),
-                    active=result.get("active"),
-                    hasOnlinePortal=result.get("hasOnlinePortal"),
-                    accessType=result.get("accessType", ""),
-                    eventsUrl=result.get("eventsUrl", ""),
-                    calendarUrl=result.get("calendarUrl", ""),
-                    note=result.get("note", ""),
-                )
-        except Exception as e:
-            logger.error(f"[ProfileDiscovery] Verification failed for {candidate.category}: {e}")
+    name: str = "VerificationRouter"
+    description: str = "Routes sources to light vs deep verification paths."
 
-        # Fallback: mark as verified with candidate URL if we had evidence
-        return SourceEntry(
-            status="verified" if candidate.candidateUrl else "not_found",
-            url=candidate.candidateUrl,
-            lastVerified=datetime.utcnow().isoformat(),
-            note="Verification agent failed — using enumeration data",
-        )
+    async def _run_async_impl(
+        self, ctx: InvocationContext
+    ) -> AsyncGenerator[Event, None]:
+        state = ctx.session.state
+        raw_enumerated = state.get("enumeratedSources", "")
 
-
-async def _verify_sources(
-    candidates: list[SourceCandidate],
-    city: str,
-    state: str,
-) -> dict[str, SourceEntry]:
-    """Phase 2: Verify all confirmed sources with concurrency limit."""
-    confirmed = [c for c in candidates if c.exists and c.candidateUrl]
-    if not confirmed:
-        return {}
-
-    semaphore = asyncio.Semaphore(3)
-    tasks = [
-        _verify_single_source(candidate, city, state, semaphore)
-        for candidate in confirmed
-    ]
-
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    verified: dict[str, SourceEntry] = {}
-    for candidate, result in zip(confirmed, results):
-        if isinstance(result, Exception):
-            logger.error(f"[ProfileDiscovery] Verify error for {candidate.category}: {result}")
-            verified[candidate.category] = SourceEntry(
-                status="not_found",
-                note=f"Verification error: {result}",
-            )
+        # Parse enumeratedSources (may be JSON string from output_key)
+        if isinstance(raw_enumerated, str):
+            try:
+                enumerated = json.loads(raw_enumerated)
+            except (json.JSONDecodeError, ValueError):
+                enumerated = []
+        elif isinstance(raw_enumerated, list):
+            enumerated = raw_enumerated
         else:
-            verified[candidate.category] = result
+            enumerated = []
 
-    # Also add not-found entries for candidates that existed but had no URL
-    for c in candidates:
-        if c.exists and not c.candidateUrl and c.category not in verified:
-            verified[c.category] = SourceEntry(
-                status="verified",
-                lastVerified=datetime.utcnow().isoformat(),
-                note=c.searchEvidence,
+        now = datetime.utcnow().isoformat()
+        light_verified: dict[str, dict[str, Any]] = {}
+        deep_candidates: list[dict[str, Any]] = []
+
+        for item in enumerated:
+            if not isinstance(item, dict):
+                continue
+
+            category = item.get("category", "")
+            exists = item.get("exists", False)
+            url = item.get("candidateUrl", "")
+            evidence = item.get("searchEvidence", "")
+
+            if not exists:
+                # Not found — record as not_found in light_verified for assembly
+                light_verified[category] = {
+                    "status": "not_found",
+                    "lastVerified": now,
+                    "note": evidence,
+                }
+                continue
+
+            if category in LIGHT_VERIFICATION_CATEGORIES:
+                # Light verification: URL from enumeration is sufficient
+                light_verified[category] = {
+                    "status": "verified" if url else "not_found",
+                    "url": url,
+                    "active": True if url else None,
+                    "lastVerified": now,
+                    "note": evidence,
+                }
+            elif category in DEEP_VERIFICATION_CATEGORIES:
+                # Deep verification needed
+                deep_candidates.append({
+                    "category": category,
+                    "candidateUrl": url,
+                    "searchEvidence": evidence,
+                })
+            else:
+                # Unknown category — treat as light
+                light_verified[category] = {
+                    "status": "verified" if url else "not_found",
+                    "url": url,
+                    "lastVerified": now,
+                    "note": evidence,
+                }
+
+        logger.info(
+            f"[VerificationRouter] Split: {len(light_verified)} light, "
+            f"{len(deep_candidates)} deep candidates"
+        )
+
+        yield Event(
+            author=self.name,
+            invocation_id=ctx.invocation_id,
+            actions=EventActions(state_delta={
+                "lightVerified": light_verified,
+                "deepCandidates": deep_candidates,
+            }),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Stage 4: Deep verification sub-agents (one per DEEP category)
+# ---------------------------------------------------------------------------
+
+
+def _verify_instruction(category_name: str):
+    """Build a dynamic instruction function for a deep verifier sub-agent."""
+
+    def builder(ctx) -> str:
+        state = getattr(ctx, "state", {})
+        candidates = state.get("deepCandidates", [])
+        city = state.get("city", "unknown")
+        st = state.get("state", "")
+        meta = MASTER_SOURCE_TAXONOMY.get(category_name, {})
+
+        # Find this category in candidates
+        candidate = next(
+            (c for c in candidates if c.get("category") == category_name),
+            None,
+        )
+        if not candidate:
+            return (
+                f"No candidate found for category '{category_name}'. "
+                f"Return JSON: {{\"category\": \"{category_name}\", \"status\": \"skipped\"}}"
             )
 
-    return verified
+        subpages_hint = meta.get("subpages", [])
+        subpages_text = ""
+        if subpages_hint:
+            subpages_text = f"\nLook for these subpages: {', '.join(subpages_hint)}"
+
+        return f"""You are a source verification agent. Verify this data source for {city}, {st}:
+
+Category: {candidate['category']}
+Description: {meta.get('description', category_name)}
+URL: {candidate.get('candidateUrl', '')}
+Evidence: {candidate.get('searchEvidence', '')}
+{subpages_text}
+
+Navigate to the URL, verify it's active, and return a JSON object:
+{{
+  "category": "{category_name}",
+  "status": "verified" or "not_found" or "pdf_only",
+  "url": "the verified URL",
+  "subpages": {{"subpage_name": "url"}},
+  "active": true/false,
+  "hasOnlinePortal": true/false,
+  "accessType": "api" or "searchable_portal" or "pdf_only" or "none",
+  "eventsUrl": "",
+  "calendarUrl": "",
+  "note": "any relevant observations"
+}}
+
+Rules:
+- "verified" = real, active, usable page
+- "not_found" = URL is dead, generic, or not actually for this source
+- "pdf_only" = data exists but only as downloadable PDFs (not machine-readable)
+- Only include subpages you actually found — don't guess
+"""
+
+    return builder
+
+
+# ---------------------------------------------------------------------------
+# Stage 5: ProfileAssembler (BaseAgent — deterministic, no LLM)
+# ---------------------------------------------------------------------------
+
+
+class ProfileAssembler(BaseAgent):
+    """Merges all verification results into a ZipcodeProfile and saves to Firestore.
+
+    Reads apiSources, lightVerified, and verified_* from state.
+    Writes final profile to state via state_delta.
+    """
+
+    name: str = "ProfileAssembler"
+    description: str = "Assembles final ZipcodeProfile from all verification stages."
+
+    async def _run_async_impl(
+        self, ctx: InvocationContext
+    ) -> AsyncGenerator[Event, None]:
+        state = ctx.session.state
+        zip_code = state.get("zipCode", "")
+        city = state.get("city", "")
+        st = state.get("state", "")
+        county = state.get("county", "")
+        dma_name = state.get("dmaName", "")
+
+        now = datetime.utcnow()
+        all_sources: dict[str, dict[str, Any]] = {}
+
+        # 1. Add API-checked sources
+        api_sources = state.get("apiSources", {})
+        for cat, entry in api_sources.items():
+            all_sources[cat] = entry if isinstance(entry, dict) else {}
+
+        # 2. Add light-verified sources
+        light_verified = state.get("lightVerified", {})
+        for cat, entry in light_verified.items():
+            all_sources[cat] = entry if isinstance(entry, dict) else {}
+
+        # 3. Add deep-verified sources from each verifier sub-agent
+        for category_name in DEEP_VERIFICATION_CATEGORIES:
+            key = f"verified_{category_name}"
+            raw = state.get(key, "")
+
+            if not raw:
+                # Check if this category was in deepCandidates but verifier
+                # returned nothing — mark not_found
+                deep_candidates = state.get("deepCandidates", [])
+                was_candidate = any(
+                    c.get("category") == category_name
+                    for c in deep_candidates
+                    if isinstance(c, dict)
+                )
+                if was_candidate and category_name not in all_sources:
+                    all_sources[category_name] = {
+                        "status": "not_found",
+                        "lastVerified": now.isoformat(),
+                        "note": "Deep verification returned no result",
+                    }
+                continue
+
+            # Parse the verifier output
+            if isinstance(raw, str):
+                try:
+                    parsed = json.loads(raw)
+                except (json.JSONDecodeError, ValueError):
+                    parsed = {}
+            elif isinstance(raw, dict):
+                parsed = raw
+            else:
+                parsed = {}
+
+            if parsed:
+                status = parsed.get("status", "not_found")
+                # Handle "skipped" status from verifiers with no candidate
+                if status == "skipped":
+                    continue
+                all_sources[category_name] = {
+                    "status": status,
+                    "url": parsed.get("url", ""),
+                    "lastVerified": now.isoformat(),
+                    "subpages": parsed.get("subpages", {}),
+                    "active": parsed.get("active"),
+                    "hasOnlinePortal": parsed.get("hasOnlinePortal"),
+                    "accessType": parsed.get("accessType", ""),
+                    "eventsUrl": parsed.get("eventsUrl", ""),
+                    "calendarUrl": parsed.get("calendarUrl", ""),
+                    "note": parsed.get("note", ""),
+                }
+
+        # 4. Count confirmed vs unavailable
+        confirmed_count = 0
+        unavailable_count = 0
+        unavailable_list: list[str] = []
+
+        for cat, entry in all_sources.items():
+            if entry.get("status") == "verified":
+                confirmed_count += 1
+            else:
+                unavailable_count += 1
+                label = f"{cat}: {entry.get('status', 'unknown')}"
+                note = entry.get("note", "")
+                if note:
+                    label += f" ({note})"
+                unavailable_list.append(label)
+
+        # 5. Build profile dict (plain dicts, not Pydantic — for Firestore)
+        # Strip None values from source entries
+        clean_sources = {}
+        for cat, entry in all_sources.items():
+            clean_sources[cat] = {
+                k: v for k, v in entry.items() if v is not None
+            }
+
+        profile_dict = {
+            "zipCode": zip_code,
+            "city": city,
+            "state": st,
+            "county": county,
+            "dmaName": dma_name,
+            "profileVersion": "2.0",
+            "discoveredAt": now.isoformat(),
+            "refreshAfter": (now + timedelta(days=90)).isoformat(),
+            "enumeratedSources": len(all_sources),
+            "confirmedSources": confirmed_count,
+            "unavailableSources": unavailable_count,
+            "sources": clean_sources,
+            "unavailable": unavailable_list,
+        }
+
+        # 6. Save to Firestore
+        try:
+            from hephae_db.firestore.zipcode_profiles import save_zipcode_profile
+
+            await save_zipcode_profile(profile_dict)
+            logger.info(
+                f"[ProfileAssembler] Saved profile for {zip_code}: "
+                f"{confirmed_count} confirmed, {unavailable_count} unavailable"
+            )
+        except Exception as e:
+            logger.error(f"[ProfileAssembler] Firestore save failed: {e}")
+
+        yield Event(
+            author=self.name,
+            invocation_id=ctx.invocation_id,
+            actions=EventActions(state_delta={"profileResult": profile_dict}),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Factory: create_discovery_agent()
+# ---------------------------------------------------------------------------
+
+
+def create_discovery_agent() -> SequentialAgent:
+    """Create a fresh discovery agent tree (factory pattern).
+
+    ADK agents can only have one parent, so we create fresh instances
+    per invocation. Same pattern as create_pulse_orchestrator().
+    """
+
+    # -- Stage 1: APISourceChecker (BaseAgent, no LLM)
+    api_checker = APISourceChecker()
+
+    # -- Stage 2: SourceEnumerator (LlmAgent + google_search)
+    source_enumerator = LlmAgent(
+        name="SourceEnumerator",
+        model=AgentModels.PRIMARY_MODEL,
+        description="Searches for all non-API source categories via Google.",
+        instruction=_enumerator_instruction,
+        tools=[google_search],
+        output_key="enumeratedSources",
+        on_model_error_callback=fallback_on_error,
+    )
+
+    # -- Stage 3: VerificationRouter (BaseAgent, no LLM)
+    verification_router = VerificationRouter()
+
+    # -- Stage 4: DeepVerifierFanOut (ParallelAgent)
+    # Create one sub-agent per deep category. Each agent checks state
+    # to see if its category exists in deepCandidates; if not, it returns
+    # a "skipped" status and exits quickly.
+    deep_verifier_agents = []
+    for category_name in sorted(DEEP_VERIFICATION_CATEGORIES):
+        agent = LlmAgent(
+            name=f"DeepVerify_{category_name}",
+            model=AgentModels.PRIMARY_MODEL,
+            description=f"Verifies {category_name} source via crawl.",
+            instruction=_verify_instruction(category_name),
+            tools=[google_search_tool, crawl4ai_advanced_tool],
+            output_key=f"verified_{category_name}",
+            on_model_error_callback=fallback_on_error,
+        )
+        deep_verifier_agents.append(agent)
+
+    deep_verifier_fan_out = ParallelAgent(
+        name="DeepVerifierFanOut",
+        sub_agents=deep_verifier_agents,
+    )
+
+    # -- Stage 5: ProfileAssembler (BaseAgent, no LLM)
+    assembler = ProfileAssembler()
+
+    # -- Wire all stages sequentially
+    return SequentialAgent(
+        name="ZipcodeProfileDiscovery",
+        description="5-stage zipcode profile discovery pipeline.",
+        sub_agents=[
+            api_checker,
+            source_enumerator,
+            verification_router,
+            deep_verifier_fan_out,
+            assembler,
+        ],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -575,13 +828,15 @@ async def _verify_sources(
 
 
 async def run_zipcode_profile_discovery(zip_code: str) -> dict[str, Any]:
-    """Run full two-phase discovery for a zip code and save the profile.
+    """Run full discovery for a zip code via ADK agent tree and save the profile.
 
-    Phase 1: Deterministic API checks + LLM enumeration
-    Phase 2: Verify each confirmed source via LLM + crawl4ai
-    Output:  ZipcodeProfile saved to Firestore
+    1. Resolve geography
+    2. Build initial state
+    3. Run create_discovery_agent() via Runner + InMemorySessionService
+    4. Extract profile from final session state
+    5. Return profile dict
 
-    Returns the profile dict.
+    Returns the profile dict (already saved to Firestore by ProfileAssembler).
     """
     logger.info(f"[ProfileDiscovery] Starting discovery for {zip_code}")
 
@@ -617,88 +872,75 @@ async def run_zipcode_profile_discovery(zip_code: str) -> dict[str, Any]:
     except Exception:
         pass
 
-    logger.info(f"[ProfileDiscovery] Geography: {city}, {state} ({county} County), DMA: {dma_name or 'N/A'}")
-
-    # Step 2: Phase 1 — deterministic API checks
-    api_results = await _check_api_sources(
-        zip_code, city, state, county, latitude, longitude, dma_name,
-    )
-    api_checked = set(api_results.keys())
-    logger.info(f"[ProfileDiscovery] Phase 1 API: {len(api_results)} sources checked")
-
-    # Step 3: Phase 1 — LLM enumeration
-    candidates = await _enumerate_sources(city, state, county, api_checked)
-
-    # Step 4: Phase 2 — verify confirmed sources
-    verified = await _verify_sources(candidates, city, state)
-    logger.info(f"[ProfileDiscovery] Phase 2: {len(verified)} sources verified")
-
-    # Step 5: Assemble the profile
-    now = datetime.utcnow()
-    all_sources: dict[str, SourceEntry] = {}
-
-    # Add API-checked sources
-    for cat, entry in api_results.items():
-        all_sources[cat] = entry
-
-    # Add verified sources
-    for cat, entry in verified.items():
-        all_sources[cat] = entry
-
-    # Add not-found entries for categories not checked or verified
-    for candidate in candidates:
-        if candidate.category not in all_sources:
-            all_sources[candidate.category] = SourceEntry(
-                status="not_found" if not candidate.exists else "verified",
-                lastVerified=now.isoformat(),
-                note=candidate.searchEvidence,
-            )
-
-    # Build unavailable list
-    unavailable = []
-    confirmed_count = 0
-    unavailable_count = 0
-    for cat, entry in all_sources.items():
-        if entry.status in ("verified",):
-            confirmed_count += 1
-        else:
-            unavailable_count += 1
-            label = f"{cat}: {entry.status}"
-            if entry.note:
-                label += f" ({entry.note})"
-            unavailable.append(label)
-
-    profile = ZipcodeProfile(
-        zipCode=zip_code,
-        city=city,
-        state=state,
-        county=county,
-        dmaName=dma_name,
-        profileVersion="1.0",
-        discoveredAt=now.isoformat(),
-        refreshAfter=(now + timedelta(days=90)).isoformat(),
-        enumeratedSources=len(all_sources),
-        confirmedSources=confirmed_count,
-        unavailableSources=unavailable_count,
-        sources=all_sources,
-        unavailable=unavailable,
+    logger.info(
+        f"[ProfileDiscovery] Geography: {city}, {state} ({county} County), "
+        f"DMA: {dma_name or 'N/A'}"
     )
 
-    # Step 6: Save to Firestore
-    profile_dict = profile.model_dump()
-    # Convert SourceEntry models to plain dicts for Firestore
-    profile_dict["sources"] = {
-        k: v.model_dump(exclude_none=True) for k, v in all_sources.items()
+    # Step 2: Build initial session state
+    initial_state = {
+        "zipCode": zip_code,
+        "city": city,
+        "state": state,
+        "county": county,
+        "latitude": latitude,
+        "longitude": longitude,
+        "dmaName": dma_name,
     }
 
-    from hephae_db.firestore.zipcode_profiles import save_zipcode_profile
+    # Step 3: Run ADK agent tree
+    from google.adk.runners import Runner
+    from google.adk.sessions import InMemorySessionService
+    from hephae_common.adk_helpers import user_msg
 
-    await save_zipcode_profile(profile_dict)
+    orchestrator = create_discovery_agent()
+    session_service = InMemorySessionService()
+    runner = Runner(
+        agent=orchestrator,
+        app_name="zipcode_profile_discovery",
+        session_service=session_service,
+    )
+    session = await session_service.create_session(
+        app_name="zipcode_profile_discovery",
+        user_id="system",
+        state=initial_state,
+    )
+
+    logger.info(f"[ProfileDiscovery] Running ADK pipeline for {zip_code}")
+    async for event in runner.run_async(
+        user_id="system",
+        session_id=session.id,
+        new_message=user_msg(
+            f"Discover data sources for zip code {zip_code} ({city}, {state})."
+        ),
+    ):
+        pass  # Pipeline runs through all 5 stages
+
+    # Step 4: Re-fetch session to get final state
+    session = await session_service.get_session(
+        app_name="zipcode_profile_discovery",
+        user_id="system",
+        session_id=session.id,
+    )
+    final_state = dict(session.state or {})
+    logger.info(
+        f"[ProfileDiscovery] Pipeline complete — state keys: {list(final_state.keys())}"
+    )
+
+    # Step 5: Extract profile from state
+    profile = final_state.get("profileResult")
+
+    if not profile or not isinstance(profile, dict):
+        logger.error("[ProfileDiscovery] No profileResult in final state")
+        return {"error": "Discovery pipeline produced no result"}
+
+    confirmed = profile.get("confirmedSources", 0)
+    unavailable = profile.get("unavailableSources", 0)
+    total = profile.get("enumeratedSources", 0)
 
     logger.info(
         f"[ProfileDiscovery] Complete for {zip_code}: "
-        f"{confirmed_count} confirmed, {unavailable_count} unavailable "
-        f"(out of {len(all_sources)} total)"
+        f"{confirmed} confirmed, {unavailable} unavailable (out of {total} total)"
     )
 
-    return profile_dict
+    return profile

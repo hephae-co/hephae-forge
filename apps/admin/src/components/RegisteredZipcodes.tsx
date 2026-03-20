@@ -772,55 +772,32 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
   // ── Handlers ──────────────────────────────────────────────────────────
 
   const handleRegister = async () => {
-    // Parse multiple zip codes (comma, space, or newline separated)
-    const zips = zipInput
-      .split(/[\s,]+/)
-      .map(z => z.trim())
-      .filter(z => /^\d{5}$/.test(z));
-
-    if (zips.length === 0) {
-      setError('Enter one or more valid 5-digit zip codes');
+    if (!zipInput.match(/^\d{5}$/)) {
+      setError('Enter a valid 5-digit zip code');
       return;
     }
-
     setRegistering(true);
     setError(null);
     setRegSuccess(null);
-
-    const results: string[] = [];
-    const errors: string[] = [];
-
-    // Register all in parallel
-    await Promise.allSettled(
-      zips.map(async (zip) => {
-        try {
-          const res = await fetch('/api/registered-zipcodes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ zipCode: zip }),
-          });
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({ detail: 'Failed' }));
-            errors.push(`${zip}: ${err.detail || 'Failed'}`);
-            return;
-          }
-          const data = await res.json();
-          results.push(`${zip} (${data.city}, ${data.state})`);
-        } catch (e: any) {
-          errors.push(`${zip}: ${e.message}`);
-        }
-      })
-    );
-
-    if (results.length > 0) {
-      setRegSuccess(`Registered ${results.length} zipcode${results.length > 1 ? 's' : ''}: ${results.join(', ')}`);
+    try {
+      const res = await fetch('/api/registered-zipcodes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ zipCode: zipInput }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Registration failed' }));
+        throw new Error(err.detail || 'Registration failed');
+      }
+      const data = await res.json();
+      setRegSuccess(`Registered ${zipInput} (${data.city}, ${data.state})`);
+      setZipInput('');
+      fetchZipcodes();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setRegistering(false);
     }
-    if (errors.length > 0) {
-      setError(errors.join(' | '));
-    }
-    setZipInput('');
-    fetchZipcodes();
-    setRegistering(false);
   };
 
   const handleUnregister = async (zip: RegisteredZipcode) => {
@@ -1022,10 +999,10 @@ export default function RegisteredZipcodes({ activeSubTab }: { activeSubTab: 'on
           <div className="flex flex-col md:flex-row gap-3">
             <input
               type="text"
-              placeholder="Zip codes (e.g. 07110, 07042, 07003)"
+              placeholder="Zip code (e.g. 07110)"
               value={zipInput}
-              onChange={(e) => setZipInput(e.target.value.replace(/[^\d\s,]/g, ''))}
-              className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-sm flex-1 min-w-[280px]"
+              onChange={(e) => setZipInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
+              className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-sm w-48"
             />
             <button
               onClick={handleRegister}

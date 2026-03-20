@@ -27,6 +27,39 @@ MAX_CONTENT_LENGTH = 10_000
 MAX_ADVANCED_CONTENT_LENGTH = 15_000
 MAX_PAGE_CONTENT_LENGTH = 3_000
 
+# Cache for identity token (valid ~1h, refresh when needed)
+_cached_id_token: str | None = None
+_token_expiry: float = 0
+
+
+def _get_auth_headers() -> dict[str, str]:
+    """Get authorization headers for Cloud Run service-to-service auth.
+
+    Uses metadata server when running on GCP, skips for localhost.
+    """
+    global _cached_id_token, _token_expiry
+
+    url = CRAWL4AI_URL
+    if "localhost" in url or "127.0.0.1" in url:
+        return {}
+
+    # Return cached token if still valid (with 60s buffer)
+    if _cached_id_token and time.monotonic() < _token_expiry - 60:
+        return {"Authorization": f"Bearer {_cached_id_token}"}
+
+    try:
+        import google.auth.transport.requests
+        import google.oauth2.id_token
+
+        request = google.auth.transport.requests.Request()
+        token = google.oauth2.id_token.fetch_id_token(request, url)
+        _cached_id_token = token
+        _token_expiry = time.monotonic() + 3600  # ~1h validity
+        return {"Authorization": f"Bearer {token}"}
+    except Exception as e:
+        logger.warning(f"[Crawl4ai] Failed to get identity token: {e}")
+        return {}
+
 
 def _record_crawl_telemetry(
     url: str,
@@ -88,7 +121,8 @@ async def crawl_for_content(
                 "params": {"instruction": extraction_query},
             }
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        auth_headers = _get_auth_headers()
+        async with httpx.AsyncClient(timeout=30.0, headers=auth_headers) as client:
             res = await client.post(
                 f"{CRAWL4AI_URL}/crawl",
                 json=body,
@@ -208,7 +242,8 @@ async def crawl_with_options(
             },
         }
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        auth_headers = _get_auth_headers()
+        async with httpx.AsyncClient(timeout=60.0, headers=auth_headers) as client:
             res = await client.post(f"{CRAWL4AI_URL}/crawl", json=body)
 
         if res.status_code != 200:
@@ -283,7 +318,8 @@ async def crawl_multiple_pages(
             },
         }
 
-        async with httpx.AsyncClient(timeout=90.0) as client:
+        auth_headers = _get_auth_headers()
+        async with httpx.AsyncClient(timeout=90.0, headers=auth_headers) as client:
             res = await client.post(f"{CRAWL4AI_URL}/crawl", json=body)
 
         if res.status_code != 200:

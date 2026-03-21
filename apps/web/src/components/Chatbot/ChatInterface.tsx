@@ -644,10 +644,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                         onPlaceSelect({
                                             name: place.name,
                                             address: place.address,
-                                            zipCode: place.zipCode || '',
-                                            officialUrl: place.officialUrl,
-                                            coordinates: place.coordinates,
-                                        });
+                                            officialUrl: place.officialUrl || '',
+                                            coordinates: place.coordinates || undefined,
+                                        } as BaseIdentity);
                                     } else {
                                         onSendMessage(place.name + ', ' + place.address);
                                     }

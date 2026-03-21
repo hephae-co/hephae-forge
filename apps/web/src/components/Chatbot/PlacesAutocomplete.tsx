@@ -39,8 +39,9 @@ export default function PlacesAutocomplete({
   const initRef = useRef(false);
 
   const handleSelect = useCallback(async (e: Event) => {
-    const event = e as google.maps.places.PlaceAutocompletePlaceSelectEvent;
-    const place = event.placePrediction?.toPlace();
+    // The gmp-select event has placePrediction on it but types may lag behind
+    const event = e as any;
+    const place = event.placePrediction?.toPlace?.();
     if (!place) return;
 
     try {
@@ -85,7 +86,7 @@ export default function PlacesAutocomplete({
 
       initRef.current = true;
 
-      const autocomplete = new google.maps.places.PlaceAutocompleteElement({
+      const autocomplete = new (google.maps.places as any).PlaceAutocompleteElement({
         includedRegionCodes: ['us'],
         includedPrimaryTypes: [
           'restaurant', 'cafe', 'bakery', 'bar', 'meal_takeaway',

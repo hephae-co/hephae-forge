@@ -88,9 +88,6 @@ export default function PlacesAutocomplete({
 
       const autocomplete = new (google.maps.places as any).PlaceAutocompleteElement({
         includedRegionCodes: ['us'],
-        includedPrimaryTypes: [
-          'restaurant', 'cafe', 'bakery', 'bar', 'meal_takeaway',
-        ],
       });
 
       // Style the inner input to match our design

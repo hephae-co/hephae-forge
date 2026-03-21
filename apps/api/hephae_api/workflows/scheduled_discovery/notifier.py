@@ -1,4 +1,4 @@
-"""Email notification on discovery job completion."""
+"""Email notification on marketing discovery job completion."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ async def send_job_completion_email(
       <tr>
         <td style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);border-radius:16px 16px 0 0;padding:28px 36px;">
           <div style="font-size:22px;font-weight:800;color:#fff;">Hephae</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:2px;">Discovery Batch — Job Complete</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:2px;">Marketing Discovery — Job Complete</div>
         </td>
       </tr>
       <tr>
@@ -100,7 +100,7 @@ async def send_job_completion_email(
 </body>
 </html>"""
 
-    subject = f"[Hephae] Discovery job '{job_name}' — {qualified} businesses qualified"
+    subject = f"[Hephae] Marketing discovery '{job_name}' — {qualified} businesses with contact details"
 
     try:
         await send_email(to=notify_email, subject=subject, html=html)

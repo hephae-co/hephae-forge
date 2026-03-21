@@ -1,4 +1,4 @@
-"""Scheduled discovery orchestrator — processes one pending job end-to-end.
+"""Scheduled discovery orchestrator — marketing outreach discovery.
 
 Entry point for the discovery-batch Cloud Run Job. On each execution:
   1. Claims the oldest pending job from Firestore
@@ -6,17 +6,20 @@ Entry point for the discovery-batch Cloud Run Job. On each execution:
      a. Scans for businesses (existing ADK zipcode scanner)
      b. Filters out recently-discovered businesses (freshness check)
      c. For each remaining business:
-        - Runs the discovery pipeline (existing ADK agent)
+        - Runs the discovery pipeline (extracts contact details for marketing)
         - Passes through QualityGateAgent (discard chains, no-contact businesses)
-        - Runs CapabilityDispatcherAgent for qualified businesses (selective runners)
         - Rate-limits between businesses
   3. Sends a completion email to the job's notify_email
+
+Purpose: Discover businesses and collect contact details (name, address, phone,
+email, website, social links) for marketing outreach. No capability analysis is
+run — that is reserved for authenticated users via the profile builder flow.
 
 Cost profile:
   - Sequential processing (no parallelism) — predictable, minimal compute cost
   - PRIMARY_MODEL only — cheapest Gemini tier
   - Freshness checks skip businesses we've already processed recently
-  - Quality gate eliminates chain/no-contact businesses before expensive runners
+  - Quality gate eliminates chain/no-contact businesses before expensive discovery
   - Rate limiting between businesses reduces burst API usage
 """
 
@@ -24,6 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -39,7 +43,6 @@ from hephae_common.firebase import get_db
 
 from hephae_api.workflows.scheduled_discovery.config import DiscoveryJobConfig
 from hephae_api.workflows.scheduled_discovery.quality_gate import run_quality_gate
-from hephae_api.workflows.scheduled_discovery.dispatcher import run_capability_dispatcher
 from hephae_api.workflows.scheduled_discovery.notifier import send_job_completion_email
 
 logger = logging.getLogger(__name__)
@@ -71,33 +74,6 @@ async def _is_discovery_fresh(biz_id: str, freshness_days: int) -> bool:
 
     cutoff = datetime.utcnow() - timedelta(days=freshness_days)
     return discovered_at > cutoff
-
-
-async def _is_analysis_fresh(biz_id: str, freshness_days: int) -> bool:
-    """Return True if capability analysis was run within the freshness window."""
-    biz = await get_business(biz_id)
-    if not biz:
-        return False
-
-    latest_outputs = biz.get("latestOutputs") or {}
-    if not latest_outputs:
-        return False
-
-    # Check any output's runAt timestamp
-    cutoff = datetime.utcnow() - timedelta(days=freshness_days)
-    for output in latest_outputs.values():
-        if not isinstance(output, dict):
-            continue
-        run_at = output.get("runAt")
-        if not run_at:
-            continue
-        try:
-            run_at_dt = datetime.fromisoformat(run_at)
-            if run_at_dt > cutoff:
-                return True
-        except (ValueError, TypeError):
-            continue
-    return False
 
 
 async def _run_discovery_for_business(biz_id: str, biz_name: str) -> dict | None:
@@ -144,7 +120,7 @@ async def _process_business(
     config: DiscoveryJobConfig,
     skip_reasons: list[str],
 ) -> str:
-    """Process a single business through discovery → quality gate → capabilities.
+    """Process a single business through discovery → quality gate.
 
     Returns: "qualified" | "skipped:<reason>" | "failed"
     """
@@ -174,19 +150,6 @@ async def _process_business(
 
     logger.info(f"[Orchestrator] Qualified: {biz_name} — {gate_result.get('reason', '')}")
     await update_job_progress(job_id, increment={"qualified": 1})
-
-    # --- Freshness check (analysis) ---
-    if await _is_analysis_fresh(biz_id, settings.freshnessAnalysisDays):
-        logger.info(f"[Orchestrator] Analysis fresh, skipping capabilities: {biz_id}")
-        return "qualified"
-
-    # --- Capability dispatcher ---
-    try:
-        cap_results = await run_capability_dispatcher(biz_id, identity)
-        completed = [k for k, v in cap_results.items() if v == "completed"]
-        logger.info(f"[Orchestrator] Capabilities run for {biz_name}: {completed}")
-    except Exception as e:
-        logger.error(f"[Orchestrator] Dispatcher failed for {biz_id}: {e}")
 
     return "qualified"
 
@@ -269,6 +232,19 @@ async def run_next_pending_job() -> bool:
     config = DiscoveryJobConfig.from_firestore(job)
     skip_reasons: list[str] = []
 
+    # Spin up ephemeral crawl4ai for this job
+    ephemeral_name = f"marketing-{job_id[:8]}"
+    crawl4ai_url: str | None = None
+    try:
+        from infra.crawl4ai.ephemeral import create_ephemeral_crawl4ai, destroy_ephemeral_crawl4ai
+
+        crawl4ai_url = await create_ephemeral_crawl4ai(ephemeral_name)
+        if crawl4ai_url:
+            os.environ["CRAWL4AI_URL"] = crawl4ai_url
+            logger.info(f"[Orchestrator] Ephemeral crawl4ai ready: {crawl4ai_url}")
+    except Exception as e:
+        logger.warning(f"[Orchestrator] Failed to create ephemeral crawl4ai: {e}")
+
     try:
         for target in config.targets:
             total, qualified, failed = await _process_zip(
@@ -296,5 +272,14 @@ async def run_next_pending_job() -> bool:
         final_job = await get_discovery_job(job_id) or job
         final_job["status"] = STATUS_FAILED
         await send_job_completion_email(final_job, final_job.get("progress", {}), skip_reasons[:20])
+
+    finally:
+        # Tear down ephemeral crawl4ai
+        if crawl4ai_url:
+            try:
+                await destroy_ephemeral_crawl4ai(ephemeral_name)
+                logger.info(f"[Orchestrator] Ephemeral crawl4ai destroyed: {ephemeral_name}")
+            except Exception as e:
+                logger.warning(f"[Orchestrator] Failed to destroy ephemeral crawl4ai: {e}")
 
     return True

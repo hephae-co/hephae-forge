@@ -27,6 +27,7 @@ interface ChatInterfaceProps {
     onReset: () => void;
     capabilities?: { id: string; label: string; icon?: React.ReactNode }[];
     onSelectCapability?: (id: string) => void;
+    capabilitiesLocked?: boolean;
     isCentered?: boolean;
     followUpChips?: SuggestionChip[];
     isCollapsed?: boolean;
@@ -108,6 +109,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     onReset,
     capabilities = [],
     onSelectCapability,
+    capabilitiesLocked = false,
     isCentered = false,
     followUpChips = [],
     isCollapsed = false,
@@ -471,11 +473,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                     <button
                                         key={cap.id}
                                         onClick={() => onSelectCapability && onSelectCapability(cap.id)}
-                                        className="flex items-center gap-3 px-4 py-3.5 bg-white border border-indigo-100 shadow-sm shadow-indigo-50 rounded-2xl text-indigo-700 hover:bg-indigo-50 hover:border-indigo-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-indigo-100/50 transition-all text-sm font-semibold text-left animate-fade-in-up"
+                                        className={`flex items-center gap-3 px-4 py-3.5 border shadow-sm rounded-2xl text-sm font-semibold text-left animate-fade-in-up transition-all ${
+                                            capabilitiesLocked
+                                                ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-pointer hover:bg-gray-100'
+                                                : 'bg-white border-indigo-100 shadow-indigo-50 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-indigo-100/50'
+                                        }`}
                                         style={{ animationDelay: `${0.06 + i * 0.07}s` }}
                                     >
-                                        {cap.icon}
+                                        {capabilitiesLocked ? <Lock className="w-4 h-4 text-gray-400" /> : cap.icon}
                                         {cap.label}
+                                        {capabilitiesLocked && <span className="ml-auto text-xs text-gray-400">Sign in</span>}
                                     </button>
                                 ))}
                             </div>

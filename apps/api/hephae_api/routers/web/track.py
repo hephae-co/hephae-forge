@@ -24,14 +24,25 @@ async def track(request: Request):
         query = body.get("query")
         email = body.get("email")
 
-        # Route 1: Initial query logging
+        unsupported_zipcode = body.get("unsupportedZipcode", False)
+        zip_code = body.get("zipCode")
+
+        # Route 1: Initial query logging (with optional unsupported zipcode interest)
         if not doc_id and query:
-            doc_ref = get_db().collection("hub_searches").document()
-            doc_ref.set({
+            doc_data: dict = {
                 "query": query,
                 "timestamp": SERVER_TIMESTAMP,
                 "status": "pending_email",
-            })
+            }
+            if unsupported_zipcode and zip_code:
+                doc_data["unsupportedZipcode"] = True
+                doc_data["zipCode"] = zip_code
+            if email:
+                doc_data["email"] = email
+                doc_data["email_captured_at"] = SERVER_TIMESTAMP
+                doc_data["status"] = "captured"
+            doc_ref = get_db().collection("hub_searches").document()
+            doc_ref.set(doc_data)
             return JSONResponse({"success": True, "id": doc_ref.id})
 
         # Route 2: Email update

@@ -29,8 +29,6 @@ API_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${API_SERVICE}:${TAG}"
 BATCH_JOB="hephae-forge-batch"
 BATCH_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${BATCH_JOB}:${TAG}"
 
-CRAWL4AI_SERVICE="hephae-crawl4ai"
-
 # Resolve repo root (build context must be monorepo root)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -87,13 +85,6 @@ if ! $SKIP_CHECKS; then
 fi
 
 # ─────────────────────────────────────────────────────────────
-# Get crawl4ai URL (needed for API env var)
-# ─────────────────────────────────────────────────────────────
-CRAWL4AI_URL=$(gcloud run services describe "$CRAWL4AI_SERVICE" \
-  --region "$REGION" --project "$PROJECT_ID" \
-  --format="value(status.url)" 2>/dev/null || echo "")
-
-# ─────────────────────────────────────────────────────────────
 # Build API image (lightweight — no Playwright)
 # ─────────────────────────────────────────────────────────────
 echo "──── API Service Deploy ─────────────────────────"
@@ -130,9 +121,6 @@ ENV_VARS="PYTHONUNBUFFERED=1"
 if [ -n "$EXISTING_API_URL" ]; then
   ENV_VARS="${ENV_VARS},API_BASE_URL=${EXISTING_API_URL}"
 fi
-if [ -n "$CRAWL4AI_URL" ]; then
-  ENV_VARS="${ENV_VARS},CRAWL4AI_URL=${CRAWL4AI_URL}"
-fi
 
 RESEND_FROM_EMAIL="${RESEND_FROM_EMAIL:-onboarding@resend.dev}"
 ENV_VARS="${ENV_VARS},RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL}"
@@ -168,9 +156,6 @@ API_URL=$(gcloud run services describe "$API_SERVICE" \
 echo ""
 echo "══════════════════════════════════════════════"
 echo "  ✓ API: ${API_URL}"
-if [ -n "$CRAWL4AI_URL" ]; then
-  echo "  ✓ crawl4ai: ${CRAWL4AI_URL}"
-fi
 echo "══════════════════════════════════════════════"
 
 # ─────────────────────────────────────────────────────────────
@@ -201,9 +186,6 @@ gcloud builds submit \
 echo "── Deploying batch job (${BATCH_JOB})..."
 
 BATCH_ENV_VARS="PYTHONUNBUFFERED=1"
-if [ -n "$CRAWL4AI_URL" ]; then
-  BATCH_ENV_VARS="${BATCH_ENV_VARS},CRAWL4AI_URL=${CRAWL4AI_URL}"
-fi
 if [ -n "$API_URL" ]; then
   BATCH_ENV_VARS="${BATCH_ENV_VARS},API_BASE_URL=${API_URL}"
 fi
@@ -245,9 +227,7 @@ echo ""
 echo "══════════════════════════════════════════════"
 echo "  ✓ API:   ${API_URL} (1Gi, 2 vCPU)"
 echo "  ✓ Batch: ${BATCH_JOB} (4Gi, 2 vCPU, scale-to-zero)"
-if [ -n "$CRAWL4AI_URL" ]; then
-  echo "  ✓ crawl4ai: ${CRAWL4AI_URL}"
-fi
+echo "  ℹ crawl4ai: ephemeral (spun up per-job)"
 echo "══════════════════════════════════════════════"
 
 # ─────────────────────────────────────────────────────────────

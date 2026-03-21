@@ -122,6 +122,8 @@ def _register_routers() -> None:
         track,
         social_card,
         heartbeat,
+        overview,
+        profile_builder,
     )
 
     app.include_router(auth.router, prefix="/api")
@@ -130,6 +132,8 @@ def _register_routers() -> None:
     app.include_router(send_report_email.router, prefix="/api")
     app.include_router(chat.router, prefix="/api")
     app.include_router(discover.router, prefix="/api")
+    app.include_router(overview.router, prefix="/api")
+    app.include_router(profile_builder.router, prefix="/api")
     app.include_router(social_card.router, prefix="/api")
     app.include_router(social_posts.router, prefix="/api")
     app.include_router(analyze.router, prefix="/api")

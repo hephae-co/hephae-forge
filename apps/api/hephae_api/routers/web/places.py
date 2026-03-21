@@ -1,4 +1,4 @@
-"""GET /api/places/autocomplete + /api/places/details — Google Places API proxy."""
+"""GET /api/places/autocomplete + /api/places/details + /api/places/validate-zipcode — Google Places API proxy."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ import os
 import httpx
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
+
+from hephae_db.firestore.registered_zipcodes import get_registered_zipcode
 
 logger = logging.getLogger(__name__)
 
@@ -115,4 +117,21 @@ async def places_details(placeId: str = Query(...), sessiontoken: str = Query(""
 
     except Exception as e:
         logger.error(f"[API/Places] Details failed: {e}")
+        return JSONResponse({"error": "Internal Server Error"}, status_code=500)
+
+
+@router.get("/places/validate-zipcode")
+async def validate_zipcode(zipCode: str = Query(...)):
+    """Check if a zipcode is onboarded and supported for business analysis."""
+    try:
+        doc = await get_registered_zipcode(zipCode)
+        if doc and doc.get("onboardingStatus") == "onboarded":
+            return JSONResponse({
+                "supported": True,
+                "city": doc.get("city", ""),
+                "state": doc.get("state", ""),
+            })
+        return JSONResponse({"supported": False})
+    except Exception as e:
+        logger.error(f"[API/Places] Validate zipcode failed: {e}")
         return JSONResponse({"error": "Internal Server Error"}, status_code=500)

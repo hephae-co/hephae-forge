@@ -107,6 +107,10 @@ export default function Home() {
   // Menu URL prompt: when margin analysis can't find a menu, we ask the user
   const [awaitingMenuUrl, setAwaitingMenuUrl] = useState(false);
 
+  // Profile building mode: guided Q&A after sign-in
+  const [isProfileBuilding, setIsProfileBuilding] = useState(false);
+  const [profileSessionId, setProfileSessionId] = useState<string | null>(null);
+
   // Unique message ID generator
   const msgIdCounter = useRef(0);
   const nextMsgId = () => `msg-${Date.now()}-${++msgIdCounter.current}`;
@@ -242,6 +246,13 @@ export default function Home() {
   };
 
   const sendMessage = async (text: string) => {
+    // Intercept: if in profile building mode, route to profile builder
+    if (isProfileBuilding) {
+      setMessages(prev => [...prev, msg('user', text)]);
+      sendProfileMessage(text);
+      return;
+    }
+
     // Intercept: if we're waiting for a menu URL from the user, retry surgery
     if (awaitingMenuUrl && locatedBusiness && /^https?:\/\//i.test(text.trim())) {
       setAwaitingMenuUrl(false);
@@ -328,8 +339,8 @@ export default function Home() {
         setMarketingReportUrl(null);
         setChatSessionId(null); // New business = new chat session
 
-        // Spawn Background Discovery
-        triggerDiscoveryOrchestrator(data.locatedBusiness);
+        // Spawn Background Overview (replaces heavy discovery)
+        triggerBusinessOverview(data.locatedBusiness);
       }
 
     } catch (e: any) {
@@ -340,68 +351,107 @@ export default function Home() {
     }
   };
 
-  const triggerDiscoveryOrchestrator = async (identity: BaseIdentity) => {
+  // --- Profile Building Mode ---
+
+  const startProfileBuilding = () => {
+    setIsProfileBuilding(true);
+    setProfileSessionId(null);
+    setMessages(prev => [...prev, msg('model', "Great, you're signed in! Let me set up your business profile so I can run the right analyses for you.")]);
+    // Send initial message to profile builder
+    sendProfileMessage("Let's get started setting up my profile.");
+  };
+
+  const sendProfileMessage = async (text: string) => {
+    if (!locatedBusiness) return;
+    setIsTyping(true);
+
+    try {
+      const profileMessages = [{ role: 'user', text }];
+      const res = await apiFetch('/api/profile/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: profileMessages,
+          businessIdentity: locatedBusiness,
+          sessionId: profileSessionId,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Profile builder request failed");
+      const data = await res.json();
+
+      if (data.sessionId && data.sessionId !== profileSessionId) {
+        setProfileSessionId(data.sessionId);
+      }
+
+      setMessages(prev => [...prev, msg('model', data.text)]);
+
+      // Profile building complete — save and run capabilities
+      if (data.profileComplete) {
+        setIsProfileBuilding(false);
+        const selectedCaps = data.selectedCapabilities || [];
+
+        // Update locatedBusiness with profile data
+        if (data.profile) {
+          setLocatedBusiness(prev => prev ? { ...prev, ...data.profile } : prev);
+        }
+
+        // Auto-run selected capabilities
+        for (const capId of selectedCaps) {
+          // Normalize capability IDs
+          const normalizedId = capId === 'margin' ? 'surgery' : capId === 'social' ? 'marketing' : capId;
+          executeCapability(normalizedId);
+        }
+      }
+    } catch (e: any) {
+      console.error("Profile building failed", e);
+      setMessages(prev => [...prev, msg('model', "Something went wrong. Let me try again.")]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const triggerBusinessOverview = async (identity: BaseIdentity) => {
     setIsDiscovering(true);
     setActiveCapability("discovery");
     setCapabilityStartTime(Date.now());
 
-    // Simulated progress updates that appear in chat while discovery runs
-    const progressMessages = [
-      { delay: 2000, text: `Crawling **${identity.name}**'s website for menus, hours, and contact info...` },
-      { delay: 10000, text: `Dispatching research agents \u2014 analyzing theme, social links, competitors, and news coverage...` },
-      { delay: 20000, text: `Profiling social media presence across Instagram, Facebook, and more...` },
-      { delay: 30000, text: `Cross-referencing and validating all discovered URLs...` },
-    ];
-    const progressTimers: ReturnType<typeof setTimeout>[] = [];
-    let discoveryDone = false;
-    let enrichedProfile: any = null;
-
-    for (const pm of progressMessages) {
-      progressTimers.push(setTimeout(() => {
-        if (!discoveryDone) {
-          setMessages(prev => [...prev, msg('model', pm.text)]);
-        }
-      }, pm.delay));
-    }
-
     try {
-      const res = await apiFetch('/api/discover', {
+      const res = await apiFetch('/api/overview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identity })
       });
-      discoveryDone = true;
-      progressTimers.forEach(clearTimeout);
 
       if (res.ok) {
-        enrichedProfile = await res.json();
-        if (enrichedProfile.reportUrl) {
-          setProfileReportUrl(enrichedProfile.reportUrl);
-          sendReportEmailAsync('profile', enrichedProfile.reportUrl, enrichedProfile.name || identity.name, `Business profile for ${enrichedProfile.name || identity.name} has been compiled.`);
-        }
-        setLocatedBusiness(enrichedProfile); // Update to enriched profile
-        // Add a discovery-complete message to chat
-        setMessages(prev => [...prev, msg('model', `Discovery complete for **${enrichedProfile.name || identity.name}**! I've mapped out their digital presence, brand identity, social profiles, and competitive landscape. Pick any capability below to dive deeper.`)]);
+        const overview = await res.json();
 
-        // Email wall removed — AuthWall triggers after first capability report
+        // Format the overview as a rich chat message
+        const overviewParts = [];
+        if (overview.summary) overviewParts.push(overview.summary);
+        if (overview.footTrafficInsight) overviewParts.push(`**Foot Traffic**: ${overview.footTrafficInsight}`);
+        if (overview.localMarketContext) overviewParts.push(`**Local Market**: ${overview.localMarketContext}`);
+        if (overview.competitiveLandscape) overviewParts.push(`**Competition**: ${overview.competitiveLandscape}`);
+        if (overview.keyOpportunities?.length) {
+          overviewParts.push(`**Opportunities**:\n${overview.keyOpportunities.map((o: string) => `- ${o}`).join('\n')}`);
+        }
+
+        const overviewText = overviewParts.join('\n\n');
+        setMessages(prev => [...prev, msg('model', overviewText)]);
+
+        // Show enticing message to create account for deeper analysis
+        setMessages(prev => [...prev, msg('model', `Want deeper analysis? **Sign in** to unlock detailed SEO audits, competitor breakdowns, margin analysis, and more.`)]);
       } else {
-        console.error("Discovery returned", res.status);
+        console.error("Overview returned", res.status);
+        setMessages(prev => [...prev, msg('model', `I found **${identity.name}** but couldn't generate a full overview right now. Sign in for detailed analysis.`)]);
       }
     } catch (e) {
-      discoveryDone = true;
-      progressTimers.forEach(clearTimeout);
-      console.error("Discovery failed", e);
+      console.error("Overview failed", e);
+      setMessages(prev => [...prev, msg('model', `Something went wrong generating the overview. Please try again.`)]);
     } finally {
-      // Always unlock capabilities — even if discovery failed, users can still run analyses
-      // Build capability list — hide menu pricing if no menu data found
-      const profile = enrichedProfile || identity;
-      const hasMenuData = !!(
-        profile?.menuUrl ||
-        profile?.menuScreenshotUrl ||
-        profile?.menuItems?.length
-      );
+      // Show capabilities as locked (user must sign in)
       const caps = [
-        ...(hasMenuData ? [{ id: 'surgery', label: 'Am I undercharging for something?' }] : []),
+        { id: 'surgery', label: 'Am I undercharging for something?' },
         { id: 'traffic', label: 'When is my busiest time of day?' },
         { id: 'seo', label: 'Can people find me on Google?' },
         { id: 'competitive', label: 'How do I stack up against competitors?' },
@@ -414,8 +464,41 @@ export default function Home() {
     }
   };
 
-  // Fast-track location from Places Autocomplete — skips LLM/LocatorAgent entirely
+  // Fast-track location from Places Autocomplete — validates zipcode, then runs overview
   const handlePlaceSelect = async (identity: BaseIdentity) => {
+    // Add user message immediately
+    setMessages(prev => [...prev, msg('user', identity.name)]);
+
+    // --- Zipcode validation gate ---
+    const zipCode = (identity as any).zipCode;
+    if (zipCode) {
+      try {
+        const valRes = await apiFetch(`/api/places/validate-zipcode?zipCode=${zipCode}`);
+        if (valRes.ok) {
+          const valData = await valRes.json();
+          if (!valData.supported) {
+            // Unsupported zipcode — register interest
+            setMessages(prev => [
+              ...prev,
+              msg('model', `We don't cover zipcode **${zipCode}** yet. Leave your email and we'll notify you when we expand there!`),
+            ]);
+            // Track unsupported zipcode interest
+            try {
+              await apiFetch('/api/track', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: identity.name, unsupportedZipcode: true, zipCode }),
+              });
+            } catch (e) { console.error("Interest tracking failed", e); }
+            // Show email capture wall for notification
+            setShowAuthWall(true);
+            return; // Do not proceed with overview
+          }
+        }
+      } catch (e) {
+        console.error("Zipcode validation failed, proceeding anyway", e);
+      }
+    }
+
     // Track for lead capture
     if (!hasProvidedEmail && !searchDocId) {
       try {
@@ -430,11 +513,10 @@ export default function Home() {
       } catch (e) { console.error("Tracking failed", e); }
     }
 
-    // Add chat messages
+    // Zipcode supported — proceed with overview
     setMessages(prev => [
       ...prev,
-      msg('user', identity.name),
-      msg('model', `Found **${identity.name}** at ${identity.address}! Starting deep discovery \u2014 our AI agents are mapping the entire digital presence.`),
+      msg('model', `Found **${identity.name}** at ${identity.address}! Analyzing your market...`),
     ]);
 
     // Reset and set located business
@@ -443,6 +525,7 @@ export default function Home() {
     setForecast(null);
     setSeoReport(null);
     setCompetitiveReport(null);
+    setSocialAuditReport(null);
     setCapabilities([]);
     setProfileReportUrl(null);
     setMarginReportUrl(null);
@@ -451,12 +534,21 @@ export default function Home() {
     setCompetitiveReportUrl(null);
     setMarketingReportUrl(null);
 
-    // Trigger background discovery
-    triggerDiscoveryOrchestrator(identity);
+    // Trigger lightweight overview (replaces heavy discovery)
+    triggerBusinessOverview(identity);
   };
 
   const handleSelectCapability = async (capId: string) => {
     if (!locatedBusiness) return;
+
+    // Auth gate: capabilities require sign-in
+    if (!user) {
+      setPendingCapability(capId);
+      setShowAuthWall(true);
+      setMessages(prev => [...prev, msg('model', 'Sign in to unlock detailed analysis. It only takes a moment!')]);
+      return;
+    }
+
     executeCapability(capId);
   };
 
@@ -1699,6 +1791,7 @@ export default function Home() {
           }}
           capabilities={capabilities}
           onSelectCapability={handleSelectCapability}
+          capabilitiesLocked={!user && capabilities.length > 0}
           isCentered={isCentered}
           followUpChips={dynamicChips}
           isCollapsed={isChatCollapsed}
@@ -1728,6 +1821,10 @@ export default function Home() {
           await signInWithGoogle();
           setShowAuthWall(false);
           setHasProvidedEmail(true);
+          // Start profile building if a business is located
+          if (locatedBusiness) {
+            startProfileBuilding();
+          }
         }}
         onEmailSubmit={async (email) => {
           await handleEmailSubmit(email);

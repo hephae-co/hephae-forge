@@ -69,7 +69,7 @@ PLAYBOOKS: dict[str, dict[str, Any]] = {
     "weather_event_boost": {
         "trigger_conditions": {
             "weather_traffic_modifier": (">", -0.05),
-            "event_traffic_modifier": (">", 0.15),
+            "catalyst_traffic_modifier": (">", 0.15),
         },
         "play": (
             "Good weather + local events this week yield a net +{net_traffic_delta:.0%} "
@@ -272,11 +272,11 @@ def compute_impact_multipliers(signals: dict[str, Any]) -> dict[str, Any]:
             c for c in catalysts.get("catalysts", [])
             if c.get("type") in ("Development", "Infrastructure")
         ])
-        impact["event_traffic_modifier"] = round(0.10 * min(event_count, 3), 2)
+        impact["catalyst_traffic_modifier"] = round(0.10 * min(event_count, 3), 2)
 
     # Net traffic delta
     weather_mod = impact.get("weather_traffic_modifier", 0)
-    event_mod = impact.get("event_traffic_modifier", 0)
+    event_mod = impact.get("catalyst_traffic_modifier", 0)
     impact["net_traffic_delta"] = round(weather_mod + event_mod, 2)
 
     # FHFA house prices

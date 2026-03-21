@@ -260,8 +260,15 @@ async def generate_pulse(
         archive_sources = {}
         for source_name, data in raw_signals.items():
             if data:
+                # Serialize to JSON string for reliable storage
+                import json as _json
+                try:
+                    raw_str = _json.dumps(data, default=str)
+                except (TypeError, ValueError):
+                    raw_str = str(data)
                 archive_sources[source_name] = {
-                    "raw": _truncate(data, 5000),
+                    "raw": raw_str[:8000],
+                    "rawChars": len(raw_str),
                     "fetchedAt": datetime.utcnow().isoformat(),
                     "version": "v1",
                 }

@@ -127,7 +127,19 @@ def _local_scout_instruction(ctx) -> str:
     sections = []
     if signals.get("weather"):
         w = signals["weather"]
-        sections.append(f"Weather: {json.dumps(w, default=str)[:1500]}")
+        # Add freshness warning if weather data has a fetchedAt timestamp
+        fetched_at = w.get("fetchedAt") or w.get("fetched_at", "")
+        freshness_note = ""
+        if fetched_at:
+            try:
+                from datetime import datetime as _dt
+                fetched_time = _dt.fromisoformat(str(fetched_at).replace("Z", "+00:00"))
+                age_hours = (_dt.now(fetched_time.tzinfo) - fetched_time).total_seconds() / 3600
+                if age_hours > 6:
+                    freshness_note = f" [WARNING: forecast is {age_hours:.0f}h old — may be stale]"
+            except Exception:
+                pass
+        sections.append(f"Weather{freshness_note}: {json.dumps(w, default=str)[:1500]}")
     if signals.get("weatherHistory"):
         sections.append(f"Weather Baseline: {json.dumps(signals['weatherHistory'], default=str)[:800]}")
     if signals.get("localNews"):
@@ -135,6 +147,24 @@ def _local_scout_instruction(ctx) -> str:
         sections.append(f"Local News ({len(articles)} articles): {json.dumps(articles, default=str)[:2000]}")
     if signals.get("legalNotices"):
         sections.append(f"Legal Notices: {json.dumps(signals['legalNotices'], default=str)[:1500]}")
+
+    # OSM nearby businesses — feed competitor names to the LLM
+    if signals.get("osmDensity"):
+        osm = signals["osmDensity"]
+        nearby = osm.get("nearby", [])
+        if nearby:
+            biz_lines = []
+            for b in nearby[:15]:
+                name = b.get("name", "?")
+                cat = b.get("cuisine") or b.get("category", "")
+                dist = b.get("distanceM", "?")
+                biz_lines.append(f"- {name} ({cat}, {dist}m away)")
+            saturation = osm.get("saturationLevel", "unknown")
+            total = osm.get("totalBusinesses", 0)
+            sections.append(
+                f"Nearby Competitors ({total} total, saturation: {saturation}):\n"
+                + "\n".join(biz_lines)
+            )
 
     # LLM-gathered research (from Stage 1 ResearchFanOut)
     social = state.get("socialPulse", "")
@@ -168,7 +198,7 @@ Structure your report with these CLEARLY LABELED sections:
 List each event with: name, venue, address (if known), date/time, relevance to {business_type}
 
 ## COMPETITOR OBSERVATIONS
-List each named business with what they're doing (new menu, promotion, event, closure, opening)
+Name SPECIFIC local businesses from the Nearby Competitors list. For each, note what they're doing (new menu, promotion, event, closure, opening). Cross-reference with local news and social pulse. Do NOT name national chains unless there's a specific local story about them.
 
 ## COMMUNITY SENTIMENT
 What are locals saying on social media, Patch, Reddit?

@@ -110,11 +110,19 @@ async def send_report_email(
         meta = REPORT_META.get(report_type, REPORT_META["profile"])
         email_html = build_report_email_html(business_name, report_type, report_url, summary)
 
+        plain_text = (
+            f"{meta['label']} for {business_name}\n\n"
+            f"{summary}\n\n"
+            f"View your report: {report_url}\n\n"
+            f"— Hephae"
+        )
+
         result = resend.Emails.send({
             "from": os.environ.get("RESEND_FROM_EMAIL", "onboarding@resend.dev"),
             "to": [to],
             "subject": f"{meta['label']} Ready: {business_name}",
             "html": email_html,
+            "text": plain_text,
         })
 
         email_id = result.get("id") if isinstance(result, dict) else getattr(result, "id", None)

@@ -110,7 +110,7 @@ gcloud run deploy "$WEB_SERVICE" \
   --memory 512Mi \
   --cpu 1 \
   --timeout 300 \
-  --min-instances 0 \
+  --min-instances 1 \
   --max-instances 5 \
   --service-account "$SERVICE_ACCOUNT" \
   --set-env-vars "NODE_ENV=production,BACKEND_URL=${API_URL}" \

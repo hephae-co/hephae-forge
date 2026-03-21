@@ -162,18 +162,126 @@ async def weekly_pulse_cron(
 
             to_run.append({"zipCode": zip_code, "businessType": business_type})
 
-    # Stagger pulse generation — 30 seconds apart
+    # Stagger pulse generation — 30 seconds apart, collect results
+    tasks = []
     for i, entry in enumerate(to_run):
-        asyncio.create_task(_run_single_pulse(
+        task = asyncio.create_task(_run_single_pulse(
             zip_code=entry["zipCode"],
             business_type=entry["businessType"],
             week_of=week_of,
             delay_seconds=i * 30,
         ))
+        tasks.append(task)
         triggered += 1
+
+    # Send summary email after all pulses complete (non-blocking)
+    if tasks:
+        asyncio.create_task(_send_cron_summary_email(tasks, week_of, triggered, skipped))
 
     logger.info(f"[PulseCron] Triggered {triggered} pulses, skipped {skipped}")
     return {"triggered": triggered, "skipped": skipped}
+
+
+async def _send_cron_summary_email(
+    tasks: list[asyncio.Task],
+    week_of: str,
+    triggered: int,
+    skipped: int,
+):
+    """Wait for all pulse tasks to complete, then send a summary email."""
+    try:
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        completed = []
+        failed = []
+        for r in results:
+            if isinstance(r, Exception):
+                failed.append({"error": str(r)})
+            elif isinstance(r, dict):
+                if r.get("status") == "completed":
+                    completed.append(r)
+                else:
+                    failed.append(r)
+
+        # Build email
+        subject = f"Weekly Pulse Cron — {week_of}: {len(completed)} completed, {len(failed)} failed"
+
+        rows_html = ""
+        for r in completed:
+            rows_html += (
+                f'<tr><td style="padding:8px 12px;border-bottom:1px solid #1e293b;">'
+                f'<span style="color:#818cf8;font-family:monospace;">{r.get("zipCode", "?")}</span></td>'
+                f'<td style="padding:8px 12px;border-bottom:1px solid #1e293b;color:#94a3b8;">{r.get("businessType", "")}</td>'
+                f'<td style="padding:8px 12px;border-bottom:1px solid #1e293b;">'
+                f'<span style="color:#4ade80;">&#10003; Completed</span></td>'
+                f'<td style="padding:8px 12px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:12px;">{r.get("pulseId", "")[:30]}</td></tr>'
+            )
+        for r in failed:
+            rows_html += (
+                f'<tr><td style="padding:8px 12px;border-bottom:1px solid #1e293b;">'
+                f'<span style="color:#818cf8;font-family:monospace;">{r.get("zipCode", "?")}</span></td>'
+                f'<td style="padding:8px 12px;border-bottom:1px solid #1e293b;color:#94a3b8;">{r.get("businessType", "")}</td>'
+                f'<td style="padding:8px 12px;border-bottom:1px solid #1e293b;">'
+                f'<span style="color:#f87171;">&#10007; Failed</span></td>'
+                f'<td style="padding:8px 12px;border-bottom:1px solid #1e293b;color:#f87171;font-size:12px;">{r.get("error", "")[:60]}</td></tr>'
+            )
+
+        html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;">
+<tr><td align="center" style="padding:40px 20px;">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+<tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:16px 16px 0 0;padding:24px 32px;text-align:center;">
+  <div style="font-size:22px;font-weight:800;color:#fff;">Hephae Weekly Pulse</div>
+  <div style="font-size:13px;color:rgba(255,255,255,0.7);">Cron Run Summary — {week_of}</div>
+</td></tr>
+<tr><td style="background:#1e293b;padding:24px 32px;border-left:1px solid rgba(255,255,255,0.08);border-right:1px solid rgba(255,255,255,0.08);">
+  <div style="display:flex;gap:16px;margin-bottom:20px;">
+    <div style="background:#0f172a;border-radius:8px;padding:12px 16px;flex:1;text-align:center;">
+      <div style="font-size:24px;font-weight:700;color:#4ade80;">{len(completed)}</div>
+      <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;">Completed</div>
+    </div>
+    <div style="background:#0f172a;border-radius:8px;padding:12px 16px;flex:1;text-align:center;">
+      <div style="font-size:24px;font-weight:700;color:#f87171;">{len(failed)}</div>
+      <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;">Failed</div>
+    </div>
+    <div style="background:#0f172a;border-radius:8px;padding:12px 16px;flex:1;text-align:center;">
+      <div style="font-size:24px;font-weight:700;color:#94a3b8;">{skipped}</div>
+      <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;">Skipped</div>
+    </div>
+  </div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;color:#e2e8f0;">
+    <tr style="color:#64748b;font-size:11px;text-transform:uppercase;">
+      <td style="padding:8px 12px;border-bottom:1px solid #334155;">Zip</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #334155;">Type</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #334155;">Status</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #334155;">Details</td>
+    </tr>
+    {rows_html}
+  </table>
+</td></tr>
+<tr><td style="background:#0f172a;border-radius:0 0 16px 16px;padding:16px 32px;text-align:center;border-left:1px solid rgba(255,255,255,0.08);border-right:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);">
+  <div style="font-size:11px;color:#64748b;">Hephae Forge — Automated Weekly Intelligence</div>
+</td></tr>
+</table>
+</td></tr></table>
+</body></html>"""
+
+        text = f"Weekly Pulse Cron — {week_of}: {len(completed)} completed, {len(failed)} failed, {skipped} skipped"
+
+        from hephae_common.email import send_email
+        recipients = settings.MONITOR_NOTIFY_EMAILS or settings.ADMIN_EMAIL_ALLOWLIST
+        if recipients:
+            email_list = [e.strip() for e in recipients.split(",") if e.strip()]
+            if email_list:
+                await send_email(to=email_list, subject=subject, text=text, html_content=html)
+                logger.info(f"[PulseCron] Summary email sent to {len(email_list)} recipients")
+        else:
+            logger.warning("[PulseCron] No email recipients configured for cron summary")
+
+    except Exception as e:
+        logger.error(f"[PulseCron] Failed to send summary email: {e}")
 
 
 @router.get("/api/cron/weekly-pulse/status")

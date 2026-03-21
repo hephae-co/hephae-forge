@@ -90,7 +90,6 @@ export default function PlacesAutocomplete({
         includedRegionCodes: ['us'],
         includedPrimaryTypes: [
           'restaurant', 'cafe', 'bakery', 'bar', 'meal_takeaway',
-          'meal_delivery', 'grocery_store', 'supermarket',
         ],
       });
 

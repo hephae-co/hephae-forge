@@ -90,17 +90,40 @@ export default function PlacesAutocomplete({
         includedRegionCodes: ['us'],
       });
 
-      // Style the inner input to match our design
+      // Style the widget to be seamless — no borders, no outlines
       autocomplete.setAttribute('style', `
         width: 100%;
         --gmpx-color-surface: transparent;
         --gmpx-color-on-surface: #111827;
         --gmpx-color-on-surface-variant: #9ca3af;
         --gmpx-color-primary: #6366f1;
+        --gmpx-color-outline: transparent;
         --gmpx-font-family-base: inherit;
         --gmpx-font-family-headings: inherit;
         --gmpx-font-size-base: ${isCentered ? '1.125rem' : '0.875rem'};
+        border: none;
+        outline: none;
+        box-shadow: none;
       `);
+
+      // Inject global styles to override shadow DOM borders
+      if (!document.getElementById('gmp-autocomplete-overrides')) {
+        const style = document.createElement('style');
+        style.id = 'gmp-autocomplete-overrides';
+        style.textContent = `
+          gmp-place-autocomplete {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
+          gmp-place-autocomplete:focus-within {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
 
       autocomplete.addEventListener('gmp-select', handleSelect);
 

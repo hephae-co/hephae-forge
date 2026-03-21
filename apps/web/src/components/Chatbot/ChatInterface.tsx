@@ -635,7 +635,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
                     {isCentered ? (
                         /* Google Places Autocomplete Widget — search/landing mode */
-                        <div className="relative rounded-full border border-gray-200 bg-gray-50/80 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-200/60 focus-within:bg-white transition-all shadow-sm overflow-hidden">
+                        <div className="relative">
                             <PlacesAutocomplete
                                 isCentered={isCentered}
                                 disabled={isInputDisabled}

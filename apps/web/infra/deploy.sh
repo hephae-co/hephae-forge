@@ -67,6 +67,7 @@ echo "  Image:   ${WEB_IMAGE}"
 echo ""
 
 FIREBASE_API_KEY="${FIREBASE_API_KEY:?Set FIREBASE_API_KEY env var}"
+GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:?Set GOOGLE_MAPS_API_KEY env var}"
 
 echo "── Building Next.js image..."
 cat > /tmp/cloudbuild-web.yaml <<YAML
@@ -76,6 +77,8 @@ steps:
       - 'build'
       - '--build-arg'
       - 'NEXT_PUBLIC_FIREBASE_API_KEY=${FIREBASE_API_KEY}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}'
       - '-t'
       - '${WEB_IMAGE}'
       - '-f'

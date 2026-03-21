@@ -10,6 +10,9 @@ import { Bot, RefreshCcw, Info, BarChart3, Users, Search as SearchIcon, Swords, 
 import ExplainerModal from './ExplainerModal';
 import DiscoveryProgress, { ALL_DISCOVERY_MESSAGES, useRotatingMessage } from './DiscoveryProgress';
 import { NeuralBackground } from './NeuralBackground';
+import dynamic from 'next/dynamic';
+
+const PlacesAutocomplete = dynamic(() => import('./PlacesAutocomplete'), { ssr: false });
 
 interface PlacePrediction {
     placeId: string;
@@ -630,75 +633,41 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         );
                     })()}
 
-                    <form onSubmit={handleSubmit} className="relative" ref={dropdownRef}>
-                        {/* Places Autocomplete Dropdown — appears above the input */}
-                        {showDropdown && predictions.length > 0 && (
-                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in">
-                                <div className="px-3 py-1.5 border-b border-gray-100 bg-gray-50/80">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Matching businesses</span>
-                                </div>
-                                {predictions.map((pred, idx) => (
-                                    <button
-                                        key={pred.placeId}
-                                        type="button"
-                                        onClick={() => handlePredictionSelect(pred)}
-                                        className={`w-full px-3 py-2.5 text-left flex items-center gap-3 transition-colors border-b border-gray-50 last:border-b-0 ${
-                                            idx === selectedIdx
-                                                ? 'bg-indigo-50 border-l-2 border-l-indigo-500'
-                                                : 'hover:bg-gray-50 border-l-2 border-l-transparent'
-                                        }`}
-                                    >
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                            idx === selectedIdx ? 'bg-indigo-100' : 'bg-gray-100'
-                                        }`}>
-                                            <MapPin className={`w-4 h-4 ${idx === selectedIdx ? 'text-indigo-600' : 'text-gray-400'}`} />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className={`text-sm font-semibold truncate ${idx === selectedIdx ? 'text-indigo-900' : 'text-gray-900'}`}>
-                                                {pred.mainText}
-                                            </div>
-                                            <div className="text-xs text-gray-500 truncate">{pred.secondaryText}</div>
-                                        </div>
-                                        {idx === selectedIdx && (
-                                            <span className="text-[10px] text-indigo-400 font-medium shrink-0">Enter</span>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Resolving indicator */}
-                        {isResolving && (
-                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-indigo-200 rounded-xl shadow-xl z-50 px-4 py-3 flex items-center gap-3 animate-fade-in">
-                                <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
-                                <span className="text-sm text-indigo-700 font-medium">Resolving location...</span>
-                            </div>
-                        )}
-
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            className={`w-full pl-5 pr-14 ${isCentered ? 'py-5 text-lg' : 'py-3.5 text-base md:text-sm'} rounded-full border text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200/60 focus:border-indigo-300 transition-all outline-none shadow-sm ${isDiscovering ? 'bg-gray-50 border-amber-200/60' : 'bg-gray-50/80 border-gray-200 focus:bg-white'}`}
-                            placeholder={isDiscovering ? "Discovery in progress — chat unlocks when done..." : isCentered ? "Search for a business by name or city..." : "Ask anything about this business..."}
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            onFocus={() => {
-                                if (predictions.length > 0 && (isCentered || shouldAutocomplete(input))) {
-                                    setShowDropdown(true);
-                                }
-                            }}
-                            disabled={isInputDisabled}
-                        />
-                        {isCentered ? (
-                            <button
-                                type="submit"
-                                disabled={!input.trim() || isInputDisabled}
-                                className={`absolute right-2 top-3 p-2.5 text-gray-400 hover:text-indigo-600 rounded-xl hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all`}
-                            >
-                                <SearchIcon className="w-5 h-5" />
-                            </button>
-                        ) : (
+                    {isCentered ? (
+                        /* Google Places Autocomplete Widget — search/landing mode */
+                        <div className="relative rounded-full border border-gray-200 bg-gray-50/80 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-200/60 focus-within:bg-white transition-all shadow-sm overflow-hidden">
+                            <PlacesAutocomplete
+                                isCentered={isCentered}
+                                disabled={isInputDisabled}
+                                onPlaceSelect={(place) => {
+                                    if (onPlaceSelect) {
+                                        onPlaceSelect({
+                                            name: place.name,
+                                            address: place.address,
+                                            zipCode: place.zipCode || '',
+                                            officialUrl: place.officialUrl,
+                                            coordinates: place.coordinates,
+                                        });
+                                    } else {
+                                        onSendMessage(place.name + ', ' + place.address);
+                                    }
+                                }}
+                                placeholder="Search for a business by name or city..."
+                                className="py-2 px-4"
+                            />
+                        </div>
+                    ) : (
+                        /* Regular text input — chat mode */
+                        <form onSubmit={handleSubmit} className="relative" ref={dropdownRef}>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                className={`w-full pl-5 pr-14 py-3.5 text-base md:text-sm rounded-full border text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200/60 focus:border-indigo-300 transition-all outline-none shadow-sm ${isDiscovering ? 'bg-gray-50 border-amber-200/60' : 'bg-gray-50/80 border-gray-200 focus:bg-white'}`}
+                                placeholder={isDiscovering ? "Discovery in progress — chat unlocks when done..." : "Ask anything about this business..."}
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                disabled={isInputDisabled}
+                            />
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isInputDisabled}
@@ -706,8 +675,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             >
                                 <svg className="w-5 h-5 md:w-4 md:h-4 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
                             </button>
-                        )}
-                    </form>
+                        </form>
+                    )}
                 </div>
             </div>
 

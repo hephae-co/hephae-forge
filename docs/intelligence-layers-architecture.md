@@ -92,13 +92,14 @@ The zipcode profile tells us exactly which sources exist for each zip. The BaseL
 | `school_district` | School calendar (back-to-school, holidays, games) | Crawl4ai: calendar |
 | `library_system` | Community events, programs | Crawl4ai: events page |
 
-**Competitive Monitoring:**
+**Competitive Monitoring (TOS-compliant — no Google/Yelp data storage):**
 | Signal | Source | How |
 |--------|--------|-----|
-| Competitor Google ratings | Google Places API | Fetch ratings for OSM nearby businesses weekly, detect changes |
-| New openings near me | Municipal permits + Google Search | "new [business type] [city] [zip]" |
-| Competitor closings | Google Places API status | Check if known competitors are still "OPERATIONAL" |
-| Competitor promotions | Google Search grounding | "[competitor name] promotion deal special" |
+| New openings | Municipal permits (crawl4ai) + Google Search grounding | "new [business type] [city]", certificates of occupancy |
+| Business closings | Local news (Patch, newspaper) + Google Search | "[city] [business type] closed" |
+| Density changes | OSM via BigQuery (public data, no TOS issues) | Compare OSM count quarter-over-quarter |
+| Competitor activity | Google Search grounding (live, not stored) | "[competitor name] [city] promotion OR event OR news" |
+| Chamber new members | Chamber of commerce website (crawl4ai) | New member listings = new businesses |
 
 ---
 
@@ -155,12 +156,12 @@ SourceIntelligenceGatherer (ParallelAgent)
     │                   Use: 'site:{patch_url} business' and '{city} new restaurant opening'
     │                   Return JSON: [{headline, source, url, relevance}]"
     │
-    └── CompetitorPulseAgent (BaseAgent — deterministic)
-          For each OSM competitor:
-            Fetch Google Places details (rating, review count, status)
-            Compare to last week's stored values
-            Flag: new reviews, rating changes, status changes
-            Return JSON: [{name, ratingChange, newReviews, status}]
+    └── CompetitorIntelAgent (LlmAgent + google_search)
+          instruction: "Search for recent news about businesses near {city}, {zip}.
+                        Look for: new openings, closings, expansions, renovations.
+                        Use: 'new {business_type} opened {city} {state} 2026'
+                        and 'site:{patch_url} business opening OR closing'
+                        Return JSON: [{name, type, event, source_url, date}]"
 ```
 
 ### Data Flow: Source → Signal → Playbook → Insight
@@ -183,14 +184,14 @@ Source: patch.com/new-jersey/nutley
                          and a $10 coupon for first-time customers. Network with
                          complementary businesses (florists, event planners)."
 
-Source: Google Places API (weekly competitor check)
-    → Delta detected: "Luna Wood Fire Tavern: rating dropped from 4.4 to 4.1 (12 new reviews)"
-        → Signal: {type: "competitor_rating_drop", name: "Luna Wood Fire Tavern", oldRating: 4.4, newRating: 4.1}
-            → Playbook trigger: "competitor_weakening" = true
-                → Play: "Luna Wood Fire Tavern dropped from 4.4 to 4.1 stars this week.
-                         Their customers are looking for alternatives. Run a weekend
-                         special targeting their usual crowd — Italian comfort food at
-                         your BYOB advantage."
+Source: Local news crawl (Patch + Google Search grounding)
+    → Extracted: "Luna Wood Fire Tavern temporarily closed for renovations — reopening in April"
+        → Signal: {type: "competitor_disruption", name: "Luna Wood Fire Tavern", event: "temporarily closed"}
+            → Playbook trigger: "competitor_disrupted" = true
+                → Play: "Luna Wood Fire Tavern is closed for renovations through April.
+                         Their regulars are looking for alternatives. Run a 'Welcome
+                         Neighbor' special this month targeting Italian comfort food
+                         lovers. Post on Nextdoor and the Nutley Facebook group."
 ```
 
 ---
@@ -206,7 +207,7 @@ Source: Google Places API (weekly competitor check)
 | Cost | seafood_opportunity | numeric (BLS MoM%) |
 | Cost | produce_spike | numeric (BLS MoM%) |
 | Competitive | new_competitor_response | semantic (source crawl) |
-| Competitive | competitor_weakening | numeric (rating delta) |
+| Competitive | competitor_disrupted | semantic (news crawl) |
 | Demand | event_staffing_surge | cross-signal (events + weather) |
 | Demand | rain_delivery_push | numeric (weather modifier) |
 | Demand | holiday_pre_booking | temporal (calendar) |
@@ -224,7 +225,7 @@ Source: Google Places API (weekly competitor check)
 | Cost | service_price_cover | numeric (BLS MoM%) |
 | Cost | rent_squeeze | numeric (BLS MoM%) |
 | Competitive | new_shop_response | semantic (source crawl) |
-| Competitive | competitor_weakening | numeric (rating delta) |
+| Competitive | competitor_disrupted | semantic (news crawl) |
 | Demand | prom_wedding_prep | temporal (calendar + events) |
 | Demand | back_to_school_push | temporal (calendar) |
 | Demand | walk_in_weather_boost | numeric (weather) |

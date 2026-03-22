@@ -76,6 +76,28 @@ def _synthesis_instruction(ctx) -> str:
         sections.append(industry_trend)
         sections.append("")
 
+    # Technology intelligence (from TechScout, pre-computed weekly)
+    tech_intel = state.get("techIntelligence", {})
+    if tech_intel:
+        tech_parts = []
+        highlight = tech_intel.get("weeklyHighlight")
+        if highlight:
+            tech_parts.append(f"**This week's tech highlight:** {highlight.get('title', '')} — {highlight.get('detail', '')}")
+        ai_opps = tech_intel.get("aiOpportunities", [])
+        if ai_opps:
+            for opp in ai_opps[:2]:
+                tech_parts.append(f"- {opp.get('tool', '')}: {opp.get('capability', '')} → {opp.get('actionForOwner', '')}")
+        updates = tech_intel.get("platformUpdates", {})
+        if updates:
+            for cat, update in list(updates.items())[:3]:
+                if update:
+                    tech_parts.append(f"- {cat}: {update}")
+        if tech_parts:
+            sections.append("=== TECHNOLOGY INTELLIGENCE ===")
+            sections.append("Include technology recommendations when relevant to insights.")
+            sections.append("\n".join(tech_parts))
+            sections.append("")
+
     # Rewrite mode — revise specific insights
     if rewrite_feedback:
         existing_output = state.get("pulseOutput", "")

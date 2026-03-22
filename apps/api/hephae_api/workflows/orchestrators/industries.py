@@ -471,3 +471,7 @@ def resolve(business_type: str) -> IndustryConfig:
 def list_industries() -> list[IndustryConfig]:
     """Return all registered industry configs."""
     return list(_ALL)
+
+
+# Alias for convenience
+all_industries = list_industries

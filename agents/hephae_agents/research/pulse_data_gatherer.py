@@ -109,6 +109,30 @@ class BaseLayerFetcher(BaseAgent):
         except Exception as e:
             logger.warning(f"[BaseLayerFetcher] Industry pulse load failed: {e}")
 
+        # Load tech intelligence (pre-computed by tech intelligence cron)
+        tech_intelligence = {}
+        try:
+            from hephae_db.firestore.tech_intelligence import get_tech_intelligence
+            industry_id = resolve(business_type).id if business_type else "restaurant"
+            tech_profile = await get_tech_intelligence(industry_id, week_of)
+            if tech_profile:
+                tech_intelligence = {
+                    "weeklyHighlight": tech_profile.get("weeklyHighlight"),
+                    "aiOpportunities": tech_profile.get("aiOpportunities", [])[:3],
+                    "platformUpdates": {
+                        cat: info.get("recentUpdate", "")
+                        for cat, info in tech_profile.get("platforms", {}).items()
+                        if isinstance(info, dict) and info.get("recentUpdate")
+                    },
+                    "emergingTrends": tech_profile.get("emergingTrends", [])[:2],
+                }
+                logger.info(
+                    f"[BaseLayerFetcher] Loaded tech intelligence for {industry_id}-{week_of}: "
+                    f"{len(tech_intelligence.get('aiOpportunities', []))} AI opportunities"
+                )
+        except Exception as e:
+            logger.warning(f"[BaseLayerFetcher] Tech intelligence load failed: {e}")
+
         # Fetch local signals (always — these are zip-specific)
         local_signals = await fetch_local_signals(
             zip_code=zip_code,
@@ -180,6 +204,7 @@ class BaseLayerFetcher(BaseAgent):
             "matchedPlaybooks": matched_playbooks,
             "industryTrendSummary": industry_trend_summary,
             "industryConfig": industry_config,
+            "techIntelligence": tech_intelligence,
         }
 
         logger.info(

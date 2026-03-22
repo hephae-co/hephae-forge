@@ -105,8 +105,19 @@ This script:
 
 ### For Web (`web`):
 
+**IMPORTANT:** Frontend deploy scripts require env vars that the API script auto-sources from `.env`. Always source `.env` first or pass them explicitly:
+
 ```bash
 cd /Users/sarthak/Desktop/hephae/hephae-forge
+# Source .env for GCP_PROJECT_ID, FIREBASE_API_KEY, etc.
+set -a; source .env 2>/dev/null; set +a
+bash apps/web/infra/deploy.sh --skip-checks
+```
+
+If `.env` doesn't exist, set manually:
+```bash
+GCP_PROJECT_ID=hephae-co-dev \
+FIREBASE_API_KEY=$(gcloud secrets versions access latest --secret=FIREBASE_API_KEY) \
 bash apps/web/infra/deploy.sh --skip-checks
 ```
 
@@ -120,10 +131,11 @@ This script:
 
 ```bash
 cd /Users/sarthak/Desktop/hephae/hephae-forge
+set -a; source .env 2>/dev/null; set +a
 bash apps/admin/infra/deploy.sh --skip-checks
 ```
 
-Same pattern as web, deploys to `hephae-admin-web`.
+Same env var requirements as web.
 
 ### For All:
 

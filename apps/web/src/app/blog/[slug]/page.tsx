@@ -17,11 +17,9 @@ interface BlogPost {
 }
 
 async function fetchPost(slug: string): Promise<BlogPost | null> {
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
   try {
-    const res = await fetch(`${backendUrl}/api/blog/by-slug/${slug}`, {
-      next: { revalidate: 300 },
-    });
+    const { serverFetch } = await import('@/lib/serverFetch');
+    const res = await serverFetch(`/api/blog/by-slug/${slug}`, { revalidate: 300 });
     if (!res.ok) return null;
     return await res.json();
   } catch {

@@ -18,11 +18,9 @@ interface BlogPost {
 }
 
 async function fetchPosts(): Promise<BlogPost[]> {
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
   try {
-    const res = await fetch(`${backendUrl}/api/blog/posts?limit=20`, {
-      next: { revalidate: 300 }, // revalidate every 5 minutes
-    });
+    const { serverFetch } = await import('@/lib/serverFetch');
+    const res = await serverFetch('/api/blog/posts?limit=20', { revalidate: 300 });
     if (!res.ok) return [];
     const data = await res.json();
     return (data || [])

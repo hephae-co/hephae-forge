@@ -10,16 +10,10 @@ import { Bot, RefreshCcw, Info, BarChart3, Users, Search as SearchIcon, Swords, 
 import ExplainerModal from './ExplainerModal';
 import DiscoveryProgress, { ALL_DISCOVERY_MESSAGES, useRotatingMessage } from './DiscoveryProgress';
 import { NeuralBackground } from './NeuralBackground';
-import dynamic from 'next/dynamic';
+import { usePlacesAutocomplete } from './usePlacesAutocomplete';
+import type { PlacePrediction } from './usePlacesAutocomplete';
 
-const PlacesAutocomplete = dynamic(() => import('./PlacesAutocomplete'), { ssr: false });
-
-interface PlacePrediction {
-    placeId: string;
-    mainText: string;
-    secondaryText: string;
-    description: string;
-}
+// PlacePrediction type imported from usePlacesAutocomplete
 
 interface ChatInterfaceProps {
     messages: ChatMessage[];
@@ -125,8 +119,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    // Autocomplete state
-    const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
+    // Autocomplete state (client-side Google Maps JS API)
+    const { predictions, fetchPredictions, getPlaceDetails, clearPredictions } = usePlacesAutocomplete();
     const [showDropdown, setShowDropdown] = useState(false);
     const [selectedIdx, setSelectedIdx] = useState(-1);
     const [isResolving, setIsResolving] = useState(false);
@@ -171,39 +165,31 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         return () => clearInterval(interval);
     }, [isTyping]);
 
-    // Debounced Places Autocomplete
+    // Debounced Places Autocomplete (client-side Google Maps JS API)
     useEffect(() => {
-        // In search mode (isCentered), every 3+ char input triggers autocomplete
-        // In chat mode, skip inputs that look like chat messages
         const shouldFetch = isCentered
             ? input.trim().length >= 3
             : shouldAutocomplete(input);
 
         if (!shouldFetch) {
-            setPredictions([]);
+            clearPredictions();
             setShowDropdown(false);
             return;
         }
 
         clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(async () => {
-            try {
-                const res = await fetch(`/api/places/autocomplete?input=${encodeURIComponent(input.trim())}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    const preds = data.predictions || [];
-                    setPredictions(preds);
-                    setShowDropdown(preds.length > 0);
-                    setSelectedIdx(-1);
-                    // predictions updated — no extra action needed
-                }
-            } catch {
-                // Silently fail — autocomplete is a nice-to-have
-            }
+        debounceRef.current = setTimeout(() => {
+            fetchPredictions(input);
         }, 300);
 
         return () => clearTimeout(debounceRef.current);
-    }, [input, isCentered]);
+    }, [input, isCentered, fetchPredictions, clearPredictions]);
+
+    // Show/hide dropdown when predictions change
+    useEffect(() => {
+        setShowDropdown(predictions.length > 0);
+        setSelectedIdx(-1);
+    }, [predictions]);
 
     // Click outside to close dropdown
     useEffect(() => {
@@ -216,14 +202,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    // Resolve a place prediction into a full identity
+    // Resolve a place prediction into a full identity (client-side Google Maps API)
     const handlePredictionSelect = useCallback(async (prediction: PlacePrediction) => {
         setShowDropdown(false);
-        setPredictions([]);
+        clearPredictions();
         setInput(prediction.mainText);
 
         if (!onPlaceSelect) {
-            // Fallback: send as regular chat message
             onSendMessage(prediction.description);
             setInput('');
             return;
@@ -231,13 +216,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         setIsResolving(true);
         try {
-            const res = await fetch(`/api/places/details?placeId=${prediction.placeId}`);
-            if (res.ok) {
-                const identity = await res.json();
+            const details = await getPlaceDetails(prediction.placeId);
+            if (details) {
                 setInput('');
-                onPlaceSelect(identity);
+                onPlaceSelect({
+                    name: details.name,
+                    address: details.address,
+                    officialUrl: details.officialUrl || '',
+                    coordinates: details.coordinates || undefined,
+                } as BaseIdentity);
             } else {
-                // Fallback: send as regular message for LLM to handle
                 onSendMessage(prediction.description);
                 setInput('');
             }
@@ -247,7 +235,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         } finally {
             setIsResolving(false);
         }
-    }, [onPlaceSelect, onSendMessage]);
+    }, [onPlaceSelect, onSendMessage, getPlaceDetails, clearPredictions]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -266,7 +254,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         // Otherwise send as regular message (text-search fallback in search mode, normal chat in chat mode)
         setShowDropdown(false);
-        setPredictions([]);
+        clearPredictions();
         if (!input.trim() || isTyping || isResolving) return;
         onSendMessage(input);
         setInput('');
@@ -633,40 +621,75 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         );
                     })()}
 
-                    {isCentered ? (
-                        /* Google Places Autocomplete Widget — search/landing mode */
-                        <div className="relative">
-                            <PlacesAutocomplete
-                                isCentered={isCentered}
-                                disabled={isInputDisabled}
-                                onPlaceSelect={(place) => {
-                                    if (onPlaceSelect) {
-                                        onPlaceSelect({
-                                            name: place.name,
-                                            address: place.address,
-                                            officialUrl: place.officialUrl || '',
-                                            coordinates: place.coordinates || undefined,
-                                        } as BaseIdentity);
-                                    } else {
-                                        onSendMessage(place.name + ', ' + place.address);
-                                    }
-                                }}
-                                placeholder="Search for a business by name or city..."
-                                className="py-2 px-4"
-                            />
-                        </div>
-                    ) : (
-                        /* Regular text input — chat mode */
-                        <form onSubmit={handleSubmit} className="relative" ref={dropdownRef}>
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                className={`w-full pl-5 pr-14 py-3.5 text-base md:text-sm rounded-full border text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200/60 focus:border-indigo-300 transition-all outline-none shadow-sm ${isDiscovering ? 'bg-gray-50 border-amber-200/60' : 'bg-gray-50/80 border-gray-200 focus:bg-white'}`}
-                                placeholder={isDiscovering ? "Discovery in progress — chat unlocks when done..." : "Ask anything about this business..."}
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                disabled={isInputDisabled}
-                            />
+                    <form onSubmit={handleSubmit} className="relative" ref={dropdownRef}>
+                        {/* Places Autocomplete Dropdown — appears above the input */}
+                        {showDropdown && predictions.length > 0 && (
+                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in">
+                                <div className="px-3 py-1.5 border-b border-gray-100 bg-gray-50/80">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Matching businesses</span>
+                                </div>
+                                {predictions.map((pred, idx) => (
+                                    <button
+                                        key={pred.placeId}
+                                        type="button"
+                                        onClick={() => handlePredictionSelect(pred)}
+                                        className={`w-full px-3 py-2.5 text-left flex items-center gap-3 transition-colors border-b border-gray-50 last:border-b-0 ${
+                                            idx === selectedIdx
+                                                ? 'bg-indigo-50 border-l-2 border-l-indigo-500'
+                                                : 'hover:bg-gray-50 border-l-2 border-l-transparent'
+                                        }`}
+                                    >
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                            idx === selectedIdx ? 'bg-indigo-100' : 'bg-gray-100'
+                                        }`}>
+                                            <MapPin className={`w-4 h-4 ${idx === selectedIdx ? 'text-indigo-600' : 'text-gray-400'}`} />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className={`text-sm font-semibold truncate ${idx === selectedIdx ? 'text-indigo-900' : 'text-gray-900'}`}>
+                                                {pred.mainText}
+                                            </div>
+                                            <div className="text-xs text-gray-500 truncate">{pred.secondaryText}</div>
+                                        </div>
+                                        {idx === selectedIdx && (
+                                            <span className="text-[10px] text-indigo-400 font-medium shrink-0">Enter</span>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Resolving indicator */}
+                        {isResolving && (
+                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-indigo-200 rounded-xl shadow-xl z-50 px-4 py-3 flex items-center gap-3 animate-fade-in">
+                                <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
+                                <span className="text-sm text-indigo-700 font-medium">Resolving location...</span>
+                            </div>
+                        )}
+
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            className={`w-full pl-5 pr-14 ${isCentered ? 'py-5 text-lg' : 'py-3.5 text-base md:text-sm'} rounded-full border text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200/60 focus:border-indigo-300 transition-all outline-none shadow-sm ${isDiscovering ? 'bg-gray-50 border-amber-200/60' : 'bg-gray-50/80 border-gray-200 focus:bg-white'}`}
+                            placeholder={isDiscovering ? "Discovery in progress — chat unlocks when done..." : isCentered ? "Search for a business by name or city..." : "Ask anything about this business..."}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            onFocus={() => {
+                                if (predictions.length > 0 && (isCentered || shouldAutocomplete(input))) {
+                                    setShowDropdown(true);
+                                }
+                            }}
+                            disabled={isInputDisabled}
+                        />
+                        {isCentered ? (
+                            <button
+                                type="submit"
+                                disabled={!input.trim() || isInputDisabled}
+                                className={`absolute right-2 top-3 p-2.5 text-gray-400 hover:text-indigo-600 rounded-xl hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all`}
+                            >
+                                <SearchIcon className="w-5 h-5" />
+                            </button>
+                        ) : (
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isInputDisabled}
@@ -674,8 +697,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             >
                                 <svg className="w-5 h-5 md:w-4 md:h-4 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
                             </button>
-                        </form>
-                    )}
+                        )}
+                    </form>
                 </div>
             </div>
 

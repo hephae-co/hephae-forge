@@ -79,13 +79,16 @@ def _writer_instruction(ctx):
 
 
 def _critique_instruction(ctx):
+    import json as _json
     parts = [BLOG_CRITIQUE_INSTRUCTION]
     blog = ctx.state.get("blogContent", "")
     brief = ctx.state.get("researchBrief", "")
     if blog:
-        parts.append(f"\n\nBLOG HTML TO REVIEW:\n{blog[:8000]}")
+        blog_str = str(blog)[:8000] if isinstance(blog, str) else str(blog)[:8000]
+        parts.append(f"\n\nBLOG HTML TO REVIEW:\n{blog_str}")
     if brief:
-        parts.append(f"\n\nORIGINAL RESEARCH DATA:\n{brief[:4000]}")
+        brief_str = _json.dumps(brief, default=str)[:4000] if isinstance(brief, dict) else str(brief)[:4000]
+        parts.append(f"\n\nORIGINAL RESEARCH DATA:\n{brief_str}")
     return "\n".join(parts)
 
 

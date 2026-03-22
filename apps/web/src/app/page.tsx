@@ -75,6 +75,8 @@ export default function Home() {
   const [locatedBusiness, setLocatedBusiness] = useState<BaseIdentity | null>(null);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [capabilities, setCapabilities] = useState<{ id: string, label: string, icon?: React.ReactNode }[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [businessOverview, setBusinessOverview] = useState<any>(null);
 
   const [report, setReport] = useState<SurgicalReport | null>(null);
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
@@ -425,11 +427,45 @@ export default function Home() {
 
       if (res.ok) {
         const overview = await res.json();
+        setBusinessOverview(overview);
 
-        // Add structured overview as a special chat message with overview data
-        const overviewMsg = msg('model', '');
-        (overviewMsg as any).overview = overview;
-        setMessages(prev => [...prev, overviewMsg]);
+        // Build conversational insight message with real numbers
+        const parts: string[] = [];
+        const snap = overview.businessSnapshot;
+        const market = overview.marketPosition;
+        const econ = overview.localEconomy;
+        const buzz = overview.localBuzz;
+
+        if (snap) {
+          let intro = `Here's what I found about **${snap.name}**`;
+          if (snap.rating) intro += ` — rated **${snap.rating}★**${snap.reviewCount ? ` (${snap.reviewCount} reviews)` : ''}`;
+          intro += '.';
+          parts.push(intro);
+        }
+
+        if (market) {
+          parts.push(`There are **${market.competitorCount} competitors** nearby (${market.saturationLevel} saturation). ${market.ranking || ''}`);
+        }
+
+        if (econ) {
+          const econParts = [];
+          if (econ.medianIncome) econParts.push(`**${econ.medianIncome}** median income`);
+          if (econ.population) econParts.push(`**${econ.population}** residents`);
+          if (econParts.length) parts.push(`Your market: ${econParts.join(', ')}. ${econ.keyFact || ''}`);
+        }
+
+        if (buzz?.headline) {
+          parts.push(`📡 **This week**: ${buzz.headline}`);
+        }
+
+        if (overview.keyOpportunities?.length) {
+          const opps = overview.keyOpportunities.slice(0, 2).map((o: any) => `• **${o.title}** — ${o.detail}`).join('\n');
+          parts.push(`**Opportunities I spotted:**\n${opps}`);
+        }
+
+        parts.push('What would you like to dig into? I can analyze your pricing, check your Google presence, or compare you against competitors.');
+
+        setMessages(prev => [...prev, msg('model', parts.join('\n\n'))]);
       } else {
         console.error("Overview returned", res.status);
         setMessages(prev => [...prev, msg('model', `I found **${identity.name}** but couldn't generate a full overview right now. Try again in a moment.`)]);
@@ -1724,7 +1760,7 @@ export default function Home() {
                 </div>
               </div>
             ) : locatedBusiness && locatedBusiness.coordinates ? (
-              <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} />
+              <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} dashboard={businessOverview?.dashboard} />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center bg-transparent gap-4 p-8">
                 {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) && (

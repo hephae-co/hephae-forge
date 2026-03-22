@@ -102,6 +102,21 @@ async def _load_zipcode_profile(zip_code: str) -> dict[str, Any] | None:
         return None
 
 
+async def _load_osm_competitors(latitude: float, longitude: float, business_type: str) -> list[dict[str, Any]]:
+    """Load nearby competitors from OSM via BigQuery (with lat/lng for map pins)."""
+    if not latitude or not longitude:
+        return []
+
+    try:
+        from hephae_db.bigquery.public_data import query_osm_business_density
+
+        result = await query_osm_business_density(latitude, longitude, business_type)
+        return result.get("nearby", []) if result else []
+    except Exception as e:
+        logger.warning(f"[BusinessOverview] OSM competitors load failed: {e}")
+        return []
+
+
 async def _load_latest_pulse(zip_code: str, business_type: str) -> dict[str, Any] | None:
     """Load the latest weekly pulse for this zip + business type."""
     if not zip_code:
@@ -134,6 +149,52 @@ async def _load_latest_pulse(zip_code: str, business_type: str) -> dict[str, Any
         return None
 
 
+def _build_dashboard(
+    zipcode_profile: dict[str, Any] | None,
+    pulse_data: dict[str, Any] | None,
+    osm_competitors: list[dict[str, Any]],
+    latitude: float,
+    longitude: float,
+) -> dict[str, Any]:
+    """Build compact dashboard payload for the frontend map + stat cards."""
+    dashboard: dict[str, Any] = {
+        "businessLocation": {"lat": latitude, "lng": longitude} if latitude and longitude else None,
+        "competitors": osm_competitors[:10],
+        "stats": {},
+        "events": [],
+        "communityBuzz": None,
+        "pulseHeadline": None,
+        "topInsights": [],
+        "confirmedSources": 0,
+    }
+
+    if zipcode_profile:
+        dashboard["confirmedSources"] = zipcode_profile.get("confirmedSources", 0)
+        census_note = zipcode_profile.get("census", "")
+        # Parse "pop=28428, income=$95,259" from census note
+        if census_note:
+            import re
+            pop_match = re.search(r'pop=([0-9,]+)', census_note)
+            inc_match = re.search(r'income=\$([0-9,]+)', census_note)
+            dashboard["stats"]["population"] = pop_match.group(1) if pop_match else None
+            dashboard["stats"]["medianIncome"] = f"${inc_match.group(1)}" if inc_match else None
+        dashboard["stats"]["city"] = zipcode_profile.get("city")
+        dashboard["stats"]["state"] = zipcode_profile.get("state")
+        dashboard["stats"]["county"] = zipcode_profile.get("county")
+        dashboard["stats"]["localNewspaper"] = zipcode_profile.get("localNewspaper")
+        dashboard["stats"]["patchUrl"] = zipcode_profile.get("patchUrl")
+
+    dashboard["stats"]["competitorCount"] = len(osm_competitors)
+
+    if pulse_data:
+        dashboard["pulseHeadline"] = pulse_data.get("headline")
+        dashboard["events"] = pulse_data.get("events", [])[:5]
+        dashboard["communityBuzz"] = pulse_data.get("communityBuzz")
+        dashboard["topInsights"] = pulse_data.get("topInsights", [])[:3]
+
+    return dashboard
+
+
 async def run_business_overview(identity: dict[str, Any]) -> dict[str, Any]:
     """Run business overview with Google Search + Maps + Zipcode/Pulse data.
 
@@ -144,14 +205,18 @@ async def run_business_overview(identity: dict[str, Any]) -> dict[str, Any]:
     address = identity.get("address", "")
     zip_code = identity.get("zipCode", "")
     business_type = identity.get("businessType", "Restaurants")
+    coords = identity.get("coordinates", {}) or {}
+    latitude = coords.get("lat", 0)
+    longitude = coords.get("lng", 0)
 
     logger.info(f"[BusinessOverview] Starting overview for: {name} ({zip_code})")
 
     # Load all data sources in parallel
-    zipcode_context, zipcode_profile, pulse_data = await asyncio.gather(
+    zipcode_context, zipcode_profile, pulse_data, osm_competitors = await asyncio.gather(
         _load_zipcode_context(zip_code),
         _load_zipcode_profile(zip_code),
         _load_latest_pulse(zip_code, business_type),
+        _load_osm_competitors(latitude, longitude, business_type),
     )
 
     logger.info(
@@ -267,26 +332,32 @@ Search for this business and its competitors in the area."""
                 if overview and isinstance(overview, str):
                     last_text = overview
 
+        # Build curated dashboard payload (compact, for frontend map + stats)
+        dashboard = _build_dashboard(
+            zipcode_profile, pulse_data, osm_competitors,
+            latitude, longitude,
+        )
+
         # Parse JSON from the last text output
         if last_text:
             try:
                 result = json.loads(last_text)
                 if isinstance(result, dict):
+                    result["dashboard"] = dashboard
                     logger.info(f"[BusinessOverview] Overview complete for: {name}")
                     return result
             except json.JSONDecodeError:
-                # Try extracting JSON from markdown fences
                 import re
                 match = re.search(r'```(?:json)?\s*([\s\S]*?)```', last_text)
                 if match:
                     try:
                         result = json.loads(match.group(1))
                         if isinstance(result, dict):
+                            result["dashboard"] = dashboard
                             return result
                     except json.JSONDecodeError:
                         pass
-                # Return the raw text as summary fallback
-                return {"summary": last_text[:500]}
+                return {"summary": last_text[:500], "dashboard": dashboard}
 
         logger.warning(f"[BusinessOverview] No output for: {name}")
         return {"summary": f"Overview for {name} is being prepared.", "error": "incomplete"}

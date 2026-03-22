@@ -5,17 +5,29 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BaseIdentity, EnrichedProfile, SocialPlatformMetrics } from '@/types/api';
 import DiscoveryProgress from './DiscoveryProgress';
 
+interface DashboardData {
+    businessLocation?: { lat: number; lng: number } | null;
+    competitors?: { name: string; category: string; cuisine: string; distanceM: number; lat?: number; lng?: number }[];
+    stats?: { population?: string | null; medianIncome?: string | null; city?: string | null; state?: string | null; county?: string | null; competitorCount?: number; localNewspaper?: string | null; patchUrl?: string | null };
+    events?: { what: string; when: string }[];
+    communityBuzz?: string | null;
+    pulseHeadline?: string | null;
+    topInsights?: { title: string; recommendation: string }[];
+    confirmedSources?: number;
+}
+
 interface MapVisualizerProps {
     lat: number;
     lng: number;
     businessName: string;
     business?: BaseIdentity | EnrichedProfile;
     isDiscovering?: boolean;
+    dashboard?: DashboardData | null;
 }
 
 type ActiveTab = 'overview' | 'profile' | 'theme' | 'contact' | 'social' | 'menu' | 'competitors';
 
-export default function MapVisualizer({ lat, lng, businessName, business, isDiscovering = false }: MapVisualizerProps) {
+export default function MapVisualizer({ lat, lng, businessName, business, isDiscovering = false, dashboard }: MapVisualizerProps) {
     const [zoomLevel, setZoomLevel] = useState<number>(15);
     const [resetKey, setResetKey] = useState(0);
     const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
@@ -580,6 +592,69 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                                 </div>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MARKET DASHBOARD OVERLAY (bottom) */}
+            {dashboard && !isDiscovering && (
+                <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-auto">
+                    <div className="bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent pt-8 pb-4 px-4">
+                        {/* Stat pills row */}
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {dashboard.stats?.medianIncome && (
+                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/10 text-white/90 font-medium backdrop-blur-sm border border-white/10">
+                                    {dashboard.stats.medianIncome} income
+                                </span>
+                            )}
+                            {dashboard.stats?.population && (
+                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/10 text-white/90 font-medium backdrop-blur-sm border border-white/10">
+                                    {dashboard.stats.population} residents
+                                </span>
+                            )}
+                            {dashboard.stats?.competitorCount !== undefined && (
+                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/10 text-white/90 font-medium backdrop-blur-sm border border-white/10">
+                                    {dashboard.stats.competitorCount} competitors nearby
+                                </span>
+                            )}
+                            {dashboard.confirmedSources ? (
+                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-medium backdrop-blur-sm border border-indigo-400/20">
+                                    {dashboard.confirmedSources} data sources active
+                                </span>
+                            ) : null}
+                        </div>
+
+                        {/* Competitors strip */}
+                        {dashboard.competitors && dashboard.competitors.length > 0 && (
+                            <div className="mb-3">
+                                <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Nearby Competitors</span>
+                                <div className="flex gap-2 mt-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                                    {dashboard.competitors.slice(0, 6).map((c, i) => (
+                                        <div key={i} className="flex-shrink-0 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm">
+                                            <div className="text-xs font-semibold text-white/90 whitespace-nowrap">{c.name}</div>
+                                            <div className="text-[10px] text-white/50">{c.cuisine || c.category} &middot; {c.distanceM}m</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Local buzz from pulse */}
+                        {dashboard.pulseHeadline && (
+                            <div className="px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-400/20 backdrop-blur-sm">
+                                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">This Week</span>
+                                <p className="text-xs text-white/80 mt-0.5 leading-relaxed">{dashboard.pulseHeadline}</p>
+                                {dashboard.events && dashboard.events.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                        {dashboard.events.slice(0, 3).map((ev, i) => (
+                                            <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/60 border border-white/10">
+                                                {ev.what}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

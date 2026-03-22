@@ -355,7 +355,9 @@ async def query_osm_business_density(
                 (SELECT t.value FROM UNNEST(all_tags) t WHERE t.key = 'amenity' LIMIT 1) AS amenity,
                 (SELECT t.value FROM UNNEST(all_tags) t WHERE t.key = 'shop' LIMIT 1) AS shop,
                 (SELECT t.value FROM UNNEST(all_tags) t WHERE t.key = 'cuisine' LIMIT 1) AS cuisine,
-                ST_DISTANCE(geometry, ST_GEOGPOINT(@lon, @lat)) AS distance_m
+                ST_DISTANCE(geometry, ST_GEOGPOINT(@lon, @lat)) AS distance_m,
+                ST_Y(ST_CENTROID(geometry)) AS lat,
+                ST_X(ST_CENTROID(geometry)) AS lng
             FROM `bigquery-public-data.geo_openstreetmap.planet_features`
             WHERE ST_DWITHIN(geometry, ST_GEOGPOINT(@lon, @lat), @radius)
               AND EXISTS(SELECT 1 FROM UNNEST(all_tags) t WHERE t.key = 'name')
@@ -377,12 +379,16 @@ async def query_osm_business_density(
             cat = row.get("amenity") or row.get("shop") or "other"
             categories[cat] = categories.get(cat, 0) + 1
             if len(nearby) < 10:
-                nearby.append({
+                entry: dict[str, Any] = {
                     "name": row.get("name", ""),
                     "category": cat,
                     "cuisine": row.get("cuisine", ""),
                     "distanceM": int(row.get("distance_m", 0)),
-                })
+                }
+                if row.get("lat") and row.get("lng"):
+                    entry["lat"] = round(float(row["lat"]), 6)
+                    entry["lng"] = round(float(row["lng"]), 6)
+                nearby.append(entry)
 
         total = len(rows)
         if total >= 50:

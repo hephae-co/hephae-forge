@@ -52,11 +52,26 @@ DETAILED_SERIES: dict[str, dict[str, str]] = {
         "Carbonated drinks": "CUUR0000SEFQ",
         "Coffee": "CUUR0000SS02011",
     },
+    "bakery_inputs": {
+        "Flour & flour mixes": "CUUR0000SEFA01",
+        "Butter": "CUUR0000SS5702",
+        "Sugar & substitutes": "CUUR0000SEFR01",
+        "Bread": "CUUR0000SEFB01",
+        "Cakes, cupcakes, cookies": "CUUR0000SEFB02",
+    },
+    "services": {
+        "Barber & beauty services": "CUUR0000SS45011",
+        "Rent of primary residence": "CUUR0000SEHA",
+        "Household energy": "CUUR0000SAH21",
+        "Services less energy": "CUUR0000SASLE",
+        "Other goods & services": "CUUR0000SAG1",
+        "All items (CPI-U)": "CUUR0000SA0",
+    },
 }
 
 INDUSTRY_TO_DETAILED: dict[str, list[str]] = {
-    "bakeries": ["bakery"],
-    "bakery": ["bakery"],
+    "bakeries": ["bakery", "bakery_inputs", "dairy", "meats"],
+    "bakery": ["bakery", "bakery_inputs", "dairy", "meats"],
     "pizza": ["bakery", "dairy", "meats"],
     "pizzeria": ["bakery", "dairy", "meats"],
     "restaurants": ["meats", "produce", "dairy"],
@@ -76,6 +91,14 @@ INDUSTRY_TO_DETAILED: dict[str, list[str]] = {
     "juice bar": ["produce", "beverages"],
     "smoothie": ["produce", "dairy", "beverages"],
     "deli": ["meats", "dairy", "bakery"],
+    # Non-food service businesses
+    "barber": ["services"],
+    "barbershop": ["services"],
+    "barbers": ["services"],
+    "salon": ["services"],
+    "hair salon": ["services"],
+    "spa": ["services"],
+    "nail salon": ["services"],
 }
 
 _SERIES_ID_TO_LABEL: dict[str, str] = {}
@@ -86,12 +109,27 @@ for _category_series in DETAILED_SERIES.values():
         _SERIES_ID_TO_LABEL[_sid] = _label
 
 
-def _get_relevant_series(industry: str) -> dict[str, str]:
-    series = dict(FOOD_CPI_SERIES)
+def _get_relevant_series(industry: str, config_bls_series: dict[str, str] | None = None) -> dict[str, str]:
+    # If IndustryConfig provides explicit bls_series, use those directly
+    if config_bls_series:
+        return dict(config_bls_series)
+
+    # Check if this is a non-food service industry
     normalized = industry.lower().strip()
     detailed_cats = INDUSTRY_TO_DETAILED.get(normalized, [])
     if not detailed_cats:
         detailed_cats = INDUSTRY_TO_DETAILED.get(normalized.rstrip("s"), [])
+
+    # For service industries (barber, salon, etc.), don't include food CPI
+    if detailed_cats == ["services"]:
+        series: dict[str, str] = {}
+        for cat in detailed_cats:
+            if cat in DETAILED_SERIES:
+                series.update(DETAILED_SERIES[cat])
+        return series
+
+    # Food industries: start with base food CPI + add detailed categories
+    series = dict(FOOD_CPI_SERIES)
     for cat in detailed_cats:
         if cat in DETAILED_SERIES:
             series.update(DETAILED_SERIES[cat])

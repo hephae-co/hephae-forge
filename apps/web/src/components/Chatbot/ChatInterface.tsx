@@ -225,7 +225,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     address: details.address,
                     officialUrl: details.officialUrl || '',
                     coordinates: details.coordinates || undefined,
-                } as BaseIdentity);
+                    zipCode: details.zipCode || '',
+                } as any);
             } else {
                 onSendMessage(prediction.description);
                 setInput('');

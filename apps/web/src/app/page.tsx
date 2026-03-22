@@ -435,6 +435,7 @@ export default function Home() {
         const market = overview.marketPosition;
         const econ = overview.localEconomy;
         const buzz = overview.localBuzz;
+        const dash = overview.dashboard;
 
         if (snap) {
           let intro = `Here's what I found about **${snap.name}**`;
@@ -443,27 +444,55 @@ export default function Home() {
           parts.push(intro);
         }
 
+        // Market + economy in one section
+        const marketParts = [];
         if (market) {
-          parts.push(`There are **${market.competitorCount} competitors** nearby (${market.saturationLevel} saturation). ${market.ranking || ''}`);
+          marketParts.push(`**${market.competitorCount} competitors** nearby (${market.saturationLevel} saturation)`);
+          if (market.ranking) marketParts.push(market.ranking);
         }
-
         if (econ) {
-          const econParts = [];
-          if (econ.medianIncome) econParts.push(`**${econ.medianIncome}** median income`);
-          if (econ.population) econParts.push(`**${econ.population}** residents`);
-          if (econParts.length) parts.push(`Your market: ${econParts.join(', ')}. ${econ.keyFact || ''}`);
+          if (econ.medianIncome) marketParts.push(`**${econ.medianIncome}** median household income`);
+          if (econ.population) marketParts.push(`**${econ.population}** residents`);
+          if (econ.keyFact) marketParts.push(econ.keyFact);
+        }
+        if (marketParts.length) parts.push(marketParts.join('. ') + '.');
+
+        // Nearby competitors from dashboard
+        if (dash?.competitors?.length) {
+          const compNames = dash.competitors.slice(0, 5).map((c: any) => `**${c.name}** (${c.cuisine || c.category}, ${c.distanceM}m)`);
+          parts.push(`**Your neighbors:** ${compNames.join(', ')}`);
         }
 
-        if (buzz?.headline) {
-          parts.push(`📡 **This week**: ${buzz.headline}`);
+        // This week's local intel from pulse
+        if (buzz?.headline || dash?.pulseHeadline) {
+          parts.push(`**This week:** ${buzz?.headline || dash?.pulseHeadline}`);
+        }
+        if (dash?.events?.length) {
+          const eventList = dash.events.slice(0, 3).map((ev: any) => `• ${ev.what}${ev.when ? ` (${ev.when})` : ''}`).join('\n');
+          parts.push(`**Local events:**\n${eventList}`);
+        }
+        if (dash?.communityBuzz) {
+          parts.push(`**Community buzz:** ${dash.communityBuzz}`);
         }
 
+        // Top pulse insights
+        if (dash?.topInsights?.length) {
+          const insights = dash.topInsights.slice(0, 2).map((i: any) => `• **${i.title}** — ${i.recommendation}`).join('\n');
+          parts.push(`**Intelligence from this week's analysis:**\n${insights}`);
+        }
+
+        // Opportunities from synthesizer
         if (overview.keyOpportunities?.length) {
           const opps = overview.keyOpportunities.slice(0, 2).map((o: any) => `• **${o.title}** — ${o.detail}`).join('\n');
-          parts.push(`**Opportunities I spotted:**\n${opps}`);
+          parts.push(`**Opportunities:**\n${opps}`);
         }
 
-        parts.push('What would you like to dig into? I can analyze your pricing, check your Google presence, or compare you against competitors.');
+        // Data sources badge
+        if (dash?.confirmedSources) {
+          parts.push(`*Based on ${dash.confirmedSources} verified data sources for this area.*`);
+        }
+
+        parts.push('What would you like to dig into? Ask me anything about your market, competitors, or opportunities.');
 
         setMessages(prev => [...prev, msg('model', parts.join('\n\n'))]);
       } else {
@@ -1598,34 +1627,7 @@ export default function Home() {
 
             {!isDiscovering && !isTyping && (
               <div className="absolute bottom-6 left-4 right-4 z-50 animate-fade-in-up pointer-events-auto flex flex-col items-center gap-2">
-                {/* Capability icons — compact grid */}
-                <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md px-2 py-1.5 rounded-2xl shadow-lg border border-gray-200/80">
-                  {[
-                    ...(locatedBusiness && ((locatedBusiness as any).menuUrl || (locatedBusiness as any).menuScreenshotUrl)
-                      ? [{ id: "surgery", icon: BarChart3, label: "Optimize Prices", color: "text-indigo-500", hoverBg: "hover:bg-indigo-50" }]
-                      : []),
-                    { id: "traffic", icon: Users, label: "Foot Traffic", color: "text-emerald-500", hoverBg: "hover:bg-emerald-50" },
-                    { id: "seo", icon: SearchIcon, label: "Find Me Online", color: "text-purple-500", hoverBg: "hover:bg-purple-50" },
-                    { id: "competitive", icon: Swords, label: "Competitors", color: "text-orange-500", hoverBg: "hover:bg-orange-50" },
-                    { id: "marketing", icon: Share2, label: "Social Media", color: "text-pink-500", hoverBg: "hover:bg-pink-50" },
-                  ].map((cap) => {
-                    const Icon = cap.icon;
-                    return (
-                      <button
-                        key={cap.id}
-                        onClick={() => handleSelectCapability(cap.id)}
-                        className={`relative group w-9 h-9 rounded-xl ${cap.hoverBg} flex items-center justify-center transition-all hover:scale-110`}
-                        title={cap.label}
-                      >
-                        <Icon className={`w-4 h-4 ${cap.color}`} />
-                        {/* Tooltip */}
-                        <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg bg-gray-900 text-white text-[10px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
-                          {cap.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                {/* TODO: Capability icons for logged-in users — moved to CapabilityBar component */}
 
                 {/* CTAs — always prominent */}
                 <div className="flex items-center gap-2">

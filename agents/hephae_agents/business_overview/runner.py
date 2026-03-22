@@ -176,7 +176,7 @@ async def run_business_overview(identity: dict[str, Any]) -> dict[str, Any]:
         on_model_error_callback=fallback_on_error,
     )
 
-    # Sub-agent 2: Maps Grounding Lite
+    # Sub-agent 2: Maps Grounding Lite (optional — skip if MCP hangs)
     maps_tools = []
     maps_toolset = None
     api_key = os.getenv("GOOGLE_MAPS_API_KEY", "")
@@ -186,30 +186,44 @@ async def run_business_overview(identity: dict[str, Any]) -> dict[str, Any]:
                 connection_params=StreamableHTTPConnectionParams(
                     url=MAPS_MCP_URL,
                     headers={"X-Goog-Api-Key": api_key},
-                    timeout=15.0,
+                    timeout=10.0,
                 ),
                 tool_filter=["search_places"],
                 tool_name_prefix="maps",
             )
-            maps_tools = await maps_toolset.get_tools()
+            maps_tools = await asyncio.wait_for(maps_toolset.get_tools(), timeout=10.0)
+            logger.info(f"[BusinessOverview] Maps MCP loaded: {len(maps_tools)} tools")
+        except asyncio.TimeoutError:
+            logger.warning("[BusinessOverview] Maps MCP timed out (10s) — skipping")
+            maps_toolset = None
+            maps_tools = []
         except Exception as e:
             logger.warning(f"[BusinessOverview] Maps MCP init failed: {e}")
+            maps_toolset = None
+            maps_tools = []
 
-    maps_agent = LlmAgent(
-        name="overview_maps",
-        model=AgentModels.PRIMARY_MODEL,
-        description="Searches Google Maps for nearby competitors and business density.",
-        instruction=MAPS_INSTRUCTION,
-        tools=maps_tools,
-        output_key="mapsData",
-        on_model_error_callback=fallback_on_error,
-    )
+    # Build research agents — always include search, optionally include maps
+    research_agents = [search_agent]
+
+    if maps_tools:
+        maps_agent = LlmAgent(
+            name="overview_maps",
+            model=AgentModels.PRIMARY_MODEL,
+            description="Searches Google Maps for nearby competitors and business density.",
+            instruction=MAPS_INSTRUCTION,
+            tools=maps_tools,
+            output_key="mapsData",
+            on_model_error_callback=fallback_on_error,
+        )
+        research_agents.append(maps_agent)
+    else:
+        logger.info("[BusinessOverview] Running without Maps agent (search + data only)")
 
     # Parallel research phase
     research_phase = ParallelAgent(
         name="overview_research",
-        description="Parallel Google Search + Maps research.",
-        sub_agents=[search_agent, maps_agent],
+        description="Parallel research agents.",
+        sub_agents=research_agents,
     )
 
     # Synthesizer — reads all data from state

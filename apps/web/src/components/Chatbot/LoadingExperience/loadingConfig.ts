@@ -24,14 +24,14 @@ export interface CapabilityConfig {
 
 const DISCOVERY_CONFIG: CapabilityConfig = {
   id: "discovery",
-  label: "Deep Discovery",
+  label: "Building Your Overview",
   accentHex: "#0052CC",
-  estimatedDurationMs: 45_000,
+  estimatedDurationMs: 15_000,
   stages: [
-    { id: "crawl", label: "Crawling business website", icon: "Globe", durationPercent: 25 },
-    { id: "agents", label: "Running 7 research agents", icon: "Users", durationPercent: 30 },
-    { id: "social", label: "Profiling social media", icon: "Camera", durationPercent: 25 },
-    { id: "validate", label: "Validating & cross-referencing", icon: "CheckCircle", durationPercent: 20 },
+    { id: "search", label: "Searching Google for your business", icon: "Search", durationPercent: 30 },
+    { id: "maps", label: "Mapping nearby competitors", icon: "MapPin", durationPercent: 25 },
+    { id: "data", label: "Loading local market data", icon: "BarChart3", durationPercent: 20 },
+    { id: "synthesize", label: "Synthesizing your overview", icon: "Sparkles", durationPercent: 25 },
   ],
   quotes: [
     "We crawl deeper than a Yelp reviewer on a mission.",

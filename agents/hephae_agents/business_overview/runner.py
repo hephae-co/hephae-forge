@@ -14,12 +14,16 @@ import logging
 import os
 from typing import Any
 
+import json
+import uuid
+
 from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
-from google.adk.runners import RunConfig
+from google.adk.runners import RunConfig, Runner
+from google.adk.sessions import InMemorySessionService
 from google.adk.tools import google_search
 from google.adk.tools.mcp_tool import McpToolset, StreamableHTTPConnectionParams
 
-from hephae_common.adk_helpers import run_agent_to_json
+from hephae_common.adk_helpers import user_msg
 from hephae_common.model_config import AgentModels
 from hephae_common.model_fallback import fallback_on_error
 
@@ -245,19 +249,67 @@ Search for this business and its competitors in the area."""
     }
 
     try:
-        result = await run_agent_to_json(
-            pipeline,
-            prompt,
+        session_service = InMemorySessionService()
+        session_id = f"overview-{uuid.uuid4().hex[:8]}"
+        session = await session_service.create_session(
             app_name="business_overview",
+            session_id=session_id,
+            user_id="system",
             state=initial_state,
-            run_config=RunConfig(max_llm_calls=8),
         )
 
-        if result and isinstance(result, dict):
-            logger.info(f"[BusinessOverview] Overview complete for: {name}")
-            return result
+        runner = Runner(
+            agent=pipeline,
+            app_name="business_overview",
+            session_service=session_service,
+        )
 
-        logger.warning(f"[BusinessOverview] No structured result for: {name}")
+        last_text = ""
+        async for event in runner.run_async(
+            user_id="system",
+            session_id=session.id,
+            new_message=user_msg(prompt),
+            run_config=RunConfig(max_llm_calls=8),
+        ):
+            if event.content and event.content.parts:
+                for part in event.content.parts:
+                    if part.text:
+                        last_text = part.text
+
+        if not last_text:
+            # Try reading the overview from session state
+            final_session = await session_service.get_session(
+                app_name="business_overview",
+                session_id=session.id,
+                user_id="system",
+            )
+            if final_session and final_session.state:
+                overview = final_session.state.get("overview", "")
+                if overview and isinstance(overview, str):
+                    last_text = overview
+
+        # Parse JSON from the last text output
+        if last_text:
+            try:
+                result = json.loads(last_text)
+                if isinstance(result, dict):
+                    logger.info(f"[BusinessOverview] Overview complete for: {name}")
+                    return result
+            except json.JSONDecodeError:
+                # Try extracting JSON from markdown fences
+                import re
+                match = re.search(r'```(?:json)?\s*([\s\S]*?)```', last_text)
+                if match:
+                    try:
+                        result = json.loads(match.group(1))
+                        if isinstance(result, dict):
+                            return result
+                    except json.JSONDecodeError:
+                        pass
+                # Return the raw text as summary fallback
+                return {"summary": last_text[:500]}
+
+        logger.warning(f"[BusinessOverview] No output for: {name}")
         return {"summary": f"Overview for {name} is being prepared.", "error": "incomplete"}
 
     except Exception as e:

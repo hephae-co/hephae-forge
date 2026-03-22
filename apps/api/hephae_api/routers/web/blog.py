@@ -1,4 +1,4 @@
-"""POST /api/blog/generate — Generate a full blog post from stored analysis data."""
+"""Blog endpoints — public read + authenticated generate."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import asyncio
 import logging
 import time
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from hephae_agents.social.blog_writer import generate_blog_post
@@ -173,3 +173,68 @@ async def blog_generate(request: Request):
         return JSONResponse(
             {"error": "Blog generation failed"}, status_code=500
         )
+
+
+# ---------------------------------------------------------------------------
+# Public read endpoints (no auth — used by hephae.co/blog)
+# ---------------------------------------------------------------------------
+
+
+def _serialize_post(post: dict) -> dict:
+    """Serialize a content_post for public consumption."""
+    from datetime import datetime as dt
+
+    pub = post.get("publishedAt")
+    if hasattr(pub, "isoformat"):
+        pub = pub.isoformat()
+    elif hasattr(pub, "timestamp"):
+        pub = dt.fromtimestamp(pub.timestamp()).isoformat()
+
+    return {
+        "id": post.get("id", ""),
+        "title": post.get("title", ""),
+        "blogUrl": post.get("blogUrl", ""),
+        "hashtags": post.get("hashtags", []),
+        "wordCount": post.get("wordCount", 0),
+        "chartCount": post.get("chartCount", 0),
+        "publishedAt": pub or "",
+        "status": post.get("status", ""),
+    }
+
+
+@router.get("/blog/posts")
+async def list_blog_posts(limit: int = Query(20, ge=1, le=50)):
+    """List published blog posts (public, no auth)."""
+    from hephae_db.firestore.content import list_content_posts
+
+    posts = await list_content_posts(platform="blog", limit=limit)
+    return [_serialize_post(p) for p in posts if p.get("status") == "published"]
+
+
+@router.get("/blog/posts/{post_id}")
+async def get_blog_post(post_id: str):
+    """Get a single published blog post with content (public, no auth)."""
+    from hephae_db.firestore.content import get_content_post
+
+    post = await get_content_post(post_id)
+    if not post or post.get("status") != "published":
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    result = _serialize_post(post)
+    result["content"] = post.get("content", "")
+    return result
+
+
+@router.get("/blog/by-slug/{slug}")
+async def get_blog_by_slug(slug: str):
+    """Get a blog post by URL slug (public, no auth)."""
+    from hephae_db.firestore.content import list_content_posts
+
+    posts = await list_content_posts(platform="blog", limit=50)
+    for post in posts:
+        if slug in post.get("blogUrl", "") and post.get("status") == "published":
+            result = _serialize_post(post)
+            result["content"] = post.get("content", "")
+            return result
+
+    raise HTTPException(status_code=404, detail="Post not found")

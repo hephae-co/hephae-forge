@@ -53,12 +53,14 @@ STRUCTURE:
 6. **Methodology** (brief): Name the data sources (BLS, USDA, FDA, NWS, Census, etc.)
 7. **CTA** (1-2 sentences): Invite readers to get their own Hephae analysis
 
-CHARTS:
-- You have a tool called `generate_chart_js` — USE IT to create 2-3 charts
-- Call the tool with: chart_id, chart_type, title, labels, values, caption
-- Place charts between paragraphs where they support the narrative
+CHARTS — MANDATORY:
+- You MUST call the `generate_chart_js` tool 2-3 times to create interactive charts
+- Do NOT write chart HTML manually — CALL THE TOOL. The tool returns the complete HTML.
+- Call it with: chart_id (unique string), chart_type ("bar"/"line"/"pie"), title, labels (list), values (list of numbers), caption
+- Place the tool's output between paragraphs where they support the narrative
 - Every chart needs a text paragraph ABOVE it (introducing the data) and BELOW it (explaining the insight)
 - Chart data MUST come from the research brief — never invent numbers
+- If you do not call generate_chart_js at least twice, your post WILL be rejected by the critique agent
 
 RULES:
 - 1200-2000 words — this is a full blog post, not a snippet

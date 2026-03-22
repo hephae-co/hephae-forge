@@ -318,8 +318,19 @@ async def generate_blog_post(
     seo_meta_raw = _parse_json(state.get("seoMeta", "{}"))
     critique = _parse_json(state.get("critiqueResult", "{}"))
 
-    # Clean up HTML
+    # Clean up HTML — strip markdown fences
     blog_html = re.sub(r"```(?:html)?\n?|\n?```", "", blog_html).strip()
+
+    # Strip any SEO/critique metadata that leaked into the article body
+    # These agents write to separate output_keys but their text sometimes
+    # gets appended to the blog content in the session conversation history
+    for marker in ["<h2>SEO Metadata</h2>", "<h2>Blog Critique</h2>",
+                    "SEO Metadata\n", "Blog Critique\n",
+                    "## SEO Metadata", "## Blog Critique"]:
+        idx = blog_html.find(marker)
+        if idx > 0:
+            logger.warning(f"[BlogWriter] Stripping leaked metadata at char {idx}: {marker[:30]}")
+            blog_html = blog_html[:idx].rstrip()
 
     # If critique failed and we have rewrite instructions, run writer again
     if not critique.get("overall_pass", True) and critique.get("rewrite_instructions"):
@@ -343,6 +354,48 @@ async def generate_blog_post(
         )
         blog_html = str((session.state or {}).get("blogContent", blog_html))
         blog_html = re.sub(r"```(?:html)?\n?|\n?```", "", blog_html).strip()
+
+    # Final cleanup — strip any metadata that leaked into article body
+    for marker in ["<h2>SEO Metadata</h2>", "<h2>Blog Critique</h2>",
+                    "SEO Metadata\n", "Blog Critique\n",
+                    "## SEO Metadata", "## Blog Critique",
+                    "<h3>SEO Metadata</h3>", "<h3>Blog Critique</h3>"]:
+        idx = blog_html.find(marker)
+        if idx > 0:
+            logger.warning(f"[BlogWriter] Final strip of leaked metadata: {marker[:30]}")
+            blog_html = blog_html[:idx].rstrip()
+
+    # Inject charts deterministically from research brief data
+    # (LLM tool calling is unreliable — sometimes the model calls the tool, sometimes not)
+    chart_suggestions = research_brief.get("chart_suggestions", [])
+    if chart_suggestions and blog_html.count('class="chart-container"') == 0:
+        logger.info(f"[BlogWriter] Injecting {len(chart_suggestions)} charts from research brief")
+        chart_html_blocks = []
+        for i, cs in enumerate(chart_suggestions[:3]):
+            try:
+                block = generate_chart_js(
+                    chart_id=f"chart{i + 1}",
+                    chart_type=cs.get("type", "bar"),
+                    title=cs.get("title", f"Chart {i + 1}"),
+                    labels=cs.get("labels", []),
+                    values=cs.get("values", []),
+                    caption=cs.get("caption", ""),
+                    dataset_label=cs.get("dataset_label", ""),
+                )
+                chart_html_blocks.append(block)
+            except Exception as e:
+                logger.warning(f"[BlogWriter] Chart {i + 1} generation failed: {e}")
+
+        if chart_html_blocks:
+            # Insert charts after the first <h2> section
+            h2_match = re.search(r"</p>\s*<h2", blog_html)
+            if h2_match:
+                insert_pos = h2_match.start() + 4  # after </p>
+                charts_combined = "\n\n".join(chart_html_blocks)
+                blog_html = blog_html[:insert_pos] + f"\n\n{charts_combined}\n\n" + blog_html[insert_pos:]
+            else:
+                # Fallback: append before closing
+                blog_html += "\n\n" + "\n\n".join(chart_html_blocks)
 
     # Extract title
     title_match = re.search(r"<h1[^>]*>(.*?)</h1>", blog_html, re.DOTALL)

@@ -124,31 +124,97 @@ hero = await generate_universal_social_card(
 
 ---
 
-## STEP 4: PUBLISH
+## STEP 4: PUBLISH TO HEPHAE.CO
 
-### 4a. Assemble full HTML page
+The blog is published to **hephae.co/blog** via the hephae-website API. This is a SEPARATE service (`hephae-co-site`) from the forge web app.
 
-Read `/tmp/blog-content.html` and `/tmp/blog-meta.json`, then wrap with the Hephae template:
+### 4a. Generate Hero Image
 
-```python
-from hephae_common.report_templates import build_blog_report
-from hephae_common.report_storage import upload_report
+```bash
+cd /Users/sarthak/Desktop/hephae/hephae-forge && python3 -c "
+import asyncio, sys
+sys.path.insert(0, 'lib/common')
+from hephae_common.social_card import generate_universal_social_card
 
-full_html = build_blog_report(
-    article_html=blog_html + social_share_html,
-    business_name=subject,
-    title=title,
-    hero_image_url=hero_url,
-    primary_color='#d97706',
-)
-
-# Inject SEO meta, Schema.org, and Chart.js into <head>
-full_html = full_html.replace('</head>', f'{seo_meta}\n{schema_org}\n{chartjs_tag}\n</head>')
-
-url = await upload_report(slug=slug, report_type='blog', html_content=full_html)
+async def main():
+    hero = await generate_universal_social_card(
+        business_name='SUBJECT',
+        report_type='profile',
+        headline='KEY_STAT',
+        subtitle='SUBTITLE',
+        highlight='Hephae Intelligence',
+    )
+    if hero:
+        with open('/tmp/blog-hero.png', 'wb') as f:
+            f.write(hero)
+        print(f'Hero: {len(hero)} bytes')
+    else:
+        print('Hero generation failed — proceed without')
+asyncio.run(main())
+"
 ```
 
-### 4b. Save to Firestore
+### 4b. Upload Hero to CDN
+
+```bash
+python3 -c "
+from google.cloud import storage
+client = storage.Client()
+bucket = client.bucket('hephae-co-dev-prod-cdn-assets')
+blob = bucket.blob('reports/SLUG/blog-hero.png')
+blob.upload_from_filename('/tmp/blog-hero.png')
+blob.cache_control = 'public, max-age=86400'
+blob.patch()
+print(f'https://cdn.hephae.co/reports/SLUG/blog-hero.png')
+"
+```
+
+### 4c. Post to hephae.co/blog
+
+The hephae-website (`hephae-co-site`) has a blog API:
+- **Collection:** `blog_posts` (NOT `content_posts`)
+- **Endpoint:** `POST /api/blog/posts`
+- **Auth:** `Authorization: Bearer {FORGE_API_KEY}` (default: `hephae-forge-secret`)
+
+```bash
+WEBSITE_URL="https://hephae-co-site-hlifczmzgq-uc.a.run.app"
+
+curl -s -X POST "$WEBSITE_URL/api/blog/posts" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer hephae-forge-secret" \
+  -d "$(python3 -c "
+import json, re
+
+with open('/tmp/blog-content.html') as f:
+    html = f.read()
+
+# Extract title from H1
+m = re.search(r'<h1[^>]*>(.*?)</h1>', html, re.DOTALL)
+title = re.sub(r'<[^>]+>', '', m.group(1)).strip() if m else 'Untitled'
+
+# Extract first paragraph as excerpt
+pm = re.search(r'<p>(.*?)</p>', html, re.DOTALL)
+excerpt = re.sub(r'<[^>]+>', '', pm.group(1))[:250] if pm else ''
+
+with open('/tmp/blog-meta.json') as f:
+    meta = json.load(f)
+
+print(json.dumps({
+    'title': title,
+    'slug': meta.get('slug', 'blog-post'),
+    'content': html,
+    'excerpt': excerpt,
+    'coverImage': 'HERO_CDN_URL',
+    'metaDescription': meta.get('seo_description', ''),
+}))
+")"
+```
+
+The response should be `{"success": true, "id": "..."}`.
+
+The blog is now live at `https://hephae.co/blog/{slug}`.
+
+### 4d. Also save to forge Firestore (for tracking)
 
 ```python
 db.collection('content_posts').add({
@@ -156,8 +222,7 @@ db.collection('content_posts').add({
     'platform': 'blog',
     'status': 'published',
     'title': title,
-    'content': blog_html,
-    'blogUrl': url,
+    'blogUrl': f'https://hephae.co/blog/{slug}',
     'heroImageUrl': hero_url,
     'hashtags': seo_keywords,
     'wordCount': word_count,
@@ -175,14 +240,15 @@ db.collection('content_posts').add({
 ## Blog Published
 
 **Title:** {title}
-**URL:** {url}
+**URL:** https://hephae.co/blog/{slug}
 **Words:** {word_count} · **Charts:** {chart_count}
 **Critique:** {PASS/FAIL}
 **SEO Keywords:** {keywords}
+**Hero Image:** {hero_url}
 
 **Share:**
-- [Twitter]({twitter_share_url})
-- [LinkedIn]({linkedin_share_url})
+- [Twitter](https://twitter.com/intent/tweet?text={title}&url=https://hephae.co/blog/{slug})
+- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https://hephae.co/blog/{slug})
 ```
 
 ---
@@ -194,15 +260,23 @@ db.collection('content_posts').add({
 | Blog agent pipeline | `agents/hephae_agents/social/blog_writer/agent.py` |
 | Blog prompts | `agents/hephae_agents/social/blog_writer/prompts.py` |
 | Blog tools (charts, SEO, share) | `agents/hephae_agents/social/blog_writer/tools.py` |
-| Report templates | `lib/common/hephae_common/report_templates.py` |
-| Report upload (GCS) | `lib/common/hephae_common/report_storage.py` |
 | Social card generator | `lib/common/hephae_common/social_card.py` |
 | Industry pulses | `lib/db/hephae_db/firestore/industry_pulse.py` |
 | Zip pulses | `lib/db/hephae_db/firestore/weekly_pulse.py` |
+| **hephae-website server** | `/Users/sarthak/Desktop/hephae/hephae-website/server.js` |
+| **hephae-website blog page** | `/Users/sarthak/Desktop/hephae/hephae-website/components/BlogPage.tsx` |
+| **hephae-website blog post** | `/Users/sarthak/Desktop/hephae/hephae-website/components/BlogPostPage.tsx` |
+
+## Important Notes
+
+- Blog publishes to **`hephae-co-site`** (hephae-website), NOT `hephae-forge-web`
+- Firestore collection is **`blog_posts`** (NOT `content_posts`)
+- Auth key is `FORGE_API_KEY` (default: `hephae-forge-secret`)
+- The website has its own SEO middleware for `/blog/:slug` that injects meta tags server-side
 
 ## What NOT To Do
 
-- Do NOT write blog HTML yourself — the agent handles it (with charts via tools).
-- Do NOT skip the critique check — if it failed after retry, review before publishing.
-- Do NOT publish without hero image — it's the OG image for social sharing.
-- Do NOT invent data to pass to the agent — only use real pulse data.
+- Do NOT publish to `content_posts` only — the website reads from `blog_posts`
+- Do NOT skip the hero image — it's the cover image on the blog list page
+- Do NOT skip the critique check — if it failed after retry, review before publishing
+- Do NOT invent data — only use real pulse data

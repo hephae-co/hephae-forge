@@ -56,15 +56,16 @@ async def get_registered_industry(industry_key: str) -> dict[str, Any] | None:
 
 
 async def list_registered_industries(status: str | None = None) -> list[dict[str, Any]]:
-    """List all registered industries, optionally filtered by status."""
+    """List all registered industries, optionally filtered by status.
+
+    Note: uses simple equality filter (no order_by) to avoid requiring
+    a composite Firestore index. Sorts in Python instead.
+    """
     db = get_db()
-    query = db.collection(COLLECTION).order_by("registeredAt", direction="DESCENDING")
     if status:
-        query = (
-            db.collection(COLLECTION)
-            .where("status", "==", status)
-            .order_by("registeredAt", direction="DESCENDING")
-        )
+        query = db.collection(COLLECTION).where("status", "==", status)
+    else:
+        query = db.collection(COLLECTION)
     docs = await asyncio.to_thread(query.get)
     results = []
     for doc in docs:

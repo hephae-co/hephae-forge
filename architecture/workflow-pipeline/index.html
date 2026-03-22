@@ -1,0 +1,1949 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal documentation for the Hephae Forge pipeline">
+      
+      
+      
+        <link rel="canonical" href="https://hephae-co.github.io/hephae-forge/architecture/workflow-pipeline/">
+      
+      
+        <link rel="prev" href="../infrastructure/">
+      
+      
+        <link rel="next" href="../../firestore-schema/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Workflow Pipeline - Hephae Forge Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#workflow-pipeline" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Hephae Forge Docs" class="md-header__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hephae Forge Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Workflow Pipeline
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Hephae Forge Docs" class="md-nav__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Hephae Forge Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Pipeline
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-phase-transitions-workflowphase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Phase Transitions (WorkflowPhase)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-business-phase-businessphase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Business Phase (BusinessPhase)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-capability-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Capability Registry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-qualification-scoring-weights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Qualification Scoring Weights
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Qualification Scoring Weights">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-a-metadata-scan-weights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step A — Metadata Scan Weights
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bonus-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bonus Patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rule-based-fast-paths-skip-scoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rule-Based Fast Paths (skip scoring)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-b-full-probe-crawl-optional-llm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step B — Full Probe (crawl + optional LLM)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-dynamic-threshold-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Dynamic Threshold Formula
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-parallel-research-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Parallel Research Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-promote_keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. PROMOTE_KEYS
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-batch-synthesis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Batch Synthesis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-new-two-layer-pulse-architecture-industry-cron-zip-cron" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. NEW: Two-Layer Pulse Architecture (Industry Cron → Zip Cron)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. NEW: Two-Layer Pulse Architecture (Industry Cron → Zip Cron)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#layer-1-industry-pulse-national" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer 1: Industry Pulse (national)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layer-2-zip-level-pulse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layer 2: Zip-Level Pulse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#industryconfig-verticals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IndustryConfig Verticals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-playbook-triggers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Playbook Triggers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../firestore-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firestore Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bigquery-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BigQuery Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gcs-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-admin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Admin Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../agents/agent-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../agents/prompt-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pipeline Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../qualification-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qualification Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../unified-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../eval-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../eval-ground-truth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eval Ground Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="workflow-pipeline">Workflow Pipeline<a class="headerlink" href="#workflow-pipeline" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Auto-generated from codebase on 2026-03-22. Do not edit manually — run <code>/hephae-refresh-docs</code> to update.</p>
+</blockquote>
+<h2 id="1-phase-transitions-workflowphase">1. Phase Transitions (WorkflowPhase)<a class="headerlink" href="#1-phase-transitions-workflowphase" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>                          +--------+
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>                          | QUEUED |
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>                          +---+----+
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                              |
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                              v
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>                        +-----------+
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                        | DISCOVERY |
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                        +-----+-----+
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                              |
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                              v
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                      +---------------+
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                      | QUALIFICATION |
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                      +-------+-------+
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                              |
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>                              v
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                        +----------+
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>                        | ANALYSIS |
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>                        +-----+----+
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                              |
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>                              v
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>                       +------------+
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>                       | EVALUATION |
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>                       +------+-----+
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>                              |
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>                              v
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>                        +----------+
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>                        | APPROVAL |  &lt;-- pauses for human review
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>                        +-----+----+
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>                              |
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>                              v
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>                        +----------+
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>                        | OUTREACH |
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>                        +-----+----+
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>                              |
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>                              v
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>                       +-----------+
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>                       | COMPLETED |
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>                       +-----------+
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>           (any phase)
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>               |
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>               v         on unhandled exception
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>            +--------+
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>            | FAILED |
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>            +--------+
+</code></pre></div>
+<p><strong>Enum values</strong> (source: <code>lib/common/hephae_common/models.py</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>queued</code></td>
+<td>Workflow created, waiting to start</td>
+</tr>
+<tr>
+<td><code>discovery</code></td>
+<td>Scanning zip codes for businesses</td>
+</tr>
+<tr>
+<td><code>qualification</code></td>
+<td>Scoring and classifying discovered businesses</td>
+</tr>
+<tr>
+<td><code>analysis</code></td>
+<td>Running capability agents (SEO, traffic, competitive, margin, social)</td>
+</tr>
+<tr>
+<td><code>evaluation</code></td>
+<td>Running evaluator agents on capability outputs</td>
+</tr>
+<tr>
+<td><code>approval</code></td>
+<td>Paused — waiting for human approval before outreach</td>
+</tr>
+<tr>
+<td><code>outreach</code></td>
+<td>Generating and sending outreach content</td>
+</tr>
+<tr>
+<td><code>completed</code></td>
+<td>All phases finished successfully</td>
+</tr>
+<tr>
+<td><code>failed</code></td>
+<td>Unrecoverable error — <code>lastError</code> field contains details</td>
+</tr>
+</tbody>
+</table>
+<p>The engine resumes from the current phase on restart. The <code>APPROVAL</code> phase returns early without advancing, requiring an explicit <code>resume_from_outreach()</code> call.</p>
+<blockquote>
+<p>Source: <code>apps/api/hephae_api/workflows/engine.py</code></p>
+</blockquote>
+<hr />
+<h2 id="2-business-phase-businessphase">2. Business Phase (BusinessPhase)<a class="headerlink" href="#2-business-phase-businessphase" title="Permanent link">&para;</a></h2>
+<p>Each business within a workflow tracks its own phase independently:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>PENDING → ENRICHING → ANALYZING → ANALYSIS_DONE → EVALUATING → EVALUATION_DONE → APPROVED / REJECTED → OUTREACHING → OUTREACH_DONE / OUTREACH_FAILED
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pending</code></td>
+<td>Discovered, awaiting enrichment</td>
+</tr>
+<tr>
+<td><code>enriching</code></td>
+<td>Discovery pipeline running</td>
+</tr>
+<tr>
+<td><code>analyzing</code></td>
+<td>Capability agents running</td>
+</tr>
+<tr>
+<td><code>analysis_done</code></td>
+<td>All capabilities complete</td>
+</tr>
+<tr>
+<td><code>evaluating</code></td>
+<td>QA evaluators running</td>
+</tr>
+<tr>
+<td><code>evaluation_done</code></td>
+<td>Evaluation complete, <code>qualityPassed</code> set</td>
+</tr>
+<tr>
+<td><code>approved</code></td>
+<td>Human-approved for outreach</td>
+</tr>
+<tr>
+<td><code>rejected</code></td>
+<td>Human-rejected</td>
+</tr>
+<tr>
+<td><code>outreaching</code></td>
+<td>Outreach content being generated/sent</td>
+</tr>
+<tr>
+<td><code>outreach_done</code></td>
+<td>Outreach complete</td>
+</tr>
+<tr>
+<td><code>outreach_failed</code></td>
+<td>Outreach failed</td>
+</tr>
+</tbody>
+</table>
+<p>Non-qualified businesses (parked/disqualified) are set to <code>analysis_done</code> and skipped during the analysis phase.</p>
+<blockquote>
+<p>Source: <code>lib/common/hephae_common/models.py</code></p>
+</blockquote>
+<hr />
+<h2 id="3-capability-registry">3. Capability Registry<a class="headerlink" href="#3-capability-registry" title="Permanent link">&para;</a></h2>
+<p>Five capabilities are registered. Each has a runner function, a Firestore output key, a response adapter, and optionally an evaluator and a <code>should_run</code> gate.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Display Name</th>
+<th>Firestore Key</th>
+<th>Evaluator</th>
+<th><code>should_run</code> Gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>seo</code></td>
+<td>SEO Audit</td>
+<td><code>seo_auditor</code></td>
+<td><code>SeoEvaluatorAgent</code></td>
+<td><code>officialUrl</code> must be truthy</td>
+</tr>
+<tr>
+<td><code>traffic</code></td>
+<td>Traffic Forecast</td>
+<td><code>traffic_forecaster</code></td>
+<td><code>TrafficEvaluatorAgent</code></td>
+<td>Always runs</td>
+</tr>
+<tr>
+<td><code>competitive</code></td>
+<td>Competitive Analysis</td>
+<td><code>competitive_analyzer</code></td>
+<td><code>CompetitiveEvaluatorAgent</code></td>
+<td>Always runs</td>
+</tr>
+<tr>
+<td><code>margin_surgeon</code></td>
+<td>Margin Surgeon</td>
+<td><code>margin_surgeon</code></td>
+<td><code>MarginSurgeonEvaluatorAgent</code></td>
+<td><code>menuScreenshotBase64</code> or <code>menuUrl</code> must be truthy</td>
+</tr>
+<tr>
+<td><code>social</code></td>
+<td>Social Media Insights</td>
+<td><code>social_media_auditor</code></td>
+<td>None (no evaluator)</td>
+<td>Always runs</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Eval compressors</strong> strip large fields before sending to evaluators:
+- <code>seo</code>: Removes <code>rawPageSpeed</code>, <code>pagespeedData</code>, <code>lighthouseData</code>; truncates recommendations to 3 per section
+- <code>competitive</code>: Strips full competitor profiles, keeps only <code>name</code>, <code>threat_level</code>, <code>summary</code>, <code>score</code></p>
+<blockquote>
+<p>Source: <code>apps/api/hephae_api/workflows/capabilities/registry.py</code></p>
+</blockquote>
+<hr />
+<h2 id="4-qualification-scoring-weights">4. Qualification Scoring Weights<a class="headerlink" href="#4-qualification-scoring-weights" title="Permanent link">&para;</a></h2>
+<p>The qualification scanner uses a two-step process: <strong>Step A</strong> (metadata scan, no LLM) classifies ~80% of businesses; <strong>Step B</strong> (full probe + batched LLM) handles the remaining ~20% ambiguous cases.</p>
+<h3 id="step-a-metadata-scan-weights">Step A — Metadata Scan Weights<a class="headerlink" href="#step-a-metadata-scan-weights" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Points</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Custom domain</td>
+<td>+15</td>
+<td><code>is_custom_domain</code></td>
+</tr>
+<tr>
+<td>Platform subdomain</td>
+<td>+8</td>
+<td>Shopify/Wix/etc subdomain</td>
+</tr>
+<tr>
+<td>HTTPS</td>
+<td>+3</td>
+<td>Site uses HTTPS</td>
+</tr>
+<tr>
+<td>Platform detected</td>
+<td>+10</td>
+<td>Known platform (Toast, Shopify, Square, etc.)</td>
+</tr>
+<tr>
+<td>Multiple analytics pixels</td>
+<td>+10</td>
+<td>2+ pixels found</td>
+</tr>
+<tr>
+<td>Single analytics pixel</td>
+<td>+5</td>
+<td>Exactly 1 pixel</td>
+</tr>
+<tr>
+<td>Contact path found</td>
+<td>+8</td>
+<td><code>/contact</code>, booking form, etc.</td>
+</tr>
+<tr>
+<td>Mailto link</td>
+<td>+5</td>
+<td><code>mailto:</code> anchor found</td>
+</tr>
+<tr>
+<td>Tel link</td>
+<td>+3</td>
+<td><code>tel:</code> anchor found</td>
+</tr>
+<tr>
+<td>Strong social presence</td>
+<td>+8</td>
+<td>3+ social links</td>
+</tr>
+<tr>
+<td>Some social presence</td>
+<td>+4</td>
+<td>1-2 social links</td>
+</tr>
+<tr>
+<td>JSON-LD structured data</td>
+<td>+5</td>
+<td><code>@type</code> in JSON-LD</td>
+</tr>
+<tr>
+<td>Has page title</td>
+<td>+2</td>
+<td>Title tag &gt; 3 chars</td>
+</tr>
+</tbody>
+</table>
+<h3 id="bonus-patterns">Bonus Patterns<a class="headerlink" href="#bonus-patterns" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Points</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Innovation Gap</td>
+<td>+20</td>
+<td>Modern platform (Toast/Shopify/Square/etc.) but zero social links</td>
+</tr>
+<tr>
+<td>Aggregator Escape</td>
+<td>+20</td>
+<td>On DoorDash/Grubhub/UberEats but weak/no own website (dining verticals)</td>
+</tr>
+<tr>
+<td>Economic Delta</td>
+<td>+15</td>
+<td>Wealthy area + custom domain + no analytics</td>
+</tr>
+<tr>
+<td>Services no booking</td>
+<td>+10</td>
+<td>Service business with website but no contact/booking path</td>
+</tr>
+<tr>
+<td>Retail no e-commerce</td>
+<td>+8</td>
+<td>Retail with custom domain but no e-commerce platform detected</td>
+</tr>
+<tr>
+<td>Dining pricing env</td>
+<td>+5</td>
+<td>Dining business in tracked pricing environment</td>
+</tr>
+<tr>
+<td>Tech-forward for sector</td>
+<td>+5</td>
+<td>Platform detected + sector research indicates tech-forward industry</td>
+</tr>
+</tbody>
+</table>
+<h3 id="rule-based-fast-paths-skip-scoring">Rule-Based Fast Paths (skip scoring)<a class="headerlink" href="#rule-based-fast-paths-skip-scoring" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Chain/franchise detected</td>
+<td>DISQUALIFIED</td>
+</tr>
+<tr>
+<td>No URL</td>
+<td>PARKED</td>
+</tr>
+<tr>
+<td>URL is social/directory page</td>
+<td>DISQUALIFIED</td>
+</tr>
+<tr>
+<td>HTTP 404 or dead site</td>
+<td>DISQUALIFIED</td>
+</tr>
+<tr>
+<td>Site unreachable (no HTML)</td>
+<td>PARKED (needs full probe)</td>
+</tr>
+<tr>
+<td>Custom domain + analytics + contact path</td>
+<td>QUALIFIED</td>
+</tr>
+<tr>
+<td>Platform site + contact path</td>
+<td>QUALIFIED</td>
+</tr>
+</tbody>
+</table>
+<h3 id="step-b-full-probe-crawl-optional-llm">Step B — Full Probe (crawl + optional LLM)<a class="headerlink" href="#step-b-full-probe-crawl-optional-llm" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Points</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Email found via crawl</td>
+<td>+10</td>
+</tr>
+<tr>
+<td>Phone found via crawl</td>
+<td>+5</td>
+</tr>
+<tr>
+<td>Social links found (2+)</td>
+<td>+8</td>
+</tr>
+<tr>
+<td>Delivery platforms found</td>
+<td>+5</td>
+</tr>
+<tr>
+<td>JSON-LD from crawl</td>
+<td>+3</td>
+</tr>
+</tbody>
+</table>
+<p>If score is within 10 points of threshold after full probe, a batched LLM classifier decides. All LLM calls across ambiguous businesses are submitted as a single batch.</p>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/qualification/scanner.py</code></p>
+</blockquote>
+<hr />
+<h2 id="5-dynamic-threshold-formula">5. Dynamic Threshold Formula<a class="headerlink" href="#5-dynamic-threshold-formula" title="Permanent link">&para;</a></h2>
+<p>The base threshold is <strong>40</strong>. It adapts based on area research context:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">BASE_THRESHOLD</span> <span class="o">=</span> <span class="mi">40</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># Saturation adjustments</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="k">if</span> <span class="n">saturation</span> <span class="o">==</span> <span class="s2">&quot;saturated&quot;</span> <span class="ow">or</span> <span class="n">biz_count</span> <span class="o">&gt;=</span> <span class="mi">40</span><span class="p">:</span>  <span class="n">threshold</span> <span class="o">=</span> <span class="mi">60</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="k">elif</span> <span class="n">saturation</span> <span class="o">==</span> <span class="s2">&quot;high&quot;</span> <span class="ow">or</span> <span class="n">biz_count</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">:</span>      <span class="n">threshold</span> <span class="o">=</span> <span class="mi">50</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="k">elif</span> <span class="n">saturation</span> <span class="o">==</span> <span class="s2">&quot;low&quot;</span> <span class="ow">or</span> <span class="n">biz_count</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>        <span class="n">threshold</span> <span class="o">=</span> <span class="mi">30</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1"># Market opportunity discount</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="k">if</span> <span class="n">opp_score</span> <span class="o">&gt;</span> <span class="mi">70</span><span class="p">:</span>  <span class="n">threshold</span> <span class="o">-=</span> <span class="mi">10</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1"># Clamped to [20, 70]</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="n">threshold</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="n">threshold</span><span class="p">))</span>
+</code></pre></div>
+<p><strong>Inputs</strong> (from <code>extract_research_context()</code>):
+- <code>area_summary.competitiveLandscape.saturationLevel</code> — "saturated" / "high" / "moderate" / "low"
+- <code>area_summary.competitiveLandscape.existingBusinessCount</code> — integer
+- <code>area_summary.marketOpportunity.score</code> — 0-100</p>
+<table>
+<thead>
+<tr>
+<th>Market Condition</th>
+<th>Resulting Threshold</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Low saturation, high opportunity</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Low saturation, normal opportunity</td>
+<td>30</td>
+</tr>
+<tr>
+<td>Moderate saturation</td>
+<td>40 (base)</td>
+</tr>
+<tr>
+<td>High saturation</td>
+<td>50</td>
+</tr>
+<tr>
+<td>Saturated market, high opportunity</td>
+<td>50</td>
+</tr>
+<tr>
+<td>Saturated market, normal opportunity</td>
+<td>60</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/qualification/threshold.py</code></p>
+</blockquote>
+<hr />
+<h2 id="6-parallel-research-pipeline">6. Parallel Research Pipeline<a class="headerlink" href="#6-parallel-research-pipeline" title="Permanent link">&para;</a></h2>
+<p>During the <code>DISCOVERY</code> phase, research runs in parallel with the business scan:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>asyncio.gather(
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    _zip_research(),      # Zipcode research (staleness: &lt;24h reuse, &lt;7d refresh volatile, &gt;7d full)
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    _sector_research(),   # Sector research (staleness: &lt;7d reuse)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    _area_research(),     # Area research (staleness: &lt;7d reuse)
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>)
+</code></pre></div>
+<p><strong>Staleness policy:</strong>
+- <strong>Zipcode research</strong>: Reuse if &lt; 24 hours old. Refresh only volatile sections (weather, events, trending) if 24h-7d old. Full refresh if &gt; 7 days old.
+- <strong>Sector research</strong>: Reuse if &lt; 7 days old.
+- <strong>Area research</strong>: Reuse if &lt; 7 days old.</p>
+<p>All research failures are non-fatal — they do not block the discovery phase.</p>
+<blockquote>
+<p>Source: <code>apps/api/hephae_api/workflows/engine.py</code> lines 143-238</p>
+</blockquote>
+<hr />
+<h2 id="7-promote_keys">7. PROMOTE_KEYS<a class="headerlink" href="#7-promote_keys" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/workflows/phases/analysis.py</code></p>
+<p>After enrichment, these keys are promoted from the enriched identity to the top-level business document in Firestore:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">PROMOTE_KEYS</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="s2">&quot;phone&quot;</span><span class="p">,</span> <span class="s2">&quot;email&quot;</span><span class="p">,</span> <span class="s2">&quot;emailStatus&quot;</span><span class="p">,</span> <span class="s2">&quot;contactFormUrl&quot;</span><span class="p">,</span> <span class="s2">&quot;contactFormStatus&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="s2">&quot;hours&quot;</span><span class="p">,</span> <span class="s2">&quot;googleMapsUrl&quot;</span><span class="p">,</span> <span class="s2">&quot;socialLinks&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="s2">&quot;logoUrl&quot;</span><span class="p">,</span> <span class="s2">&quot;favicon&quot;</span><span class="p">,</span> <span class="s2">&quot;primaryColor&quot;</span><span class="p">,</span> <span class="s2">&quot;secondaryColor&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="s2">&quot;persona&quot;</span><span class="p">,</span> <span class="s2">&quot;menuUrl&quot;</span><span class="p">,</span> <span class="s2">&quot;competitors&quot;</span><span class="p">,</span> <span class="s2">&quot;news&quot;</span><span class="p">,</span> <span class="s2">&quot;validationReport&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">]</span>
+</code></pre></div>
+<p>An identical list exists in <code>apps/api/hephae_api/routers/admin/tasks.py</code> for the task-based enrichment path.</p>
+<hr />
+<h2 id="8-batch-synthesis">8. Batch Synthesis<a class="headerlink" href="#8-batch-synthesis" title="Permanent link">&para;</a></h2>
+<p>After all capabilities complete, the engine runs batch synthesis for traffic forecaster and competitive positioning outputs. This collects deferred intel from task metadata and submits all prompts as a single batch.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>analysis phase complete
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    └── batch_synthesis()
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>         ├── collect deferredSynthesis from task metadata
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>         ├── build_traffic_synthesis_prompt() for each slug
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>         ├── build_competitive_positioning_prompt() for each slug
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>         └── run_synthesis_batch() → write results to latestOutputs
+</code></pre></div>
+<blockquote>
+<p>Source: <code>apps/api/hephae_api/workflows/engine.py</code> lines 373-464</p>
+</blockquote>
+<hr />
+<h2 id="9-new-two-layer-pulse-architecture-industry-cron-zip-cron">9. NEW: Two-Layer Pulse Architecture (Industry Cron → Zip Cron)<a class="headerlink" href="#9-new-two-layer-pulse-architecture-industry-cron-zip-cron" title="Permanent link">&para;</a></h2>
+<p>The pulse system uses a two-layer architecture where national industry-level data is pre-computed before zip-level pulses run.</p>
+<h3 id="layer-1-industry-pulse-national">Layer 1: Industry Pulse (national)<a class="headerlink" href="#layer-1-industry-pulse-national" title="Permanent link">&para;</a></h3>
+<p><strong>Schedule</strong>: Sunday 3:00 AM ET (08:00 UTC) — runs BEFORE zip-level pulses.</p>
+<p><strong>Pipeline per industry</strong>:
+1. Check cache — skip if pulse exists for this ISO week (unless <code>force=True</code>)
+2. Fetch national signals (BLS CPI series, USDA commodity prices, FDA recalls)
+3. Compute impact multipliers from national data
+4. Match industry-specific playbooks against computed impact variables
+5. Generate 2-3 paragraph trend summary via <code>industry_trend_summarizer</code> LLM agent
+6. Save to Firestore (<code>industry_pulses</code> collection)</p>
+<p><strong>Cron endpoint</strong>: <code>GET /api/cron/industry-pulse</code></p>
+<p>The cron iterates all active registered industries, generates a pulse for each, sends a summary email to admins, and is fully idempotent (cache check per week).</p>
+<blockquote>
+<p>Source: <code>apps/api/hephae_api/routers/batch/industry_pulse_cron.py</code>, <code>apps/api/hephae_api/workflows/orchestrators/industry_pulse.py</code></p>
+</blockquote>
+<h3 id="layer-2-zip-level-pulse">Layer 2: Zip-Level Pulse<a class="headerlink" href="#layer-2-zip-level-pulse" title="Permanent link">&para;</a></h3>
+<p><strong>Schedule</strong>: Monday 11:00 UTC — runs AFTER industry pulses.</p>
+<p>Zip-level pulses load the pre-computed industry pulse instead of re-fetching BLS/USDA/FDA data. They add local signals (weather, events, traffic modifiers) on top of the national data.</p>
+<h3 id="industryconfig-verticals">IndustryConfig Verticals<a class="headerlink" href="#industryconfig-verticals" title="Permanent link">&para;</a></h3>
+<p>Each vertical is a frozen dataclass (<code>IndustryConfig</code>) that drives the entire pulse pipeline:</p>
+<table>
+<thead>
+<tr>
+<th>Vertical</th>
+<th>ID</th>
+<th>BLS Series Count</th>
+<th>USDA Commodities</th>
+<th>Playbook Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Restaurants &amp; Cafes</td>
+<td><code>restaurant</code></td>
+<td>20</td>
+<td>CATTLE, HOGS, CHICKENS, EGGS, MILK, WHEAT</td>
+<td>3</td>
+</tr>
+<tr>
+<td>Bakeries &amp; Patisseries</td>
+<td><code>bakery</code></td>
+<td>11</td>
+<td>WHEAT, EGGS, MILK, SUGAR</td>
+<td>6</td>
+</tr>
+<tr>
+<td>Barber Shops &amp; Men's Grooming</td>
+<td><code>barber</code></td>
+<td>6</td>
+<td>None</td>
+<td>6</td>
+</tr>
+</tbody>
+</table>
+<p><strong>IndustryConfig fields</strong>:
+- <code>bls_series</code> — <code>{label: series_id}</code> for CPI data
+- <code>usda_commodities</code> — commodity keys for food verticals
+- <code>extra_signals</code> — additional signal sources (e.g., <code>fdaRecalls</code>, <code>usdaPrices</code>)
+- <code>track_labels</code> — maps CPI label substrings to named impact variables
+- <code>playbooks</code> — list of <code>{name, trigger, play}</code> with templated action text
+- <code>economist_context</code> / <code>scout_context</code> / <code>synthesis_context</code> — prompt context for LLM agents
+- <code>critique_persona</code> — persona for the critique agent
+- <code>social_search_terms</code> — keywords for social signal gathering</p>
+<p><strong>Lookup</strong>: <code>resolve(business_type)</code> does exact alias match, then fuzzy substring match, with RESTAURANT as fallback.</p>
+<blockquote>
+<p>Source: <code>apps/api/hephae_api/workflows/orchestrators/industries.py</code></p>
+</blockquote>
+<h3 id="example-playbook-triggers">Example Playbook Triggers<a class="headerlink" href="#example-playbook-triggers" title="Permanent link">&para;</a></h3>
+<p><strong>Restaurant</strong>:
+- <code>dairy_margin_swap</code>: dairy up &gt; 5% AND poultry down → shift to grilled proteins
+- <code>fda_recall_alert</code>: &gt; 5 FDA recalls → audit supplier chain
+- <code>weather_rain_prep</code>: weather modifier &lt; -0.1 → push delivery specials</p>
+<p><strong>Bakery</strong>:
+- <code>flour_cost_alert</code>: flour up &gt; 3% → promote non-flour items
+- <code>egg_spike_response</code>: eggs up &gt; 8% → switch to pastry cream (fewer eggs)
+- <code>butter_margin_squeeze</code>: butter up &gt; 4% → reserve real butter for premium items
+- <code>wedding_season_lock</code>: months 2-4 AND sugar up &gt; 2% → lock custom cake pricing</p>
+<p><strong>Barber</strong>:
+- <code>service_price_cover</code>: haircut CPI up &gt; 3% → raise base cut $3-5
+- <code>rent_squeeze_response</code>: rent CPI up &gt; 5% → add $15 beard trim add-on
+- <code>slow_season_fill</code>: Jan/Feb → text client list with $5 off promo</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2364 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal documentation for the Hephae Forge pipeline">
+      
+      
+      
+        <link rel="canonical" href="https://hephae-co.github.io/hephae-forge/agents/agent-catalog/">
+      
+      
+        <link rel="prev" href="../../api-admin/">
+      
+      
+        <link rel="next" href="../prompt-catalog/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Agent Catalog - Hephae Forge Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#agent-catalog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Hephae Forge Docs" class="md-header__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hephae Forge Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Agent Catalog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Hephae Forge Docs" class="md-nav__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Hephae Forge Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/workflow-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../firestore-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firestore Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bigquery-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BigQuery Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gcs-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-admin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Admin Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Catalog
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-model-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Model Tiers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-agent-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Agent Versions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Agent Versions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#discovery-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discovery Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#analysis-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Analysis Agents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#marketing-social" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Marketing / Social
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#research-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Agents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-discovery-pipeline-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Discovery Pipeline Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Discovery Pipeline Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#stage-1-sitecrawleragent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 1: SiteCrawlerAgent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stage-15-entitymatcheragent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 1.5: EntityMatcherAgent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stage-2-discoveryfanout-parallelagent-9-sub-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 2: DiscoveryFanOut (ParallelAgent — 9 sub-agents)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stage-3-socialprofileragent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 3: SocialProfilerAgent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stage-4-discoveryrevieweragent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 4: DiscoveryReviewerAgent
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-analysis-capability-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Analysis Capability Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Analysis Capability Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-seo-auditor-seoauditor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 SEO Auditor (seoAuditor)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-traffic-forecaster-forecasteragent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Traffic Forecaster (ForecasterAgent)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-competitive-analysis-competitivepipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Competitive Analysis (CompetitivePipeline)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-margin-surgeon-marginsurgeryorchestrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Margin Surgeon (MarginSurgeryOrchestrator)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-social-media-auditor-socialauditpipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Social Media Auditor (SocialAuditPipeline)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-marketing-content-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Marketing / Content Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Marketing / Content Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-marketing-swarm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Marketing Swarm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-social-post-generator-socialpostparallel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Social Post Generator (SocialPostParallel)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-blog-writer-blogpipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Blog Writer (BlogPipeline)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-outreach-generator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Outreach Generator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-other-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Other Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Other Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-insights-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Insights Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-business-profiler-legacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Business Profiler (legacy)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-profile-builder-chatbot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Profile Builder (chatbot)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-business-overview-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Business Overview Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-qualification-scanner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 Qualification Scanner
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-evaluator-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Evaluator Agents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-new-industry-pulse-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. NEW: Industry Pulse Agents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. NEW: Industry Pulse Agents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-industry-trend-summarizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Industry Trend Summarizer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-industryconfig-verticals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 IndustryConfig Verticals
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prompt-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pipeline Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../qualification-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qualification Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../unified-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../eval-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../eval-ground-truth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eval Ground Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="agent-catalog">Agent Catalog<a class="headerlink" href="#agent-catalog" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Auto-generated from codebase on 2026-03-22. Do not edit manually — run <code>/hephae-refresh-docs</code> to update.</p>
+</blockquote>
+<hr />
+<h2 id="1-model-tiers">1. Model Tiers<a class="headerlink" href="#1-model-tiers" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Constant</th>
+<th>Model ID</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PRIMARY</td>
+<td><code>AgentModels.PRIMARY_MODEL</code></td>
+<td><code>gemini-3.1-flash-lite-preview</code></td>
+<td>All standard agents</td>
+</tr>
+<tr>
+<td>SYNTHESIS</td>
+<td><code>AgentModels.SYNTHESIS_MODEL</code></td>
+<td><code>gemini-3-flash-preview</code></td>
+<td>Final synthesis stages</td>
+</tr>
+<tr>
+<td>FALLBACK</td>
+<td><code>AgentModels.FALLBACK_MODEL</code></td>
+<td><code>gemini-3-flash-preview</code></td>
+<td>Auto-fallback on 429/503/529</td>
+</tr>
+<tr>
+<td>CREATIVE_VISION</td>
+<td><code>AgentModels.CREATIVE_VISION_MODEL</code></td>
+<td><code>gemini-3.1-flash-image-preview</code></td>
+<td>Image generation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Thinking Presets</strong> (via <code>ThinkingPresets</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Preset</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MEDIUM</td>
+<td>Evaluators</td>
+</tr>
+<tr>
+<td>HIGH</td>
+<td>Competitive positioning, social strategist, competitor discovery</td>
+</tr>
+<tr>
+<td>DEEP</td>
+<td>SEO auditor, blog writer, complex analysis</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Source: <code>lib/common/hephae_common/model_config.py</code></p>
+</blockquote>
+<hr />
+<h2 id="2-agent-versions">2. Agent Versions<a class="headerlink" href="#2-agent-versions" title="Permanent link">&para;</a></h2>
+<p>All versions are tracked in <code>apps/api/hephae_api/config.py</code> under <code>AgentVersions</code>.</p>
+<h3 id="discovery-pipeline">Discovery Pipeline<a class="headerlink" href="#discovery-pipeline" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Version</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DISCOVERY_PIPELINE</td>
+<td>5.1.0</td>
+<td>MINOR: parallel local context fetch, enhanced MenuAgent delivery search</td>
+</tr>
+<tr>
+<td>SITE_CRAWLER</td>
+<td>1.1.0</td>
+<td></td>
+</tr>
+<tr>
+<td>CONTACT_DISCOVERY</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>CONTACT_AGENT</td>
+<td>2.0.0</td>
+<td>MAJOR: added emailStatus, contactFormUrl, contactFormStatus fields</td>
+</tr>
+<tr>
+<td>QUALITY_GATE_AGENT</td>
+<td>1.0.1</td>
+<td>PATCH: added banks and dollar stores to exclusion examples</td>
+</tr>
+<tr>
+<td>MENU_DISCOVERY</td>
+<td>3.0.0</td>
+<td>MAJOR: searches delivery platforms (DoorDash/Grubhub/UberEats) when no menu found</td>
+</tr>
+<tr>
+<td>SOCIAL_DISCOVERY</td>
+<td>2.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>SOCIAL_PROFILER</td>
+<td>2.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>MAPS_DISCOVERY</td>
+<td>2.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>COMPETITOR_DISCOVERY</td>
+<td>2.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>THEME_DISCOVERY</td>
+<td>2.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>BUSINESS_OVERVIEW</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>NEWS_DISCOVERY</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>DISCOVERY_REVIEWER</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="analysis-agents">Analysis Agents<a class="headerlink" href="#analysis-agents" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Version</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MARGIN_SURGEON</td>
+<td>1.1.0</td>
+<td>MINOR: PDF extraction, menuNotFound flow, pre-discovered delivery URLs</td>
+</tr>
+<tr>
+<td>SEO_AUDITOR</td>
+<td>1.1.0</td>
+<td>MINOR: switched to PRIMARY_MODEL + DEEP thinking</td>
+</tr>
+<tr>
+<td>TRAFFIC_FORECASTER</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>COMPETITIVE_ANALYZER</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="marketing-social">Marketing / Social<a class="headerlink" href="#marketing-social" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Version</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MARKETING_SWARM</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>SOCIAL_MEDIA_AUDITOR</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>SOCIAL_POST_GENERATOR</td>
+<td>3.0.0</td>
+<td>MAJOR: CDN report links + social card images, reports via cdn.hephae.co</td>
+</tr>
+<tr>
+<td>BLOG_WRITER</td>
+<td>1.1.0</td>
+<td>MINOR: switched to PRIMARY_MODEL + DEEP thinking</td>
+</tr>
+</tbody>
+</table>
+<h3 id="research-agents">Research Agents<a class="headerlink" href="#research-agents" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Version</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LOCAL_CATALYST</td>
+<td>1.1.0</td>
+<td>MINOR: switched to PRIMARY_MODEL + DEEP thinking</td>
+</tr>
+<tr>
+<td>DEMOGRAPHIC_EXPERT</td>
+<td>1.1.0</td>
+<td>MINOR: switched to PRIMARY_MODEL + DEEP thinking</td>
+</tr>
+</tbody>
+</table>
+<h3 id="other">Other<a class="headerlink" href="#other" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Version</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WEEKLY_PULSE</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>QUALIFICATION_SCANNER</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-discovery-pipeline-agents">3. Discovery Pipeline Agents<a class="headerlink" href="#3-discovery-pipeline-agents" title="Permanent link">&para;</a></h2>
+<p>The discovery pipeline is a 4-stage sequential agent (<code>DiscoveryPipeline</code>):</p>
+<h3 id="stage-1-sitecrawleragent">Stage 1: SiteCrawlerAgent<a class="headerlink" href="#stage-1-sitecrawleragent" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Model</strong>: PRIMARY</li>
+<li><strong>Tools</strong>: <code>playwright_tool</code>, <code>crawl4ai_tool</code>, <code>crawl4ai_advanced_tool</code>, <code>crawl4ai_deep_tool</code></li>
+<li><strong>Output key</strong>: <code>rawSiteData</code></li>
+<li><strong>Purpose</strong>: Crawls the business URL once to extract raw site data</li>
+</ul>
+<h3 id="stage-15-entitymatcheragent">Stage 1.5: EntityMatcherAgent<a class="headerlink" href="#stage-15-entitymatcheragent" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Model</strong>: PRIMARY</li>
+<li><strong>Tools</strong>: None (pure analysis)</li>
+<li><strong>Output key</strong>: <code>entityMatchResult</code></li>
+<li><strong>Output schema</strong>: <code>EntityMatchOutput</code></li>
+<li><strong>Purpose</strong>: Validates the crawled site matches the target business; runner aborts if mismatch</li>
+</ul>
+<h3 id="stage-2-discoveryfanout-parallelagent-9-sub-agents">Stage 2: DiscoveryFanOut (ParallelAgent — 9 sub-agents)<a class="headerlink" href="#stage-2-discoveryfanout-parallelagent-9-sub-agents" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Sub-Agent</th>
+<th>Output Key</th>
+<th>Tools</th>
+<th>Stage Gating</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ThemeAgent</td>
+<td><code>themeData</code></td>
+<td>google_search</td>
+<td>None</td>
+</tr>
+<tr>
+<td>ContactAgent</td>
+<td><code>contactData</code></td>
+<td>google_search, playwright</td>
+<td>Skip if email + phone already found</td>
+</tr>
+<tr>
+<td>SocialMediaAgent</td>
+<td><code>socialData</code></td>
+<td>google_search</td>
+<td>Skip if 3+ social links found</td>
+</tr>
+<tr>
+<td>MenuAgent</td>
+<td><code>menuData</code></td>
+<td>google_search, playwright, crawl4ai_advanced, crawl4ai_deep</td>
+<td>Skip if menuUrl already found</td>
+</tr>
+<tr>
+<td>MapsAgent</td>
+<td><code>mapsData</code></td>
+<td>google_search</td>
+<td>None</td>
+</tr>
+<tr>
+<td>CompetitorAgent</td>
+<td><code>competitorData</code></td>
+<td>google_search, crawl4ai, crawl4ai_advanced</td>
+<td>None (HIGH thinking)</td>
+</tr>
+<tr>
+<td>NewsAgent</td>
+<td><code>newsData</code></td>
+<td>google_search</td>
+<td>None</td>
+</tr>
+<tr>
+<td>BusinessOverviewAgent</td>
+<td><code>aiOverview</code></td>
+<td>google_search</td>
+<td>None</td>
+</tr>
+<tr>
+<td>ChallengesAgent</td>
+<td><code>challengesData</code></td>
+<td>google_search</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p>All fan-out agents receive <code>rawSiteData</code> via dynamic instruction injection. ContactAgent and MenuAgent additionally receive targeted crawl hints (discovered contact/menu pages from Stage 1).</p>
+<h3 id="stage-3-socialprofileragent">Stage 3: SocialProfilerAgent<a class="headerlink" href="#stage-3-socialprofileragent" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Model</strong>: PRIMARY</li>
+<li><strong>Tools</strong>: <code>google_search_tool</code>, <code>crawl4ai_advanced_tool</code></li>
+<li><strong>Output key</strong>: <code>socialProfileMetrics</code></li>
+<li><strong>Purpose</strong>: Crawls discovered social URLs for follower counts, engagement metrics</li>
+</ul>
+<h3 id="stage-4-discoveryrevieweragent">Stage 4: DiscoveryReviewerAgent<a class="headerlink" href="#stage-4-discoveryrevieweragent" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Model</strong>: PRIMARY</li>
+<li><strong>Tools</strong>: <code>validate_url_tool</code>, <code>google_search_tool</code></li>
+<li><strong>Output key</strong>: <code>reviewerData</code></li>
+<li><strong>Purpose</strong>: Validates all URLs discovered in earlier stages, corrects invalid ones</li>
+</ul>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/discovery/agent.py</code></p>
+</blockquote>
+<hr />
+<h2 id="4-analysis-capability-agents">4. Analysis Capability Agents<a class="headerlink" href="#4-analysis-capability-agents" title="Permanent link">&para;</a></h2>
+<h3 id="41-seo-auditor-seoauditor">4.1 SEO Auditor (<code>seoAuditor</code>)<a class="headerlink" href="#41-seo-auditor-seoauditor" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Model</strong>: PRIMARY + DEEP thinking</li>
+<li><strong>Tools</strong>: <code>google_search_tool</code>, <code>pagespeed_tool</code>, <code>load_memory_tool</code></li>
+<li><strong>Architecture</strong>: Single LlmAgent</li>
+<li><strong>Output</strong>: Comprehensive SEO audit across 5 categories (technical, content, UX, performance, authority)</li>
+</ul>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/seo_auditor/agent.py</code></p>
+</blockquote>
+<h3 id="42-traffic-forecaster-forecasteragent">4.2 Traffic Forecaster (<code>ForecasterAgent</code>)<a class="headerlink" href="#42-traffic-forecaster-forecasteragent" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Model</strong>: PRIMARY (gatherers) + PRIMARY (synthesis with <code>response_schema</code>)</li>
+<li><strong>Architecture</strong>: ParallelAgent (3 gatherers) + direct Gemini synthesis call</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Sub-Agent</th>
+<th>Tools</th>
+<th>Output Key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PoiGatherer</td>
+<td>google_search</td>
+<td><code>poiDetails</code></td>
+</tr>
+<tr>
+<td>WeatherGatherer</td>
+<td>weather_tool, google_search</td>
+<td><code>weatherData</code></td>
+</tr>
+<tr>
+<td>EventsGatherer</td>
+<td>google_search</td>
+<td><code>eventsData</code></td>
+</tr>
+</tbody>
+</table>
+<p>Synthesis uses <code>generate_with_fallback()</code> with <code>TrafficForecastOutput</code> response schema and temperature 0.2.</p>
+<p>Supports <code>skip_synthesis=True</code> for deferred batch synthesis — returns raw intel without the final synthesis call.</p>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/traffic_forecaster/agent.py</code></p>
+</blockquote>
+<h3 id="43-competitive-analysis-competitivepipeline">4.3 Competitive Analysis (<code>CompetitivePipeline</code>)<a class="headerlink" href="#43-competitive-analysis-competitivepipeline" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Architecture</strong>: SequentialAgent (2 stages)</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Agent</th>
+<th>Model</th>
+<th>Thinking</th>
+<th>Tools</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>CompetitorProfilerAgent</td>
+<td>PRIMARY</td>
+<td>Default</td>
+<td>google_search, load_memory</td>
+</tr>
+<tr>
+<td>2</td>
+<td>MarketPositioningAgent</td>
+<td>PRIMARY</td>
+<td>HIGH</td>
+<td>None (output_schema: <code>CompetitiveAnalysisOutput</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>State flows via session: <code>competitorBrief</code> (output of Stage 1) is read by Stage 2.</p>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/competitive_analysis/agent.py</code></p>
+</blockquote>
+<h3 id="44-margin-surgeon-marginsurgeryorchestrator">4.4 Margin Surgeon (<code>MarginSurgeryOrchestrator</code>)<a class="headerlink" href="#44-margin-surgeon-marginsurgeryorchestrator" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Architecture</strong>: SequentialAgent (4 stages with parallel fan-out)</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>VisionIntakeAgent → (BenchmarkerAgent || CommodityWatchdogAgent) → SurgeonAgent → AdvisorAgent
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Tools</th>
+<th>Output Key</th>
+<th>Output Schema</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VisionIntakeAgent</td>
+<td>None</td>
+<td><code>parsedMenuItems</code></td>
+<td><code>MenuIntakeOutput</code></td>
+</tr>
+<tr>
+<td>BenchmarkerAgent</td>
+<td><code>benchmark_tool</code></td>
+<td><code>competitorBenchmarks</code></td>
+<td>None (tools conflict)</td>
+</tr>
+<tr>
+<td>CommodityWatchdogAgent</td>
+<td><code>commodity_inflation_tool</code></td>
+<td><code>commodityTrends</code></td>
+<td>None (tools conflict)</td>
+</tr>
+<tr>
+<td>SurgeonAgent</td>
+<td><code>surgery_tool</code></td>
+<td><code>menuAnalysis</code></td>
+<td>None (tools conflict)</td>
+</tr>
+<tr>
+<td>AdvisorAgent</td>
+<td>None</td>
+<td><code>strategicAdvice</code></td>
+<td><code>AdvisorOutput</code></td>
+</tr>
+</tbody>
+</table>
+<p>BenchmarkerAgent and CommodityWatchdogAgent run in parallel via <code>BenchmarkAndCommodity</code> ParallelAgent.</p>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/margin_analyzer/agent.py</code></p>
+</blockquote>
+<h3 id="45-social-media-auditor-socialauditpipeline">4.5 Social Media Auditor (<code>SocialAuditPipeline</code>)<a class="headerlink" href="#45-social-media-auditor-socialauditpipeline" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Architecture</strong>: SequentialAgent (2 stages)</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Agent</th>
+<th>Model</th>
+<th>Thinking</th>
+<th>Tools</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>SocialResearcherAgent</td>
+<td>PRIMARY</td>
+<td>Default</td>
+<td>google_search, crawl4ai_advanced, load_memory</td>
+</tr>
+<tr>
+<td>2</td>
+<td>SocialStrategistAgent</td>
+<td>PRIMARY</td>
+<td>HIGH</td>
+<td>None (output_schema: <code>SocialMediaAuditOutput</code>)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/social/media_auditor/agent.py</code></p>
+</blockquote>
+<hr />
+<h2 id="5-marketing-content-agents">5. Marketing / Content Agents<a class="headerlink" href="#5-marketing-content-agents" title="Permanent link">&para;</a></h2>
+<h3 id="51-marketing-swarm">5.1 Marketing Swarm<a class="headerlink" href="#51-marketing-swarm" title="Permanent link">&para;</a></h3>
+<p>Pipeline: CreativeDirector → PlatformRouter → Instagram/Blog Copywriter (conditional).</p>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Model</th>
+<th>Output Key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CreativeDirectorAgent</td>
+<td>PRIMARY</td>
+<td><code>creativeDirection</code></td>
+</tr>
+<tr>
+<td>PlatformRouterAgent</td>
+<td>PRIMARY</td>
+<td><code>platformDecision</code></td>
+</tr>
+<tr>
+<td>InstagramCopywriterAgent</td>
+<td>PRIMARY</td>
+<td><code>instagramDraft</code></td>
+</tr>
+<tr>
+<td>BlogCopywriterAgent</td>
+<td>PRIMARY</td>
+<td><code>blogDraft</code></td>
+</tr>
+</tbody>
+</table>
+<p>Agents run sequentially via manual Runner calls (not a SequentialAgent).</p>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/social/marketing_swarm/agent.py</code></p>
+</blockquote>
+<h3 id="52-social-post-generator-socialpostparallel">5.2 Social Post Generator (<code>SocialPostParallel</code>)<a class="headerlink" href="#52-social-post-generator-socialpostparallel" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Architecture</strong>: ParallelAgent (5 channels)</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Output Key</th>
+<th>Output Schema</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>InstagramPostAgent</td>
+<td><code>instagramPost</code></td>
+<td><code>InstagramPostOutput</code></td>
+</tr>
+<tr>
+<td>FacebookPostAgent</td>
+<td><code>facebookPost</code></td>
+<td><code>FacebookPostOutput</code></td>
+</tr>
+<tr>
+<td>TwitterPostAgent</td>
+<td><code>twitterPost</code></td>
+<td><code>TwitterPostOutput</code></td>
+</tr>
+<tr>
+<td>EmailOutreachAgent</td>
+<td><code>emailOutreach</code></td>
+<td><code>EmailOutreachOutput</code></td>
+</tr>
+<tr>
+<td>ContactFormAgent</td>
+<td><code>contactFormDraft</code></td>
+<td><code>ContactFormOutput</code></td>
+</tr>
+</tbody>
+</table>
+<p>All agents use PRIMARY model. Falls back to template-based posts if any channel agent fails.</p>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/social/post_generator/agent.py</code></p>
+</blockquote>
+<h3 id="53-blog-writer-blogpipeline">5.3 Blog Writer (<code>BlogPipeline</code>)<a class="headerlink" href="#53-blog-writer-blogpipeline" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Architecture</strong>: SequentialAgent (2 stages)</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Agent</th>
+<th>Model</th>
+<th>Thinking</th>
+<th>Output Key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>ResearchCompilerAgent</td>
+<td>PRIMARY</td>
+<td>Default</td>
+<td><code>researchBrief</code> (<code>BlogResearchOutput</code>)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>BlogWriterAgent</td>
+<td>PRIMARY</td>
+<td>DEEP</td>
+<td><code>blogContent</code></td>
+</tr>
+</tbody>
+</table>
+<p>Generates 800-1200 word blog posts from Firestore <code>latestOutputs</code>.</p>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/social/blog_writer/agent.py</code></p>
+</blockquote>
+<h3 id="54-outreach-generator">5.4 Outreach Generator<a class="headerlink" href="#54-outreach-generator" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Model</strong>: PRIMARY</li>
+<li><strong>Architecture</strong>: Single LlmAgent</li>
+<li><strong>Purpose</strong>: Generates personalized marketing outreach content</li>
+</ul>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/social/outreach_generator/agent.py</code></p>
+</blockquote>
+<hr />
+<h2 id="6-other-agents">6. Other Agents<a class="headerlink" href="#6-other-agents" title="Permanent link">&para;</a></h2>
+<h3 id="61-insights-agent">6.1 Insights Agent<a class="headerlink" href="#61-insights-agent" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Model</strong>: PRIMARY</li>
+<li><strong>Architecture</strong>: Single LlmAgent</li>
+<li><strong>Purpose</strong>: Synthesizes cross-capability findings (SEO, traffic, competitive, margin) into actionable insights</li>
+<li><strong>Output schema</strong>: <code>InsightsOutput</code> — <code>{summary, keyFindings[], recommendations[]}</code></li>
+<li><strong>Integrates</strong>: Food pricing context from BLS/USDA when available</li>
+</ul>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/insights/insights_agent.py</code></p>
+</blockquote>
+<h3 id="62-business-profiler-legacy">6.2 Business Profiler (legacy)<a class="headerlink" href="#62-business-profiler-legacy" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Architecture</strong>: Python class (not an LLM agent)</li>
+<li><strong>Purpose</strong>: Crawls website, extracts colors/logo/persona, takes menu screenshot</li>
+<li><strong>Tools</strong>: <code>crawl_web_page</code>, <code>screenshot_page</code> (shared tools)</li>
+</ul>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/business_profiler/agent.py</code></p>
+</blockquote>
+<h3 id="63-profile-builder-chatbot">6.3 Profile Builder (chatbot)<a class="headerlink" href="#63-profile-builder-chatbot" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Architecture</strong>: Instruction-only agent (no <code>agent.py</code> LlmAgent defined, instruction used in chatbot flow)</li>
+<li><strong>Purpose</strong>: Guided chatbot flow to collect business details (social accounts, delivery platforms, menu URL, capabilities to run)</li>
+</ul>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/profile_builder/agent.py</code></p>
+</blockquote>
+<h3 id="64-business-overview-agent">6.4 Business Overview Agent<a class="headerlink" href="#64-business-overview-agent" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Architecture</strong>: 3-stage agent (Search + Maps + Synthesizer)</li>
+<li><strong>Purpose</strong>: Produces rich business overview combining Google Search reputation, Maps competitor density, zipcode research, and pulse data</li>
+<li><strong>Output</strong>: Structured JSON with <code>businessSnapshot</code>, <code>marketPosition</code>, <code>localEconomy</code>, <code>localBuzz</code>, <code>keyOpportunities</code>, <code>capabilityTeasers</code></li>
+</ul>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/business_overview/agent.py</code></p>
+</blockquote>
+<h3 id="65-qualification-scanner">6.5 Qualification Scanner<a class="headerlink" href="#65-qualification-scanner" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Architecture</strong>: Python functions (not an LLM agent for Step A; batched LLM for Step B tiebreaker)</li>
+<li><strong>Purpose</strong>: Two-step qualification — metadata scan + optional full probe + LLM classification</li>
+<li><strong>Tools</strong>: <code>page_fetcher</code>, <code>domain_analyzer</code>, <code>platform_detector</code>, <code>pixel_detector</code>, <code>contact_path_detector</code>, <code>meta_extractor</code></li>
+</ul>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/qualification/scanner.py</code></p>
+</blockquote>
+<hr />
+<h2 id="7-evaluator-agents">7. Evaluator Agents<a class="headerlink" href="#7-evaluator-agents" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Name</th>
+<th>Capability</th>
+<th>Model</th>
+<th>Thinking</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SeoEvaluatorAgent</td>
+<td><code>seo_evaluator</code></td>
+<td>SEO Audit</td>
+<td>PRIMARY</td>
+<td>MEDIUM</td>
+</tr>
+<tr>
+<td>TrafficEvaluatorAgent</td>
+<td><code>traffic_evaluator</code></td>
+<td>Traffic Forecast</td>
+<td>PRIMARY</td>
+<td>MEDIUM</td>
+</tr>
+<tr>
+<td>CompetitiveEvaluatorAgent</td>
+<td><code>competitive_evaluator</code></td>
+<td>Competitive Analysis</td>
+<td>PRIMARY</td>
+<td>MEDIUM</td>
+</tr>
+<tr>
+<td>MarginSurgeonEvaluatorAgent</td>
+<td><code>margin_surgeon_evaluator</code></td>
+<td>Margin Surgeon</td>
+<td>PRIMARY</td>
+<td>MEDIUM</td>
+</tr>
+</tbody>
+</table>
+<p>All evaluators output <code>EvaluationOutput</code>: <code>{score: 0-100, isHallucinated: boolean, issues: string[]}</code>.</p>
+<p>All use <code>fallback_on_error</code> for automatic model fallback.</p>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/evaluators/</code></p>
+</blockquote>
+<hr />
+<h2 id="8-new-industry-pulse-agents">8. NEW: Industry Pulse Agents<a class="headerlink" href="#8-new-industry-pulse-agents" title="Permanent link">&para;</a></h2>
+<h3 id="81-industry-trend-summarizer">8.1 Industry Trend Summarizer<a class="headerlink" href="#81-industry-trend-summarizer" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Agent name</strong>: <code>industry_trend_summarizer</code></li>
+<li><strong>Model</strong>: PRIMARY (<code>gemini-3.1-flash-lite-preview</code>)</li>
+<li><strong>Thinking</strong>: None (default)</li>
+<li><strong>Architecture</strong>: Single LlmAgent, instantiated per-call in <code>_generate_trend_summary()</code></li>
+<li><strong>System instruction</strong>: "You are a concise economic analyst. Summarize data signals in 2-3 paragraphs with specific numbers. No advice, just facts."</li>
+<li><strong>Purpose</strong>: Generates a 2-3 paragraph national trend summary from pre-computed impact variables and triggered playbooks</li>
+</ul>
+<p><strong>Input context</strong> (injected into prompt):
+- Pre-computed impact variables (e.g., <code>dairy_yoy_pct: 3.56</code>)
+- Triggered playbook names and first 120 chars of play text</p>
+<p><strong>Output</strong>: Plain text summary (no JSON schema)</p>
+<blockquote>
+<p>Source: <code>apps/api/hephae_api/workflows/orchestrators/industry_pulse.py</code></p>
+</blockquote>
+<h3 id="82-industryconfig-verticals">8.2 IndustryConfig Verticals<a class="headerlink" href="#82-industryconfig-verticals" title="Permanent link">&para;</a></h3>
+<p>Three verticals are currently registered:</p>
+<table>
+<thead>
+<tr>
+<th>Vertical</th>
+<th>Aliases (sample)</th>
+<th>Economist Context Focus</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>restaurant</strong></td>
+<td>restaurant, pizza, cafe, deli, coffee, grocery</td>
+<td>Food cost inflation across proteins, dairy, produce. Margins 3-9%.</td>
+</tr>
+<tr>
+<td><strong>bakery</strong></td>
+<td>bakery, patisserie, bread shop, donut shop, cupcake shop</td>
+<td>Flour/wheat, eggs, butter, dairy, sugar — 20-35% of revenue. Net margins 4-15%.</td>
+</tr>
+<tr>
+<td><strong>barber</strong></td>
+<td>barber, barbershop, salon, spa, nail salon</td>
+<td>Barber/beauty services CPI. Labor 40-60%. A $30 haircut nets $12-15.</td>
+</tr>
+</tbody>
+</table>
+<p>Adding a new vertical requires:
+1. Creating a new <code>IndustryConfig</code> instance
+2. Appending to the <code>_ALL</code> list
+3. Aliases are automatically indexed for <code>resolve()</code> lookup</p>
+<blockquote>
+<p>Source: <code>apps/api/hephae_api/workflows/orchestrators/industries.py</code></p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

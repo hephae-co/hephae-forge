@@ -1,0 +1,2299 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal documentation for the Hephae Forge pipeline">
+      
+      
+      
+        <link rel="canonical" href="https://hephae-co.github.io/hephae-forge/bigquery-schema/">
+      
+      
+        <link rel="prev" href="../firestore-schema/">
+      
+      
+        <link rel="next" href="../gcs-conventions/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>BigQuery Schema - Hephae Forge Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#bigquery-schema" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Hephae Forge Docs" class="md-header__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hephae Forge Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              BigQuery Schema
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Hephae Forge Docs" class="md-nav__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Hephae Forge Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/workflow-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../firestore-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firestore Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BigQuery Schema
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BigQuery Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tables
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hephaediscoveries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hephae.discoveries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hephaeanalyses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hephae.analyses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hephaeinteractions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hephae.interactions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hephaeagent_feedback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hephae.agent_feedback
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#external-datasets-read-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External Datasets (Read-Only)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="External Datasets (Read-Only)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bigquery-public-datagoogle_trendstop_terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bigquery-public-data.google_trends.top_terms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bigquery-public-datagoogle_trendstop_rising_terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bigquery-public-data.google_trends.top_rising_terms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bigquery-public-datautility_uszipcode_area" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bigquery-public-data.utility_us.zipcode_area
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bigquery-public-datacensus_bureau_acszip_codes_2018_5yr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bigquery-public-data.census_bureau_acs.zip_codes_2018_5yr
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bigquery-public-datageo_openstreetmapplanet_features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bigquery-public-data.geo_openstreetmap.planet_features
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bigquery-public-datanoaa_gsodstations-and-bigquery-public-datanoaa_gsodgsod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bigquery-public-data.noaa_gsod.stations and bigquery-public-data.noaa_gsod.gsod*
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#feedback-reader-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feedback Reader Queries
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcs-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-admin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Admin Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/agent-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/prompt-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pipeline Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qualification-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qualification Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../unified-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-ground-truth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eval Ground Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="bigquery-schema">BigQuery Schema<a class="headerlink" href="#bigquery-schema" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Auto-generated from codebase on 2026-03-22. Do not edit manually.</p>
+</blockquote>
+<p><strong>Dataset:</strong> <code>{GCP_PROJECT_ID}.hephae</code>
+<strong>Project ID:</strong> Set via <code>BIGQUERY_PROJECT_ID</code> or <code>GCP_PROJECT_ID</code> or <code>GOOGLE_CLOUD_PROJECT</code> env var
+<strong>Write method:</strong> DML INSERT (not streaming) via <code>bq_insert()</code> -- rows are immediately available for DML DELETE
+<strong>All tables are append-only.</strong> Historical data lives here; Firestore stores only current state.</p>
+<hr />
+<h2 id="tables">Tables<a class="headerlink" href="#tables" title="Permanent link">&para;</a></h2>
+<h3 id="hephaediscoveries"><code>hephae.discoveries</code><a class="headerlink" href="#hephaediscoveries" title="Permanent link">&para;</a></h3>
+<p>Permanent record of every discovery agent run. One row per business discovered.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run_id</code></td>
+<td><code>STRING</code></td>
+<td>Format: <code>discovery-{timestamp_ms}</code></td>
+</tr>
+<tr>
+<td><code>business_slug</code></td>
+<td><code>STRING</code></td>
+<td>URL slug of the business</td>
+</tr>
+<tr>
+<td><code>business_name</code></td>
+<td><code>STRING</code></td>
+<td>Business name</td>
+</tr>
+<tr>
+<td><code>official_url</code></td>
+<td><code>STRING</code></td>
+<td>Primary website URL</td>
+</tr>
+<tr>
+<td><code>address</code></td>
+<td><code>STRING</code></td>
+<td>Full street address</td>
+</tr>
+<tr>
+<td><code>city</code></td>
+<td><code>STRING</code></td>
+<td>City (currently always <code>null</code>)</td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td><code>STRING</code></td>
+<td>State (currently always <code>null</code>)</td>
+</tr>
+<tr>
+<td><code>zip_code</code></td>
+<td><code>STRING</code></td>
+<td>Zip code</td>
+</tr>
+<tr>
+<td><code>lat</code></td>
+<td><code>FLOAT64</code></td>
+<td>Latitude</td>
+</tr>
+<tr>
+<td><code>lng</code></td>
+<td><code>FLOAT64</code></td>
+<td>Longitude</td>
+</tr>
+<tr>
+<td><code>agent_name</code></td>
+<td><code>STRING</code></td>
+<td>Always <code>discovery_orchestrator</code></td>
+</tr>
+<tr>
+<td><code>agent_version</code></td>
+<td><code>STRING</code></td>
+<td>Semantic version (e.g., <code>5.0.0</code>)</td>
+</tr>
+<tr>
+<td><code>run_at</code></td>
+<td><code>TIMESTAMP</code></td>
+<td>When the discovery ran</td>
+</tr>
+<tr>
+<td><code>triggered_by</code></td>
+<td><code>STRING</code></td>
+<td><code>user</code> or <code>batch</code></td>
+</tr>
+<tr>
+<td><code>raw_data</code></td>
+<td><code>STRING</code></td>
+<td>JSON-serialized enriched profile (blobs stripped)</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Written by</strong></td>
+<td><code>lib/db/hephae_db/firestore/discovery.py</code> :: <code>write_discovery()</code></td>
+</tr>
+<tr>
+<td><strong>Write trigger</strong></td>
+<td>Discovery agent completes enrichment of a business</td>
+</tr>
+<tr>
+<td><strong>Fire-and-forget</strong></td>
+<td>Yes -- BQ write runs in executor, failures logged but never block</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="hephaeanalyses"><code>hephae.analyses</code><a class="headerlink" href="#hephaeanalyses" title="Permanent link">&para;</a></h3>
+<p>Permanent history of all analysis agent outputs. One row per agent run per business.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>analysis_id</code></td>
+<td><code>STRING</code></td>
+<td>Format: <code>{agent_name}-{timestamp_ms}</code></td>
+</tr>
+<tr>
+<td><code>business_slug</code></td>
+<td><code>STRING</code></td>
+<td>URL slug of the business</td>
+</tr>
+<tr>
+<td><code>business_name</code></td>
+<td><code>STRING</code></td>
+<td>Business name</td>
+</tr>
+<tr>
+<td><code>zip_code</code></td>
+<td><code>STRING</code></td>
+<td>Zip code</td>
+</tr>
+<tr>
+<td><code>agent_name</code></td>
+<td><code>STRING</code></td>
+<td>Agent key (e.g., <code>seo_auditor</code>, <code>margin_surgeon</code>, <code>traffic_forecaster</code>, <code>competitive_analyzer</code>)</td>
+</tr>
+<tr>
+<td><code>agent_version</code></td>
+<td><code>STRING</code></td>
+<td>Semantic version from <code>AgentVersions</code></td>
+</tr>
+<tr>
+<td><code>run_at</code></td>
+<td><code>TIMESTAMP</code></td>
+<td>When the analysis ran</td>
+</tr>
+<tr>
+<td><code>triggered_by</code></td>
+<td><code>STRING</code></td>
+<td><code>user</code>, <code>batch</code>, or <code>workflow</code></td>
+</tr>
+<tr>
+<td><code>score</code></td>
+<td><code>FLOAT64</code></td>
+<td>Overall agent score (nullable)</td>
+</tr>
+<tr>
+<td><code>summary</code></td>
+<td><code>STRING</code></td>
+<td>Agent summary text (nullable)</td>
+</tr>
+<tr>
+<td><code>report_url</code></td>
+<td><code>STRING</code></td>
+<td>GCS/CDN URL to HTML report (nullable)</td>
+</tr>
+<tr>
+<td><code>total_leakage</code></td>
+<td><code>FLOAT64</code></td>
+<td>Promoted KPI: margin surgeon total leakage (nullable)</td>
+</tr>
+<tr>
+<td><code>menu_item_count</code></td>
+<td><code>INT64</code></td>
+<td>Promoted KPI: margin surgeon menu item count (nullable)</td>
+</tr>
+<tr>
+<td><code>seo_technical_score</code></td>
+<td><code>FLOAT64</code></td>
+<td>Promoted KPI: SEO technical section score (nullable)</td>
+</tr>
+<tr>
+<td><code>seo_content_score</code></td>
+<td><code>FLOAT64</code></td>
+<td>Promoted KPI: SEO content section score (nullable)</td>
+</tr>
+<tr>
+<td><code>seo_ux_score</code></td>
+<td><code>FLOAT64</code></td>
+<td>Promoted KPI: SEO UX section score (nullable)</td>
+</tr>
+<tr>
+<td><code>seo_performance_score</code></td>
+<td><code>FLOAT64</code></td>
+<td>Promoted KPI: SEO performance section score (nullable)</td>
+</tr>
+<tr>
+<td><code>seo_authority_score</code></td>
+<td><code>FLOAT64</code></td>
+<td>Promoted KPI: SEO authority section score (nullable)</td>
+</tr>
+<tr>
+<td><code>peak_slot_score</code></td>
+<td><code>FLOAT64</code></td>
+<td>Promoted KPI: traffic forecaster peak slot score (nullable)</td>
+</tr>
+<tr>
+<td><code>competitor_count</code></td>
+<td><code>INT64</code></td>
+<td>Promoted KPI: competitive analyzer competitor count (nullable)</td>
+</tr>
+<tr>
+<td><code>avg_threat_level</code></td>
+<td><code>FLOAT64</code></td>
+<td>Promoted KPI: competitive analyzer avg threat level (nullable)</td>
+</tr>
+<tr>
+<td><code>raw_data</code></td>
+<td><code>STRING</code></td>
+<td>JSON-serialized full agent output (nullable)</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Written by</strong></td>
+<td><code>lib/db/hephae_db/firestore/agent_results.py</code> :: <code>write_agent_result()</code></td>
+</tr>
+<tr>
+<td><strong>Write trigger</strong></td>
+<td>Any analysis agent completes a run</td>
+</tr>
+<tr>
+<td><strong>KPI promotion</strong></td>
+<td><code>_extract_promoted_kpis()</code> pulls agent-specific metrics into top-level columns for efficient querying</td>
+</tr>
+<tr>
+<td><strong>Fire-and-forget</strong></td>
+<td>Yes -- BQ write runs in executor, failures logged but never block</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="hephaeinteractions"><code>hephae.interactions</code><a class="headerlink" href="#hephaeinteractions" title="Permanent link">&para;</a></h3>
+<p>Event log of all outreach and inbound response events.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>interaction_id</code></td>
+<td><code>STRING</code></td>
+<td>Format: <code>{event_type}-{business_slug}-{timestamp_ms}</code></td>
+</tr>
+<tr>
+<td><code>occurred_at</code></td>
+<td><code>TIMESTAMP</code></td>
+<td>Event timestamp</td>
+</tr>
+<tr>
+<td><code>business_slug</code></td>
+<td><code>STRING</code></td>
+<td>Target business slug</td>
+</tr>
+<tr>
+<td><code>zip_code</code></td>
+<td><code>STRING</code></td>
+<td>Zip code (nullable)</td>
+</tr>
+<tr>
+<td><code>event_type</code></td>
+<td><code>STRING</code></td>
+<td>Event type: <code>report_sent</code>, <code>follow_up_sent</code>, <code>contact_form</code>, <code>email_replied</code></td>
+</tr>
+<tr>
+<td><code>outreach_number</code></td>
+<td><code>INT64</code></td>
+<td>Outreach attempt number (nullable)</td>
+</tr>
+<tr>
+<td><code>contact_email</code></td>
+<td><code>STRING</code></td>
+<td>Email address used (nullable)</td>
+</tr>
+<tr>
+<td><code>subject</code></td>
+<td><code>STRING</code></td>
+<td>Email subject line (nullable)</td>
+</tr>
+<tr>
+<td><code>report_url</code></td>
+<td><code>STRING</code></td>
+<td>URL of shared report (nullable)</td>
+</tr>
+<tr>
+<td><code>responded</code></td>
+<td><code>BOOL</code></td>
+<td><code>true</code> if event is a genuine response (<code>contact_form</code> or <code>email_replied</code>)</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Written by</strong></td>
+<td><code>lib/db/hephae_db/firestore/interactions.py</code> :: <code>write_interaction()</code></td>
+</tr>
+<tr>
+<td><strong>Write trigger</strong></td>
+<td>Outreach email sent, follow-up sent, or inbound response received</td>
+</tr>
+<tr>
+<td><strong>Fire-and-forget</strong></td>
+<td>Yes -- BQ write runs in executor, failures logged but never block</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="hephaeagent_feedback"><code>hephae.agent_feedback</code><a class="headerlink" href="#hephaeagent_feedback" title="Permanent link">&para;</a></h3>
+<p>Structured feedback signals from every agent run -- used by the learning cycle for pattern extraction.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>feedback_id</code></td>
+<td><code>STRING</code></td>
+<td>Format: <code>{agent_name}-{business_slug}-{unix_seconds}</code></td>
+</tr>
+<tr>
+<td><code>business_slug</code></td>
+<td><code>STRING</code></td>
+<td>Target business slug</td>
+</tr>
+<tr>
+<td><code>agent_name</code></td>
+<td><code>STRING</code></td>
+<td>Agent name (e.g., <code>seo_auditor</code>, <code>crawl4ai</code>, <code>approval_gate</code>)</td>
+</tr>
+<tr>
+<td><code>agent_version</code></td>
+<td><code>STRING</code></td>
+<td>Semantic version (nullable)</td>
+</tr>
+<tr>
+<td><code>capability</code></td>
+<td><code>STRING</code></td>
+<td>Capability name (e.g., <code>seo</code>, <code>margin</code>, <code>discovery</code>, <code>approval</code>)</td>
+</tr>
+<tr>
+<td><code>zip_code</code></td>
+<td><code>STRING</code></td>
+<td>Zip code (nullable)</td>
+</tr>
+<tr>
+<td><code>business_type</code></td>
+<td><code>STRING</code></td>
+<td>Business type/industry (nullable)</td>
+</tr>
+<tr>
+<td><code>recorded_at</code></td>
+<td><code>TIMESTAMP</code></td>
+<td>When feedback was recorded</td>
+</tr>
+<tr>
+<td><code>eval_score</code></td>
+<td><code>FLOAT64</code></td>
+<td>Evaluator score (nullable)</td>
+</tr>
+<tr>
+<td><code>is_hallucinated</code></td>
+<td><code>BOOL</code></td>
+<td>Evaluator hallucination flag (nullable)</td>
+</tr>
+<tr>
+<td><code>human_decision</code></td>
+<td><code>STRING</code></td>
+<td><code>approve</code> or <code>reject</code> (nullable)</td>
+</tr>
+<tr>
+<td><code>auto_approved</code></td>
+<td><code>BOOL</code></td>
+<td>Whether approval was automatic (nullable)</td>
+</tr>
+<tr>
+<td><code>crawl_strategy</code></td>
+<td><code>STRING</code></td>
+<td>Crawl strategy used (nullable)</td>
+</tr>
+<tr>
+<td><code>crawl_success</code></td>
+<td><code>BOOL</code></td>
+<td>Whether crawl succeeded (nullable)</td>
+</tr>
+<tr>
+<td><code>crawl_content_length</code></td>
+<td><code>INT64</code></td>
+<td>Crawled content length in bytes (nullable)</td>
+</tr>
+<tr>
+<td><code>crawl_duration_ms</code></td>
+<td><code>INT64</code></td>
+<td>Crawl duration in milliseconds (nullable)</td>
+</tr>
+<tr>
+<td><code>site_platform</code></td>
+<td><code>STRING</code></td>
+<td>Detected site platform (e.g., <code>wix</code>, <code>squarespace</code>, <code>wordpress</code>) (nullable)</td>
+</tr>
+<tr>
+<td><code>run_duration_ms</code></td>
+<td><code>INT64</code></td>
+<td>Agent run duration in milliseconds (nullable)</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Written by</strong></td>
+<td><code>lib/db/hephae_db/bigquery/feedback.py</code> :: <code>record_feedback()</code> and convenience wrappers</td>
+</tr>
+<tr>
+<td><strong>Read by</strong></td>
+<td><code>lib/db/hephae_db/bigquery/feedback_reader.py</code> -- aggregate queries for learning cycle</td>
+</tr>
+<tr>
+<td><strong>Convenience wrappers</strong></td>
+<td><code>record_evaluation_feedback()</code>, <code>record_approval_feedback()</code>, <code>record_crawl_feedback()</code>, <code>record_run_feedback()</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="external-datasets-read-only">External Datasets (Read-Only)<a class="headerlink" href="#external-datasets-read-only" title="Permanent link">&para;</a></h2>
+<h3 id="bigquery-public-datagoogle_trendstop_terms"><code>bigquery-public-data.google_trends.top_terms</code><a class="headerlink" href="#bigquery-public-datagoogle_trendstop_terms" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>term</code></td>
+<td><code>STRING</code></td>
+<td>Search term</td>
+</tr>
+<tr>
+<td><code>rank</code></td>
+<td><code>INT64</code></td>
+<td>Rank within DMA</td>
+</tr>
+<tr>
+<td><code>score</code></td>
+<td><code>FLOAT64</code></td>
+<td>Relative search interest</td>
+</tr>
+<tr>
+<td><code>week</code></td>
+<td><code>DATE</code></td>
+<td>Week of data</td>
+</tr>
+<tr>
+<td><code>dma_name</code></td>
+<td><code>STRING</code></td>
+<td>DMA region name</td>
+</tr>
+<tr>
+<td><code>refresh_date</code></td>
+<td><code>DATE</code></td>
+<td>Data refresh date</td>
+</tr>
+</tbody>
+</table>
+<h3 id="bigquery-public-datagoogle_trendstop_rising_terms"><code>bigquery-public-data.google_trends.top_rising_terms</code><a class="headerlink" href="#bigquery-public-datagoogle_trendstop_rising_terms" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>term</code></td>
+<td><code>STRING</code></td>
+<td>Search term</td>
+</tr>
+<tr>
+<td><code>percent_gain</code></td>
+<td><code>FLOAT64</code></td>
+<td>Percentage increase in search interest</td>
+</tr>
+<tr>
+<td><code>rank</code></td>
+<td><code>INT64</code></td>
+<td>Rank within DMA</td>
+</tr>
+<tr>
+<td><code>score</code></td>
+<td><code>FLOAT64</code></td>
+<td>Relative search interest</td>
+</tr>
+<tr>
+<td><code>week</code></td>
+<td><code>DATE</code></td>
+<td>Week of data</td>
+</tr>
+<tr>
+<td><code>dma_name</code></td>
+<td><code>STRING</code></td>
+<td>DMA region name</td>
+</tr>
+<tr>
+<td><code>refresh_date</code></td>
+<td><code>DATE</code></td>
+<td>Data refresh date</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Read by</strong></td>
+<td><code>lib/db/hephae_db/bigquery/reader.py</code> :: <code>query_google_trends()</code>, <code>query_industry_trends()</code></td>
+</tr>
+<tr>
+<td><strong>Filter</strong></td>
+<td>Data within last 3 days of refresh, filtered by DMA name</td>
+</tr>
+<tr>
+<td><strong>Industry keywords</strong></td>
+<td>Mapped in <code>INDUSTRY_KEYWORDS</code> dict (bakeries, restaurants, laundromats, hairdressers, gyms, coffee, pizza, tacos, ice_cream, nail_salons, auto_repair, pet_stores, florists, pharmacies)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="bigquery-public-datautility_uszipcode_area"><code>bigquery-public-data.utility_us.zipcode_area</code><a class="headerlink" href="#bigquery-public-datautility_uszipcode_area" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>zipcode</code></td>
+<td><code>STRING</code></td>
+<td>5-digit zip code</td>
+</tr>
+<tr>
+<td><code>latitude</code></td>
+<td><code>FLOAT64</code></td>
+<td>Latitude</td>
+</tr>
+<tr>
+<td><code>longitude</code></td>
+<td><code>FLOAT64</code></td>
+<td>Longitude</td>
+</tr>
+<tr>
+<td><code>city</code></td>
+<td><code>STRING</code></td>
+<td>City name</td>
+</tr>
+<tr>
+<td><code>state_code</code></td>
+<td><code>STRING</code></td>
+<td>2-letter state code</td>
+</tr>
+<tr>
+<td><code>state_name</code></td>
+<td><code>STRING</code></td>
+<td>Full state name</td>
+</tr>
+<tr>
+<td><code>state_fips</code></td>
+<td><code>STRING</code></td>
+<td>State FIPS code</td>
+</tr>
+<tr>
+<td><code>county</code></td>
+<td><code>STRING</code></td>
+<td>County name</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Read by</strong></td>
+<td><code>lib/db/hephae_db/bigquery/public_data.py</code> :: <code>resolve_zip_geography()</code>, <code>query_zips_in_county()</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="bigquery-public-datacensus_bureau_acszip_codes_2018_5yr"><code>bigquery-public-data.census_bureau_acs.zip_codes_2018_5yr</code><a class="headerlink" href="#bigquery-public-datacensus_bureau_acszip_codes_2018_5yr" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>geo_id</code></td>
+<td><code>STRING</code></td>
+<td>ZCTA (zip code tabulation area)</td>
+</tr>
+<tr>
+<td><code>total_pop</code></td>
+<td><code>INT64</code></td>
+<td>Total population</td>
+</tr>
+<tr>
+<td><code>median_age</code></td>
+<td><code>FLOAT64</code></td>
+<td>Median age</td>
+</tr>
+<tr>
+<td><code>median_income</code></td>
+<td><code>INT64</code></td>
+<td>Median household income</td>
+</tr>
+<tr>
+<td><code>income_per_capita</code></td>
+<td><code>INT64</code></td>
+<td>Per-capita income</td>
+</tr>
+<tr>
+<td><code>poverty</code></td>
+<td><code>INT64</code></td>
+<td>People in poverty</td>
+</tr>
+<tr>
+<td><code>pop_determined_poverty_status</code></td>
+<td><code>INT64</code></td>
+<td>Population with poverty status determined</td>
+</tr>
+<tr>
+<td><code>employed_pop</code></td>
+<td><code>INT64</code></td>
+<td>Employed population</td>
+</tr>
+<tr>
+<td><code>unemployed_pop</code></td>
+<td><code>INT64</code></td>
+<td>Unemployed population</td>
+</tr>
+<tr>
+<td><code>housing_units</code></td>
+<td><code>INT64</code></td>
+<td>Total housing units</td>
+</tr>
+<tr>
+<td><code>occupied_housing_units</code></td>
+<td><code>INT64</code></td>
+<td>Occupied housing units</td>
+</tr>
+<tr>
+<td><code>vacant_housing_units</code></td>
+<td><code>INT64</code></td>
+<td>Vacant housing units</td>
+</tr>
+<tr>
+<td><code>median_rent</code></td>
+<td><code>INT64</code></td>
+<td>Median monthly rent</td>
+</tr>
+<tr>
+<td><code>percent_income_spent_on_rent</code></td>
+<td><code>FLOAT64</code></td>
+<td>Rent burden percentage</td>
+</tr>
+<tr>
+<td><code>owner_occupied_housing_units_median_value</code></td>
+<td><code>INT64</code></td>
+<td>Median home value</td>
+</tr>
+<tr>
+<td><code>children</code></td>
+<td><code>INT64</code></td>
+<td>Children population</td>
+</tr>
+<tr>
+<td><code>children_in_single_female_hh</code></td>
+<td><code>INT64</code></td>
+<td>Children in single-female households</td>
+</tr>
+<tr>
+<td><code>commuters_by_public_transportation</code></td>
+<td><code>INT64</code></td>
+<td>Public transit commuters</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Read by</strong></td>
+<td><code>lib/db/hephae_db/bigquery/public_data.py</code> :: <code>query_census_demographics()</code></td>
+</tr>
+<tr>
+<td><strong>Derived fields</strong></td>
+<td><code>economicStressLevel</code>, <code>priceSensitivity</code>, <code>povertyRate</code>, <code>occupancyRate</code>, <code>vacancyRate</code>, <code>unemploymentRate</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="bigquery-public-datageo_openstreetmapplanet_features"><code>bigquery-public-data.geo_openstreetmap.planet_features</code><a class="headerlink" href="#bigquery-public-datageo_openstreetmapplanet_features" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>all_tags</code></td>
+<td><code>ARRAY&lt;STRUCT&lt;key STRING, value STRING&gt;&gt;</code></td>
+<td>All OSM tags</td>
+</tr>
+<tr>
+<td><code>geometry</code></td>
+<td><code>GEOGRAPHY</code></td>
+<td>Point/polygon geometry</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Read by</strong></td>
+<td><code>lib/db/hephae_db/bigquery/public_data.py</code> :: <code>query_osm_business_density()</code></td>
+</tr>
+<tr>
+<td><strong>Spatial filter</strong></td>
+<td><code>ST_DWITHIN(geometry, point, radius)</code> -- default 1500m radius</td>
+</tr>
+<tr>
+<td><strong>Business type mapping</strong></td>
+<td><code>OSM_BUSINESS_TAGS</code> dict maps business types to OSM amenity/shop tag values</td>
+</tr>
+<tr>
+<td><strong>Derived fields</strong></td>
+<td><code>totalBusinesses</code>, <code>saturationLevel</code> (high/moderate/low/minimal), <code>categories</code>, <code>nearby[]</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="bigquery-public-datanoaa_gsodstations-and-bigquery-public-datanoaa_gsodgsod"><code>bigquery-public-data.noaa_gsod.stations</code> and <code>bigquery-public-data.noaa_gsod.gsod*</code><a class="headerlink" href="#bigquery-public-datanoaa_gsodstations-and-bigquery-public-datanoaa_gsodgsod" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Column (stations)</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>usaf</code></td>
+<td><code>STRING</code></td>
+<td>Station USAF identifier</td>
+</tr>
+<tr>
+<td><code>wban</code></td>
+<td><code>STRING</code></td>
+<td>Station WBAN identifier</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td><code>STRING</code></td>
+<td>Station name</td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td><code>STRING</code></td>
+<td>US state</td>
+</tr>
+<tr>
+<td><code>lat</code></td>
+<td><code>FLOAT64</code></td>
+<td>Latitude</td>
+</tr>
+<tr>
+<td><code>lon</code></td>
+<td><code>FLOAT64</code></td>
+<td>Longitude</td>
+</tr>
+<tr>
+<td><code>country</code></td>
+<td><code>STRING</code></td>
+<td>Country code</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Column (gsod*)</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stn</code></td>
+<td><code>STRING</code></td>
+<td>Station USAF</td>
+</tr>
+<tr>
+<td><code>wban</code></td>
+<td><code>STRING</code></td>
+<td>Station WBAN</td>
+</tr>
+<tr>
+<td><code>mo</code></td>
+<td><code>STRING</code></td>
+<td>Month of observation</td>
+</tr>
+<tr>
+<td><code>temp</code></td>
+<td><code>FLOAT64</code></td>
+<td>Mean temperature (F)</td>
+</tr>
+<tr>
+<td><code>max</code></td>
+<td><code>FLOAT64</code></td>
+<td>Max temperature (F)</td>
+</tr>
+<tr>
+<td><code>min</code></td>
+<td><code>FLOAT64</code></td>
+<td>Min temperature (F)</td>
+</tr>
+<tr>
+<td><code>prcp</code></td>
+<td><code>FLOAT64</code></td>
+<td>Precipitation (inches); 99.99 = missing</td>
+</tr>
+<tr>
+<td><code>rain_drizzle</code></td>
+<td><code>STRING</code></td>
+<td><code>'1'</code> if rain occurred</td>
+</tr>
+<tr>
+<td><code>snow_ice_pellets</code></td>
+<td><code>STRING</code></td>
+<td><code>'1'</code> if snow occurred</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Read by</strong></td>
+<td><code>lib/db/hephae_db/bigquery/public_data.py</code> :: <code>query_noaa_weather_history()</code></td>
+</tr>
+<tr>
+<td><strong>Years queried</strong></td>
+<td>2020--2024 (5-year average)</td>
+</tr>
+<tr>
+<td><strong>Derived fields</strong></td>
+<td><code>avgTempF</code>, <code>avgHighF</code>, <code>avgLowF</code>, <code>avgPrecipIn</code>, <code>rainDaysPct</code>, <code>snowDays</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="feedback-reader-queries">Feedback Reader Queries<a class="headerlink" href="#feedback-reader-queries" title="Permanent link">&para;</a></h2>
+<p>The <code>feedback_reader.py</code> module provides aggregate analytics over <code>agent_feedback</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Groups by</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get_approval_rates_by_industry()</code></td>
+<td><code>business_type</code></td>
+<td><code>{business_type, total, approved, rejected, approval_rate}</code></td>
+</tr>
+<tr>
+<td><code>get_approval_rates_by_zip()</code></td>
+<td><code>zip_code</code></td>
+<td><code>{zip_code, total, approved, approval_rate}</code></td>
+</tr>
+<tr>
+<td><code>get_crawl_success_by_platform()</code></td>
+<td><code>site_platform, crawl_strategy</code></td>
+<td><code>{site_platform, crawl_strategy, total, successes, success_rate, avg_content_length, avg_duration_ms}</code></td>
+</tr>
+<tr>
+<td><code>get_eval_score_distribution()</code></td>
+<td><code>capability, agent_name</code></td>
+<td><code>{capability, agent_name, avg_score, median_score, min_score, max_score, total, hallucination_rate}</code></td>
+</tr>
+<tr>
+<td><code>get_agent_run_durations()</code></td>
+<td><code>agent_name, capability</code></td>
+<td><code>{agent_name, capability, avg_duration_ms, p50_duration_ms, p95_duration_ms, total}</code></td>
+</tr>
+<tr>
+<td><code>get_feedback_summary()</code></td>
+<td><em>(none)</em></td>
+<td><code>{total_rows, unique_businesses, avg_eval_score, hallucination_rate, approval_rate, crawl_success_rate, avg_run_duration_ms}</code></td>
+</tr>
+</tbody>
+</table>
+<p>Source: <code>lib/db/hephae_db/bigquery/feedback_reader.py</code></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -12,6 +12,7 @@ import DiscoveryProgress, { ALL_DISCOVERY_MESSAGES, useRotatingMessage } from '.
 import { NeuralBackground } from './NeuralBackground';
 import { usePlacesAutocomplete } from './usePlacesAutocomplete';
 import type { PlacePrediction } from './usePlacesAutocomplete';
+import OverviewCard from './OverviewCard';
 
 // PlacePrediction type imported from usePlacesAutocomplete
 
@@ -382,6 +383,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                 `}>
                                     {isWelcome ? (
                                         <TypewriterText text={msg.text} />
+                                    ) : (msg as any).overview ? (
+                                        <OverviewCard
+                                            overview={(msg as any).overview}
+                                            onCapabilityClick={onSelectCapability}
+                                            isAuthenticated={!capabilitiesLocked}
+                                        />
                                     ) : msg.role === 'model' ? (
                                         <MarkdownRenderer content={msg.text} />
                                     ) : (

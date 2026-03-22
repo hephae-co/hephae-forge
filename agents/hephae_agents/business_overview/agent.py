@@ -1,9 +1,9 @@
-"""Business Overview agent — lightweight Google Search + Maps Grounding Lite.
+"""Business Overview agent — Google Search + Maps Grounding + Zipcode/Pulse data.
 
-Produces a quick business overview for unauthenticated users by:
+Produces a rich business overview by:
 1. Google Search: business reputation, reviews, news
 2. Maps Grounding Lite: nearby competitors, density, ratings
-3. Synthesizer: merges search + maps + zipcode context into overview
+3. Synthesizer: merges search + maps + zipcode profile + pulse data into structured overview
 """
 
 from __future__ import annotations
@@ -21,6 +21,9 @@ Return a JSON object with:
 - onlinePresence: brief assessment of their digital footprint (website, reviews, social mentions)
 - recentNews: any recent news or notable mentions (list of 1-3 items, or empty list)
 - localTrends: trends for this business category in the area
+- rating: the business's Google rating if found (number or null)
+- reviewCount: approximate number of Google reviews if found (number or null)
+- website: the business's website URL if found (string or null)
 
 Return ONLY valid JSON. No markdown fencing."""
 
@@ -38,22 +41,64 @@ Return a JSON object with:
 Return ONLY valid JSON. No markdown fencing."""
 
 
-SYNTHESIZER_INSTRUCTION = """You are Hephae, an intelligent business advisor. You combine multiple data sources to give business owners a clear, actionable overview.
+SYNTHESIZER_INSTRUCTION = """You are Hephae, an intelligent business advisor. You combine multiple data sources to give business owners a clear, impactful overview.
 
-You will receive:
-- Google Search findings about the business (in session state as 'searchResults')
-- Google Maps competitor data (in session state as 'mapsData')
-- Local zipcode research context (in session state as 'zipcodeContext')
+You will receive in session state:
+- 'searchResults': Google Search findings about the business
+- 'mapsData': Google Maps competitor data
+- 'zipcodeContext': zipcode research (demographics, economy)
+- 'zipcodeProfile': discovered data sources for this zip (census, weather, news, etc.)
+- 'latestPulse': this week's intelligence pulse (headline, insights, local events) — may be null
 
-Synthesize all available data into a concise, engaging business overview.
+Synthesize ALL available data into a structured overview. Use real numbers from the data.
 
-Return a JSON object with exactly these fields:
-- summary: 3-4 sentence overview of the business and its market position. Be specific with any numbers or facts found.
-- footTrafficInsight: What the data suggests about foot traffic patterns and busy times for this type of business in this area. If limited data, note that and give general category insights.
-- localMarketContext: Key economic/demographic facts about the area that affect this business. Use zipcode research data if available.
-- competitiveLandscape: How many competitors are nearby, who the top ones are, and how saturated the market is.
-- keyOpportunities: list of 2-3 specific, actionable opportunities based on the data (e.g., "Your competitors average 4.2 stars — strong reviews could differentiate you")
+Return a JSON object with EXACTLY these fields:
 
-Be direct and data-driven. Use the "sassy advisor" tone — professional but provocative. Highlight what the business owner might be missing.
+{
+  "businessSnapshot": {
+    "name": "business name",
+    "rating": 4.5 or null,
+    "reviewCount": 120 or null,
+    "website": "url" or null,
+    "category": "Restaurant, Cafe, etc."
+  },
+  "marketPosition": {
+    "competitorCount": 10,
+    "saturationLevel": "moderate",
+    "ranking": "Rated 4.5 vs area average of 4.1",
+    "topCompetitors": [{"name": "Competitor A", "rating": 4.2}]
+  },
+  "localEconomy": {
+    "medianIncome": "$95,259" or null,
+    "population": "28,428" or null,
+    "keyFact": "One standout demographic fact that matters for this business"
+  },
+  "localBuzz": {
+    "headline": "This week's main story" or null,
+    "events": [{"what": "event name", "when": "Saturday"}],
+    "trend": "What locals are talking about"
+  },
+  "keyOpportunities": [
+    {
+      "title": "Short actionable title",
+      "detail": "Why this matters with specific numbers",
+      "dataPoint": "The key number (e.g., '-4.33% seafood prices')"
+    }
+  ],
+  "capabilityTeasers": {
+    "margin": "Teaser about pricing opportunity with a real number, or null",
+    "traffic": "Teaser about foot traffic with a real number, or null",
+    "seo": "Teaser about online presence with a real number, or null",
+    "competitive": "Teaser about competitive landscape with a real number, or null",
+    "social": "Teaser about social media opportunity, or null"
+  }
+}
+
+Rules:
+- Use REAL numbers from the data — census population, median income, competitor counts, ratings, pulse insights
+- If a data source is missing, set that section/field to null — do NOT hallucinate
+- capabilityTeasers should be enticing one-liners that make the business owner want to dig deeper
+- Be direct, data-driven, slightly provocative ("Your competitors average 4.2 stars — you're at 4.5. That's your moat.")
+- localBuzz should only be populated if latestPulse data exists
 
 Return ONLY valid JSON. No markdown fencing."""

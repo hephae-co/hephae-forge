@@ -426,38 +426,18 @@ export default function Home() {
       if (res.ok) {
         const overview = await res.json();
 
-        // Format the overview as a rich chat message
-        const overviewParts = [];
-        if (overview.summary) overviewParts.push(overview.summary);
-        if (overview.footTrafficInsight) overviewParts.push(`**Foot Traffic**: ${overview.footTrafficInsight}`);
-        if (overview.localMarketContext) overviewParts.push(`**Local Market**: ${overview.localMarketContext}`);
-        if (overview.competitiveLandscape) overviewParts.push(`**Competition**: ${overview.competitiveLandscape}`);
-        if (overview.keyOpportunities?.length) {
-          overviewParts.push(`**Opportunities**:\n${overview.keyOpportunities.map((o: string) => `- ${o}`).join('\n')}`);
-        }
-
-        const overviewText = overviewParts.join('\n\n');
-        setMessages(prev => [...prev, msg('model', overviewText)]);
-
-        // Show enticing message to create account for deeper analysis
-        setMessages(prev => [...prev, msg('model', `Want deeper analysis? **Sign in** to unlock detailed SEO audits, competitor breakdowns, margin analysis, and more.`)]);
+        // Add structured overview as a special chat message with overview data
+        const overviewMsg = msg('model', '');
+        (overviewMsg as any).overview = overview;
+        setMessages(prev => [...prev, overviewMsg]);
       } else {
         console.error("Overview returned", res.status);
-        setMessages(prev => [...prev, msg('model', `I found **${identity.name}** but couldn't generate a full overview right now. Sign in for detailed analysis.`)]);
+        setMessages(prev => [...prev, msg('model', `I found **${identity.name}** but couldn't generate a full overview right now. Try again in a moment.`)]);
       }
     } catch (e) {
       console.error("Overview failed", e);
       setMessages(prev => [...prev, msg('model', `Something went wrong generating the overview. Please try again.`)]);
     } finally {
-      // Show capabilities as locked (user must sign in)
-      const caps = [
-        { id: 'surgery', label: 'Am I undercharging for something?' },
-        { id: 'traffic', label: 'When is my busiest time of day?' },
-        { id: 'seo', label: 'Can people find me on Google?' },
-        { id: 'competitive', label: 'How do I stack up against competitors?' },
-        { id: 'marketing', label: 'How strong is my social media?' },
-      ];
-      setCapabilities(caps);
       setIsDiscovering(false);
       setActiveCapability(null);
       setCapabilityStartTime(null);

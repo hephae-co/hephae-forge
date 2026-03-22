@@ -1,5 +1,5 @@
 # Agent Catalog
-> Auto-generated from codebase on 2026-03-15. Do not edit manually — run `/hephae-refresh-docs` to update.
+> Auto-generated from codebase on 2026-03-22. Do not edit manually — run `/hephae-refresh-docs` to update.
 
 ---
 
@@ -8,24 +8,25 @@
 | Tier | Constant | Model ID | Use Case |
 |------|----------|----------|----------|
 | PRIMARY | `AgentModels.PRIMARY_MODEL` | `gemini-3.1-flash-lite-preview` | All standard agents |
+| SYNTHESIS | `AgentModels.SYNTHESIS_MODEL` | `gemini-3-flash-preview` | Final synthesis stages |
 | FALLBACK | `AgentModels.FALLBACK_MODEL` | `gemini-3-flash-preview` | Auto-fallback on 429/503/529 |
 | CREATIVE_VISION | `AgentModels.CREATIVE_VISION_MODEL` | `gemini-3.1-flash-image-preview` | Image generation |
 
 **Thinking Presets** (via `ThinkingPresets`):
 
-| Preset | Configuration | Used By |
-|--------|---------------|---------|
-| MEDIUM | `thinking_level="MEDIUM"` | All evaluator agents |
-| HIGH | `thinking_level="HIGH"` | CompetitorAgent, MarketPositioningAgent, SocialStrategistAgent |
-| DEEP | `thinking_budget=8192` | SEO Auditor, BlogWriterAgent, IndustryAnalystAgent, AreaSummaryAgent, EnhancedAreaSummaryAgent |
+| Preset | Use Case |
+|--------|----------|
+| MEDIUM | Evaluators |
+| HIGH | Competitive positioning, social strategist, competitor discovery |
+| DEEP | SEO auditor, blog writer, complex analysis |
 
-**File:** `lib/common/hephae_common/model_config.py`
+> Source: `lib/common/hephae_common/model_config.py`
 
 ---
 
 ## 2. Agent Versions
 
-Source: `apps/api/hephae_api/config.py` (`AgentVersions` class)
+All versions are tracked in `apps/api/hephae_api/config.py` under `AgentVersions`.
 
 ### Discovery Pipeline
 
@@ -46,547 +47,300 @@ Source: `apps/api/hephae_api/config.py` (`AgentVersions` class)
 | NEWS_DISCOVERY | 1.0.0 | |
 | DISCOVERY_REVIEWER | 1.0.0 | |
 
-### Capability Agents
+### Analysis Agents
 
 | Agent | Version | Notes |
 |-------|---------|-------|
+| MARGIN_SURGEON | 1.1.0 | MINOR: PDF extraction, menuNotFound flow, pre-discovered delivery URLs |
 | SEO_AUDITOR | 1.1.0 | MINOR: switched to PRIMARY_MODEL + DEEP thinking |
 | TRAFFIC_FORECASTER | 1.0.0 | |
 | COMPETITIVE_ANALYZER | 1.0.0 | |
-| MARGIN_SURGEON | 1.1.0 | MINOR: PDF extraction, menuNotFound flow, pre-discovered delivery URLs |
-| SOCIAL_MEDIA_AUDITOR | 1.0.0 | |
 
 ### Marketing / Social
 
 | Agent | Version | Notes |
 |-------|---------|-------|
 | MARKETING_SWARM | 1.0.0 | |
+| SOCIAL_MEDIA_AUDITOR | 1.0.0 | |
 | SOCIAL_POST_GENERATOR | 3.0.0 | MAJOR: CDN report links + social card images, reports via cdn.hephae.co |
 | BLOG_WRITER | 1.1.0 | MINOR: switched to PRIMARY_MODEL + DEEP thinking |
 
-### Research
+### Research Agents
 
 | Agent | Version | Notes |
 |-------|---------|-------|
 | LOCAL_CATALYST | 1.1.0 | MINOR: switched to PRIMARY_MODEL + DEEP thinking |
 | DEMOGRAPHIC_EXPERT | 1.1.0 | MINOR: switched to PRIMARY_MODEL + DEEP thinking |
 
-### Qualification / Review
+### Other
 
 | Agent | Version | Notes |
 |-------|---------|-------|
+| WEEKLY_PULSE | 1.0.0 | |
 | QUALIFICATION_SCANNER | 1.0.0 | |
 
 ---
 
-## 3. Discovery Agents
+## 3. Discovery Pipeline Agents
 
-All discovery agents live in `agents/hephae_agents/discovery/agent.py`.
+The discovery pipeline is a 4-stage sequential agent (`DiscoveryPipeline`):
 
-### DiscoveryPipeline (SequentialAgent)
+### Stage 1: SiteCrawlerAgent
+- **Model**: PRIMARY
+- **Tools**: `playwright_tool`, `crawl4ai_tool`, `crawl4ai_advanced_tool`, `crawl4ai_deep_tool`
+- **Output key**: `rawSiteData`
+- **Purpose**: Crawls the business URL once to extract raw site data
 
-The top-level orchestrator. Runs Phase 1 then Phase 2 sequentially.
+### Stage 1.5: EntityMatcherAgent
+- **Model**: PRIMARY
+- **Tools**: None (pure analysis)
+- **Output key**: `entityMatchResult`
+- **Output schema**: `EntityMatchOutput`
+- **Purpose**: Validates the crawled site matches the target business; runner aborts if mismatch
 
-**Sub-agents:** `DiscoveryPhase1` -> `DiscoveryPhase2`
+### Stage 2: DiscoveryFanOut (ParallelAgent — 9 sub-agents)
 
----
+| Sub-Agent | Output Key | Tools | Stage Gating |
+|-----------|-----------|-------|--------------|
+| ThemeAgent | `themeData` | google_search | None |
+| ContactAgent | `contactData` | google_search, playwright | Skip if email + phone already found |
+| SocialMediaAgent | `socialData` | google_search | Skip if 3+ social links found |
+| MenuAgent | `menuData` | google_search, playwright, crawl4ai_advanced, crawl4ai_deep | Skip if menuUrl already found |
+| MapsAgent | `mapsData` | google_search | None |
+| CompetitorAgent | `competitorData` | google_search, crawl4ai, crawl4ai_advanced | None (HIGH thinking) |
+| NewsAgent | `newsData` | google_search | None |
+| BusinessOverviewAgent | `aiOverview` | google_search | None |
+| ChallengesAgent | `challengesData` | google_search | None |
 
-### Phase 1: Crawl + Entity Validation
+All fan-out agents receive `rawSiteData` via dynamic instruction injection. ContactAgent and MenuAgent additionally receive targeted crawl hints (discovered contact/menu pages from Stage 1).
 
-#### SiteCrawlerAgent
-| | |
-|---|---|
-| **Name** | `SiteCrawlerAgent` |
-| **Model** | PRIMARY (`gemini-3.1-flash-lite-preview`) |
-| **Thinking** | None |
-| **Tools** | `playwright_tool`, `crawl4ai_tool`, `crawl4ai_advanced_tool`, `crawl4ai_deep_tool` |
-| **Output Key** | `rawSiteData` |
-| **Description** | Crawls the target business URL to extract raw site content, contact pages, social anchors, menu URLs, and delivery platform links. Produces the foundational data that all Stage 2 agents consume. |
+### Stage 3: SocialProfilerAgent
+- **Model**: PRIMARY
+- **Tools**: `google_search_tool`, `crawl4ai_advanced_tool`
+- **Output key**: `socialProfileMetrics`
+- **Purpose**: Crawls discovered social URLs for follower counts, engagement metrics
 
-#### EntityMatcherAgent
-| | |
-|---|---|
-| **Name** | `EntityMatcherAgent` |
-| **Model** | PRIMARY |
-| **Thinking** | None |
-| **Tools** | None (pure analysis) |
-| **Output Key** | `entityMatchResult` |
-| **Output Schema** | `EntityMatchOutput` |
-| **Description** | Validates that the crawled site actually belongs to the target business. Prevents wasted compute on mismatched URLs. If it fails, Phase 2 is skipped entirely. |
+### Stage 4: DiscoveryReviewerAgent
+- **Model**: PRIMARY
+- **Tools**: `validate_url_tool`, `google_search_tool`
+- **Output key**: `reviewerData`
+- **Purpose**: Validates all URLs discovered in earlier stages, corrects invalid ones
 
----
-
-### Phase 2: Fan-Out + Profiling + Review
-
-#### DiscoveryFanOut (ParallelAgent)
-
-Runs 9 specialized sub-agents concurrently. Three agents (Contact, Social, Menu) have stage gating that skips them if Stage 1 already found sufficient data.
-
-##### ThemeAgent
-| | |
-|---|---|
-| **Model** | PRIMARY |
-| **Tools** | `google_search_tool` |
-| **Output Key** | `themeData` |
-| **Description** | Extracts visual theme, branding, and persona information from the raw crawl data plus supplementary Google searches. |
-
-##### ContactAgent
-| | |
-|---|---|
-| **Model** | PRIMARY |
-| **Tools** | `google_search_tool`, `playwright_tool` |
-| **Output Key** | `contactData` |
-| **Gated** | Skipped if deterministic extraction already found email + phone |
-| **Description** | Discovers contact information (email, phone, contact form URL) by crawling contact pages and searching. Uses targeted crawl of discovered contact page URLs. |
-
-##### SocialMediaAgent
-| | |
-|---|---|
-| **Model** | PRIMARY |
-| **Tools** | `google_search_tool` |
-| **Output Key** | `socialData` |
-| **Gated** | Skipped if crawl found 3+ social links |
-| **Description** | Finds social media profile URLs (Instagram, Facebook, Twitter, TikTok, Yelp) for the business. |
-
-##### MenuAgent
-| | |
-|---|---|
-| **Model** | PRIMARY |
-| **Tools** | `google_search_tool`, `playwright_tool`, `crawl4ai_advanced_tool`, `crawl4ai_deep_tool` |
-| **Output Key** | `menuData` |
-| **Gated** | Skipped if crawl already found a menu URL |
-| **Description** | Searches for the business menu, including delivery platform listings (DoorDash, Grubhub, UberEats) when no direct menu is found. |
-
-##### MapsAgent
-| | |
-|---|---|
-| **Model** | PRIMARY |
-| **Tools** | `google_search_tool` |
-| **Output Key** | `mapsData` |
-| **Description** | Gathers Google Maps data including ratings, reviews, hours, and address verification. |
-
-##### CompetitorAgent
-| | |
-|---|---|
-| **Model** | PRIMARY |
-| **Thinking** | HIGH |
-| **Tools** | `google_search_tool`, `crawl4ai_tool`, `crawl4ai_advanced_tool` |
-| **Output Key** | `competitorData` |
-| **Description** | Identifies and researches local competitors by searching and crawling competitor websites for pricing, positioning, and market data. |
-
-##### NewsAgent
-| | |
-|---|---|
-| **Model** | PRIMARY |
-| **Tools** | `google_search_tool` |
-| **Output Key** | `newsData` |
-| **Description** | Searches for recent news articles, press mentions, and media coverage about the business. |
-
-##### BusinessOverviewAgent
-| | |
-|---|---|
-| **Model** | PRIMARY |
-| **Tools** | `google_search_tool` |
-| **Output Key** | `aiOverview` |
-| **Description** | Generates a concise AI-powered business overview combining crawl data with Google search results. |
-
-##### ChallengesAgent
-| | |
-|---|---|
-| **Model** | PRIMARY |
-| **Tools** | `google_search_tool` |
-| **Output Key** | `challengesData` |
-| **Description** | Dedicated pain points researcher that identifies specific challenges and problems the business faces. |
-
-#### SocialProfilerAgent
-| | |
-|---|---|
-| **Name** | `SocialProfilerAgent` |
-| **Model** | PRIMARY |
-| **Tools** | `google_search_tool`, `crawl4ai_advanced_tool` |
-| **Output Key** | `socialProfileMetrics` |
-| **Description** | Crawls discovered social profile URLs to extract engagement metrics (followers, posting frequency, engagement rates) for each platform. Runs after the fan-out so it has social URLs available. |
-
-#### DiscoveryReviewerAgent
-| | |
-|---|---|
-| **Name** | `DiscoveryReviewerAgent` |
-| **Model** | PRIMARY |
-| **Tools** | `validate_url_tool`, `google_search_tool` |
-| **Output Key** | `reviewerData` |
-| **Description** | Final validation stage that cross-references all discovery data, validates URLs, corrects invalid ones, and ensures data consistency across all 9 sub-agent outputs. |
+> Source: `agents/hephae_agents/discovery/agent.py`
 
 ---
 
-## 4. Qualification Agents
+## 4. Analysis Capability Agents
 
-### QualityGateAgent
+### 4.1 SEO Auditor (`seoAuditor`)
+- **Model**: PRIMARY + DEEP thinking
+- **Tools**: `google_search_tool`, `pagespeed_tool`, `load_memory_tool`
+- **Architecture**: Single LlmAgent
+- **Output**: Comprehensive SEO audit across 5 categories (technical, content, UX, performance, authority)
 
-| | |
-|---|---|
-| **File** | `apps/api/hephae_api/workflows/scheduled_discovery/quality_gate.py` |
-| **Name** | `QualityGateAgent` |
-| **Model** | PRIMARY |
-| **Thinking** | None |
-| **Tools** | `qualify()` (FunctionTool) |
-| **Description** | Critical filter between discovery and capability analysis. Disqualifies chains/franchises, businesses with no contact info, permanently closed businesses, and profiles too thin for meaningful analysis. Fail-open on agent error. |
+> Source: `agents/hephae_agents/seo_auditor/agent.py`
 
-### ReviewerAgent
+### 4.2 Traffic Forecaster (`ForecasterAgent`)
+- **Model**: PRIMARY (gatherers) + PRIMARY (synthesis with `response_schema`)
+- **Architecture**: ParallelAgent (3 gatherers) + direct Gemini synthesis call
 
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/reviewer/runner.py` |
-| **Name** | `ReviewerAgent` |
-| **Model** | PRIMARY |
-| **Thinking** | None |
-| **Tools** | `record_review()` (FunctionTool) |
-| **Description** | Scores a business 1-10 for outreach readiness based on its identity and all capability outputs. Identifies the best contact channel and provides strengths/concerns for the sales team. |
+| Sub-Agent | Tools | Output Key |
+|-----------|-------|-----------|
+| PoiGatherer | google_search | `poiDetails` |
+| WeatherGatherer | weather_tool, google_search | `weatherData` |
+| EventsGatherer | google_search | `eventsData` |
 
-### BatchSupervisorAgent
+Synthesis uses `generate_with_fallback()` with `TrafficForecastOutput` response schema and temperature 0.2.
 
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/discovery/batch_supervisor.py` |
-| **Name** | `batch_supervisor` |
-| **Model** | PRIMARY |
-| **Thinking** | None |
-| **Tools** | None |
-| **Description** | Summarizes a large discovery sweep for the Admin UI. Identifies top "gold" leads, flags data quality issues, and recommends next steps. Runs as Phase 7 of area research. |
+Supports `skip_synthesis=True` for deferred batch synthesis — returns raw intel without the final synthesis call.
 
----
+> Source: `agents/hephae_agents/traffic_forecaster/agent.py`
 
-## 5. Capability Agents
+### 4.3 Competitive Analysis (`CompetitivePipeline`)
+- **Architecture**: SequentialAgent (2 stages)
 
-### SEO Auditor
+| Stage | Agent | Model | Thinking | Tools |
+|-------|-------|-------|----------|-------|
+| 1 | CompetitorProfilerAgent | PRIMARY | Default | google_search, load_memory |
+| 2 | MarketPositioningAgent | PRIMARY | HIGH | None (output_schema: `CompetitiveAnalysisOutput`) |
 
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/seo_auditor/agent.py` |
-| **Runner** | `agents/hephae_agents/seo_auditor/runner.py` |
-| **Name** | `seoAuditor` |
-| **Model** | PRIMARY |
-| **Thinking** | DEEP (`thinking_budget=8192`) |
-| **Tools** | `google_search_tool`, `pagespeed_tool`, `load_memory_tool` |
-| **Description** | Comprehensive SEO auditor that scores websites across 5 categories (Technical, Content, UX, Performance, Authority). Uses Google Search for competitive benchmarking and PageSpeed Insights for performance metrics. |
+State flows via session: `competitorBrief` (output of Stage 1) is read by Stage 2.
 
-### Traffic Forecaster
+> Source: `agents/hephae_agents/competitive_analysis/agent.py`
 
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/traffic_forecaster/agent.py` |
-| **Runner** | `agents/hephae_agents/traffic_forecaster/runner.py` |
-| **Architecture** | ParallelAgent gathering -> separate synthesis call |
+### 4.4 Margin Surgeon (`MarginSurgeryOrchestrator`)
+- **Architecture**: SequentialAgent (4 stages with parallel fan-out)
 
-**Sub-agents (ContextGatherer ParallelAgent):**
+```
+VisionIntakeAgent → (BenchmarkerAgent || CommodityWatchdogAgent) → SurgeonAgent → AdvisorAgent
+```
 
-| Agent | Tools | Output Key | Description |
-|-------|-------|------------|-------------|
-| `PoiGatherer` | `google_search_tool` | `poiDetails` | Researches nearby points of interest and their impact on foot traffic |
-| `WeatherGatherer` | `weather_tool`, `google_search_tool` | `weatherData` | Gathers real-time weather forecasts for the business location |
-| `EventsGatherer` | `google_search_tool` | `eventsData` | Discovers upcoming local events that could affect traffic patterns |
+| Agent | Tools | Output Key | Output Schema |
+|-------|-------|-----------|---------------|
+| VisionIntakeAgent | None | `parsedMenuItems` | `MenuIntakeOutput` |
+| BenchmarkerAgent | `benchmark_tool` | `competitorBenchmarks` | None (tools conflict) |
+| CommodityWatchdogAgent | `commodity_inflation_tool` | `commodityTrends` | None (tools conflict) |
+| SurgeonAgent | `surgery_tool` | `menuAnalysis` | None (tools conflict) |
+| AdvisorAgent | None | `strategicAdvice` | `AdvisorOutput` |
 
-**Synthesis:** Uses `generate_with_fallback` (PRIMARY model, `temperature=0.2`, structured JSON output with `TrafficForecastOutput` schema) to produce a 3-day foot traffic forecast with hourly slots. Supports deferred mode (`skip_synthesis=True`) for workflow pipelining.
+BenchmarkerAgent and CommodityWatchdogAgent run in parallel via `BenchmarkAndCommodity` ParallelAgent.
 
-### Competitive Analyzer
+> Source: `agents/hephae_agents/margin_analyzer/agent.py`
 
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/competitive_analysis/agent.py` |
-| **Runner** | `agents/hephae_agents/competitive_analysis/runner.py` |
-| **Architecture** | SequentialAgent: CompetitorProfiler -> MarketPositioning |
+### 4.5 Social Media Auditor (`SocialAuditPipeline`)
+- **Architecture**: SequentialAgent (2 stages)
 
-| Agent | Model | Thinking | Tools | Output Key |
-|-------|-------|----------|-------|------------|
-| `CompetitorProfilerAgent` | PRIMARY | None | `google_search_tool`, `load_memory_tool` | `competitorBrief` |
-| `MarketPositioningAgent` | PRIMARY | HIGH | None | (output_schema: `CompetitiveAnalysisOutput`) |
+| Stage | Agent | Model | Thinking | Tools |
+|-------|-------|-------|----------|-------|
+| 1 | SocialResearcherAgent | PRIMARY | Default | google_search, crawl4ai_advanced, load_memory |
+| 2 | SocialStrategistAgent | PRIMARY | HIGH | None (output_schema: `SocialMediaAuditOutput`) |
 
-**Description:** Two-stage pipeline that first profiles each competitor via Google Search, then synthesizes market positioning analysis with HIGH thinking for strategic depth.
-
-### Margin Surgeon
-
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/margin_analyzer/agent.py` |
-| **Runner** | `agents/hephae_agents/margin_analyzer/runner.py` |
-| **Architecture** | SequentialAgent: VisionIntake -> (Benchmarker \|\| CommodityWatchdog) -> Surgeon -> Advisor |
-
-| Agent | Model | Tools | Output Key | Schema |
-|-------|-------|-------|------------|--------|
-| `VisionIntakeAgent` | PRIMARY | None | `parsedMenuItems` | `MenuIntakeOutput` |
-| `BenchmarkerAgent` | PRIMARY | `benchmark_tool` | `competitorBenchmarks` | -- |
-| `CommodityWatchdogAgent` | PRIMARY | `commodity_inflation_tool` | `commodityTrends` | -- |
-| `SurgeonAgent` | PRIMARY | `surgery_tool` | `menuAnalysis` | -- |
-| `AdvisorAgent` | PRIMARY | None | `strategicAdvice` | `AdvisorOutput` |
-
-**Description:** Five-stage menu profitability pipeline. Parses menu items from screenshots/PDFs, benchmarks prices against competitors, checks commodity inflation trends, performs margin surgery analysis, and produces strategic pricing advice. Benchmarker and CommodityWatchdog run in parallel.
-
-### Social Media Auditor
-
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/social/media_auditor/agent.py` |
-| **Runner** | `agents/hephae_agents/social/media_auditor/runner.py` |
-| **Architecture** | SequentialAgent: SocialResearcher -> SocialStrategist |
-
-| Agent | Model | Thinking | Tools | Output Key |
-|-------|-------|----------|-------|------------|
-| `SocialResearcherAgent` | PRIMARY | None | `google_search_tool`, `crawl4ai_advanced_tool`, `load_memory_tool` | `researchBrief` |
-| `SocialStrategistAgent` | PRIMARY | HIGH | None | (output_schema: `SocialMediaAuditOutput`) |
-
-**Description:** Two-stage audit that first researches each social platform via Google Search and crawling, then synthesizes a scored strategy with platform-by-platform recommendations using HIGH thinking.
+> Source: `agents/hephae_agents/social/media_auditor/agent.py`
 
 ---
 
-## 6. Evaluator Agents
+## 5. Marketing / Content Agents
 
-All evaluators live in `agents/hephae_agents/evaluators/`. Every evaluator uses PRIMARY model + MEDIUM thinking and outputs `EvaluationOutput` (`{score, isHallucinated, issues}`). Pass threshold: score >= 80 AND !isHallucinated.
+### 5.1 Marketing Swarm
 
-### SEO Evaluator
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/evaluators/seo_evaluator.py` |
-| **Name** | `seo_evaluator` |
-| **Description** | Reviews SEO audit output for completeness, coherence, and URL-relevance. Checks whether the audit actually describes the target website and flags hallucinated findings. |
+Pipeline: CreativeDirector → PlatformRouter → Instagram/Blog Copywriter (conditional).
 
-### Traffic Evaluator
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/evaluators/traffic_evaluator.py` |
-| **Name** | `traffic_evaluator` |
-| **Description** | Validates traffic forecast plausibility: geographic consistency, time-slot logic, weather accuracy, event relevance, and score distribution. Cross-checks against admin research context when available. Conservative hallucination flagging since the forecaster has real-time search access. |
+| Agent | Model | Output Key |
+|-------|-------|-----------|
+| CreativeDirectorAgent | PRIMARY | `creativeDirection` |
+| PlatformRouterAgent | PRIMARY | `platformDecision` |
+| InstagramCopywriterAgent | PRIMARY | `instagramDraft` |
+| BlogCopywriterAgent | PRIMARY | `blogDraft` |
 
-### Competitive Evaluator
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/evaluators/competitive_evaluator.py` |
-| **Name** | `competitive_evaluator` |
-| **Description** | Validates competitor names are plausible real businesses, analysis depth is sufficient, internal consistency holds, and insights are actionable. Conservative on hallucination since the analyzer uses Google Search. |
+Agents run sequentially via manual Runner calls (not a SequentialAgent).
 
-### Margin Surgeon Evaluator
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/evaluators/margin_surgeon_evaluator.py` |
-| **Name** | `margin_surgeon_evaluator` |
-| **Description** | Reviews margin analysis for menu item plausibility (e.g., no sushi for a pizza shop), score consistency, and strategic advice coherence. When food pricing context is provided, verifies that advice acknowledges commodity cost trends. |
+> Source: `agents/hephae_agents/social/marketing_swarm/agent.py`
 
----
+### 5.2 Social Post Generator (`SocialPostParallel`)
+- **Architecture**: ParallelAgent (5 channels)
 
-## 7. Research Agents
+| Agent | Output Key | Output Schema |
+|-------|-----------|---------------|
+| InstagramPostAgent | `instagramPost` | `InstagramPostOutput` |
+| FacebookPostAgent | `facebookPost` | `FacebookPostOutput` |
+| TwitterPostAgent | `twitterPost` | `TwitterPostOutput` |
+| EmailOutreachAgent | `emailOutreach` | `EmailOutreachOutput` |
+| ContactFormAgent | `contactFormDraft` | `ContactFormOutput` |
 
-### Zip Code Research
+All agents use PRIMARY model. Falls back to template-based posts if any channel agent fails.
 
-#### ZipCodeResearchAgent
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/research/zipcode_research.py` |
-| **Name** | `zipcode_researcher` |
-| **Model** | PRIMARY |
-| **Tools** | `google_search` (ADK built-in) |
-| **Description** | Deep-researches a US zip code across 9 categories: geography, demographics, census/housing, business landscape, economic indicators, consumer behavior, infrastructure, upcoming events (2-week window), and weather/seasonal patterns. Extracts the DMA region name for Google Trends queries. |
+> Source: `agents/hephae_agents/social/post_generator/agent.py`
 
-#### ReportComposerAgent
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/research/zipcode_report_composer.py` |
-| **Name** | `zipcode_report_composer` |
-| **Model** | PRIMARY |
-| **Output Schema** | `ZipcodeReportComposerOutput` |
-| **Description** | Transforms raw research findings and Google Trends data into a structured 10-section zip code report with summaries, key facts, and source counts. |
+### 5.3 Blog Writer (`BlogPipeline`)
+- **Architecture**: SequentialAgent (2 stages)
 
-**Orchestrator:** `apps/api/hephae_api/workflows/orchestrators/zipcode_research.py` -- Pipeline: check cache -> research agent -> BigQuery trends -> report composer -> save to Firestore.
+| Stage | Agent | Model | Thinking | Output Key |
+|-------|-------|-------|----------|-----------|
+| 1 | ResearchCompilerAgent | PRIMARY | Default | `researchBrief` (`BlogResearchOutput`) |
+| 2 | BlogWriterAgent | PRIMARY | DEEP | `blogContent` |
 
-### Area Research
+Generates 800-1200 word blog posts from Firestore `latestOutputs`.
 
-#### AreaSummaryAgent
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/research/area_summary.py` |
-| **Name** | `area_summary` |
-| **Model** | PRIMARY |
-| **Thinking** | DEEP |
-| **Description** | Synthesizes multiple zip code reports into an area-level business opportunity summary with market opportunity, demographic fit, competitive landscape, trending insights, risks, and recommendations. |
+> Source: `agents/hephae_agents/social/blog_writer/agent.py`
 
-#### EnhancedAreaSummaryAgent
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/research/area_summary.py` |
-| **Name** | `enhanced_area_summary` |
-| **Model** | PRIMARY |
-| **Thinking** | DEEP |
-| **Description** | Enhanced version that synthesizes 6+ data sources (zip reports, industry analysis, news, Google Trends, FDA, BLS CPI, USDA prices, local catalysts, Census demographics) into a comprehensive area analysis. Uses concrete BLS/USDA numbers as evidence. |
+### 5.4 Outreach Generator
+- **Model**: PRIMARY
+- **Architecture**: Single LlmAgent
+- **Purpose**: Generates personalized marketing outreach content
 
-**Orchestrator:** `apps/api/hephae_api/workflows/orchestrators/area_research.py` -- 7-phase pipeline: resolve zip codes -> research each zip -> industry intelligence -> local sector analysis -> synthesis -> lead discovery -> batch supervision.
-
-### Sector Research
-
-**Orchestrator:** `apps/api/hephae_api/workflows/orchestrators/sector_research.py` -- Pipeline: industry analysis -> local trends per zip -> synthesis.
-
-### Intelligence Fan-Out (ParallelAgent)
-
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/research/intel_fan_out.py` |
-| **Name** | `IntelligenceFanOut` |
-| **Architecture** | ParallelAgent with 4 LLM sub-agents + parallel API data sources |
-
-| Sub-Agent | Model | Thinking | Tools | Output Key |
-|-----------|-------|----------|-------|------------|
-| `IndustryAnalystIntel` | PRIMARY | DEEP | None | `industryAnalysis` |
-| `IndustryNewsIntel` | PRIMARY | None | `google_search` | `industryNews` |
-| `LocalCatalystIntel` | PRIMARY | None | `google_search_tool`, `crawl4ai_advanced_tool` | `localCatalysts` |
-| `DemographicExpertIntel` | PRIMARY | None | `google_search_tool` | `demographicData` |
-
-**API Sources (run in parallel alongside LLM agents):** BLS CPI, USDA prices, FDA enforcements, BigQuery industry trends. Uses ADK context caching (15-min TTL, 1024-token minimum) to save prefill tokens across zip codes.
-
-### IndustryAnalystAgent
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/research/industry_analyst.py` |
-| **Name** | `industry_analyst` |
-| **Model** | PRIMARY |
-| **Thinking** | DEEP |
-| **Output Schema** | `IndustryAnalystOutput` |
-| **Description** | Performs deep industry/sector analysis covering market size, growth rate, challenges, opportunities, trends, consumer behavior shifts, technology adoption, regulatory environment, and financial benchmarks. |
-
-### IndustryNewsAgent
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/research/industry_news.py` |
-| **Name** | `industry_news` |
-| **Model** | PRIMARY |
-| **Tools** | `google_search` (ADK built-in) |
-| **Output Schema** | `IndustryNewsOutput` |
-| **Description** | Searches for recent industry news (last 6 months), commodity/input price trends, and regulatory updates relevant to a specific industry and area. |
-
-### LocalCatalystAgent
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/research/local_catalyst.py` |
-| **Name** | `local_catalyst` |
-| **Model** | PRIMARY |
-| **Tools** | `google_search_tool`, `crawl4ai_advanced_tool` |
-| **Description** | Deep researcher for forward-looking local government signals. Searches town council agendas, planning board minutes, and legal notices to find development catalysts (construction, zoning changes, grants, infrastructure projects) that will impact local businesses. |
-
-### DemographicExpertAgent
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/research/demographic_expert.py` |
-| **Name** | `demographic_expert` |
-| **Model** | PRIMARY |
-| **Tools** | `google_search_tool` |
-| **Description** | Targeted Census/ACS data researcher that finds authoritative demographic data (population, income, age distribution, housing, education, economic indicators) from data.census.gov and ACS 5-year estimates. Cites source years and prefers Census Bureau data over third-party aggregators. |
-
-### LocalSectorTrendsAgent
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/research/local_sector_trends.py` |
-| **Name** | `local_sector_trends` |
-| **Model** | PRIMARY |
-| **Description** | Extracts sector-specific trends from zip code research reports, including demand signals, competitor density, and local opportunities for a given industry. |
+> Source: `agents/hephae_agents/social/outreach_generator/agent.py`
 
 ---
 
-## 8. Social / Marketing Agents
+## 6. Other Agents
 
-### Marketing Swarm
+### 6.1 Insights Agent
+- **Model**: PRIMARY
+- **Architecture**: Single LlmAgent
+- **Purpose**: Synthesizes cross-capability findings (SEO, traffic, competitive, margin) into actionable insights
+- **Output schema**: `InsightsOutput` — `{summary, keyFindings[], recommendations[]}`
+- **Integrates**: Food pricing context from BLS/USDA when available
 
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/social/marketing_swarm/agent.py` |
-| **Runner** | (inline `run_marketing_pipeline` function) |
-| **Architecture** | Sequential: CreativeDirector -> PlatformRouter -> (Instagram OR Blog) Copywriter |
+> Source: `agents/hephae_agents/insights/insights_agent.py`
 
-| Agent | Model | Tools | Output Key |
-|-------|-------|-------|------------|
-| `CreativeDirectorAgent` | PRIMARY | None | `creativeDirection` |
-| `PlatformRouterAgent` | PRIMARY | None | `platformDecision` |
-| `InstagramCopywriterAgent` | PRIMARY | None | `instagramDraft` |
-| `BlogCopywriterAgent` | PRIMARY | None | `blogDraft` |
+### 6.2 Business Profiler (legacy)
+- **Architecture**: Python class (not an LLM agent)
+- **Purpose**: Crawls website, extracts colors/logo/persona, takes menu screenshot
+- **Tools**: `crawl_web_page`, `screenshot_page` (shared tools)
 
-**Description:** Three-stage content pipeline. The Creative Director sets the strategic direction, the Platform Router picks the best channel (Instagram or Blog), and the appropriate Copywriter generates a platform-specific draft. Supports admin research context (consumer market data, trending searches, demographics) for data-driven marketing.
+> Source: `agents/hephae_agents/business_profiler/agent.py`
 
-### Blog Writer
+### 6.3 Profile Builder (chatbot)
+- **Architecture**: Instruction-only agent (no `agent.py` LlmAgent defined, instruction used in chatbot flow)
+- **Purpose**: Guided chatbot flow to collect business details (social accounts, delivery platforms, menu URL, capabilities to run)
 
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/social/blog_writer/agent.py` |
-| **Runner** | `agents/hephae_agents/social/blog_writer/runner.py` |
-| **Architecture** | SequentialAgent: ResearchCompiler -> BlogWriter |
+> Source: `agents/hephae_agents/profile_builder/agent.py`
 
-| Agent | Model | Thinking | Tools | Output Key | Schema |
-|-------|-------|----------|-------|------------|--------|
-| `ResearchCompilerAgent` | PRIMARY | None | None | `researchBrief` | `BlogResearchOutput` |
-| `BlogWriterAgent` | PRIMARY | DEEP | None | `blogContent` | -- |
+### 6.4 Business Overview Agent
+- **Architecture**: 3-stage agent (Search + Maps + Synthesizer)
+- **Purpose**: Produces rich business overview combining Google Search reputation, Maps competitor density, zipcode research, and pulse data
+- **Output**: Structured JSON with `businessSnapshot`, `marketPosition`, `localEconomy`, `localBuzz`, `keyOpportunities`, `capabilityTeasers`
 
-**Description:** Two-stage blog generation pipeline. The ResearchCompiler distills all capability outputs (SEO, traffic, competitive, margin, marketing) into a research brief, then the BlogWriter generates an 800-1200 word authoritative HTML blog post using DEEP thinking.
+> Source: `agents/hephae_agents/business_overview/agent.py`
 
-### Social Post Generator
+### 6.5 Qualification Scanner
+- **Architecture**: Python functions (not an LLM agent for Step A; batched LLM for Step B tiebreaker)
+- **Purpose**: Two-step qualification — metadata scan + optional full probe + LLM classification
+- **Tools**: `page_fetcher`, `domain_analyzer`, `platform_detector`, `pixel_detector`, `contact_path_detector`, `meta_extractor`
 
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/social/post_generator/agent.py` |
-| **Runner** | `agents/hephae_agents/social/post_generator/runner.py` |
-| **Architecture** | ParallelAgent: 5 channel agents running concurrently |
-
-| Agent | Model | Output Key | Schema |
-|-------|-------|------------|--------|
-| `InstagramPostAgent` | PRIMARY | `instagramPost` | `InstagramPostOutput` |
-| `FacebookPostAgent` | PRIMARY | `facebookPost` | `FacebookPostOutput` |
-| `TwitterPostAgent` | PRIMARY | `twitterPost` | `TwitterPostOutput` |
-| `EmailOutreachAgent` | PRIMARY | `emailOutreach` | `EmailOutreachOutput` |
-| `ContactFormAgent` | PRIMARY | `contactFormDraft` | `ContactFormOutput` |
-
-**Description:** Generates outreach content for 5 channels in parallel from report data. Supports both simple (single summary) and rich (all latestOutputs) context modes. Includes CDN report links and social card image URLs. Falls back to template-based content on agent failure.
-
-### Outreach Generator
-
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/social/outreach_generator/agent.py` |
-| **Runner** | `agents/hephae_agents/social/outreach_generator/runner.py` |
-| **Name** | `OutreachGenerator` |
-| **Model** | PRIMARY |
-| **Tools** | None |
-| **Description** | Generates personalized marketing outreach content using industry intelligence. Takes business data, analysis insights, industry config, and report URL to produce tailored outreach messages. |
+> Source: `agents/hephae_agents/qualification/scanner.py`
 
 ---
 
-## 9. Insights Agent
+## 7. Evaluator Agents
 
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/insights/insights_agent.py` |
-| **Name** | `insights_agent` |
-| **Model** | PRIMARY |
-| **Thinking** | None |
-| **Tools** | None |
-| **Output Schema** | `InsightsOutput` |
-| **Description** | Cross-capability synthesizer that takes all capability outputs (SEO, traffic, competitive, margin) for a business and generates a summary, 3-5 key findings, and 3-5 prioritized recommendations. When food pricing context (BLS/USDA) is available, incorporates cost environment analysis into recommendations. Supports both single-business and batch generation modes. |
+| Agent | Name | Capability | Model | Thinking |
+|-------|------|-----------|-------|----------|
+| SeoEvaluatorAgent | `seo_evaluator` | SEO Audit | PRIMARY | MEDIUM |
+| TrafficEvaluatorAgent | `traffic_evaluator` | Traffic Forecast | PRIMARY | MEDIUM |
+| CompetitiveEvaluatorAgent | `competitive_evaluator` | Competitive Analysis | PRIMARY | MEDIUM |
+| MarginSurgeonEvaluatorAgent | `margin_surgeon_evaluator` | Margin Surgeon | PRIMARY | MEDIUM |
 
----
+All evaluators output `EvaluationOutput`: `{score: 0-100, isHallucinated: boolean, issues: string[]}`.
 
-## 10. Legacy Agents
+All use `fallback_on_error` for automatic model fallback.
 
-### ProfilerAgent
-
-| | |
-|---|---|
-| **File** | `agents/hephae_agents/business_profiler/agent.py` |
-| **Runner** | `agents/hephae_agents/business_profiler/runner.py` |
-| **Type** | Plain Python class (not an LlmAgent) |
-| **Description** | Legacy slow-path business profiler. Extracts colors, logo, and persona via `crawl_web_page` and takes a menu screenshot. Used by the analyze slow path only. |
+> Source: `agents/hephae_agents/evaluators/`
 
 ---
 
-## Agent Count Summary
+## 8. NEW: Industry Pulse Agents
 
-| Category | LlmAgent Count | Orchestrators |
-|----------|---------------|---------------|
-| Discovery | 13 | 2 SequentialAgents, 1 ParallelAgent |
-| Qualification / Review | 3 | -- |
-| Capabilities | 12 | 3 SequentialAgents, 2 ParallelAgents |
-| Evaluators | 4 | -- |
-| Research | 8 | 1 ParallelAgent (IntelligenceFanOut) |
-| Social / Marketing | 10 | 1 SequentialAgent, 1 ParallelAgent |
-| Insights | 1 | -- |
-| **Total** | **51** | **10** |
+### 8.1 Industry Trend Summarizer
+
+- **Agent name**: `industry_trend_summarizer`
+- **Model**: PRIMARY (`gemini-3.1-flash-lite-preview`)
+- **Thinking**: None (default)
+- **Architecture**: Single LlmAgent, instantiated per-call in `_generate_trend_summary()`
+- **System instruction**: "You are a concise economic analyst. Summarize data signals in 2-3 paragraphs with specific numbers. No advice, just facts."
+- **Purpose**: Generates a 2-3 paragraph national trend summary from pre-computed impact variables and triggered playbooks
+
+**Input context** (injected into prompt):
+- Pre-computed impact variables (e.g., `dairy_yoy_pct: 3.56`)
+- Triggered playbook names and first 120 chars of play text
+
+**Output**: Plain text summary (no JSON schema)
+
+> Source: `apps/api/hephae_api/workflows/orchestrators/industry_pulse.py`
+
+### 8.2 IndustryConfig Verticals
+
+Three verticals are currently registered:
+
+| Vertical | Aliases (sample) | Economist Context Focus |
+|----------|------------------|------------------------|
+| **restaurant** | restaurant, pizza, cafe, deli, coffee, grocery | Food cost inflation across proteins, dairy, produce. Margins 3-9%. |
+| **bakery** | bakery, patisserie, bread shop, donut shop, cupcake shop | Flour/wheat, eggs, butter, dairy, sugar — 20-35% of revenue. Net margins 4-15%. |
+| **barber** | barber, barbershop, salon, spa, nail salon | Barber/beauty services CPI. Labor 40-60%. A $30 haircut nets $12-15. |
+
+Adding a new vertical requires:
+1. Creating a new `IndustryConfig` instance
+2. Appending to the `_ALL` list
+3. Aliases are automatically indexed for `resolve()` lookup
+
+> Source: `apps/api/hephae_api/workflows/orchestrators/industries.py`

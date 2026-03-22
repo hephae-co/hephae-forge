@@ -1,5 +1,5 @@
 # Workflow Pipeline
-> Auto-generated from codebase on 2026-03-15. Do not edit manually — run `/hephae-refresh-docs` to update.
+> Auto-generated from codebase on 2026-03-22. Do not edit manually — run `/hephae-refresh-docs` to update.
 
 ## 1. Phase Transitions (WorkflowPhase)
 
@@ -30,7 +30,7 @@
                               |
                               v
                         +----------+
-                        | APPROVAL |----> (pauses for human review)
+                        | APPROVAL |  <-- pauses for human review
                         +-----+----+
                               |
                               v
@@ -43,198 +43,201 @@
                        | COMPLETED |
                        +-----------+
 
-  Any phase may transition to:
-                        +--------+
-                        | FAILED |
-                        +--------+
+           (any phase)
+               |
+               v         on unhandled exception
+            +--------+
+            | FAILED |
+            +--------+
 ```
 
-Source: `lib/common/hephae_common/models.py` — `WorkflowPhase(str, Enum)`
+**Enum values** (source: `lib/common/hephae_common/models.py`):
 
 | Value | Description |
 |-------|-------------|
 | `queued` | Workflow created, waiting to start |
 | `discovery` | Scanning zip codes for businesses |
 | `qualification` | Scoring and classifying discovered businesses |
-| `analysis` | Running capabilities (SEO, traffic, competitive, margin, social) |
-| `evaluation` | Evaluator agents validate capability outputs |
-| `approval` | Paused for human review — engine returns here |
-| `outreach` | Generating and sending outreach for approved businesses |
+| `analysis` | Running capability agents (SEO, traffic, competitive, margin, social) |
+| `evaluation` | Running evaluator agents on capability outputs |
+| `approval` | Paused — waiting for human approval before outreach |
+| `outreach` | Generating and sending outreach content |
 | `completed` | All phases finished successfully |
 | `failed` | Unrecoverable error — `lastError` field contains details |
 
+The engine resumes from the current phase on restart. The `APPROVAL` phase returns early without advancing, requiring an explicit `resume_from_outreach()` call.
+
+> Source: `apps/api/hephae_api/workflows/engine.py`
+
 ---
 
-## 2. Business Phase Transitions (BusinessPhase)
+## 2. Business Phase (BusinessPhase)
+
+Each business within a workflow tracks its own phase independently:
 
 ```
-  PENDING --> ENRICHING --> ANALYZING --> ANALYSIS_DONE
-                                              |
-                                              v
-                                         EVALUATING --> EVALUATION_DONE
-                                                             |
-                                              +--------------+--------------+
-                                              v                             v
-                                          APPROVED                      REJECTED
-                                              |
-                                              v
-                                        OUTREACHING
-                                           |     |
-                                           v     v
-                                  OUTREACH_DONE  OUTREACH_FAILED
+PENDING → ENRICHING → ANALYZING → ANALYSIS_DONE → EVALUATING → EVALUATION_DONE → APPROVED / REJECTED → OUTREACHING → OUTREACH_DONE / OUTREACH_FAILED
 ```
-
-Source: `lib/common/hephae_common/models.py` — `BusinessPhase(str, Enum)`
 
 | Value | Description |
 |-------|-------------|
-| `pending` | Discovered, awaiting processing |
-| `enriching` | Contact/metadata enrichment in progress |
+| `pending` | Discovered, awaiting enrichment |
+| `enriching` | Discovery pipeline running |
 | `analyzing` | Capability agents running |
-| `analysis_done` | All capabilities completed (or business skipped) |
-| `evaluating` | Evaluator agents scoring outputs |
-| `evaluation_done` | Evaluation complete |
-| `approved` | Human approved for outreach |
-| `rejected` | Human rejected |
-| `outreaching` | Outreach generation in progress |
-| `outreach_done` | Outreach sent successfully |
-| `outreach_failed` | Outreach delivery failed |
+| `analysis_done` | All capabilities complete |
+| `evaluating` | QA evaluators running |
+| `evaluation_done` | Evaluation complete, `qualityPassed` set |
+| `approved` | Human-approved for outreach |
+| `rejected` | Human-rejected |
+| `outreaching` | Outreach content being generated/sent |
+| `outreach_done` | Outreach complete |
+| `outreach_failed` | Outreach failed |
 
-Non-qualified businesses (parked/disqualified) are set directly to `analysis_done` and skipped during analysis.
+Non-qualified businesses (parked/disqualified) are set to `analysis_done` and skipped during the analysis phase.
 
----
-
-## 3. Phase Details
-
-| Phase | What It Does | Source File | Timeout / Limits |
-|-------|-------------|-------------|-----------------|
-| **DISCOVERY** | Scans one or more zip codes to find local businesses via Google Places / Maps. Runs zipcode, area, and sector research in parallel. Resolves URLs for all discovered businesses. | `apps/api/hephae_api/workflows/phases/discovery.py` | None (research staleness: 7 days full, 24h volatile) |
-| **QUALIFICATION** | Scores each business via metadata scan (Step A), optional full probe crawl (Step B), and batched LLM classification (Step C) for ambiguous cases. Classifies as QUALIFIED, PARKED, or DISQUALIFIED. | `apps/api/hephae_api/workflows/phases/qualification.py`, `agents/hephae_agents/qualification/scanner.py` | None |
-| **ANALYSIS** | Enriches qualified businesses (contact, persona, menu, competitors), then runs all enabled capabilities concurrently. Follows up with batch insights and batch synthesis (traffic + competitive). | `apps/api/hephae_api/workflows/phases/analysis.py`, `apps/api/hephae_api/workflows/phases/enrichment.py` | 40 min polling safety valve (`MAX_POLL_DURATION_SECONDS = 2400`), 10 min stuck-task threshold (`STUCK_TASK_THRESHOLD_SECONDS = 600`), 3 retries per capability with backoff [10s, 30s, 60s] |
-| **EVALUATION** | Runs evaluator agents for each capability output. Pass threshold: score >= 80 AND !isHallucinated. Uses batch evaluation with fallback to sequential. | `apps/api/hephae_api/workflows/phases/evaluation.py` | `BATCH_EVAL_FALLBACK_TIMEOUT` = 300s (5 min) |
-| **APPROVAL** | Engine pauses and returns control. Human reviews evaluation results in admin UI. Resumes via `resume_from_outreach()`. | `apps/api/hephae_api/workflows/engine.py` (line 104) | None (indefinite human wait) |
-| **OUTREACH** | Generates personalized outreach materials for approved businesses and sends them. Skipped if zero businesses are approved. | `apps/api/hephae_api/workflows/phases/outreach.py` | None |
+> Source: `lib/common/hephae_common/models.py`
 
 ---
 
-## 4. Capability Registry
+## 3. Capability Registry
 
-Source: `apps/api/hephae_api/workflows/capabilities/registry.py`
+Five capabilities are registered. Each has a runner function, a Firestore output key, a response adapter, and optionally an evaluator and a `should_run` gate.
 
-| Name | Display Name | Firestore Output Key | Should Run Condition | Runner | Evaluator Agent | Eval Compressor |
-|------|-------------|---------------------|---------------------|--------|----------------|-----------------|
-| `seo` | SEO Audit | `seo_auditor` | Business has `officialUrl` | `hephae_agents.seo_auditor.runner.run_seo_audit` | `SeoEvaluatorAgent` (`wf_seo_eval`) | Strips `rawPageSpeed`, `pagespeedData`, `lighthouseData`; truncates recommendations to 3 per section |
-| `traffic` | Traffic Forecast | `traffic_forecaster` | Always (no condition) | `hephae_agents.traffic_forecaster.runner.run_traffic_forecast` | `TrafficEvaluatorAgent` (`wf_traffic_eval`) | None |
-| `competitive` | Competitive Analysis | `competitive_analyzer` | Always (no condition) | `hephae_agents.competitive_analysis.runner.run_competitive_analysis` | `CompetitiveEvaluatorAgent` (`wf_comp_eval`) | Strips full competitor profiles; keeps only `name`, `threat_level`, `summary`, `score` |
-| `margin_surgeon` | Margin Surgeon | `margin_surgeon` | Business has `menuScreenshotBase64` or `menuUrl` | `hephae_agents.margin_analyzer.runner.run_margin_analysis` (advanced_mode=True) | `MarginSurgeonEvaluatorAgent` (`wf_margin_eval`) | None |
-| `social` | Social Media Insights | `social_media_auditor` | Always (no condition) | `hephae_agents.social.media_auditor.runner.run_social_media_audit` | None (no evaluator) | None |
+| Name | Display Name | Firestore Key | Evaluator | `should_run` Gate |
+|------|-------------|---------------|-----------|-------------------|
+| `seo` | SEO Audit | `seo_auditor` | `SeoEvaluatorAgent` | `officialUrl` must be truthy |
+| `traffic` | Traffic Forecast | `traffic_forecaster` | `TrafficEvaluatorAgent` | Always runs |
+| `competitive` | Competitive Analysis | `competitive_analyzer` | `CompetitiveEvaluatorAgent` | Always runs |
+| `margin_surgeon` | Margin Surgeon | `margin_surgeon` | `MarginSurgeonEvaluatorAgent` | `menuScreenshotBase64` or `menuUrl` must be truthy |
+| `social` | Social Media Insights | `social_media_auditor` | None (no evaluator) | Always runs |
+
+**Eval compressors** strip large fields before sending to evaluators:
+- `seo`: Removes `rawPageSpeed`, `pagespeedData`, `lighthouseData`; truncates recommendations to 3 per section
+- `competitive`: Strips full competitor profiles, keeps only `name`, `threat_level`, `summary`, `score`
+
+> Source: `apps/api/hephae_api/workflows/capabilities/registry.py`
 
 ---
 
-## 5. Qualification Scoring
+## 4. Qualification Scoring Weights
 
-Source: `agents/hephae_agents/qualification/scanner.py` — `_score_business()`
+The qualification scanner uses a two-step process: **Step A** (metadata scan, no LLM) classifies ~80% of businesses; **Step B** (full probe + batched LLM) handles the remaining ~20% ambiguous cases.
 
-### Base Signals
+### Step A — Metadata Scan Weights
 
 | Signal | Points | Condition |
 |--------|--------|-----------|
-| Custom domain | +15 | `domain_info.is_custom_domain` is true |
-| Platform subdomain | +8 | `domain_type == "platform_subdomain"` (Shopify/Wix/etc) |
-| HTTPS | +3 | `domain_info.is_https` is true |
-| Platform detected | +10 | `platform_info.platform_detected` is true |
-| Multiple analytics pixels | +10 | `pixel_count >= 2` |
-| Single analytics pixel | +5 | `pixel_count == 1` |
-| Contact path found | +8 | `contact_info.has_contact_path` is true |
-| Mailto link | +5 | `contact_info.mailto_addresses` is non-empty |
-| Tel link | +3 | `contact_info.tel_numbers` is non-empty |
-| Strong social presence | +8 | 3 or more social links |
+| Custom domain | +15 | `is_custom_domain` |
+| Platform subdomain | +8 | Shopify/Wix/etc subdomain |
+| HTTPS | +3 | Site uses HTTPS |
+| Platform detected | +10 | Known platform (Toast, Shopify, Square, etc.) |
+| Multiple analytics pixels | +10 | 2+ pixels found |
+| Single analytics pixel | +5 | Exactly 1 pixel |
+| Contact path found | +8 | `/contact`, booking form, etc. |
+| Mailto link | +5 | `mailto:` anchor found |
+| Tel link | +3 | `tel:` anchor found |
+| Strong social presence | +8 | 3+ social links |
 | Some social presence | +4 | 1-2 social links |
-| JSON-LD structured data | +5 | `meta_info.has_structured_data` is true |
-| Has page title | +2 | Title exists and length > 3 |
+| JSON-LD structured data | +5 | `@type` in JSON-LD |
+| Has page title | +2 | Title tag > 3 chars |
 
-### Special Bonus Signals
+### Bonus Patterns
 
-| Signal | Points | Condition |
-|--------|--------|-----------|
-| **Innovation Gap** | +20 | Modern platform (toast, shopify, square_online, mindbody, clover, lightspeed, vagaro, boulevard) AND zero social links |
-| **Aggregator Escape** | +20 | Dining category AND on delivery aggregator (doordash, grubhub, ubereats, seamless) AND weak/no own website |
-| **Economic Delta** | +15 | High-income area (from research demographics) AND has custom domain AND no analytics |
-| **Dining Pricing Env** | +5 | Dining category AND area research has `pricingEnvironment` data |
-| **Services Gap** | +10 | Services category (salon, spa, repair, medical, dental, vet) AND has custom domain AND no contact/booking path |
-| **Retail Gap** | +8 | Retail category (retail, shop, store, boutique) AND has custom domain AND no e-commerce platform detected |
-| **Tech-Forward for Sector** | +5 | Sector research has `technologyAdoption` data AND platform detected |
+| Pattern | Points | Condition |
+|---------|--------|-----------|
+| Innovation Gap | +20 | Modern platform (Toast/Shopify/Square/etc.) but zero social links |
+| Aggregator Escape | +20 | On DoorDash/Grubhub/UberEats but weak/no own website (dining verticals) |
+| Economic Delta | +15 | Wealthy area + custom domain + no analytics |
+| Services no booking | +10 | Service business with website but no contact/booking path |
+| Retail no e-commerce | +8 | Retail with custom domain but no e-commerce platform detected |
+| Dining pricing env | +5 | Dining business in tracked pricing environment |
+| Tech-forward for sector | +5 | Platform detected + sector research indicates tech-forward industry |
 
-### Full Probe (Step B) — Additional Signals
+### Rule-Based Fast Paths (skip scoring)
 
-Source: `_run_full_probe_crawl_only()` in same file
+| Rule | Outcome |
+|------|---------|
+| Chain/franchise detected | DISQUALIFIED |
+| No URL | PARKED |
+| URL is social/directory page | DISQUALIFIED |
+| HTTP 404 or dead site | DISQUALIFIED |
+| Site unreachable (no HTML) | PARKED (needs full probe) |
+| Custom domain + analytics + contact path | QUALIFIED |
+| Platform site + contact path | QUALIFIED |
 
-| Signal | Points | Condition |
-|--------|--------|-----------|
-| Email found via crawl | +10 | `deterministicContact.email` found in full crawl |
-| Phone found via crawl | +5 | `deterministicContact.phone` found in full crawl |
-| Social links via crawl | +8 | 2+ social anchors found in full crawl |
-| Delivery platforms | +5 | 1+ delivery platform links found |
-| JSON-LD via crawl | +3 | `jsonLd.@type` present in crawl data |
+### Step B — Full Probe (crawl + optional LLM)
 
-### Rule-Based Auto-Qualification (bypasses threshold)
+| Signal | Points |
+|--------|--------|
+| Email found via crawl | +10 |
+| Phone found via crawl | +5 |
+| Social links found (2+) | +8 |
+| Delivery platforms found | +5 |
+| JSON-LD from crawl | +3 |
 
-These rules qualify a business regardless of numeric score:
+If score is within 10 points of threshold after full probe, a batched LLM classifier decides. All LLM calls across ambiguous businesses are submitted as a single batch.
 
-1. **Custom domain + analytics + contact path** — `is_custom_domain AND has_analytics AND has_contact_path`
-2. **Platform site + contact path** — `platform_detected AND has_contact_path`
-
-### Classification Boundaries
-
-| Outcome | Condition |
-|---------|-----------|
-| DISQUALIFIED | Chain/franchise detected, OR URL is social/directory page, OR site returns 404/dead |
-| PARKED (no URL) | No website URL available |
-| PARKED (unreachable) | Site unreachable but may recover — flagged for full probe |
-| QUALIFIED | Rule match OR score >= dynamic threshold |
-| PARKED (close) | Score >= threshold - 15 — flagged `needs_full_probe` |
-| PARKED (below) | Score < threshold - 15 |
+> Source: `agents/hephae_agents/qualification/scanner.py`
 
 ---
 
-## 6. Dynamic Threshold Formula
+## 5. Dynamic Threshold Formula
 
-Source: `agents/hephae_agents/qualification/threshold.py`
+The base threshold is **40**. It adapts based on area research context:
 
-**Base threshold:** 40
+```python
+BASE_THRESHOLD = 40
 
-### Saturation Adjustments
+# Saturation adjustments
+if saturation == "saturated" or biz_count >= 40:  threshold = 60
+elif saturation == "high" or biz_count >= 20:      threshold = 50
+elif saturation == "low" or biz_count < 10:        threshold = 30
 
-| Condition | Threshold |
-|-----------|-----------|
-| `saturationLevel == "saturated"` OR `existingBusinessCount >= 40` | 60 |
-| `saturationLevel == "high"` OR `existingBusinessCount >= 20` | 50 |
-| `saturationLevel == "low"` OR `existingBusinessCount < 10` | 30 |
-| `saturationLevel == "moderate"` (default) | 40 (base) |
+# Market opportunity discount
+if opp_score > 70:  threshold -= 10
 
-### Opportunity Adjustment
-
-| Condition | Adjustment |
-|-----------|-----------|
-| `marketOpportunity.score > 70` | -10 (lowers bar) |
-
-### Clamp Range
-
-```
+# Clamped to [20, 70]
 threshold = max(20, min(70, threshold))
 ```
 
-Final threshold is always in **[20, 70]**.
+**Inputs** (from `extract_research_context()`):
+- `area_summary.competitiveLandscape.saturationLevel` — "saturated" / "high" / "moderate" / "low"
+- `area_summary.competitiveLandscape.existingBusinessCount` — integer
+- `area_summary.marketOpportunity.score` — 0-100
 
-### Research Context Inputs
+| Market Condition | Resulting Threshold |
+|------------------|-------------------|
+| Low saturation, high opportunity | 20 |
+| Low saturation, normal opportunity | 30 |
+| Moderate saturation | 40 (base) |
+| High saturation | 50 |
+| Saturated market, high opportunity | 50 |
+| Saturated market, normal opportunity | 60 |
 
-`extract_research_context()` builds the context dict from:
+> Source: `agents/hephae_agents/qualification/threshold.py`
 
-| Source | Extracted Key | Used For |
-|--------|--------------|----------|
-| Area research | `area_summary` (competitiveLandscape, marketOpportunity) | Saturation + opportunity adjustments |
-| Zipcode research | `demographics` (from `report.sections.demographics`) | Economic Delta scoring signal |
-| Sector research | `sector_summary` (industryAnalysis.technologyAdoption) | Tech-Forward scoring signal |
+---
+
+## 6. Parallel Research Pipeline
+
+During the `DISCOVERY` phase, research runs in parallel with the business scan:
+
+```
+asyncio.gather(
+    _zip_research(),      # Zipcode research (staleness: <24h reuse, <7d refresh volatile, >7d full)
+    _sector_research(),   # Sector research (staleness: <7d reuse)
+    _area_research(),     # Area research (staleness: <7d reuse)
+)
+```
+
+**Staleness policy:**
+- **Zipcode research**: Reuse if < 24 hours old. Refresh only volatile sections (weather, events, trending) if 24h-7d old. Full refresh if > 7 days old.
+- **Sector research**: Reuse if < 7 days old.
+- **Area research**: Reuse if < 7 days old.
+
+All research failures are non-fatal — they do not block the discovery phase.
+
+> Source: `apps/api/hephae_api/workflows/engine.py` lines 143-238
 
 ---
 
@@ -242,24 +245,104 @@ Final threshold is always in **[20, 70]**.
 
 Source: `apps/api/hephae_api/workflows/phases/analysis.py`
 
-Fields promoted from enrichment sub-agent output to the top-level Firestore business document:
+After enrichment, these keys are promoted from the enriched identity to the top-level business document in Firestore:
 
-| Key | Category |
-|-----|----------|
-| `phone` | Contact |
-| `email` | Contact |
-| `emailStatus` | Contact |
-| `contactFormUrl` | Contact |
-| `contactFormStatus` | Contact |
-| `hours` | Operations |
-| `googleMapsUrl` | Location |
-| `socialLinks` | Social |
-| `logoUrl` | Branding |
-| `favicon` | Branding |
-| `primaryColor` | Branding |
-| `secondaryColor` | Branding |
-| `persona` | Identity |
-| `menuUrl` | Content |
-| `competitors` | Market |
-| `news` | Market |
-| `validationReport` | QA |
+```python
+PROMOTE_KEYS = [
+    "phone", "email", "emailStatus", "contactFormUrl", "contactFormStatus",
+    "hours", "googleMapsUrl", "socialLinks",
+    "logoUrl", "favicon", "primaryColor", "secondaryColor",
+    "persona", "menuUrl", "competitors", "news", "validationReport",
+]
+```
+
+An identical list exists in `apps/api/hephae_api/routers/admin/tasks.py` for the task-based enrichment path.
+
+---
+
+## 8. Batch Synthesis
+
+After all capabilities complete, the engine runs batch synthesis for traffic forecaster and competitive positioning outputs. This collects deferred intel from task metadata and submits all prompts as a single batch.
+
+```
+analysis phase complete
+    └── batch_synthesis()
+         ├── collect deferredSynthesis from task metadata
+         ├── build_traffic_synthesis_prompt() for each slug
+         ├── build_competitive_positioning_prompt() for each slug
+         └── run_synthesis_batch() → write results to latestOutputs
+```
+
+> Source: `apps/api/hephae_api/workflows/engine.py` lines 373-464
+
+---
+
+## 9. NEW: Two-Layer Pulse Architecture (Industry Cron → Zip Cron)
+
+The pulse system uses a two-layer architecture where national industry-level data is pre-computed before zip-level pulses run.
+
+### Layer 1: Industry Pulse (national)
+
+**Schedule**: Sunday 3:00 AM ET (08:00 UTC) — runs BEFORE zip-level pulses.
+
+**Pipeline per industry**:
+1. Check cache — skip if pulse exists for this ISO week (unless `force=True`)
+2. Fetch national signals (BLS CPI series, USDA commodity prices, FDA recalls)
+3. Compute impact multipliers from national data
+4. Match industry-specific playbooks against computed impact variables
+5. Generate 2-3 paragraph trend summary via `industry_trend_summarizer` LLM agent
+6. Save to Firestore (`industry_pulses` collection)
+
+**Cron endpoint**: `GET /api/cron/industry-pulse`
+
+The cron iterates all active registered industries, generates a pulse for each, sends a summary email to admins, and is fully idempotent (cache check per week).
+
+> Source: `apps/api/hephae_api/routers/batch/industry_pulse_cron.py`, `apps/api/hephae_api/workflows/orchestrators/industry_pulse.py`
+
+### Layer 2: Zip-Level Pulse
+
+**Schedule**: Monday 11:00 UTC — runs AFTER industry pulses.
+
+Zip-level pulses load the pre-computed industry pulse instead of re-fetching BLS/USDA/FDA data. They add local signals (weather, events, traffic modifiers) on top of the national data.
+
+### IndustryConfig Verticals
+
+Each vertical is a frozen dataclass (`IndustryConfig`) that drives the entire pulse pipeline:
+
+| Vertical | ID | BLS Series Count | USDA Commodities | Playbook Count |
+|----------|----|-------------------|------------------|----------------|
+| Restaurants & Cafes | `restaurant` | 20 | CATTLE, HOGS, CHICKENS, EGGS, MILK, WHEAT | 3 |
+| Bakeries & Patisseries | `bakery` | 11 | WHEAT, EGGS, MILK, SUGAR | 6 |
+| Barber Shops & Men's Grooming | `barber` | 6 | None | 6 |
+
+**IndustryConfig fields**:
+- `bls_series` — `{label: series_id}` for CPI data
+- `usda_commodities` — commodity keys for food verticals
+- `extra_signals` — additional signal sources (e.g., `fdaRecalls`, `usdaPrices`)
+- `track_labels` — maps CPI label substrings to named impact variables
+- `playbooks` — list of `{name, trigger, play}` with templated action text
+- `economist_context` / `scout_context` / `synthesis_context` — prompt context for LLM agents
+- `critique_persona` — persona for the critique agent
+- `social_search_terms` — keywords for social signal gathering
+
+**Lookup**: `resolve(business_type)` does exact alias match, then fuzzy substring match, with RESTAURANT as fallback.
+
+> Source: `apps/api/hephae_api/workflows/orchestrators/industries.py`
+
+### Example Playbook Triggers
+
+**Restaurant**:
+- `dairy_margin_swap`: dairy up > 5% AND poultry down → shift to grilled proteins
+- `fda_recall_alert`: > 5 FDA recalls → audit supplier chain
+- `weather_rain_prep`: weather modifier < -0.1 → push delivery specials
+
+**Bakery**:
+- `flour_cost_alert`: flour up > 3% → promote non-flour items
+- `egg_spike_response`: eggs up > 8% → switch to pastry cream (fewer eggs)
+- `butter_margin_squeeze`: butter up > 4% → reserve real butter for premium items
+- `wedding_season_lock`: months 2-4 AND sugar up > 2% → lock custom cake pricing
+
+**Barber**:
+- `service_price_cover`: haircut CPI up > 3% → raise base cut $3-5
+- `rent_squeeze_response`: rent CPI up > 5% → add $15 beard trim add-on
+- `slow_season_fill`: Jan/Feb → text client list with $5 off promo

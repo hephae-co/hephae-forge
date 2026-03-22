@@ -1,5 +1,5 @@
 # Evaluation Standards
-> Auto-generated from codebase on 2026-03-15. Do not edit manually — run `/hephae-refresh-docs` to update.
+> Auto-generated from codebase on 2026-03-22. Do not edit manually — run `/hephae-refresh-docs` to update.
 
 ## 1. Pass Threshold
 
@@ -10,124 +10,7 @@ All capability evaluations use the same pass gate:
 
 Both conditions must be met simultaneously. If either fails, the capability evaluation is considered failed.
 
-> Source: `apps/api/hephae_api/workflows/phases/evaluation.py` line 143
-
-## 2. Evaluator Configuration Table
-
-All evaluators use the **PRIMARY** model tier (`gemini-3.1-flash-lite-preview`) with **MEDIUM** thinking (`ThinkingConfig(thinking_level="MEDIUM")`). Fallback on model error routes to `gemini-3-flash-preview`.
-
-| Capability | Evaluator Class | Agent Name | Model Tier | Thinking Mode | Firestore Output Key | ADK App Name | Eval Compressor |
-|---|---|---|---|---|---|---|---|
-| `seo` | `SeoEvaluatorAgent` | `seo_evaluator` | PRIMARY (`gemini-3.1-flash-lite-preview`) | MEDIUM | `seo_auditor` | `wf_seo_eval` | Strips `rawPageSpeed`, `pagespeedData`, `lighthouseData`; truncates recommendations to 3 per section |
-| `traffic` | `TrafficEvaluatorAgent` | `traffic_evaluator` | PRIMARY (`gemini-3.1-flash-lite-preview`) | MEDIUM | `traffic_forecaster` | `wf_traffic_eval` | None |
-| `competitive` | `CompetitiveEvaluatorAgent` | `competitive_evaluator` | PRIMARY (`gemini-3.1-flash-lite-preview`) | MEDIUM | `competitive_analyzer` | `wf_comp_eval` | Strips full competitor profiles, keeps only `name`, `threat_level`, `summary`, `score` |
-| `margin_surgeon` | `MarginSurgeonEvaluatorAgent` | `margin_surgeon_evaluator` | PRIMARY (`gemini-3.1-flash-lite-preview`) | MEDIUM | `margin_surgeon` | `wf_margin_eval` | None |
-
-**Note:** The `social` capability does not have an evaluator and is excluded from evaluation.
-
-> Sources:
-> - `agents/hephae_agents/evaluators/*.py`
-> - `apps/api/hephae_api/workflows/capabilities/registry.py` lines 205-254
-> - `lib/common/hephae_common/model_config.py`
-
-## 3. Per-Capability Evaluation Criteria
-
-### 3.1 SEO (`SeoEvaluatorAgent`)
-
-**Prompt input:** `TARGET_URL` (the business's official URL) and `ACTUAL_OUTPUT` (the SEO Auditor JSON).
-
-**Evaluation criteria:**
-- Output is coherent and well-structured
-- Output actually belongs to the given URL (not a different site)
-- Properly describes SEO aspects without hallucinating
-- Fields are present and non-null
-
-**Hallucination rules:**
-- Standard — flag `isHallucinated=true` if output contains fabricated data or does not match the target URL
-
-> Source: `agents/hephae_agents/evaluators/seo_evaluator.py`
-
-### 3.2 Traffic Forecast (`TrafficEvaluatorAgent`)
-
-**Prompt input:** `BUSINESS_IDENTITY` (full identity JSON), `ZIP_CODE`, `ACTUAL_OUTPUT` (Traffic Forecaster JSON), and optionally `RESEARCH_CONTEXT` with ground-truth weather/events data.
-
-**Evaluation criteria (score 0-100):**
-- **Geographic plausibility:** business type, address, and nearby POIs make sense together
-- **Time slot logic:** scores align with business hours and day-of-week patterns
-- **Weather consistency:** `weatherNote` should be plausible for the location and season
-- **Event relevance:** `localEvents` should be real or plausible for the area
-- **Score reasonability:** traffic scores should reflect a realistic pattern (not all high, not all identical)
-
-**Hallucination rules (conservative):**
-- ONLY flag `isHallucinated=true` if the output contains clearly fabricated data: invented addresses, impossible coordinates, business type contradictions, or events that could not plausibly exist in the area
-- Do NOT flag as hallucinated just because you cannot independently verify a weather forecast or local event — the forecaster has access to real-time search tools
-- If `RESEARCH_CONTEXT` is provided, cross-check weather/event claims against it. Contradictions with research data ARE grounds for hallucination flags
-- Minor inaccuracies (slightly off weather, generic events) should reduce the score but NOT trigger `isHallucinated`
-
-> Source: `agents/hephae_agents/evaluators/traffic_evaluator.py`
-
-### 3.3 Competitive Analysis (`CompetitiveEvaluatorAgent`)
-
-**Prompt input:** `BUSINESS_IDENTITY` (full identity JSON) and `ACTUAL_OUTPUT` (Competitive Analyzer JSON, compressed to summaries only).
-
-**Evaluation criteria (score 0-100):**
-- **Competitor plausibility:** named competitors should be real businesses that could exist in the area
-- **Analysis depth:** pricing comparisons, market gaps, and positioning should be specific, not generic
-- **Internal consistency:** competitor details should align with the business type and location
-- **Actionable insights:** recommendations should be concrete and relevant
-
-**Hallucination rules (conservative):**
-- ONLY flag `isHallucinated=true` if competitors are clearly fabricated (impossible names, wrong business type, contradictory locations) or if the analysis contains demonstrably false claims
-- The competitive analyzer has access to Google Search — it can find real competitors you may not know about. Do NOT flag as hallucinated just because you cannot verify a competitor exists
-- Generic or shallow analysis should reduce the score but NOT trigger `isHallucinated`
-- If the analysis names specific real-sounding businesses in the correct geographic area with plausible details, assume they are real unless clearly contradicted
-
-> Source: `agents/hephae_agents/evaluators/competitive_evaluator.py`
-
-### 3.4 Margin Surgeon (`MarginSurgeonEvaluatorAgent`)
-
-**Prompt input:** `BUSINESS_IDENTITY` (full identity JSON) and `ACTUAL_OUTPUT` (Margin Surgeon JSON). Optionally includes `FOOD_PRICING_CONTEXT`.
-
-**Evaluation criteria:**
-- Menu items are plausible for the business type (no sushi items for a pizza shop)
-- Strategic advice is coherent
-- Scores are internally consistent
-- Data is not hallucinated
-- Watch for red flags: mismatched menu items, impossible margins, generic advice
-
-**When `FOOD_PRICING_CONTEXT` is provided, also verify:**
-- Strategic advice acknowledges current commodity cost trends
-- Margin optimization suggestions are realistic given input cost changes
-- Flag if advice recommends cost cuts on categories with >5% YoY increases without acknowledging the trend
-- Award bonus score points if advice correctly references real cost data
-
-> Source: `agents/hephae_agents/evaluators/margin_surgeon_evaluator.py`
-
-## 4. Evaluation Flow
-
-The evaluation phase is orchestrated by `run_evaluation_phase()` in `evaluation.py`:
-
-1. **Business selection:** Only businesses in `ANALYSIS_DONE` or `EVALUATING` phase are evaluated. Phase is set to `EVALUATING` at the start.
-
-2. **Capability filtering:** For each business, only capabilities that are (a) in `capabilitiesCompleted`, (b) have output in `latestOutputs`, and (c) have an evaluator configured are evaluated.
-
-3. **Prompt construction:** Each evaluator's `build_prompt()` function constructs the prompt from the business identity and capability output. If an `eval_compressor` is configured, it strips large/verbose fields before sending to the evaluator.
-
-4. **Execution modes:**
-   - **Batch mode (default in production):** All eval prompts are collected and submitted via Vertex AI batch API with a configurable timeout. Controlled by `BATCH_EVAL_ENABLED` env var (defaults to `true`).
-   - **Sequential fallback:** If batch submission fails or is disabled (or in debug mode), each evaluator runs sequentially via `run_agent_to_json()`.
-
-5. **Result parsing:** Evaluator JSON output is parsed into an `EvaluationResult`. If parsing fails, a default failing result is created (`score=0, isHallucinated=true, issues=["Failed to parse evaluator output"]`).
-
-6. **Feedback recording:** Each evaluation result is recorded to BigQuery via `record_evaluation_feedback()` (fire-and-forget async task) with business slug, capability name, agent version, eval score, hallucination flag, zip code, and business type.
-
-7. **Phase finalization:** After all evaluations complete, `qualityPassed` is computed and phase is set to `EVALUATION_DONE`. The `onBusinessEvaluated` callback is invoked with the business slug and pass/fail status.
-
-> Source: `apps/api/hephae_api/workflows/phases/evaluation.py`
-
-## 5. Quality Gate
-
-`qualityPassed` is determined by the following logic (line 141-144 of `evaluation.py`):
+A business passes overall evaluation only if **all** its evaluable capabilities pass:
 
 ```python
 biz.qualityPassed = (
@@ -136,38 +19,155 @@ biz.qualityPassed = (
 )
 ```
 
-This means:
-- **ALL** evaluated capabilities must pass (score >= 80 AND not hallucinated)
-- There must be **at least one** evaluation result (a business with zero evaluations fails)
-- A single failing capability fails the entire business
+If a business has zero evaluable outputs, it is marked `evaluation_done` with `qualityPassed = False`.
 
-If an error occurs during eval preparation (e.g., cannot fetch business data), `qualityPassed` is set to `false` immediately.
+> Source: `apps/api/hephae_api/workflows/phases/evaluation.py` lines 158-161
 
-> Source: `apps/api/hephae_api/workflows/phases/evaluation.py` lines 141-144
+---
 
-## 6. Result Schema
+## 2. Evaluator Configuration
 
-### `EvaluationResult` (Pydantic model)
+All four evaluators share the same model and thinking preset:
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `score` | `float` | `0` | Quality score from 0-100 |
-| `isHallucinated` | `bool` | `false` | Whether the evaluator detected fabricated data |
-| `issues` | `list[str]` | `[]` | List of specific issues found by the evaluator |
+| Evaluator | Agent Name | Model | Thinking | App Name |
+|-----------|-----------|-------|----------|----------|
+| SEO Evaluator | `seo_evaluator` | `gemini-3.1-flash-lite-preview` | MEDIUM | `wf_seo_eval` |
+| Traffic Evaluator | `traffic_evaluator` | `gemini-3.1-flash-lite-preview` | MEDIUM | `wf_traffic_eval` |
+| Competitive Evaluator | `competitive_evaluator` | `gemini-3.1-flash-lite-preview` | MEDIUM | `wf_comp_eval` |
+| Margin Surgeon Evaluator | `margin_surgeon_evaluator` | `gemini-3.1-flash-lite-preview` | MEDIUM | `wf_margin_eval` |
 
-> Source: `lib/common/hephae_common/models.py` line 402
+**Social Media Insights (`social`)** has no evaluator and is not evaluated.
 
-### `EvaluationOutput` (ADK output schema used by evaluator agents)
+All evaluators use `ThinkingPresets.MEDIUM` and `AgentModels.PRIMARY_MODEL`. All have `on_model_error_callback=fallback_on_error` for automatic model fallback on 429/503/529.
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `score` | `int` | `0` | Quality score from 0-100 |
-| `isHallucinated` | `bool` | `false` | Whether the evaluator detected fabricated data |
-| `issues` | `list[str]` | `[]` | List of specific issues found by the evaluator |
+**Output schema** (shared across all evaluators — `EvaluationOutput`):
 
-> Source: `lib/db/hephae_db/schemas/agent_outputs.py` line 845
+```json
+{
+    "score": number (0-100),
+    "isHallucinated": boolean,
+    "issues": string[]
+}
+```
 
-### Storage
+> Source: `agents/hephae_agents/evaluators/`
 
-- **In-memory:** `BusinessWorkflowState.evaluations` — `dict[str, EvaluationResult]` keyed by capability name (e.g., `{"seo": {...}, "traffic": {...}}`)
-- **BigQuery:** Each evaluation is recorded as a feedback row via `record_evaluation_feedback()` with fields: `business_slug`, `capability`, `agent_name`, `agent_version`, `eval_score`, `is_hallucinated`, `zip_code`, `business_type`
+---
+
+## 3. Evaluation Modes
+
+The evaluation phase supports two modes:
+
+| Mode | Description | Controlled By |
+|------|-------------|---------------|
+| **Batch** (default) | Collects all eval prompts across all businesses, submits via Vertex AI batch API | `BATCH_EVAL_ENABLED=true` (env var) |
+| **Sequential** (fallback) | Runs each evaluator one at a time | Fallback when batch fails, or `debug=True` |
+
+Batch mode settings:
+- `BATCH_EVAL_GCS_BUCKET`: `hephae-batch-evaluations` (default)
+- `BATCH_EVAL_FALLBACK_TIMEOUT`: 300 seconds (default)
+
+If batch submission fails, the system falls back to sequential evaluation transparently.
+
+> Source: `apps/api/hephae_api/workflows/phases/evaluation.py`
+
+---
+
+## 4. Per-Capability Evaluation Criteria
+
+### 4.1 SEO Evaluator
+
+**Input**: `TARGET_URL` + `ACTUAL_OUTPUT` JSON
+
+**Criteria**: Review the SEO audit output for completeness and hallucinations. Verify the output is coherent, belongs to the given URL, and properly describes SEO aspects without fabricating data.
+
+**Eval compressor**: Strips `rawPageSpeed`, `pagespeedData`, `lighthouseData`. Truncates recommendations to 3 per section.
+
+> Source: `agents/hephae_agents/evaluators/seo_evaluator.py`
+
+### 4.2 Traffic Evaluator
+
+**Input**: `BUSINESS_IDENTITY` + `ZIP_CODE` + `ACTUAL_OUTPUT` JSON
+
+**Criteria** (scored 0-100):
+1. **Geographic plausibility** — business type, address, and nearby POIs make sense together
+2. **Time slot logic** — scores align with business hours and day-of-week patterns
+3. **Weather consistency** — weatherNote should be plausible for the location and season
+4. **Event relevance** — localEvents should be real or plausible for the area
+5. **Score reasonability** — traffic scores should reflect realistic patterns (not all high, not all identical)
+
+**Hallucination rules** (conservative):
+- ONLY flag `isHallucinated=true` for clearly fabricated data: invented addresses, impossible coordinates, business type contradictions, events that could not plausibly exist
+- Do NOT flag as hallucinated because a weather forecast or event cannot be independently verified (the forecaster has search tools)
+- If `RESEARCH_CONTEXT` is provided, cross-check weather/event claims — contradictions with research data ARE grounds for hallucination flags
+- Minor inaccuracies reduce score but do NOT trigger `isHallucinated`
+
+> Source: `agents/hephae_agents/evaluators/traffic_evaluator.py`
+
+### 4.3 Competitive Evaluator
+
+**Input**: `BUSINESS_IDENTITY` + `ACTUAL_OUTPUT` JSON
+
+**Criteria** (scored 0-100):
+1. **Competitor plausibility** — named competitors should be real businesses in the area
+2. **Analysis depth** — pricing comparisons, market gaps, positioning should be specific, not generic
+3. **Internal consistency** — competitor details should align with business type and location
+4. **Actionable insights** — recommendations should be concrete and relevant
+
+**Hallucination rules** (conservative):
+- ONLY flag `isHallucinated=true` for clearly fabricated competitors (impossible names, wrong business type, contradictory locations) or demonstrably false claims
+- The competitive analyzer has Google Search — do NOT flag because a competitor cannot be independently verified
+- Generic/shallow analysis reduces score but does NOT trigger `isHallucinated`
+- Specific real-sounding businesses with plausible details in the correct area are assumed real unless clearly contradicted
+
+**Eval compressor**: Strips full competitor profiles, keeps only `name`, `threat_level`, `summary`, `score` per competitor.
+
+> Source: `agents/hephae_agents/evaluators/competitive_evaluator.py`
+
+### 4.4 Margin Surgeon Evaluator
+
+**Input**: `BUSINESS_IDENTITY` + `ACTUAL_OUTPUT` JSON
+
+**Criteria**: Validate that menu items are plausible for the business type, strategic advice is coherent, scores are consistent, and data is not hallucinated. Red flags: sushi items for a pizza shop, impossible margins, generic advice.
+
+**Food pricing context validation** (when `FOOD_PRICING_CONTEXT` is provided):
+- Strategic advice should acknowledge current commodity cost trends
+- Margin optimization suggestions should be realistic given input cost changes
+- Flag if advice recommends cost cuts on categories with > 5% YoY increases without acknowledging the trend
+- Award bonus score points if advice correctly references real cost data
+
+> Source: `agents/hephae_agents/evaluators/margin_surgeon_evaluator.py`
+
+---
+
+## 5. Evaluation Feedback Pipeline
+
+Every evaluation result is recorded to BigQuery (fire-and-forget) for long-term analysis:
+
+| Field | Value |
+|-------|-------|
+| `business_slug` | Business identifier |
+| `capability` | Capability name (seo, traffic, competitive, margin_surgeon) |
+| `agent_name` | Firestore output key |
+| `agent_version` | From `latestOutputs.{cap}.agentVersion` |
+| `eval_score` | 0-100 score |
+| `is_hallucinated` | Boolean |
+| `zip_code` | Source zip code |
+| `business_type` | Business type |
+
+> Source: `apps/api/hephae_api/workflows/phases/evaluation.py` lines 142-152
+
+---
+
+## 6. Score Coercion
+
+Evaluators sometimes return non-numeric scores (e.g., `"85/100"`). The evaluation phase coerces scores:
+
+```python
+raw_score = result.get("score", 0)
+score = float(raw_score) if not isinstance(raw_score, (int, float)) else raw_score
+```
+
+If coercion fails, the score defaults to 0 (evaluation fails).
+
+> Source: `apps/api/hephae_api/workflows/phases/evaluation.py` lines 124-129

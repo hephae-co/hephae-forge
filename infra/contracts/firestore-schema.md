@@ -1,5 +1,5 @@
 # Firestore Schema
-> Auto-generated from codebase on 2026-03-15. Do not edit manually — run `/hephae-refresh-docs` to update.
+> Auto-generated from codebase on 2026-03-22. Do not edit manually.
 
 All client access is denied (`allow read, write: if false`). All reads/writes happen server-side via the `hephae-db` package.
 
@@ -21,7 +21,7 @@ All client access is denied (`allow read, write: if false`). All reads/writes ha
 | `officialUrl` | `string` | `discovery.write_discovery` | Primary website URL |
 | `zipCode` | `string` | `discovery.write_discovery`, `agent_results.write_agent_result` | **First-class field** -- always top-level, never derived at query time |
 | `coordinates` | `map{lat, lng}` | `discovery.write_discovery` | Latitude/longitude |
-| `category` | `string` | `businesses._get_businesses_paginated_sync` (queried) | Business category (e.g., "restaurant") |
+| `category` | `string` | queried by `businesses._get_businesses_paginated_sync` | Business category (e.g., "restaurant") |
 | `businessType` | `string` | `fixtures.save_fixture_from_business` (read) | Alias for category in some contexts |
 | `discoveryStatus` | `string` | queried by `stats`, `businesses` | Values: `scanned`, `discovered`, `analyzed` |
 | `workflowId` | `string` | queried by `businesses.get_businesses_for_workflow` | Links business to its workflow |
@@ -139,6 +139,187 @@ All client access is denied (`allow read, write: if false`). All reads/writes ha
 | `completedAt` | `timestamp \| null` | When task finished |
 | `metadata` | `map` | Arbitrary task metadata |
 | `error` | `string \| null` | Error message on failure |
+
+---
+
+## Pulse Collections
+
+### `zipcode_weekly_pulse`
+
+| Property | Description |
+|---|---|
+| **Document ID** | `{zipCode}-{businessTypeSlug}-{YYYYMMDD}-{HHmmss}` |
+| **Source file** | `lib/db/hephae_db/firestore/weekly_pulse.py` |
+
+| Field | Type | Notes |
+|---|---|---|
+| `zipCode` | `string` | 5-digit zip code |
+| `businessType` | `string` | Business type (e.g., "Restaurants") |
+| `weekOf` | `string` | ISO date string for the week |
+| `pulse` | `map` | Full pulse briefing object (`{headline, insights[], ...}`) |
+| `signalsUsed` | `array<string>` | List of signal source names used |
+| `diagnostics` | `map` | Pipeline diagnostics and timing data |
+| `pipelineDetails` | `map \| null` | Detailed pipeline execution info |
+| `testMode` | `boolean \| null` | If `true`, document is test data |
+| `expireAt` | `timestamp \| null` | Firestore TTL -- auto-deletes test docs after 24h |
+| `createdAt` | `timestamp` | Creation time |
+| `updatedAt` | `timestamp` | Last update time |
+
+### `pulse_jobs`
+
+| Property | Description |
+|---|---|
+| **Document ID** | Auto-generated Firestore ID |
+| **Source file** | `lib/db/hephae_db/firestore/pulse_jobs.py` |
+
+| Field | Type | Notes |
+|---|---|---|
+| `zipCode` | `string` | Target zip code |
+| `businessType` | `string` | Target business type |
+| `weekOf` | `string` | ISO date for the week |
+| `force` | `boolean` | Whether to force regeneration |
+| `status` | `string` | `QUEUED`, `RUNNING`, `COMPLETED`, `FAILED` |
+| `createdAt` | `timestamp` | Job creation time |
+| `startedAt` | `timestamp \| null` | When job began executing |
+| `completedAt` | `timestamp \| null` | When job finished |
+| `timeoutAt` | `timestamp \| null` | Auto-fail deadline (15 min); checked on read |
+| `result` | `map \| null` | Result data on completion |
+| `error` | `string \| null` | Error message on failure |
+| `testMode` | `boolean \| null` | If `true`, test mode (24h TTL via `expireAt`) |
+| `expireAt` | `timestamp \| null` | Firestore TTL for test jobs |
+
+**Auto-timeout:** `get_pulse_job()` checks `timeoutAt` on RUNNING jobs and marks them FAILED if exceeded.
+
+### `industry_pulses`
+
+| Property | Description |
+|---|---|
+| **Document ID** | `{industryKey}-{weekOf}` (e.g., `bakeries-2026-03-17`) |
+| **Source file** | `lib/db/hephae_db/firestore/industry_pulse.py` |
+
+| Field | Type | Notes |
+|---|---|---|
+| `industryKey` | `string` | Normalized industry identifier (e.g., `bakeries`) |
+| `weekOf` | `string` | ISO date for the week |
+| `nationalSignals` | `map` | National-level signal data |
+| `nationalImpact` | `map` | Impact assessment at national level |
+| `nationalPlaybooks` | `array<map>` | Recommended action playbooks |
+| `trendSummary` | `string` | AI-generated trend narrative |
+| `signalsUsed` | `array<string>` | List of signal source names used |
+| `diagnostics` | `map` | Pipeline diagnostics |
+| `createdAt` | `timestamp` | Creation time |
+| `updatedAt` | `timestamp` | Last update time |
+
+### `registered_industries`
+
+| Property | Description |
+|---|---|
+| **Document ID** | `{industryKey}` (e.g., `bakeries`) |
+| **Source file** | `lib/db/hephae_db/firestore/registered_industries.py` |
+
+| Field | Type | Notes |
+|---|---|---|
+| `industryKey` | `string` | Normalized industry identifier |
+| `displayName` | `string` | Human-readable name (e.g., "Bakeries") |
+| `status` | `string` | `active` or `paused` |
+| `registeredAt` | `timestamp` | When the industry was registered |
+| `lastPulseAt` | `timestamp \| null` | Timestamp of last successful pulse |
+| `lastPulseId` | `string \| null` | Doc ID of last industry pulse |
+| `pulseCount` | `integer` | Total pulses generated (uses `Increment`) |
+| `createdBy` | `string` | Creator (default: `admin`) |
+
+### `registered_zipcodes`
+
+| Property | Description |
+|---|---|
+| **Document ID** | `{zipCode}` (e.g., `07110`) |
+| **Source file** | `lib/db/hephae_db/firestore/registered_zipcodes.py` |
+
+| Field | Type | Notes |
+|---|---|---|
+| `zipCode` | `string` | 5-digit zip code |
+| `businessTypes` | `array<string>` | Business types to generate pulses for (default: `["Restaurants"]`). Uses `ArrayUnion`/`ArrayRemove`. |
+| `city` | `string` | City name |
+| `state` | `string` | State code |
+| `county` | `string` | County name |
+| `status` | `string` | `active` or `paused` |
+| `onboardingStatus` | `string` | `onboarding` or `onboarded` |
+| `onboardedAt` | `timestamp \| null` | When onboarding completed |
+| `registeredAt` | `timestamp` | Registration time |
+| `lastPulseAt` | `timestamp \| null` | Timestamp of last successful pulse |
+| `lastPulseId` | `string \| null` | Doc ID of last pulse |
+| `lastPulseHeadline` | `string` | Headline from last pulse |
+| `lastPulseInsightCount` | `integer` | Number of insights in last pulse |
+| `pulseCount` | `integer` | Total pulses generated (uses `Increment`) |
+| `nextScheduledAt` | `timestamp` | Next Monday 06:00 ET (11:00 UTC) |
+| `createdBy` | `string` | Creator (default: `admin`) |
+
+### `pulse_batch_work_items`
+
+| Property | Description |
+|---|---|
+| **Document ID** | `{batchId}:{zipCode}` (e.g., `pulse-essex-2026-W12:07110`) |
+| **Source file** | `lib/db/hephae_db/firestore/pulse_batch.py` |
+
+| Field | Type | Notes |
+|---|---|---|
+| `batchId` | `string` | Parent batch identifier |
+| `zipCode` | `string` | Target zip code |
+| `businessType` | `string` | Target business type |
+| `weekOf` | `string` | ISO week string |
+| `status` | `string` | `QUEUED`, `FETCHING`, `RESEARCH`, `PRE_SYNTHESIS`, `SYNTHESIS`, `CRITIQUE`, `COMPLETED`, `FAILED` |
+| `retryCount` | `integer` | Number of retries |
+| `lastError` | `string \| null` | Last error message |
+| `createdAt` | `timestamp` | Creation time |
+| `updatedAt` | `timestamp` | Last update time |
+| `expireAt` | `timestamp` | Firestore TTL -- auto-deletes after 14 days |
+
+### `pulse_signal_archive`
+
+| Property | Description |
+|---|---|
+| **Document ID** | `{zipCode}-{weekOf}` (e.g., `07110-2026-W12`) |
+| **Source file** | `lib/db/hephae_db/firestore/signal_archive.py` |
+
+| Field | Type | Notes |
+|---|---|---|
+| `zipCode` | `string` | 5-digit zip code |
+| `weekOf` | `string` | ISO week string |
+| `collectedAt` | `timestamp` | When signals were collected |
+| `sources` | `map` | Dict of `source_name` to `{raw, fetchedAt, version}` |
+| `preComputedImpact` | `map \| null` | Pre-computed impact multipliers |
+
+### `data_cache`
+
+| Property | Description |
+|---|---|
+| **Document ID** | `{source}:{scopeKey}` (e.g., `census:07110`, `fda:NJ`, `qcew:34031-2024-Q1`) |
+| **Source file** | `lib/db/hephae_db/firestore/data_cache.py` |
+
+| Field | Type | Notes |
+|---|---|---|
+| `source` | `string` | Data source name (e.g., `census`, `fda`, `qcew`) |
+| `scopeKey` | `string` | Scope identifier (zip code, state code, county FIPS) |
+| `data` | `map` | Cached API response data |
+| `fetchedAt` | `timestamp` | Cache write time |
+| `ttlDays` | `integer` | Configured TTL in days |
+| `expiresAt` | `timestamp` | Computed expiry time (checked on read) |
+
+**TTL tiers:** `TTL_STATIC` = 90d (Census, FHFA, IRS, CDC, OSM), `TTL_SHARED` = 30d (QCEW, FBI, FDA, EIA, USDA), `TTL_WEEKLY` = 7d (NWS, news, trends, CPI, SBA), `TTL_DAILY` = 1d (reserved).
+
+### `zipcode_profiles`
+
+| Property | Description |
+|---|---|
+| **Document ID** | `{zipCode}` (e.g., `07110`) |
+| **Source file** | `lib/db/hephae_db/firestore/zipcode_profiles.py` |
+
+| Field | Type | Notes |
+|---|---|---|
+| `zipCode` | `string` | 5-digit zip code |
+| `discoveredAt` | `timestamp` | When the profile was discovered |
+| `refreshAfter` | `timestamp` | When the profile should be re-discovered |
+| `...` | `any` | Additional fields from the capability registry manifest (sources, capabilities, etc.) |
 
 ---
 

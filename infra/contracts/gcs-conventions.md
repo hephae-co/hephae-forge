@@ -1,5 +1,5 @@
 # GCS Conventions
-> Auto-generated from codebase on 2026-03-15. Do not edit manually — run `/hephae-refresh-docs` to update.
+> Auto-generated from codebase on 2026-03-22. Do not edit manually.
 
 All GCS operations are in `lib/db/hephae_db/gcs/storage.py`. No `makePublic()` calls -- buckets use uniform IAM (`allUsers: Storage Object Viewer`).
 

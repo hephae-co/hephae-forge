@@ -1,5 +1,5 @@
 # BigQuery Schema
-> Auto-generated from codebase on 2026-03-15. Do not edit manually — run `/hephae-refresh-docs` to update.
+> Auto-generated from codebase on 2026-03-22. Do not edit manually.
 
 **Dataset:** `{GCP_PROJECT_ID}.hephae`
 **Project ID:** Set via `BIGQUERY_PROJECT_ID` or `GCP_PROJECT_ID` or `GOOGLE_CLOUD_PROJECT` env var
@@ -165,7 +165,96 @@ Structured feedback signals from every agent run -- used by the learning cycle f
 |---|---|
 | **Read by** | `lib/db/hephae_db/bigquery/reader.py` :: `query_google_trends()`, `query_industry_trends()` |
 | **Filter** | Data within last 3 days of refresh, filtered by DMA name |
-| **Industry keywords** | Mapped in `INDUSTRY_KEYWORDS` dict (bakeries, restaurants, laundromats, etc.) |
+| **Industry keywords** | Mapped in `INDUSTRY_KEYWORDS` dict (bakeries, restaurants, laundromats, hairdressers, gyms, coffee, pizza, tacos, ice_cream, nail_salons, auto_repair, pet_stores, florists, pharmacies) |
+
+### `bigquery-public-data.utility_us.zipcode_area`
+
+| Column | Type | Notes |
+|---|---|---|
+| `zipcode` | `STRING` | 5-digit zip code |
+| `latitude` | `FLOAT64` | Latitude |
+| `longitude` | `FLOAT64` | Longitude |
+| `city` | `STRING` | City name |
+| `state_code` | `STRING` | 2-letter state code |
+| `state_name` | `STRING` | Full state name |
+| `state_fips` | `STRING` | State FIPS code |
+| `county` | `STRING` | County name |
+
+| Property | Value |
+|---|---|
+| **Read by** | `lib/db/hephae_db/bigquery/public_data.py` :: `resolve_zip_geography()`, `query_zips_in_county()` |
+
+### `bigquery-public-data.census_bureau_acs.zip_codes_2018_5yr`
+
+| Column | Type | Notes |
+|---|---|---|
+| `geo_id` | `STRING` | ZCTA (zip code tabulation area) |
+| `total_pop` | `INT64` | Total population |
+| `median_age` | `FLOAT64` | Median age |
+| `median_income` | `INT64` | Median household income |
+| `income_per_capita` | `INT64` | Per-capita income |
+| `poverty` | `INT64` | People in poverty |
+| `pop_determined_poverty_status` | `INT64` | Population with poverty status determined |
+| `employed_pop` | `INT64` | Employed population |
+| `unemployed_pop` | `INT64` | Unemployed population |
+| `housing_units` | `INT64` | Total housing units |
+| `occupied_housing_units` | `INT64` | Occupied housing units |
+| `vacant_housing_units` | `INT64` | Vacant housing units |
+| `median_rent` | `INT64` | Median monthly rent |
+| `percent_income_spent_on_rent` | `FLOAT64` | Rent burden percentage |
+| `owner_occupied_housing_units_median_value` | `INT64` | Median home value |
+| `children` | `INT64` | Children population |
+| `children_in_single_female_hh` | `INT64` | Children in single-female households |
+| `commuters_by_public_transportation` | `INT64` | Public transit commuters |
+
+| Property | Value |
+|---|---|
+| **Read by** | `lib/db/hephae_db/bigquery/public_data.py` :: `query_census_demographics()` |
+| **Derived fields** | `economicStressLevel`, `priceSensitivity`, `povertyRate`, `occupancyRate`, `vacancyRate`, `unemploymentRate` |
+
+### `bigquery-public-data.geo_openstreetmap.planet_features`
+
+| Column | Type | Notes |
+|---|---|---|
+| `all_tags` | `ARRAY<STRUCT<key STRING, value STRING>>` | All OSM tags |
+| `geometry` | `GEOGRAPHY` | Point/polygon geometry |
+
+| Property | Value |
+|---|---|
+| **Read by** | `lib/db/hephae_db/bigquery/public_data.py` :: `query_osm_business_density()` |
+| **Spatial filter** | `ST_DWITHIN(geometry, point, radius)` -- default 1500m radius |
+| **Business type mapping** | `OSM_BUSINESS_TAGS` dict maps business types to OSM amenity/shop tag values |
+| **Derived fields** | `totalBusinesses`, `saturationLevel` (high/moderate/low/minimal), `categories`, `nearby[]` |
+
+### `bigquery-public-data.noaa_gsod.stations` and `bigquery-public-data.noaa_gsod.gsod*`
+
+| Column (stations) | Type | Notes |
+|---|---|---|
+| `usaf` | `STRING` | Station USAF identifier |
+| `wban` | `STRING` | Station WBAN identifier |
+| `name` | `STRING` | Station name |
+| `state` | `STRING` | US state |
+| `lat` | `FLOAT64` | Latitude |
+| `lon` | `FLOAT64` | Longitude |
+| `country` | `STRING` | Country code |
+
+| Column (gsod*) | Type | Notes |
+|---|---|---|
+| `stn` | `STRING` | Station USAF |
+| `wban` | `STRING` | Station WBAN |
+| `mo` | `STRING` | Month of observation |
+| `temp` | `FLOAT64` | Mean temperature (F) |
+| `max` | `FLOAT64` | Max temperature (F) |
+| `min` | `FLOAT64` | Min temperature (F) |
+| `prcp` | `FLOAT64` | Precipitation (inches); 99.99 = missing |
+| `rain_drizzle` | `STRING` | `'1'` if rain occurred |
+| `snow_ice_pellets` | `STRING` | `'1'` if snow occurred |
+
+| Property | Value |
+|---|---|
+| **Read by** | `lib/db/hephae_db/bigquery/public_data.py` :: `query_noaa_weather_history()` |
+| **Years queried** | 2020--2024 (5-year average) |
+| **Derived fields** | `avgTempF`, `avgHighF`, `avgLowF`, `avgPrecipIn`, `rainDaysPct`, `snowDays` |
 
 ---
 

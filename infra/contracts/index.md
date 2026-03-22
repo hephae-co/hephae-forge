@@ -1,21 +1,21 @@
 # Hephae Forge Documentation
 
 > Internal documentation for the Hephae Forge pipeline.
-> Last refreshed: 2026-03-15. Run `/hephae-refresh-docs` in Claude Code to regenerate from codebase.
+> Last refreshed: 2026-03-22. Run `/hephae-refresh-docs` in Claude Code to regenerate from codebase.
 
 ## Architecture
 
 | Doc | Description |
 |-----|-------------|
-| [System Overview](architecture/overview.md) | Service topology, package dependencies, model tiers, auth, database rules |
-| [Infrastructure & Deployment](architecture/infrastructure.md) | GCP topology, env vars, Cloud Run config, deploy scripts, bootstrap |
-| [Workflow Pipeline](architecture/workflow-pipeline.md) | Phase transitions, capability registry, qualification scoring, threshold formula |
+| [System Overview](architecture/overview.md) | Service topology, dependencies, model tiers, two-layer pulse architecture |
+| [Infrastructure & Deployment](architecture/infrastructure.md) | GCP topology, env vars, Cloud Run config, Cloud Scheduler crons |
+| [Workflow Pipeline](architecture/workflow-pipeline.md) | Phase transitions, capability registry, qualification scoring, threshold |
 
 ## Database
 
 | Doc | Description |
 |-----|-------------|
-| [Firestore Schema](firestore-schema.md) | All collections — businesses, workflows, tasks, research, fixtures |
+| [Firestore Schema](firestore-schema.md) | All collections — businesses, workflows, tasks, pulse, research, industries |
 | [BigQuery Schema](bigquery-schema.md) | Append-only tables — analyses, discoveries, interactions |
 | [GCS Conventions](gcs-conventions.md) | Bucket paths for reports, menus, social cards |
 
@@ -24,13 +24,13 @@
 | Doc | Description |
 |-----|-------------|
 | [Web Routes](api-web.md) | Customer-facing endpoints — discover, analyze, chat, social |
-| [Admin Routes](api-admin.md) | Workflow CRUD, research, tasks, testing, content, stats |
+| [Admin Routes](api-admin.md) | Workflow CRUD, research, tasks, industries, pulse, content, stats |
 
 ## Agents
 
 | Doc | Description |
 |-----|-------------|
-| [Agent Catalog](agents/agent-catalog.md) | All 48 agents — versions, models, tools, architecture |
+| [Agent Catalog](agents/agent-catalog.md) | All agents — versions, models, tools, architecture, industry configs |
 | [Prompt Catalog](agents/prompt-catalog.md) | Full instruction text for every LlmAgent in the system |
 
 ## Pipeline Design
@@ -61,13 +61,17 @@
                   ▼
        ┌──────────────────┐
        │   apps/api/      │
-       │   FastAPI         │──→ 48 AI Agents (Gemini)
+       │   FastAPI         │──→ 50+ AI Agents (Gemini)
        │   Unified API    │──→ Firestore / BigQuery / GCS
        └──────────────────┘
 
-Workflow: DISCOVERY → QUALIFICATION → ANALYSIS → EVALUATION → APPROVAL → OUTREACH
-Agents:   16 discovery │ 12 capability │ 11 social/marketing │ 4 evaluators │ 1 insights
-Model:    gemini-3.1-flash-lite-preview (fallback: gemini-3-flash-preview)
+Two-Layer Weekly Pulse:
+  Sunday 3AM ET  → Industry Cron (BLS, USDA, FDA per vertical)
+  Monday 11AM UT → Zip Cron (local signals + industry data merged)
+
+Industries: Restaurant │ Bakery │ Barber Shop
+Workflow:   DISCOVERY → QUALIFICATION → ANALYSIS → EVALUATION → APPROVAL → OUTREACH
+Model:      gemini-3.1-flash-lite-preview (fallback: gemini-3-flash-preview)
 ```
 
 ## Refreshing These Docs

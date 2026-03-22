@@ -97,6 +97,11 @@ def _economist_instruction(ctx) -> str:
 
     signal_text = "\n\n".join(sections) if sections else "No economic data available."
 
+    # Inject industry-specific economist context if available
+    industry_cfg = state.get("industryConfig", {})
+    economist_context = industry_cfg.get("economistContext", "")
+    context_line = f"\n\nINDUSTRY FOCUS: {economist_context}" if economist_context else ""
+
     return f"""You are a Local Business Economist analyzing {business_type} in zip {zip_code}.
 
 Review these economic and demographic signals and produce a macro report covering:
@@ -105,6 +110,7 @@ Review these economic and demographic signals and produce a macro report coverin
 3. **Labor market** — employment trends, new business formation
 4. **Demand signals** — Google Trends, search interest shifts
 5. **Competitive landscape** — establishment counts, saturation level
+{context_line}
 
 Current date: {datetime.now().strftime('%Y-%m-%d')}
 
@@ -176,6 +182,11 @@ def _local_scout_instruction(ctx) -> str:
 
     signal_text = "\n\n".join(sections) if sections else "No local data available."
 
+    # Inject industry-specific scout context
+    industry_cfg = state.get("industryConfig", {})
+    scout_context = industry_cfg.get("scoutContext", "")
+    scout_line = f"\n\nINDUSTRY INTELLIGENCE: {scout_context}" if scout_context else ""
+
     return f"""You are a Local Scout for {business_type} businesses in {city}, {st} ({zip_code}).
 
 Review these local signals and produce a ground-level report covering:
@@ -189,6 +200,7 @@ Current date: {datetime.now().strftime('%Y-%m-%d')}
 
 LOCAL SIGNALS:
 {signal_text}
+{scout_line}
 
 Write a structured local report. Be specific about timing.
 Do NOT make up data — if a source is missing, skip that section.

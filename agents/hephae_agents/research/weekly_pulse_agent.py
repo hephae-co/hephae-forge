@@ -61,6 +61,21 @@ def _synthesis_instruction(ctx) -> str:
         "",
     ]
 
+    # Industry-specific synthesis context
+    industry_cfg = state.get("industryConfig", {})
+    synthesis_context = industry_cfg.get("synthesisContext", "")
+    if synthesis_context:
+        sections.append(f"=== INDUSTRY CONTEXT ===")
+        sections.append(synthesis_context)
+        sections.append("")
+
+    # Industry trend summary (from national industry pulse)
+    industry_trend = state.get("industryTrendSummary", "")
+    if industry_trend:
+        sections.append("=== NATIONAL INDUSTRY TREND ===")
+        sections.append(industry_trend)
+        sections.append("")
+
     # Rewrite mode — revise specific insights
     if rewrite_feedback:
         existing_output = state.get("pulseOutput", "")

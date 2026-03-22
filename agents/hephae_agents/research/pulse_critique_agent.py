@@ -56,7 +56,11 @@ def _critique_instruction(ctx) -> str:
         sp = social_pulse if isinstance(social_pulse, str) else json.dumps(social_pulse, default=str)
         local_context_text += f"\n\n=== SOCIAL PULSE (for cross-check) ===\n{sp[:2000]}"
 
-    return f"""You are a restaurant owner with 15 years experience reviewing an intelligence briefing someone wrote for you. You paid good money for this and you're pissed if it's vague.
+    # Use industry-specific critique persona if available
+    industry_cfg = state.get("industryConfig", {})
+    persona = industry_cfg.get("critiquePersona", "restaurant owner with 15 years experience")
+
+    return f"""You are a {persona} reviewing an intelligence briefing someone wrote for you. You paid good money for this and you're pissed if it's vague.
 
 ## Pass A: Local Briefing Quality
 Check the localBriefing section:

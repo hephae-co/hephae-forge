@@ -155,6 +155,23 @@ class BaseLayerFetcher(BaseAgent):
         except Exception as e:
             logger.warning(f"[BaseLayerFetcher] Zip research load failed: {e}")
 
+        # Resolve IndustryConfig for downstream agents (persona, contexts, playbooks)
+        industry_config = {}
+        try:
+            from hephae_api.workflows.orchestrators.industries import resolve
+            cfg = resolve(business_type)
+            industry_config = {
+                "id": cfg.id,
+                "name": cfg.name,
+                "economistContext": cfg.economist_context,
+                "scoutContext": cfg.scout_context,
+                "synthesisContext": cfg.synthesis_context,
+                "critiquePersona": cfg.critique_persona,
+                "socialSearchTerms": list(cfg.social_search_terms),
+            }
+        except Exception as e:
+            logger.warning(f"[BaseLayerFetcher] IndustryConfig resolve failed: {e}")
+
         # Write everything to session state via state_delta
         state_delta = {
             "rawSignals": signals,
@@ -162,6 +179,7 @@ class BaseLayerFetcher(BaseAgent):
             "preComputedImpact": pre_computed,
             "matchedPlaybooks": matched_playbooks,
             "industryTrendSummary": industry_trend_summary,
+            "industryConfig": industry_config,
         }
 
         logger.info(
@@ -207,37 +225,6 @@ def _local_catalyst_instruction(ctx) -> str:
     )
 
 
-_social_pulse_research = LlmAgent(
-    name="SocialPulseResearch",
-    model=AgentModels.PRIMARY_MODEL,
-    description="Scans social media for community sentiment.",
-    instruction=_social_pulse_instruction,
-    tools=[google_search],
-    output_key="socialPulse",
-    on_model_error_callback=fallback_on_error,
-)
-
-_local_catalyst_research = LlmAgent(
-    name="LocalCatalystResearch",
-    model=AgentModels.PRIMARY_MODEL,
-    description="Researches forward-looking local government signals.",
-    instruction=_local_catalyst_instruction,
-    tools=[google_search_tool, crawl4ai_advanced_tool],
-    output_key="localCatalysts",
-    on_model_error_callback=fallback_on_error,
-)
-
-_research_fan_out = ParallelAgent(
-    name="ResearchFanOut",
-    sub_agents=[_social_pulse_research, _local_catalyst_research],
-)
-
-
-# ---------------------------------------------------------------------------
-# Stage 1: DataGatherer — runs fetcher + research in parallel
-# ---------------------------------------------------------------------------
-
-data_gatherer = ParallelAgent(
-    name="DataGatherer",
-    sub_agents=[BaseLayerFetcher(), _research_fan_out],
-)
+# NOTE: Module-level agent instances REMOVED — ADK agents can only have one parent.
+# All agent instantiation happens in create_pulse_orchestrator() factory function
+# in pulse_orchestrator.py. Only export instruction builders and BaseLayerFetcher.

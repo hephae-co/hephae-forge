@@ -11,6 +11,9 @@ interface BlogPost {
   wordCount: number;
   chartCount: number;
   publishedAt: string;
+  heroImageUrl?: string;
+  seoDescription?: string;
+  seoKeywords?: string[];
 }
 
 async function fetchPost(slug: string): Promise<BlogPost | null> {
@@ -54,21 +57,35 @@ export async function generateMetadata({
   const post = await fetchPost(slug);
   if (!post) return { title: 'Blog | Hephae' };
 
-  const description = `${post.title} — Data-driven analysis by Hephae Intelligence.`;
+  const description = post.seoDescription || `${post.title} — Data-driven analysis by Hephae Intelligence.`;
+  const keywords = post.seoKeywords || post.hashtags || [];
+  const canonicalUrl = `https://hephae.co/blog/${slug}`;
 
   return {
     title: `${post.title} | Hephae Blog`,
     description,
+    keywords: keywords.join(', '),
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title: post.title,
       description,
       type: 'article',
-      url: `https://hephae.co/blog/${slug}`,
+      url: canonicalUrl,
+      ...(post.heroImageUrl ? { images: [{ url: post.heroImageUrl, width: 1200, height: 630 }] } : {}),
+      publishedTime: post.publishedAt,
+      authors: ['Hephae Intelligence'],
     },
     twitter: {
       card: 'summary_large_image',
       title: post.title,
       description,
+      ...(post.heroImageUrl ? { images: [post.heroImageUrl] } : {}),
+    },
+    other: {
+      'article:published_time': post.publishedAt || '',
+      'article:author': 'Hephae Intelligence',
     },
   };
 }
@@ -94,8 +111,29 @@ export default async function BlogPostPage({
   // Fetch the rendered blog HTML from CDN
   const articleHtml = post.content || await fetchBlogHtml(post.blogUrl);
 
+  // Schema.org JSON-LD
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.seoDescription || `${post.title} — Data-driven analysis by Hephae Intelligence.`,
+    url: `https://hephae.co/blog/${slug}`,
+    datePublished: post.publishedAt,
+    author: { '@type': 'Organization', name: 'Hephae Intelligence', url: 'https://hephae.co' },
+    publisher: { '@type': 'Organization', name: 'Hephae', url: 'https://hephae.co' },
+    ...(post.heroImageUrl ? { image: post.heroImageUrl } : {}),
+    ...(post.wordCount ? { wordCount: post.wordCount } : {}),
+    keywords: (post.seoKeywords || post.hashtags || []).join(', '),
+  };
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      {/* Schema.org JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* Header */}
       <header className="border-b border-slate-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">

@@ -222,6 +222,9 @@ async def get_blog_post(post_id: str):
 
     result = _serialize_post(post)
     result["content"] = post.get("content", "")
+    result["heroImageUrl"] = post.get("heroImageUrl", "")
+    result["seoDescription"] = post.get("seoDescription", "")
+    result["seoKeywords"] = post.get("seoKeywords", post.get("hashtags", []))
     return result
 
 
@@ -235,6 +238,9 @@ async def get_blog_by_slug(slug: str):
         if slug in post.get("blogUrl", "") and post.get("status") == "published":
             result = _serialize_post(post)
             result["content"] = post.get("content", "")
+            result["heroImageUrl"] = post.get("heroImageUrl", "")
+            result["seoDescription"] = post.get("seoDescription", "")
+            result["seoKeywords"] = post.get("seoKeywords", post.get("hashtags", []))
             return result
 
     raise HTTPException(status_code=404, detail="Post not found")

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from typing import Any
 
 import json
@@ -21,7 +20,6 @@ from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 from google.adk.runners import RunConfig, Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.tools import google_search
-from google.adk.tools.mcp_tool import McpToolset, StreamableHTTPConnectionParams
 
 from hephae_common.adk_helpers import user_msg
 from hephae_common.model_config import AgentModels
@@ -34,8 +32,6 @@ from hephae_agents.business_overview.agent import (
 )
 
 logger = logging.getLogger(__name__)
-
-MAPS_MCP_URL = "https://mapstools.googleapis.com/mcp"
 
 
 async def _load_zipcode_context(zip_code: str) -> dict[str, Any]:
@@ -176,54 +172,23 @@ async def run_business_overview(identity: dict[str, Any]) -> dict[str, Any]:
         on_model_error_callback=fallback_on_error,
     )
 
-    # Sub-agent 2: Maps Grounding Lite (optional — skip if MCP hangs)
-    maps_tools = []
-    maps_toolset = None
-    api_key = os.getenv("GOOGLE_MAPS_API_KEY", "")
-    if api_key:
-        try:
-            maps_toolset = McpToolset(
-                connection_params=StreamableHTTPConnectionParams(
-                    url=MAPS_MCP_URL,
-                    headers={"X-Goog-Api-Key": api_key},
-                    timeout=10.0,
-                ),
-                tool_filter=["search_places"],
-                tool_name_prefix="maps",
-            )
-            maps_tools = await asyncio.wait_for(maps_toolset.get_tools(), timeout=10.0)
-            logger.info(f"[BusinessOverview] Maps MCP loaded: {len(maps_tools)} tools")
-        except asyncio.TimeoutError:
-            logger.warning("[BusinessOverview] Maps MCP timed out (10s) — skipping")
-            maps_toolset = None
-            maps_tools = []
-        except Exception as e:
-            logger.warning(f"[BusinessOverview] Maps MCP init failed: {e}")
-            maps_toolset = None
-            maps_tools = []
+    # Sub-agent 2: Competitor researcher — uses Google Search grounding
+    # (OSM competitor data is already loaded in zipcodeProfile from Firestore)
+    competitor_agent = LlmAgent(
+        name="overview_competitors",
+        model=AgentModels.PRIMARY_MODEL,
+        description="Researches nearby competitors via Google Search.",
+        instruction=MAPS_INSTRUCTION,
+        tools=[google_search],
+        output_key="mapsData",
+        on_model_error_callback=fallback_on_error,
+    )
 
-    # Build research agents — always include search, optionally include maps
-    research_agents = [search_agent]
-
-    if maps_tools:
-        maps_agent = LlmAgent(
-            name="overview_maps",
-            model=AgentModels.PRIMARY_MODEL,
-            description="Searches Google Maps for nearby competitors and business density.",
-            instruction=MAPS_INSTRUCTION,
-            tools=maps_tools,
-            output_key="mapsData",
-            on_model_error_callback=fallback_on_error,
-        )
-        research_agents.append(maps_agent)
-    else:
-        logger.info("[BusinessOverview] Running without Maps agent (search + data only)")
-
-    # Parallel research phase
+    # Parallel research phase — both use Google Search grounding
     research_phase = ParallelAgent(
         name="overview_research",
-        description="Parallel research agents.",
-        sub_agents=research_agents,
+        description="Parallel business + competitor research.",
+        sub_agents=[search_agent, competitor_agent],
     )
 
     # Synthesizer — reads all data from state
@@ -331,8 +296,4 @@ Search for this business and its competitors in the area."""
         return {"summary": f"Unable to generate overview for {name}.", "error": str(e)}
 
     finally:
-        if maps_toolset:
-            try:
-                await maps_toolset.close()
-            except Exception:
-                pass
+        pass

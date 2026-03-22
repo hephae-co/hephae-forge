@@ -151,6 +151,19 @@ export default async function BlogPostPage({
       </header>
 
       <article className="max-w-3xl mx-auto px-6 py-12">
+        {/* Hero image */}
+        {post.heroImageUrl && (
+          <div className="mb-8 rounded-xl overflow-hidden shadow-lg">
+            <img
+              src={post.heroImageUrl}
+              alt={post.title}
+              width={1200}
+              height={630}
+              className="w-full h-auto"
+            />
+          </div>
+        )}
+
         {/* Article meta */}
         <div className="mb-8">
           {post.publishedAt && (

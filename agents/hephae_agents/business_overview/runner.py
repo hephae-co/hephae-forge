@@ -16,8 +16,8 @@ from typing import Any
 
 from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 from google.adk.runners import RunConfig
+from google.adk.tools import google_search
 from google.adk.tools.mcp_tool import McpToolset, StreamableHTTPConnectionParams
-from google.genai import types
 
 from hephae_common.adk_helpers import run_agent_to_json
 from hephae_common.model_config import AgentModels
@@ -167,7 +167,7 @@ async def run_business_overview(identity: dict[str, Any]) -> dict[str, Any]:
         model=AgentModels.PRIMARY_MODEL,
         description="Searches Google for business information and local trends.",
         instruction=SEARCH_INSTRUCTION,
-        tools=[types.Tool(google_search=types.GoogleSearch())],
+        tools=[google_search],
         output_key="searchResults",
         on_model_error_callback=fallback_on_error,
     )

@@ -50,7 +50,15 @@ STRUCTURE:
 3. **Chart + Deep Dive** (2-3 sections): Each section pairs a chart with analysis
 4. **Cross-Insights** (1 paragraph): Connect dots across different data sources
 5. **What This Means** (1 paragraph): Actionable takeaways — specific Monday-morning actions
-6. **Methodology** (brief): Name the data sources (BLS, USDA, FDA, NWS, Census, etc.)
+6. **Data Sources** (REQUIRED): A clearly labeled section with a table or list of every data source used:
+   - "Bureau of Labor Statistics (BLS) Consumer Price Index" for any CPI percentage
+   - "USDA National Agricultural Statistics Service" for commodity prices
+   - "FDA Enforcement Database" for recall data
+   - "U.S. Census Bureau / American Community Survey" for demographics
+   - "National Weather Service" for weather forecasts
+   - "Google Trends" for search demand signals
+   - "OpenStreetMap" for business density/competitor counts
+   Format: `<h2>Data Sources</h2>` followed by a list with agency name, what data was used, and update frequency.
 7. **CTA** (1-2 sentences): Invite readers to get their own Hephae analysis
 
 CHARTS — MANDATORY:

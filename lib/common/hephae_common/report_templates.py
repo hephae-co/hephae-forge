@@ -1153,8 +1153,29 @@ def build_blog_report(
 
     body = f"""
       {hero_html}
-      <div class="card">
-        <article style="font-size:1rem;line-height:1.8;color:#e2e8f0">
+      <div class="card" style="background:rgba(255,255,255,0.95);backdrop-filter:blur(10px)">
+        <article style="font-size:1.05rem;line-height:1.85;color:#1e293b;max-width:760px;margin:0 auto">
+          <style>
+            article h1 {{ color:#0f172a; font-size:2rem; margin-bottom:0.5rem; line-height:1.3 }}
+            article h2 {{ color:#1e293b; font-size:1.4rem; margin-top:2rem; border-bottom:2px solid #d97706; padding-bottom:0.3rem }}
+            article h3 {{ color:#334155; font-size:1.15rem; margin-top:1.5rem }}
+            article p {{ color:#334155; margin:1rem 0 }}
+            article strong {{ color:#0f172a }}
+            article a {{ color:#d97706; text-decoration:underline }}
+            article a:hover {{ color:#b45309 }}
+            article blockquote {{ border-left:4px solid #d97706; padding:1rem 1.5rem; margin:1.5rem 0; background:#fffbeb; color:#92400e; border-radius:0 8px 8px 0; font-size:1.1rem }}
+            article ul, article ol {{ color:#334155; padding-left:1.5rem; margin:1rem 0 }}
+            article li {{ margin:0.3rem 0 }}
+            article .chart-container {{ margin:2rem 0; padding:1rem; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0 }}
+            article .chart-caption {{ color:#64748b }}
+            article .social-share {{ border-top-color:#e2e8f0 }}
+            article .social-share p {{ color:#64748b }}
+            article .methodology {{ background:#f8fafc; padding:1.5rem; border-radius:12px; margin-top:2rem; border:1px solid #e2e8f0 }}
+            article .methodology h3 {{ color:#475569; font-size:1rem; margin-top:0 }}
+            article .methodology p {{ color:#64748b; font-size:0.9rem }}
+            article .blog-meta {{ color:#94a3b8; font-size:0.85rem; margin-bottom:2rem }}
+            article .blog-tags {{ background:#fef3c7; color:#92400e; padding:0.15rem 0.5rem; border-radius:4px; font-size:0.8rem }}
+          </style>
           {article_html}
         </article>
       </div>

@@ -198,9 +198,11 @@ def _register_routers() -> None:
     app.include_router(pulse_admin.router)
     app.include_router(registered_zipcodes.router)
     app.include_router(zipcode_profiles.router)
+    from hephae_api.routers.admin import registered_industries
+    app.include_router(registered_industries.router)
 
     # --- Batch / Cron routers ---
-    from hephae_api.routers.batch import cron, heartbeat_cron, workflow_monitor, batch_workflows, workflow_dispatcher, pulse_batch, pulse_cron
+    from hephae_api.routers.batch import cron, heartbeat_cron, workflow_monitor, batch_workflows, workflow_dispatcher, pulse_batch, pulse_cron, industry_pulse_cron
 
     app.include_router(cron.router)
     app.include_router(heartbeat_cron.router)
@@ -209,6 +211,7 @@ def _register_routers() -> None:
     app.include_router(workflow_dispatcher.router)
     app.include_router(pulse_batch.router)
     app.include_router(pulse_cron.router)
+    app.include_router(industry_pulse_cron.router)
 
 
 _register_routers()

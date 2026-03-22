@@ -77,10 +77,40 @@ class BaseLayerFetcher(BaseAgent):
         except Exception as e:
             logger.warning(f"[BaseLayerFetcher] Zipcode profile load failed: {e}")
 
-        # Fetch all signals via cache-through wrappers
-        from hephae_api.workflows.orchestrators.pulse_fetch_tools import fetch_all_signals
+        # ── Two-layer signal fetch ──────────────────────────────────
+        # Layer 1: Try loading pre-computed industry pulse (national data)
+        # Layer 2: Fetch local signals for this zip code
+        # Fallback: If no industry pulse exists, fetch everything directly
 
-        signals = await fetch_all_signals(
+        from hephae_api.workflows.orchestrators.pulse_fetch_tools import (
+            fetch_local_signals,
+            fetch_national_signals,
+        )
+        from hephae_api.workflows.orchestrators.pulse_playbooks import (
+            compute_impact_multipliers,
+            match_playbooks,
+        )
+
+        week_of = state.get("weekOf", "")
+        industry_pulse = None
+        industry_trend_summary = ""
+
+        # Try loading the industry pulse (pre-computed by industry cron)
+        try:
+            from hephae_api.workflows.orchestrators.industries import resolve
+            industry = resolve(business_type)
+            from hephae_db.firestore.industry_pulse import get_industry_pulse
+            industry_pulse = await get_industry_pulse(industry.id, week_of)
+            if industry_pulse:
+                logger.info(
+                    f"[BaseLayerFetcher] Loaded industry pulse {industry.id}-{week_of} "
+                    f"({len(industry_pulse.get('signalsUsed', []))} signals)"
+                )
+        except Exception as e:
+            logger.warning(f"[BaseLayerFetcher] Industry pulse load failed: {e}")
+
+        # Fetch local signals (always — these are zip-specific)
+        local_signals = await fetch_local_signals(
             zip_code=zip_code,
             business_type=business_type,
             city=city,
@@ -91,6 +121,31 @@ class BaseLayerFetcher(BaseAgent):
             dma_name=dma_name,
         )
 
+        if industry_pulse:
+            # Use pre-computed national data from industry pulse
+            national_signals = industry_pulse.get("nationalSignals", {})
+            national_impact = industry_pulse.get("nationalImpact", {})
+            national_playbooks = industry_pulse.get("nationalPlaybooks", [])
+            industry_trend_summary = industry_pulse.get("trendSummary", "")
+            signals = {**national_signals, **local_signals}
+            # Compute local impact and merge with national
+            local_impact = compute_impact_multipliers(local_signals)
+            pre_computed = {**national_impact, **local_impact}
+            # Dedupe playbooks by name
+            seen = {p.get("name") for p in national_playbooks}
+            local_playbooks = [
+                p for p in match_playbooks(local_impact, local_signals, business_type)
+                if p.get("name") not in seen
+            ]
+            matched_playbooks = national_playbooks + local_playbooks
+        else:
+            # Fallback: fetch national signals directly (existing behavior)
+            logger.info(f"[BaseLayerFetcher] No industry pulse — fetching all signals directly")
+            national_signals = await fetch_national_signals(business_type, st)
+            signals = {**national_signals, **local_signals}
+            pre_computed = compute_impact_multipliers(signals)
+            matched_playbooks = match_playbooks(pre_computed, signals, business_type)
+
         # Load zip code research if available
         try:
             from hephae_db.firestore.research import get_zipcode_report
@@ -100,21 +155,13 @@ class BaseLayerFetcher(BaseAgent):
         except Exception as e:
             logger.warning(f"[BaseLayerFetcher] Zip research load failed: {e}")
 
-        # Compute pre-computed impact multipliers (Python math, not LLM)
-        from hephae_api.workflows.orchestrators.pulse_playbooks import (
-            compute_impact_multipliers,
-            match_playbooks,
-        )
-
-        pre_computed = compute_impact_multipliers(signals)
-        matched_playbooks = match_playbooks(pre_computed, signals, business_type)
-
         # Write everything to session state via state_delta
         state_delta = {
             "rawSignals": signals,
             "signalsUsed": [k for k, v in signals.items() if v],
             "preComputedImpact": pre_computed,
             "matchedPlaybooks": matched_playbooks,
+            "industryTrendSummary": industry_trend_summary,
         }
 
         logger.info(

@@ -275,7 +275,113 @@ async def fetch_yelp(zip_code: str, business_type: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Aggregate fetcher — collects all signals for a zip code
+# National signals — same for all zips in an industry (BLS, USDA, FDA)
+# ---------------------------------------------------------------------------
+
+
+async def fetch_national_signals(
+    business_type: str,
+    state: str = "",
+) -> dict[str, Any]:
+    """Fetch industry-wide national signals (BLS CPI, USDA, FDA, price deltas).
+
+    These are the same for every zip code in the same industry.
+    Called once per industry per week by the industry pulse cron.
+    """
+    import asyncio
+    from hephae_api.workflows.orchestrators.industry_plugins import is_food_business
+
+    is_food = is_food_business(business_type)
+
+    tasks: list[tuple[str, Any]] = []
+    tasks.append(("blsCpi", fetch_bls_cpi(business_type)))
+    if is_food:
+        tasks.append(("fdaRecalls", fetch_fda(state)))
+        tasks.append(("usdaPrices", fetch_usda(business_type, state)))
+
+    labels = [t[0] for t in tasks]
+    coros = [t[1] for t in tasks]
+    results = await asyncio.gather(*coros, return_exceptions=True)
+
+    signals: dict[str, Any] = {}
+    for label, result in zip(labels, results):
+        if isinstance(result, Exception):
+            logger.error(f"[PulseFetch] national {label} failed: {result}")
+        elif result:
+            signals[label] = result
+
+    # Compute price deltas from BLS data
+    if signals.get("blsCpi") and signals["blsCpi"].get("series"):
+        try:
+            from hephae_integrations.bls_client import compute_price_deltas
+            signals["priceDeltas"] = compute_price_deltas(signals["blsCpi"]["series"])
+        except Exception as e:
+            logger.warning(f"[PulseFetch] Price delta computation failed: {e}")
+
+    return signals
+
+
+# ---------------------------------------------------------------------------
+# Local signals — zip-specific (census, weather, news, trends, etc.)
+# ---------------------------------------------------------------------------
+
+
+async def fetch_local_signals(
+    zip_code: str,
+    business_type: str,
+    city: str,
+    state: str,
+    county: str,
+    latitude: float,
+    longitude: float,
+    dma_name: str,
+) -> dict[str, Any]:
+    """Fetch zip-specific local signals.
+
+    Census, OSM, weather, news, trends, SBA, QCEW, IRS, health, FHFA, Yelp.
+    Called per zip code by the zip pulse cron.
+    """
+    import asyncio
+
+    tasks: list[tuple[str, Any]] = []
+
+    if zip_code:
+        tasks.append(("censusDemographics", fetch_census(zip_code)))
+    if latitude and longitude:
+        tasks.append(("osmDensity", fetch_osm(latitude, longitude, business_type)))
+        tasks.append(("weatherHistory", fetch_noaa(latitude, longitude)))
+
+    tasks.append(("weather", fetch_weather(zip_code)))
+    tasks.append(("localNews", fetch_news(city, state, business_type)))
+    tasks.append(("trends", fetch_trends(dma_name)))
+    tasks.append(("legalNotices", fetch_legal_notices(city, state, zip_code)))
+    tasks.append(("sbaLoans", fetch_sba(zip_code)))
+
+    if zip_code:
+        tasks.append(("healthMetrics", fetch_cdc_places(zip_code)))
+        tasks.append(("housePriceIndex", fetch_fhfa_hpi(zip_code)))
+        tasks.append(("irsIncome", fetch_irs_income(zip_code)))
+    if county and state:
+        tasks.append(("qcewEmployment", fetch_qcew(county, state, business_type)))
+
+    tasks.append(("yelpData", fetch_yelp(zip_code, business_type)))
+
+    labels = [t[0] for t in tasks]
+    coros = [t[1] for t in tasks]
+    results = await asyncio.gather(*coros, return_exceptions=True)
+
+    signals: dict[str, Any] = {}
+    for label, result in zip(labels, results):
+        if isinstance(result, Exception):
+            logger.error(f"[PulseFetch] local {label} failed: {result}")
+        elif result:
+            signals[label] = result
+
+    return signals
+
+
+# ---------------------------------------------------------------------------
+# Aggregate fetcher — backward-compatible wrapper
 # ---------------------------------------------------------------------------
 
 
@@ -291,67 +397,16 @@ async def fetch_all_signals(
 ) -> dict[str, Any]:
     """Fetch all data signals for a zip code, returning a flat dict of source → data.
 
-    Used by the BaseLayerFetcher and IndustryPluginFetcher in Stage 1.
+    Backward-compatible wrapper: calls fetch_national_signals() + fetch_local_signals()
+    and merges the results. Existing callers don't need to change.
     """
     import asyncio
-    from hephae_api.workflows.orchestrators.industry_plugins import is_food_business
 
-    is_food = is_food_business(business_type)
-
-    # Build task list
-    tasks: list[tuple[str, Any]] = []
-
-    # BQ sources (always)
-    if zip_code:
-        tasks.append(("censusDemographics", fetch_census(zip_code)))
-    if latitude and longitude:
-        tasks.append(("osmDensity", fetch_osm(latitude, longitude, business_type)))
-        tasks.append(("weatherHistory", fetch_noaa(latitude, longitude)))
-
-    # Weekly sources
-    tasks.append(("weather", fetch_weather(zip_code)))
-    tasks.append(("localNews", fetch_news(city, state, business_type)))
-    tasks.append(("trends", fetch_trends(dma_name)))
-    tasks.append(("legalNotices", fetch_legal_notices(city, state, zip_code)))
-    tasks.append(("sbaLoans", fetch_sba(zip_code)))
-
-    # BLS CPI (all business types)
-    tasks.append(("blsCpi", fetch_bls_cpi(business_type)))
-
-    # Food-specific
-    if is_food:
-        tasks.append(("fdaRecalls", fetch_fda(state)))
-        tasks.append(("usdaPrices", fetch_usda(business_type, state)))
-
-    # Shared / static
-    if zip_code:
-        tasks.append(("healthMetrics", fetch_cdc_places(zip_code)))
-        tasks.append(("housePriceIndex", fetch_fhfa_hpi(zip_code)))
-        tasks.append(("irsIncome", fetch_irs_income(zip_code)))
-    if county and state:
-        tasks.append(("qcewEmployment", fetch_qcew(county, state, business_type)))
-
-    # Yelp (optional)
-    tasks.append(("yelpData", fetch_yelp(zip_code, business_type)))
-
-    # Run all in parallel
-    labels = [t[0] for t in tasks]
-    coros = [t[1] for t in tasks]
-    results = await asyncio.gather(*coros, return_exceptions=True)
-
-    signals: dict[str, Any] = {}
-    for label, result in zip(labels, results):
-        if isinstance(result, Exception):
-            logger.error(f"[PulseFetch] {label} failed: {result}")
-        elif result:
-            signals[label] = result
-
-    # Compute price deltas from BLS data
-    if signals.get("blsCpi") and signals["blsCpi"].get("series"):
-        try:
-            from hephae_integrations.bls_client import compute_price_deltas
-            signals["priceDeltas"] = compute_price_deltas(signals["blsCpi"]["series"])
-        except Exception as e:
-            logger.warning(f"[PulseFetch] Price delta computation failed: {e}")
-
-    return signals
+    national, local = await asyncio.gather(
+        fetch_national_signals(business_type, state),
+        fetch_local_signals(
+            zip_code, business_type, city, state,
+            county, latitude, longitude, dma_name,
+        ),
+    )
+    return {**national, **local}

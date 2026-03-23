@@ -1,4 +1,4 @@
-"""Enrichment phase — calls discovery runner for business profile enrichment (no HTTP)."""
+"""Enrichment utilities — direct runner call for business profile enrichment."""
 
 from __future__ import annotations
 

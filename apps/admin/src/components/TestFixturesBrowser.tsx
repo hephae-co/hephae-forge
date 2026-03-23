@@ -112,8 +112,9 @@ export default function TestFixturesBrowser() {
                         const isExpanded = expandedId === fixture.id;
                         const isConfirming = confirmingId === fixture.id;
                         const isDeleting = deletingId === fixture.id;
-                        const evalEntries = fixture.businessState?.evaluations
-                            ? Object.entries(fixture.businessState.evaluations).filter(([, ev]) => ev)
+                        const evaluations = fixture.businessState?.evaluations as Record<string, { score: number; isHallucinated: boolean; issues: string[] }> | undefined;
+                        const evalEntries = evaluations
+                            ? Object.entries(evaluations).filter(([, ev]) => ev)
                             : [];
 
                         return (
@@ -136,7 +137,7 @@ export default function TestFixturesBrowser() {
                                                 : <ChevronRight className="w-4 h-4 text-gray-400" />
                                             }
                                             <span className="font-medium text-sm text-gray-800">
-                                                {fixture.identity?.name || fixture.businessState?.name || 'Unknown'}
+                                                {fixture.identity?.name || (fixture.businessState?.name as string | undefined) || 'Unknown'}
                                             </span>
                                             {typeBadge(fixture.fixtureType)}
                                             {fixture.sourceZipCode && (
@@ -265,20 +266,25 @@ export default function TestFixturesBrowser() {
                                         )}
 
                                         {/* Business State */}
-                                        <div>
-                                            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Business State Snapshot</h4>
-                                            <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-700 space-y-1">
-                                                <div><span className="font-medium">Phase:</span> {fixture.businessState?.phase?.replace(/_/g, ' ')}</div>
-                                                <div><span className="font-medium">Quality Passed:</span> {fixture.businessState?.qualityPassed ? 'Yes' : 'No'}</div>
-                                                <div><span className="font-medium">Capabilities:</span> {fixture.businessState?.capabilitiesCompleted?.join(', ') || 'none'}</div>
-                                                {(fixture.businessState?.capabilitiesFailed?.length ?? 0) > 0 && (
-                                                    <div><span className="font-medium text-red-600">Failed:</span> {fixture.businessState?.capabilitiesFailed?.join(', ')}</div>
-                                                )}
-                                                {fixture.businessState?.lastError && (
-                                                    <div><span className="font-medium text-red-600">Error:</span> {fixture.businessState?.lastError}</div>
-                                                )}
-                                            </div>
-                                        </div>
+                                        {fixture.businessState && (() => {
+                                            const bs = fixture.businessState as Record<string, any>;
+                                            return (
+                                                <div>
+                                                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Business State Snapshot</h4>
+                                                    <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-700 space-y-1">
+                                                        <div><span className="font-medium">Phase:</span> {(bs.phase as string | undefined)?.replace(/_/g, ' ')}</div>
+                                                        <div><span className="font-medium">Quality Passed:</span> {bs.qualityPassed ? 'Yes' : 'No'}</div>
+                                                        <div><span className="font-medium">Capabilities:</span> {(bs.capabilitiesCompleted as string[] | undefined)?.join(', ') || 'none'}</div>
+                                                        {((bs.capabilitiesFailed as string[] | undefined)?.length ?? 0) > 0 && (
+                                                            <div><span className="font-medium text-red-600">Failed:</span> {(bs.capabilitiesFailed as string[]).join(', ')}</div>
+                                                        )}
+                                                        {bs.lastError && (
+                                                            <div><span className="font-medium text-red-600">Error:</span> {bs.lastError as string}</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
 
                                         <div className="text-[10px] text-gray-400 flex gap-4">
                                             <span>Fixture ID: {fixture.id}</span>

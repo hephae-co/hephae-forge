@@ -374,8 +374,8 @@ async def _execute_single_action(req: ActionRequest) -> dict:
         return {"success": True}
 
     elif action == "start-discovery" and biz_id:
-        from hephae_api.workflows.phases.enrichment import enrich_business_profile
-        from hephae_api.workflows.phases.analysis import PROMOTE_KEYS
+        from hephae_api.workflows.enrichment_utils import enrich_business_profile
+        from hephae_api.workflows.analysis_utils import PROMOTE_KEYS
 
         biz = await get_business(biz_id)
         if not biz:
@@ -418,7 +418,7 @@ async def _execute_single_action(req: ActionRequest) -> dict:
             raise HTTPException(status_code=500, detail=str(e))
 
     elif action == "run-analysis" and biz_id:
-        from hephae_api.workflows.phases.analysis import run_single_business_analysis
+        from hephae_api.workflows.analysis_utils import run_single_business_analysis
 
         biz = await get_business(biz_id)
         if not biz:
@@ -490,7 +490,7 @@ async def _execute_single_action(req: ActionRequest) -> dict:
 
     elif action == "run-agent" and biz_id:
         from hephae_api.workflows.capabilities.registry import get_capability
-        from hephae_api.workflows.phases.analysis import _run_capability
+        from hephae_api.workflows.analysis_utils import _run_capability
 
         agent_name = req.agentName
         if not agent_name:

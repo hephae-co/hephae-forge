@@ -55,11 +55,15 @@ async def save_tech_intelligence(
 
 
 async def list_tech_intelligence(vertical: str | None = None, limit: int = 10) -> list[dict[str, Any]]:
-    """List recent tech intelligence profiles."""
+    """List recent tech intelligence profiles.
+
+    Uses simple filters without order_by to avoid composite index requirements.
+    """
     db = get_db()
-    query = db.collection(COLLECTION).order_by("generatedAt", direction="DESCENDING").limit(limit)
     if vertical:
-        query = db.collection(COLLECTION).where("vertical", "==", vertical).order_by("generatedAt", direction="DESCENDING").limit(limit)
+        query = db.collection(COLLECTION).where("vertical", "==", vertical)
+    else:
+        query = db.collection(COLLECTION)
 
     docs = await asyncio.to_thread(query.get)
     results = []
@@ -67,4 +71,6 @@ async def list_tech_intelligence(vertical: str | None = None, limit: int = 10) -
         data = doc.to_dict()
         data["id"] = doc.id
         results.append(data)
+    results.sort(key=lambda x: str(x.get("generatedAt", "")), reverse=True)
+    results = results[:limit]
     return results

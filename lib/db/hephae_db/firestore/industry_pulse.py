@@ -69,40 +69,43 @@ async def get_industry_pulse(
 async def get_latest_industry_pulse(
     industry_key: str,
 ) -> dict[str, Any] | None:
-    """Get the most recent industry pulse."""
+    """Get the most recent industry pulse.
+
+    Uses simple equality filter (no order_by) to avoid composite index requirement.
+    """
     db = get_db()
-    query = (
-        db.collection(COLLECTION)
-        .where("industryKey", "==", industry_key)
-        .order_by("createdAt", direction="DESCENDING")
-        .limit(1)
-    )
+    query = db.collection(COLLECTION).where("industryKey", "==", industry_key)
     docs = await asyncio.to_thread(query.get)
-    if docs:
-        data = docs[0].to_dict()
-        data["id"] = docs[0].id
-        return data
-    return None
+    if not docs:
+        return None
+    # Sort in Python since we can't use order_by with where (composite index)
+    results = []
+    for doc in docs:
+        data = doc.to_dict()
+        data["id"] = doc.id
+        results.append(data)
+    results.sort(key=lambda x: str(x.get("createdAt", "")), reverse=True)
+    return results[0] if results else None
 
 
 async def list_industry_pulses(
     industry_key: str | None = None,
     limit: int = 12,
 ) -> list[dict[str, Any]]:
-    """List recent industry pulses."""
+    """List recent industry pulses.
+
+    Uses simple filters without order_by to avoid composite index requirements.
+    """
     db = get_db()
-    query = db.collection(COLLECTION).order_by("createdAt", direction="DESCENDING").limit(limit)
     if industry_key:
-        query = (
-            db.collection(COLLECTION)
-            .where("industryKey", "==", industry_key)
-            .order_by("createdAt", direction="DESCENDING")
-            .limit(limit)
-        )
+        query = db.collection(COLLECTION).where("industryKey", "==", industry_key)
+    else:
+        query = db.collection(COLLECTION)
     docs = await asyncio.to_thread(query.get)
     results = []
     for doc in docs:
         data = doc.to_dict()
         data["id"] = doc.id
         results.append(data)
-    return results
+    results.sort(key=lambda x: str(x.get("createdAt", "")), reverse=True)
+    return results[:limit]

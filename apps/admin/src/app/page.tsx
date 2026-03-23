@@ -11,11 +11,12 @@ import TestFixturesBrowser from '@/components/TestFixturesBrowser';
 import ContentStudio from '@/components/ContentStudio';
 import RegisteredZipcodes from '@/components/RegisteredZipcodes';
 import DashboardOverview from '@/components/DashboardOverview';
+import IntelligenceDashboard from '@/components/IntelligenceDashboard';
 import { RunSummary } from '@/lib/tester/storage';
-import { PlayCircle, RefreshCw, ServerCrash, Store, Workflow, FlaskConical, Users, PenSquare, LayoutDashboard, Settings, X, LogOut, Zap, MapPin } from 'lucide-react';
+import { PlayCircle, RefreshCw, ServerCrash, Store, Workflow, FlaskConical, Users, PenSquare, LayoutDashboard, Settings, X, LogOut, Zap, MapPin, Brain } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-type Tab = 'dashboard' | 'businesses' | 'workflows' | 'content' | 'zipcodes';
+type Tab = 'dashboard' | 'businesses' | 'workflows' | 'content' | 'zipcodes' | 'intelligence';
 
 type ZipSubTab = 'onboarded' | 'weekly' | 'tests';
 
@@ -122,6 +123,7 @@ export default function HephaeAdminDashboard() {
   const tabs: { key: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { key: 'zipcodes', label: 'Zipcodes', icon: MapPin },
+    { key: 'intelligence', label: 'Intelligence', icon: Brain },
     { key: 'businesses', label: 'Businesses', icon: Store },
     { key: 'workflows', label: 'Workflows', icon: Workflow },
     { key: 'content', label: 'Content', icon: PenSquare },
@@ -221,6 +223,10 @@ export default function HephaeAdminDashboard() {
 
         {activeTab === 'zipcodes' && (
           <ZipcodesSection />
+        )}
+
+        {activeTab === 'intelligence' && (
+          <IntelligenceDashboard />
         )}
       </div>
 

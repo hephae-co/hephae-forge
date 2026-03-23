@@ -93,3 +93,58 @@ async def generate_now(industry_key: str):
         "playbooksMatched": len(pulse.get("nationalPlaybooks", [])),
         "trendSummary": pulse.get("trendSummary", "")[:200],
     }
+
+
+@router.get("/{industry_key}/latest-pulse")
+async def get_latest_pulse(industry_key: str):
+    """Get the most recent industry pulse for an industry."""
+    from hephae_db.firestore.industry_pulse import get_latest_industry_pulse
+    pulse = await get_latest_industry_pulse(industry_key)
+    if not pulse:
+        return {"pulse": None}
+    return {
+        "pulse": {
+            "id": pulse.get("id"),
+            "weekOf": pulse.get("weekOf"),
+            "trendSummary": pulse.get("trendSummary", ""),
+            "signalsUsed": pulse.get("signalsUsed", []),
+            "playbooksMatched": len(pulse.get("nationalPlaybooks", [])),
+            "createdAt": pulse.get("createdAt"),
+        }
+    }
+
+
+@router.get("/{industry_key}/latest-tech-intel")
+async def get_latest_tech_intel(industry_key: str):
+    """Get the most recent tech intelligence profile for an industry."""
+    from hephae_db.firestore.tech_intelligence import list_tech_intelligence
+    profiles = await list_tech_intelligence(vertical=industry_key, limit=1)
+    if not profiles:
+        return {"profile": None}
+    p = profiles[0]
+    return {
+        "profile": {
+            "id": p.get("id"),
+            "weekOf": p.get("weekOf"),
+            "weeklyHighlight": p.get("weeklyHighlight", {}),
+            "aiOpportunitiesCount": len(p.get("aiOpportunities", [])),
+            "platformsCount": len(p.get("platforms", {})),
+            "generatedAt": p.get("generatedAt"),
+        }
+    }
+
+
+@router.post("/{industry_key}/generate-tech-intel")
+async def generate_tech_intel_now(industry_key: str):
+    """Manually trigger tech intelligence generation for an industry."""
+    from hephae_api.workflows.orchestrators.tech_intelligence import generate_tech_intelligence
+    result = await generate_tech_intelligence(industry_key)
+    if result.get("error"):
+        return {"success": False, "error": result["error"]}
+    return {
+        "success": True,
+        "weekOf": result.get("weekOf"),
+        "aiOpportunitiesCount": len(result.get("aiOpportunities", [])),
+        "platformsCount": len(result.get("platforms", {})),
+        "weeklyHighlight": (result.get("weeklyHighlight") or {}).get("title", ""),
+    }

@@ -218,6 +218,20 @@ def compute_price_deltas(series_list: list[dict[str, Any]]) -> list[dict[str, An
 
         yoy = latest.get("yoyPctChange")
 
+        # If BLS API didn't return calculations (v1 / no key), compute YoY from
+        # series data: find the data point 12 months prior by matching year/month.
+        if yoy is None and len(data) >= 13:
+            target_year = latest["year"] - 1
+            target_month = latest["month"]
+            for dp in reversed(data[:-1]):
+                if dp["year"] == target_year and dp["month"] == target_month:
+                    if dp["indexValue"] > 0 and latest["indexValue"] > 0:
+                        yoy = round(
+                            ((latest["indexValue"] - dp["indexValue"]) / dp["indexValue"]) * 100,
+                            2,
+                        )
+                    break
+
         # Month-over-month from index values
         mom: float | None = None
         if prev["indexValue"] > 0 and latest["indexValue"] > 0:

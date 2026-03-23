@@ -326,11 +326,11 @@ def _should_skip_menu(context) -> bool:
     return False
 
 
-def _gate_agent(agent: LlmAgent, skip_fn, output_key: str):
-    """Wrap an agent with a before_agent_callback that skips it if data exists.
+def _gate_agent(agent: LlmAgent, skip_fn, output_key: str) -> LlmAgent:
+    """Return a new LlmAgent whose instruction is a callable that skips if data exists.
 
-    When skipped, we populate the output_key with the data from Stage 1
-    so downstream agents still have it available.
+    Creates a fresh agent instead of mutating the shared agent object, so the
+    original agent remains unmodified for any other callers.
     """
     original_instruction = agent.instruction
 
@@ -342,7 +342,6 @@ def _gate_agent(agent: LlmAgent, skip_fn, output_key: str):
             if output_key == "contactData":
                 det = data.get("deterministicContact", {})
                 logger.info("[StageGating] Skipping ContactAgent — deterministic data available")
-                # Return a minimal instruction that tells the agent to just output what we found
                 return (
                     "The contact information was already extracted deterministically. "
                     f"Return this JSON exactly: {json.dumps({'phone': det.get('phone'), 'email': det.get('email'), 'emailStatus': 'found' if det.get('email') else 'not_found', 'contactFormUrl': None, 'contactFormStatus': 'not_found'})}"
@@ -363,18 +362,26 @@ def _gate_agent(agent: LlmAgent, skip_fn, output_key: str):
             return original_instruction(context)
         return original_instruction
 
-    agent.instruction = _gated_instruction
-    return agent
+    return LlmAgent(
+        name=agent.name,
+        model=agent.model,
+        instruction=_gated_instruction,
+        tools=agent.tools if hasattr(agent, "tools") else [],
+        output_key=getattr(agent, "output_key", None),
+        output_schema=getattr(agent, "output_schema", None),
+        on_model_error_callback=getattr(agent, "on_model_error_callback", None),
+        generate_content_config=getattr(agent, "generate_content_config", None),
+    )
 
 
 # Apply P1.2 targeted instructions to ContactAgent and MenuAgent
 contact_agent.instruction = _with_raw_data_and_contact_pages(CONTACT_AGENT_INSTRUCTION)
 menu_agent.instruction = _with_raw_data_and_menu_hints(MENU_AGENT_INSTRUCTION)
 
-# Apply P2.1 stage gating
-_gate_agent(contact_agent, _should_skip_contact, "contactData")
-_gate_agent(social_media_agent, _should_skip_social, "socialData")
-_gate_agent(menu_agent, _should_skip_menu, "menuData")
+# Apply P2.1 stage gating — reassign to new gated instances (original objects unchanged)
+contact_agent = _gate_agent(contact_agent, _should_skip_contact, "contactData")
+social_media_agent = _gate_agent(social_media_agent, _should_skip_social, "socialData")
+menu_agent = _gate_agent(menu_agent, _should_skip_menu, "menuData")
 
 
 # ---------------------------------------------------------------------------

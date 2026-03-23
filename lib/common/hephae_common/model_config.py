@@ -25,6 +25,9 @@ class AgentModels:
     # Visual Creative Model: image generation prompts
     CREATIVE_VISION_MODEL = "gemini-3.1-flash-image-preview"
 
+    # Claude synthesis model — dual-synthesis stage in pulse orchestrator
+    CLAUDE_SYNTHESIS_MODEL = "anthropic/claude-sonnet-4-20250514"
+
     # Deprecated aliases — backward compat
     DEFAULT_FAST_MODEL = PRIMARY_MODEL
     DEEP_ANALYST_MODEL = PRIMARY_MODEL

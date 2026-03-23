@@ -122,16 +122,18 @@ async def run_marketing_pipeline(identity: dict[str, Any], business_context: Any
 
     prompt = "\n".join(context_parts)
 
+    # Single shared session for all 3 steps — output_key writes from each agent
+    # accumulate in state and are readable by subsequent runners.
+    await session_service.create_session(
+        app_name="hephae-hub", session_id=session_id, user_id="sys", state={}
+    )
+
     # Step 1: Creative Director
     cd_runner = Runner(
         app_name="hephae-hub",
         agent=creative_director_agent,
         session_service=session_service,
     )
-    await session_service.create_session(
-        app_name="hephae-hub", session_id=session_id, user_id="sys", state={}
-    )
-
     async for _ in cd_runner.run_async(
         session_id=session_id, user_id="sys", new_message=user_msg(prompt),
     ):
@@ -142,28 +144,23 @@ async def run_marketing_pipeline(identity: dict[str, Any], business_context: Any
     )
     creative_direction = (session.state or {}).get("creativeDirection", "{}")
 
-    # Step 2: Platform Router
-    pr_session_id = f"platform-{int(time.time() * 1000)}"
+    # Step 2: Platform Router — reads creativeDirection from shared session state
     pr_runner = Runner(
         app_name="hephae-hub",
         agent=platform_router_agent,
         session_service=session_service,
     )
-    await session_service.create_session(
-        app_name="hephae-hub", session_id=pr_session_id, user_id="sys", state={}
-    )
-
     async for _ in pr_runner.run_async(
-        session_id=pr_session_id,
+        session_id=session_id,
         user_id="sys",
         new_message=user_msg(f"Creative Direction:\n{creative_direction}"),
     ):
         pass
 
-    pr_session = await session_service.get_session(
-        app_name="hephae-hub", session_id=pr_session_id, user_id="sys"
+    session = await session_service.get_session(
+        app_name="hephae-hub", session_id=session_id, user_id="sys"
     )
-    platform_decision = (pr_session.state or {}).get("platformDecision", "{}")
+    platform_decision = (session.state or {}).get("platformDecision", "{}")
     platform = "Instagram"
     try:
         pd = json.loads(platform_decision) if isinstance(platform_decision, str) else platform_decision
@@ -171,20 +168,15 @@ async def run_marketing_pipeline(identity: dict[str, Any], business_context: Any
     except Exception:
         pass
 
-    # Step 3: Copywriter
+    # Step 3: Copywriter — reads creativeDirection + platformDecision from shared session state
     copywriter = instagram_copywriter_agent if platform == "Instagram" else blog_copywriter_agent
-    cw_session_id = f"copy-{int(time.time() * 1000)}"
     cw_runner = Runner(
         app_name="hephae-hub",
         agent=copywriter,
         session_service=session_service,
     )
-    await session_service.create_session(
-        app_name="hephae-hub", session_id=cw_session_id, user_id="sys", state={}
-    )
-
     async for _ in cw_runner.run_async(
-        session_id=cw_session_id,
+        session_id=session_id,
         user_id="sys",
         new_message=user_msg(
             f"Creative Direction:\n{creative_direction}\nPlatform: {platform}\nBusiness: {business_name}"
@@ -192,11 +184,11 @@ async def run_marketing_pipeline(identity: dict[str, Any], business_context: Any
     ):
         pass
 
-    cw_session = await session_service.get_session(
-        app_name="hephae-hub", session_id=cw_session_id, user_id="sys"
+    session = await session_service.get_session(
+        app_name="hephae-hub", session_id=session_id, user_id="sys"
     )
     output_key = "instagramDraft" if platform == "Instagram" else "blogDraft"
-    draft = (cw_session.state or {}).get(output_key, "")
+    draft = (session.state or {}).get(output_key, "")
 
     result = {
         "platform": platform,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from google.adk.agents import LlmAgent
 
-from hephae_api.config import AgentModels, ThinkingPresets
+from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
 from hephae_db.schemas.agent_outputs import EvaluationOutput
 

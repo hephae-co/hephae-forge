@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from google.adk.agents import LlmAgent
-from hephae_api.config import AgentModels
+from hephae_common.model_config import AgentModels
 from hephae_common.adk_helpers import run_agent_to_text
 from hephae_agents.shared_tools import google_search_tool
 from hephae_common.model_fallback import fallback_on_error

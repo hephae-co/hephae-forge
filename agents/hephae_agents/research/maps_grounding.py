@@ -42,7 +42,7 @@ Return a JSON object with:
 - saturationAssessment: "low" (<10), "moderate" (10-25), "high" (25-50), "saturated" (50+)
 - summary: 1-2 sentence assessment of the competitive landscape
 
-Return ONLY valid JSON. No markdown fencing."""
+Output JSON only — no markdown fencing."""
 
 
 def _create_maps_toolset() -> McpToolset | None:

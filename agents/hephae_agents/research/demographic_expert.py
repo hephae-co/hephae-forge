@@ -41,7 +41,7 @@ DEMOGRAPHIC_EXPERT_INSTRUCTION = """You are a US Census Data Specialist. Your jo
 - Convert all monetary values to current dollars
 - Report percentages to one decimal place
 
-Return ONLY valid JSON:
+Expected output:
 {
   "population": { "total": number, "yearOverYearChange": "+X.X%" or "-X.X%", "source": "Census 2023" },
   "medianHouseholdIncome": { "value": number, "comparedToState": "above"|"below"|"at", "source": "ACS 2023" },

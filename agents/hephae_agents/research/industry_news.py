@@ -33,8 +33,7 @@ Research and return a JSON object with:
   ] (2-4 items — recent or upcoming regulatory changes)
 }
 
-Focus on actionable intelligence that would affect a small business owner's decisions.
-Return ONLY valid JSON. No markdown fencing.""",
+Focus on actionable intelligence that would affect a small business owner's decisions.""",
     tools=[google_search],
     on_model_error_callback=fallback_on_error,
 )

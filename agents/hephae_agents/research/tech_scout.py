@@ -144,7 +144,7 @@ Rules:
 - aiOpportunities: only include tools that are ACTUALLY AVAILABLE (not upcoming/rumored)
 - Be specific: "SQUIRE launched AI no-show prediction" not "AI is changing scheduling"
 
-Return ONLY valid JSON. No markdown fencing."""
+Output JSON only — no markdown fencing."""
 
 
 # ---------------------------------------------------------------------------

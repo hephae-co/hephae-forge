@@ -25,7 +25,7 @@ Return a JSON object with:
 - reviewCount: approximate number of Google reviews if found (number or null)
 - website: the business's website URL if found (string or null)
 
-Return ONLY valid JSON. No markdown fencing."""
+Output JSON only — no markdown fencing."""
 
 
 MAPS_INSTRUCTION = """You are a competitive landscape analyst. You have access to Google Maps place search tools.
@@ -38,7 +38,7 @@ Return a JSON object with:
 - saturationLevel: "low" (<5), "moderate" (5-15), "high" (15-30), "saturated" (30+)
 - competitiveSummary: 1-2 sentence assessment
 
-Return ONLY valid JSON. No markdown fencing."""
+Output JSON only — no markdown fencing."""
 
 
 SYNTHESIZER_INSTRUCTION = """You are Hephae, an intelligent business advisor. You combine multiple data sources to give business owners a clear, impactful overview.
@@ -101,4 +101,4 @@ Rules:
 - Be direct, data-driven, slightly provocative ("Your competitors average 4.2 stars — you're at 4.5. That's your moat.")
 - localBuzz should only be populated if latestPulse data exists
 
-Return ONLY valid JSON. No markdown fencing."""
+Output JSON only — no markdown fencing."""

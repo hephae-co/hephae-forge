@@ -7,7 +7,7 @@ import logging
 
 from google.adk.agents import LlmAgent
 
-from hephae_api.config import AgentModels, ThinkingPresets
+from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.adk_helpers import run_agent_to_json
 from hephae_db.schemas import AreaSummaryOutput
 from hephae_common.model_fallback import fallback_on_error
@@ -54,7 +54,7 @@ Return JSON. Keep ALL narrative fields to 1-2 sentences max. Use bullet-style ph
   "generatedAt": "<ISO timestamp>"
 }
 
-Be data-driven. Reference specific zip codes and numbers. Return ONLY valid JSON.""",
+Be data-driven. Reference specific zip codes and numbers.""",
     on_model_error_callback=fallback_on_error,
 )
 
@@ -79,7 +79,7 @@ Return JSON with sections: marketOpportunity, demographicFit, competitiveLandsca
 Each section: { "score": 0-100, "narrative": "1-2 sentences", ...arrays of short phrases }.
 recommendations: { "topZipCodes": [{ "zipCode", "reason": "1 sentence", "score" }], "actionItems": ["short phrase"], "avoidZipCodes": [{ "zipCode", "reason": "1 sentence" }] }
 
-Return ONLY valid JSON.""",
+""",
     on_model_error_callback=fallback_on_error,
 )
 

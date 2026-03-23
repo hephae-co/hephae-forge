@@ -37,7 +37,7 @@ Schema:
   "benchmarks": { "gross_margin_pct": num, "net_margin_pct": num, "avg_ticket_size": num, "labor_cost_pct": num, "rent_pct_revenue": num, "failure_rate_1yr": num, "failure_rate_5yr": num, "avg_startup_cost": num }
 }
 
-Return ONLY valid JSON.""",
+""",
     on_model_error_callback=fallback_on_error,
 )
 

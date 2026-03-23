@@ -9,7 +9,7 @@ from datetime import datetime
 
 from google.adk.agents import LlmAgent
 
-from hephae_api.config import AgentModels
+from hephae_common.model_config import AgentModels
 from hephae_common.adk_helpers import run_agent_to_json
 from hephae_db.firestore.businesses import get_business
 from hephae_db.schemas import InsightsOutput
@@ -36,7 +36,7 @@ analysis into your recommendations. Reference specific BLS/USDA data points (e.g
 3.2% YoY per BLS CPI") when suggesting menu strategy, pricing adjustments, or margin optimization.
 Distinguish between rising-cost categories (where margins are under pressure) and stable/declining
 categories (where there may be pricing opportunities).
-Return ONLY valid JSON. No markdown fencing.""",
+Output JSON only — no markdown fencing.""",
     on_model_error_callback=fallback_on_error,
 )
 

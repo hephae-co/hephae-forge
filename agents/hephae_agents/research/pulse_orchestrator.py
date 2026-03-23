@@ -27,7 +27,7 @@ from google.adk.events.event_actions import EventActions
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import google_search
 
-from hephae_api.config import AgentModels, ThinkingPresets
+from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
 from hephae_agents.shared_tools import google_search_tool, crawl4ai_advanced_tool
 from hephae_db.schemas import CritiqueResult, WeeklyPulseOutput
@@ -302,7 +302,7 @@ def create_pulse_orchestrator() -> SequentialAgent:
     )
     claude_synth = LlmAgent(
         name="ClaudeSynthesis",
-        model=LiteLlm(model="anthropic/claude-sonnet-4-20250514"),
+        model=LiteLlm(model=AgentModels.CLAUDE_SYNTHESIS_MODEL),
         description="Claude synthesis — generates pulse with local briefing.",
         instruction=_full_instruction,
         output_key="claudePulseOutput",

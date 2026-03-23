@@ -29,7 +29,7 @@ Return a JSON object with:
   "trendingTerms": [string] (5-10 notable trending search terms from the area)
 }
 
-Be specific — reference zip codes, numbers, and trends. Return ONLY valid JSON.""",
+Be specific — reference zip codes, numbers, and trends.""",
     on_model_error_callback=fallback_on_error,
 )
 

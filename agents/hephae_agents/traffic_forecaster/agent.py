@@ -21,7 +21,7 @@ from google.adk.sessions import InMemorySessionService
 
 from hephae_common.model_config import AgentModels
 from hephae_common.model_fallback import fallback_on_error, generate_with_fallback
-from hephae_agents.shared_tools import google_search_tool
+from google.adk.tools import google_search
 from hephae_agents.traffic_forecaster.prompts import (
     POI_GATHERER_INSTRUCTION,
     WEATHER_GATHERER_INSTRUCTION,
@@ -38,7 +38,7 @@ poi_gatherer = LlmAgent(
     name="PoiGatherer",
     model=AgentModels.PRIMARY_MODEL,
     instruction=POI_GATHERER_INSTRUCTION,
-    tools=[google_search_tool],
+    tools=[google_search],
     output_key="poiDetails",
     on_model_error_callback=fallback_on_error,
 )
@@ -47,7 +47,7 @@ weather_gatherer = LlmAgent(
     name="WeatherGatherer",
     model=AgentModels.PRIMARY_MODEL,
     instruction=WEATHER_GATHERER_INSTRUCTION,
-    tools=[weather_tool, google_search_tool],
+    tools=[weather_tool, google_search],
     output_key="weatherData",
     on_model_error_callback=fallback_on_error,
 )
@@ -56,7 +56,7 @@ events_gatherer = LlmAgent(
     name="EventsGatherer",
     model=AgentModels.PRIMARY_MODEL,
     instruction=EVENTS_GATHERER_INSTRUCTION,
-    tools=[google_search_tool],
+    tools=[google_search],
     output_key="eventsData",
     on_model_error_callback=fallback_on_error,
 )
@@ -225,7 +225,6 @@ class ForecasterAgent:
       3. **EVENTS & DISTANCE**: Major nearby events boost traffic scores significantly.
 
       **OUTPUT**:
-      Return ONLY valid JSON matching this structure perfectly. Do not include markdown ```json blocks.
       Keep all text fields SHORT — bullet-style, no paragraphs.
       {{
         "business": {{
@@ -263,7 +262,6 @@ class ForecasterAgent:
                 system_instruction="You are an expert Local Foot Traffic Forecaster generating strict JSON based on Intelligence Data.",
                 response_mime_type="application/json",
                 response_schema=TrafficForecastOutput,
-                temperature=0.2,
             ),
         )
 

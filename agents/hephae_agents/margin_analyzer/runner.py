@@ -8,7 +8,6 @@ Stage 5: Advisor — generate strategic advice
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import re
@@ -22,8 +21,7 @@ from hephae_common.adk_helpers import user_msg, user_msg_with_image, _strip_mark
 
 from hephae_agents.margin_analyzer.agent import (
     vision_intake_agent,
-    benchmarker_agent,
-    commodity_watchdog_agent,
+    benchmark_and_commodity,
     surgeon_agent,
     advisor_agent,
 )
@@ -144,48 +142,28 @@ async def run_margin_analysis(
     commodity_prompt = "[]"
 
     if advanced_mode:
-        # 2 & 3. Benchmarker + Commodity Watchdog (parallel)
+        # 2 & 3. Benchmarker + Commodity Watchdog via ADK ParallelAgent
         logger.info("[Margin Runner] Steps 2+3: Benchmarker || CommodityWatchdog (Advanced Mode)...")
 
-        async def _run_benchmarker():
-            result = "[]"
-            br = Runner(app_name="hephae-hub", agent=benchmarker_agent, session_service=session_service, memory_service=memory_service)
-            async for raw_event in br.run_async(
-                user_id=user_id,
-                session_id=session_id,
-                new_message=user_msg(
-                    f"Here are the parsed menu items for {identity.get('name')} "
-                    f"in {identity.get('address', 'their local area')}:\n{menu_items_prompt}"
-                ),
-            ):
-                actions = getattr(raw_event, "actions", None)
-                if actions:
-                    delta = getattr(actions, "state_delta", None) or (actions if isinstance(actions, dict) else {})
-                    if isinstance(delta, dict) and delta.get("competitorBenchmarks"):
-                        val = delta["competitorBenchmarks"]
-                        result = val if isinstance(val, str) else json.dumps(val)
-            return result.strip()
+        bc_runner = Runner(app_name="hephae-hub", agent=benchmark_and_commodity, session_service=session_service, memory_service=memory_service)
+        async for _ in bc_runner.run_async(
+            user_id=user_id,
+            session_id=session_id,
+            new_message=user_msg(
+                f"Here are the parsed menu items for {identity.get('name')} "
+                f"in {identity.get('address', 'their local area')}:\n{menu_items_prompt}"
+            ),
+        ):
+            pass
 
-        async def _run_commodity_watchdog():
-            result = "[]"
-            cr = Runner(app_name="hephae-hub", agent=commodity_watchdog_agent, session_service=session_service, memory_service=memory_service)
-            async for raw_event in cr.run_async(
-                user_id=user_id,
-                session_id=session_id,
-                new_message=user_msg(f"Here are the parsed menu items:\n{menu_items_prompt}"),
-            ):
-                actions = getattr(raw_event, "actions", None)
-                if actions:
-                    delta = getattr(actions, "state_delta", None) or (actions if isinstance(actions, dict) else {})
-                    if isinstance(delta, dict) and delta.get("commodityTrends"):
-                        val = delta["commodityTrends"]
-                        result = val if isinstance(val, str) else json.dumps(val)
-            return result.strip()
-
-        benchmark_prompt, commodity_prompt = await asyncio.gather(
-            _run_benchmarker(),
-            _run_commodity_watchdog(),
+        bc_session = await session_service.get_session(
+            app_name="hephae-hub", session_id=session_id, user_id=user_id
         )
+        bc_state = bc_session.state or {}
+        bv = bc_state.get("competitorBenchmarks", "[]")
+        benchmark_prompt = bv if isinstance(bv, str) else json.dumps(bv)
+        cv = bc_state.get("commodityTrends", "[]")
+        commodity_prompt = cv if isinstance(cv, str) else json.dumps(cv)
 
     else:
         logger.info("[Margin Runner] Fast Mode: Bypassing Benchmarker and Watchdog LLMs.")

@@ -36,6 +36,11 @@ async def fetch_competitor_benchmarks(location: str, items: list[str], tool_cont
     Provide a location and an array of item names to fetch local competitor pricing
     and macroeconomic data.
 
+    # STUB — returns mock pricing with random variance. Replace with real competitor
+    # pricing API (e.g., Yelp, Google Places) before using in production.
+    # Downstream agents (SurgeonAgent) treat this as real data. Returns {"stub": true}
+    # flag in macroeconomic_context so callers can detect stub mode.
+
     Args:
         location: The city and state of the restaurant.
         items: Array of menu item names.
@@ -96,6 +101,7 @@ async def fetch_competitor_benchmarks(location: str, items: list[str], tool_cont
     except Exception as e:
         logger.error(f"[Benchmarker] Market data fetch error: {e}")
 
+    macroeconomic_context["stub"] = True
     return {"competitors": competitors, "macroeconomic_context": macroeconomic_context}
 
 

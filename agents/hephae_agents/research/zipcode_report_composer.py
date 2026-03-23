@@ -41,8 +41,7 @@ Produce a JSON object with this exact structure:
 }
 
 Each section MUST have at least 3 key_facts. The content field should be 2-4 sentences minimum.
-The "events" and "seasonal_weather" sections are optional — include them if the research findings contain relevant data.
-Return ONLY valid JSON. No markdown fencing.""",
+The "events" and "seasonal_weather" sections are optional — include them if the research findings contain relevant data.""",
     on_model_error_callback=fallback_on_error,
 )
 

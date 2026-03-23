@@ -30,8 +30,7 @@ Return a JSON object with:
   "localOpportunities": [string] (3-5 specific opportunities)
 }
 
-Focus on data-driven insights specific to this sector in this local market.
-Return ONLY valid JSON. No markdown fencing.""",
+Focus on data-driven insights specific to this sector in this local market.""",
     on_model_error_callback=fallback_on_error,
 )
 

@@ -23,7 +23,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.tools import google_search
 
-from hephae_api.config import AgentModels, ThinkingPresets
+from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.adk_helpers import user_msg
 from hephae_common.model_fallback import fallback_on_error
 from hephae_agents.shared_tools import google_search_tool, crawl4ai_advanced_tool
@@ -122,7 +122,7 @@ _demographic_expert_intel = LlmAgent(
     name="DemographicExpertIntel",
     model=AgentModels.PRIMARY_MODEL,
     instruction=_demographic_expert_instruction,
-    tools=[google_search_tool],
+    tools=[google_search],
     output_key="demographicData",
     on_model_error_callback=fallback_on_error,
 )

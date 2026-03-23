@@ -1,5 +1,3 @@
-import { BusinessWorkflowState } from '@/lib/workflow/types';
-
 export type FixtureType = 'grounding' | 'failure_case';
 
 export interface FixtureIdentity {
@@ -18,7 +16,7 @@ export interface TestFixture {
     businessType?: string | null;
     savedAt: string;
     notes?: string | null;
-    businessState?: BusinessWorkflowState | null;
+    businessState?: Record<string, unknown> | null;
     identity: FixtureIdentity;
     latestOutputs?: Record<string, any>;
 }

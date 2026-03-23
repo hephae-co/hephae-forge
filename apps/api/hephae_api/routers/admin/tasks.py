@@ -123,8 +123,8 @@ async def execute_task(req: ExecuteTaskRequest):
         plan = await plan_workflow(req.businessId, req.actionType)
         logger.info(f"[Dispatcher] Rationale: {plan.get('rationale')}")
 
-        from hephae_api.workflows.phases.analysis import run_single_business_analysis, _run_capability
-        from hephae_api.workflows.phases.enrichment import enrich_business_profile
+        from hephae_api.workflows.analysis_utils import run_single_business_analysis, _run_capability
+        from hephae_api.workflows.enrichment_utils import enrich_business_profile
         from hephae_api.workflows.capabilities.registry import get_capability
         from hephae_db.firestore.businesses import get_business
 
@@ -162,9 +162,9 @@ async def _run_workflow_analyze(slug: str, task_id: str, metadata: dict[str, Any
     from hephae_common.firebase import get_db
     from hephae_db.firestore.businesses import get_business
     from hephae_db.firestore.session_service import FirestoreSessionService
-    from hephae_api.workflows.phases.enrichment import enrich_business_profile
+    from hephae_api.workflows.enrichment_utils import enrich_business_profile
     from hephae_api.workflows.capabilities.registry import get_enabled_capabilities, get_capability, FullCapabilityDefinition
-    from hephae_api.workflows.phases.analysis import _run_capability, RetriableCapabilityError
+    from hephae_api.workflows.analysis_utils import _run_capability, RetriableCapabilityError
 
     db = get_db()
     biz_data = await get_business(slug)

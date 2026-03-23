@@ -300,8 +300,7 @@ class AreaResearchOrchestrator:
             raw_leads = await parse_directory_content(content, category=self.doc.businessType)
             
             # 4. Save to Firestore (Unified Lead Pool)
-            from hephae_db.firestore.businesses import save_business
-            from hephae_api.workflows.phases.discovery import generate_slug
+            from hephae_db.firestore.businesses import save_business, generate_slug
             
             final_leads = []
             for lead in raw_leads:

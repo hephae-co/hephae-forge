@@ -80,8 +80,8 @@ async def _run_discovery_for_business(biz_id: str, biz_name: str) -> dict | None
     """Run the discovery pipeline on a business. Returns enriched identity or None."""
     logger.info(f"[Orchestrator] Running discovery: {biz_name} ({biz_id})")
     try:
-        from hephae_api.workflows.phases.enrichment import enrich_business_profile
-        from hephae_api.workflows.phases.analysis import PROMOTE_KEYS
+        from hephae_api.workflows.enrichment_utils import enrich_business_profile
+        from hephae_api.workflows.analysis_utils import PROMOTE_KEYS
 
         biz = await get_business(biz_id)
         if not biz:

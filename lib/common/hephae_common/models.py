@@ -370,108 +370,6 @@ class BlogPostResponse(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-# ── Workflow Types ────────────────────────────────────────────────────────
-
-
-class WorkflowPhase(str, Enum):
-    QUEUED = "queued"
-    DISCOVERY = "discovery"
-    QUALIFICATION = "qualification"
-    ANALYSIS = "analysis"
-    EVALUATION = "evaluation"
-    APPROVAL = "approval"
-    OUTREACH = "outreach"
-    COMPLETED = "completed"
-    FAILED = "failed"
-
-
-class BusinessPhase(str, Enum):
-    PENDING = "pending"
-    ENRICHING = "enriching"
-    ANALYZING = "analyzing"
-    ANALYSIS_DONE = "analysis_done"
-    EVALUATING = "evaluating"
-    EVALUATION_DONE = "evaluation_done"
-    APPROVED = "approved"
-    REJECTED = "rejected"
-    OUTREACHING = "outreaching"
-    OUTREACH_DONE = "outreach_done"
-    OUTREACH_FAILED = "outreach_failed"
-
-
-class EvaluationResult(BaseModel):
-    score: float = 0
-    isHallucinated: bool = False
-    issues: list[str] = Field(default_factory=list)
-
-
-class BusinessInsights(BaseModel):
-    summary: str = ""
-    keyFindings: list[str] = Field(default_factory=list)
-    recommendations: list[str] = Field(default_factory=list)
-    generatedAt: str = ""
-
-
-class BusinessWorkflowState(BaseModel):
-    slug: str | None = None
-    name: str | None = None
-    address: str = ""
-    officialUrl: str | None = None
-    sourceZipCode: str | None = None
-    businessType: str | None = None
-    phase: BusinessPhase = BusinessPhase.PENDING
-    capabilitiesCompleted: list[str] = Field(default_factory=list)
-    capabilitiesFailed: list[str] = Field(default_factory=list)
-    evaluations: dict[str, EvaluationResult] = Field(default_factory=dict)
-    qualityPassed: bool = False
-    enrichedProfile: dict[str, Any] | None = None
-    insights: BusinessInsights | None = None
-    outreachError: str | None = None
-    lastError: str | None = None
-
-
-class WorkflowProgress(BaseModel):
-    totalBusinesses: int = 0
-    qualificationQualified: int | None = None
-    qualificationParked: int | None = None
-    qualificationDisqualified: int | None = None
-    analysisComplete: int = 0
-    evaluationComplete: int = 0
-    qualityPassed: int = 0
-    qualityFailed: int = 0
-    approved: int = 0
-    outreachComplete: int = 0
-    insightsComplete: int | None = None
-    zipCodesScanned: int | None = None
-    zipCodesTotal: int | None = None
-
-
-class WorkflowDocument(BaseModel):
-    id: str | None = None
-    zipCode: str = ""
-    businessType: str | None = None
-    county: str | None = None
-    zipCodes: list[str] | None = None
-    resolvedFrom: Literal["single", "county"] | None = None
-    phase: WorkflowPhase = WorkflowPhase.DISCOVERY
-    createdAt: datetime = Field(default_factory=datetime.utcnow)
-    updatedAt: datetime = Field(default_factory=datetime.utcnow)
-    businesses: list[BusinessWorkflowState] = Field(default_factory=list)
-    progress: WorkflowProgress = Field(default_factory=WorkflowProgress)
-    lastError: str | None = None
-    retryCount: int = 0
-
-
-class ProgressEvent(BaseModel):
-    type: str
-    workflowId: str
-    phase: WorkflowPhase
-    message: str
-    businessSlug: str | None = None
-    progress: WorkflowProgress
-    timestamp: str = ""
-
-
 # ── Zip Code Research Types ───────────────────────────────────────────────
 
 
@@ -901,7 +799,7 @@ class TestFixture(BaseModel):
     businessType: str | None = None
     savedAt: datetime = Field(default_factory=datetime.utcnow)
     notes: str | None = None
-    businessState: BusinessWorkflowState | None = None
+    businessState: dict[str, Any] | None = None
     identity: FixtureIdentity = Field(default_factory=FixtureIdentity)
     latestOutputs: dict[str, Any] = Field(default_factory=dict)
 

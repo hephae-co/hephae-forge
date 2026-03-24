@@ -18,11 +18,13 @@ async def register_industry(
     industry_key: str,
     display_name: str,
     created_by: str = "admin",
+    notes: str | None = None,
+    config_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Register an industry for weekly national pulse generation."""
     db = get_db()
     now = datetime.utcnow()
-    data = {
+    data: dict[str, Any] = {
         "industryKey": industry_key,
         "displayName": display_name,
         "status": "active",
@@ -32,9 +34,35 @@ async def register_industry(
         "pulseCount": 0,
         "createdBy": created_by,
     }
+    if notes:
+        data["notes"] = notes
+    if config_overrides:
+        data["configOverrides"] = config_overrides
     await asyncio.to_thread(db.collection(COLLECTION).document(industry_key).set, data)
     logger.info(f"[RegisteredIndustries] Registered {industry_key} ({display_name})")
     return {**data, "id": industry_key}
+
+
+async def update_industry(
+    industry_key: str,
+    updates: dict[str, Any],
+) -> dict[str, Any]:
+    """Enrich or update an existing registered industry.
+
+    Only writes the provided fields — pulse history and status are preserved
+    unless explicitly included in updates.
+    """
+    db = get_db()
+    updates["updatedAt"] = datetime.utcnow()
+    await asyncio.to_thread(
+        db.collection(COLLECTION).document(industry_key).update,
+        updates,
+    )
+    logger.info(f"[RegisteredIndustries] Updated {industry_key}: {list(updates.keys())}")
+    snapshot = await asyncio.to_thread(db.collection(COLLECTION).document(industry_key).get)
+    data = snapshot.to_dict() or {}
+    data["id"] = industry_key
+    return data
 
 
 async def unregister_industry(industry_key: str) -> None:

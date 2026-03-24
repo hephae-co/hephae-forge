@@ -292,4 +292,100 @@ if [ -n "$CRON_SECRET_VAL" ] && [ -n "$API_URL" ]; then
       --headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}"
     echo "  ✓ Created scheduler: ${DISPATCHER_JOB} (${DISPATCHER_SCHEDULE})"
   fi
+
+  # --- Weekly Pulse Cron (Monday 3am ET) ---
+  PULSE_CRON_JOB="weekly-pulse-cron"
+  PULSE_CRON_SCHEDULE="0 3 * * 1"
+  PULSE_CRON_FLAGS=(
+    --schedule "$PULSE_CRON_SCHEDULE"
+    --time-zone "America/New_York"
+    --location "$REGION"
+    --project "$PROJECT_ID"
+    --uri "${API_URL}/api/cron/weekly-pulse"
+    --http-method GET
+    --oidc-service-account-email "$SERVICE_ACCOUNT"
+    --attempt-deadline "30m"
+  )
+  if gcloud scheduler jobs describe "$PULSE_CRON_JOB" \
+      --location "$REGION" --project "$PROJECT_ID" &>/dev/null; then
+    gcloud scheduler jobs update http "$PULSE_CRON_JOB" "${PULSE_CRON_FLAGS[@]}" \
+      --update-headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}" --quiet
+    echo "  ✓ Updated scheduler: ${PULSE_CRON_JOB} (${PULSE_CRON_SCHEDULE})"
+  else
+    gcloud scheduler jobs create http "$PULSE_CRON_JOB" "${PULSE_CRON_FLAGS[@]}" \
+      --headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}"
+    echo "  ✓ Created scheduler: ${PULSE_CRON_JOB} (${PULSE_CRON_SCHEDULE})"
+  fi
+
+  # --- Tech Intelligence Cron (Sunday 1am ET) ---
+  TECH_INTEL_JOB="tech-intelligence-cron"
+  TECH_INTEL_SCHEDULE="0 1 * * 0"
+  TECH_INTEL_FLAGS=(
+    --schedule "$TECH_INTEL_SCHEDULE"
+    --time-zone "America/New_York"
+    --location "$REGION"
+    --project "$PROJECT_ID"
+    --uri "${API_URL}/api/cron/tech-intelligence"
+    --http-method GET
+    --oidc-service-account-email "$SERVICE_ACCOUNT"
+    --attempt-deadline "30m"
+  )
+  if gcloud scheduler jobs describe "$TECH_INTEL_JOB" \
+      --location "$REGION" --project "$PROJECT_ID" &>/dev/null; then
+    gcloud scheduler jobs update http "$TECH_INTEL_JOB" "${TECH_INTEL_FLAGS[@]}" \
+      --update-headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}" --quiet
+    echo "  ✓ Updated scheduler: ${TECH_INTEL_JOB} (${TECH_INTEL_SCHEDULE})"
+  else
+    gcloud scheduler jobs create http "$TECH_INTEL_JOB" "${TECH_INTEL_FLAGS[@]}" \
+      --headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}"
+    echo "  ✓ Created scheduler: ${TECH_INTEL_JOB} (${TECH_INTEL_SCHEDULE})"
+  fi
+
+  # --- Industry Pulse Cron (Sunday 3am ET) ---
+  INDUSTRY_PULSE_JOB="industry-pulse-cron"
+  INDUSTRY_PULSE_SCHEDULE="0 3 * * 0"
+  INDUSTRY_PULSE_FLAGS=(
+    --schedule "$INDUSTRY_PULSE_SCHEDULE"
+    --time-zone "America/New_York"
+    --location "$REGION"
+    --project "$PROJECT_ID"
+    --uri "${API_URL}/api/cron/industry-pulse"
+    --http-method GET
+    --oidc-service-account-email "$SERVICE_ACCOUNT"
+    --attempt-deadline "30m"
+  )
+  if gcloud scheduler jobs describe "$INDUSTRY_PULSE_JOB" \
+      --location "$REGION" --project "$PROJECT_ID" &>/dev/null; then
+    gcloud scheduler jobs update http "$INDUSTRY_PULSE_JOB" "${INDUSTRY_PULSE_FLAGS[@]}" \
+      --update-headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}" --quiet
+    echo "  ✓ Updated scheduler: ${INDUSTRY_PULSE_JOB} (${INDUSTRY_PULSE_SCHEDULE})"
+  else
+    gcloud scheduler jobs create http "$INDUSTRY_PULSE_JOB" "${INDUSTRY_PULSE_FLAGS[@]}" \
+      --headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}"
+    echo "  ✓ Created scheduler: ${INDUSTRY_PULSE_JOB} (${INDUSTRY_PULSE_SCHEDULE})"
+  fi
+
+  # --- AI Tool Discovery Cron (Tuesday 7am ET) ---
+  AI_TOOL_JOB="ai-tool-discovery-cron"
+  AI_TOOL_SCHEDULE="0 7 * * 2"
+  AI_TOOL_FLAGS=(
+    --schedule "$AI_TOOL_SCHEDULE"
+    --time-zone "America/New_York"
+    --location "$REGION"
+    --project "$PROJECT_ID"
+    --uri "${API_URL}/api/cron/ai-tool-discovery"
+    --http-method GET
+    --oidc-service-account-email "$SERVICE_ACCOUNT"
+    --attempt-deadline "30m"
+  )
+  if gcloud scheduler jobs describe "$AI_TOOL_JOB" \
+      --location "$REGION" --project "$PROJECT_ID" &>/dev/null; then
+    gcloud scheduler jobs update http "$AI_TOOL_JOB" "${AI_TOOL_FLAGS[@]}" \
+      --update-headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}" --quiet
+    echo "  ✓ Updated scheduler: ${AI_TOOL_JOB} (${AI_TOOL_SCHEDULE})"
+  else
+    gcloud scheduler jobs create http "$AI_TOOL_JOB" "${AI_TOOL_FLAGS[@]}" \
+      --headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}"
+    echo "  ✓ Created scheduler: ${AI_TOOL_JOB} (${AI_TOOL_SCHEDULE})"
+  fi
 fi

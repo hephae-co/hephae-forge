@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from typing import Any
 
 from hephae_api.lib.auth import verify_admin_request
 
@@ -17,6 +18,16 @@ router = APIRouter(
 class RegisterIndustryRequest(BaseModel):
     industryKey: str
     displayName: str
+    # Optional enrichment fields (update if industry already exists)
+    notes: str | None = None
+    configOverrides: dict[str, Any] | None = None
+
+
+class UpdateIndustryRequest(BaseModel):
+    displayName: str | None = None
+    status: str | None = None
+    notes: str | None = None
+    configOverrides: dict[str, Any] | None = None
 
 
 @router.get("")
@@ -28,18 +39,47 @@ async def list_industries(status: str | None = None):
 
 
 @router.post("")
-async def register_industry(body: RegisterIndustryRequest):
-    """Register a new industry for weekly national pulse generation."""
-    from hephae_db.firestore.registered_industries import register_industry as db_register
+async def register_or_update_industry(body: RegisterIndustryRequest):
+    """Register a new industry or enrich/update an existing one.
+
+    If the industry is already registered, updates its displayName and any
+    provided enrichment fields without resetting pulse history.
+    """
+    from hephae_db.firestore.registered_industries import (
+        register_industry as db_register,
+        get_registered_industry,
+        update_industry as db_update,
+    )
     from hephae_api.workflows.orchestrators.industries import resolve, RESTAURANT
 
     # Validate the industry config exists
     config = resolve(body.industryKey)
     if config is RESTAURANT and body.industryKey != "restaurant":
-        return {"success": False, "error": f"No IndustryConfig found for '{body.industryKey}'. Run /hephae-industry-profile first."}
+        return {
+            "success": False,
+            "error": f"No IndustryConfig found for '{body.industryKey}'. "
+                     "Add it to industries.py first.",
+        }
 
-    result = await db_register(body.industryKey, body.displayName)
-    return {"success": True, "industry": result}
+    # Check if already registered — enrich/update if so
+    existing = await get_registered_industry(body.industryKey)
+    if existing:
+        updates: dict[str, Any] = {"displayName": body.displayName}
+        if body.notes is not None:
+            updates["notes"] = body.notes
+        if body.configOverrides is not None:
+            updates["configOverrides"] = body.configOverrides
+        result = await db_update(body.industryKey, updates)
+        return {"success": True, "action": "updated", "industry": result}
+
+    # New registration
+    result = await db_register(
+        body.industryKey,
+        body.displayName,
+        notes=body.notes,
+        config_overrides=body.configOverrides,
+    )
+    return {"success": True, "action": "registered", "industry": result}
 
 
 @router.get("/{industry_key}")
@@ -50,6 +90,41 @@ async def get_industry(industry_key: str):
     if not industry:
         return {"error": "Not found"}, 404
     return industry
+
+
+@router.patch("/{industry_key}")
+async def update_industry(industry_key: str, body: UpdateIndustryRequest):
+    """Enrich or update an existing registered industry.
+
+    Accepts partial updates — only provided fields are written.
+    Preserves pulse history, pulseCount, and lastPulseAt.
+    """
+    from hephae_db.firestore.registered_industries import (
+        get_registered_industry,
+        update_industry as db_update,
+    )
+
+    existing = await get_registered_industry(industry_key)
+    if not existing:
+        return {"error": f"Industry '{industry_key}' is not registered"}, 404
+
+    updates: dict[str, Any] = {}
+    if body.displayName is not None:
+        updates["displayName"] = body.displayName
+    if body.status is not None:
+        if body.status not in ("active", "paused"):
+            return {"error": "status must be 'active' or 'paused'"}
+        updates["status"] = body.status
+    if body.notes is not None:
+        updates["notes"] = body.notes
+    if body.configOverrides is not None:
+        updates["configOverrides"] = body.configOverrides
+
+    if not updates:
+        return {"success": True, "action": "no_change", "industry": existing}
+
+    result = await db_update(industry_key, updates)
+    return {"success": True, "action": "updated", "industry": result}
 
 
 @router.delete("/{industry_key}")

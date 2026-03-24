@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Brain,
+  Bot,
   Cpu,
   Zap,
   RefreshCw,
@@ -17,6 +18,7 @@ import {
   Layers,
   Sparkles,
 } from 'lucide-react';
+import AiToolDiscovery from '@/components/AiToolDiscovery';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,14 +109,24 @@ function CronPipelineBanner() {
       iconBg: 'bg-amber-100',
     },
     {
-      icon: Zap,
-      label: 'Weekly Pulse',
-      schedule: 'Mon 3 AM ET',
+      icon: Bot,
+      label: 'AI Tools',
+      schedule: 'Tue 7 AM ET',
       color: 'indigo',
       bg: 'bg-indigo-50',
       border: 'border-indigo-200',
       text: 'text-indigo-700',
       iconBg: 'bg-indigo-100',
+    },
+    {
+      icon: Zap,
+      label: 'Weekly Pulse',
+      schedule: 'Mon 3 AM ET',
+      color: 'emerald',
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-200',
+      text: 'text-emerald-700',
+      iconBg: 'bg-emerald-100',
     },
   ];
 
@@ -139,7 +151,7 @@ function CronPipelineBanner() {
           </div>
         ))}
         <div className="ml-auto text-xs text-gray-400 hidden md:block">
-          Tech Intel → pre-fetched data → Zip Pulses consume it
+          Tech Intel → Industry Pulse → AI Tools → Weekly Zip Pulses
         </div>
       </div>
     </div>
@@ -273,7 +285,7 @@ function IndustryCard({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-type IntelSubTab = 'industries' | 'pulse-history' | 'tech-intel';
+type IntelSubTab = 'industries' | 'pulse-history' | 'tech-intel' | 'ai-tools';
 
 export default function IntelligenceDashboard() {
   const [subTab, setSubTab] = useState<IntelSubTab>('industries');
@@ -415,6 +427,7 @@ export default function IntelligenceDashboard() {
           { key: 'industries', label: 'Industries', icon: Layers },
           { key: 'pulse-history', label: 'Pulse History', icon: TrendingUp },
           { key: 'tech-intel', label: 'Tech Intelligence', icon: Sparkles },
+          { key: 'ai-tools', label: 'AI Tools', icon: Bot },
         ] as { key: IntelSubTab; label: string; icon: React.ComponentType<{ className?: string }> }[]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -477,6 +490,11 @@ export default function IntelligenceDashboard() {
       {/* ── Tech Intelligence Tab ─────────────────────────────────────── */}
       {subTab === 'tech-intel' && (
         <TechIntelTab />
+      )}
+
+      {/* ── AI Tools Tab ──────────────────────────────────────────────── */}
+      {subTab === 'ai-tools' && (
+        <AiToolDiscovery />
       )}
     </div>
   );

@@ -123,6 +123,9 @@ class AgentVersions:
     # Weekly Pulse
     WEEKLY_PULSE = "1.0.0"
 
+    # AI Tool Discovery
+    AI_TOOL_SCOUT = "1.0.0"  # Phase 1: Google Search + ProductHunt, free-tool emphasis
+
     # Qualification pipeline
     QUALIFICATION_SCANNER = "1.0.0"
 

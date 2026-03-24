@@ -44,6 +44,7 @@ async def generate_industry_pulse(
     from hephae_api.workflows.orchestrators.pulse_playbooks import (
         compute_impact_multipliers,
         match_playbooks,
+        match_industry_playbooks,
     )
 
     if not week_of:
@@ -64,19 +65,26 @@ async def generate_industry_pulse(
 
     started_at = datetime.utcnow().isoformat()
 
-    # Fetch national signals
+    # Fetch national signals using IndustryConfig.bls_series directly
+    # so we get the correct series for each industry (not the BLS client's
+    # hardcoded mapping which only covers restaurant/bakery/barber).
     logger.info(f"[IndustryPulse] Fetching national signals for {industry_key}")
-    # Use first alias as business_type for BLS/USDA lookups
     business_type = industry_key
-    national_signals = await fetch_national_signals(business_type)
+    national_signals = await fetch_national_signals(
+        business_type,
+        config_bls_series=dict(industry.bls_series) if industry.bls_series else None,
+    )
 
     signals_used = [k for k, v in national_signals.items() if v]
 
     # Compute impact multipliers (national subset only)
     national_impact = compute_impact_multipliers(national_signals)
 
-    # Match playbooks (industry-specific + common)
-    national_playbooks = match_playbooks(national_impact, national_signals, business_type)
+    # Match playbooks: IndustryConfig-specific first, then generic fallback
+    national_playbooks = match_industry_playbooks(industry.playbooks, national_impact)
+    if not national_playbooks:
+        # Fall back to global playbook registry if industry config has no playbooks
+        national_playbooks = match_playbooks(national_impact, national_signals, business_type)
 
     # Generate LLM trend summary
     trend_summary = await _generate_trend_summary(

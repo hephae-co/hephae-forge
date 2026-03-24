@@ -125,13 +125,16 @@ async def fetch_trends(dma_name: str) -> dict[str, Any]:
     return data
 
 
-async def fetch_bls_cpi(business_type: str) -> dict[str, Any]:
+async def fetch_bls_cpi(
+    business_type: str,
+    config_bls_series: dict[str, str] | None = None,
+) -> dict[str, Any]:
     """BLS Consumer Price Index data."""
     cached = await get_cached("blsCpi", business_type)
     if cached:
         return cached
     from hephae_integrations.bls_client import query_bls_cpi
-    result = await query_bls_cpi(business_type)
+    result = await query_bls_cpi(business_type, config_bls_series=config_bls_series)
     if result:
         await set_cached("blsCpi", business_type, result, TTL_WEEKLY)
     return result or {}
@@ -282,11 +285,16 @@ async def fetch_yelp(zip_code: str, business_type: str) -> dict[str, Any]:
 async def fetch_national_signals(
     business_type: str,
     state: str = "",
+    config_bls_series: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Fetch industry-wide national signals (BLS CPI, USDA, FDA, price deltas).
 
     These are the same for every zip code in the same industry.
     Called once per industry per week by the industry pulse cron.
+
+    Args:
+        config_bls_series: If provided, use these BLS series IDs instead of the
+            BLS client's hardcoded mapping. Should be IndustryConfig.bls_series.
     """
     import asyncio
     from hephae_api.workflows.orchestrators.industry_plugins import is_food_business
@@ -294,7 +302,7 @@ async def fetch_national_signals(
     is_food = is_food_business(business_type)
 
     tasks: list[tuple[str, Any]] = []
-    tasks.append(("blsCpi", fetch_bls_cpi(business_type)))
+    tasks.append(("blsCpi", fetch_bls_cpi(business_type, config_bls_series=config_bls_series)))
     if is_food:
         tasks.append(("fdaRecalls", fetch_fda(state)))
         tasks.append(("usdaPrices", fetch_usda(business_type, state)))

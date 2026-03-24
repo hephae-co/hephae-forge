@@ -267,6 +267,7 @@ async def query_bls_cpi(
     api_key: str = "",
     cache_reader=None,
     cache_writer=None,
+    config_bls_series: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Query BLS CPI API for food price indexes relevant to an industry.
 
@@ -292,7 +293,7 @@ async def query_bls_cpi(
             pass
 
     try:
-        series_map = _get_relevant_series(industry) if industry else FOOD_CPI_SERIES
+        series_map = _get_relevant_series(industry, config_bls_series) if (industry or config_bls_series) else FOOD_CPI_SERIES
         series_ids = list(series_map.values())
 
         now = datetime.utcnow()

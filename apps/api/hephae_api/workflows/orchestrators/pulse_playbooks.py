@@ -10,6 +10,7 @@ session.state for the synthesis LLM. The LLM writes narrative, not math.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -292,3 +293,61 @@ def compute_impact_multipliers(signals: dict[str, Any]) -> dict[str, Any]:
             impact["establishments_yoy_change_pct"] = tp["estabsYoYChangePct"]
 
     return impact
+
+
+# ---------------------------------------------------------------------------
+# IndustryConfig playbook evaluator
+# ---------------------------------------------------------------------------
+
+_TRIGGER_RE = re.compile(r'^(\S+)\s*(>=|<=|==|!=|>|<)\s*(-?\d+(?:\.\d+)?)$')
+
+
+def _parse_trigger(trigger: str) -> tuple[str, str, float | str] | None:
+    """Parse a string trigger like 'milk_mom_pct > 1.5' into (var, op, value)."""
+    m = _TRIGGER_RE.match(trigger.strip())
+    if not m:
+        return None
+    var, op, val_str = m.groups()
+    try:
+        return var, op, float(val_str)
+    except ValueError:
+        return var, op, val_str
+
+
+def match_industry_playbooks(
+    industry_playbooks: list[dict],
+    impact: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Evaluate IndustryConfig string-trigger playbooks against pre-computed impact.
+
+    IndustryConfig playbooks use the format:
+        {"name": "...", "trigger": "variable > threshold", "play": "..."}
+
+    The trigger is a simple comparison against a key in `impact`.
+    """
+    matched: list[dict[str, Any]] = []
+    for p in industry_playbooks:
+        trigger = p.get("trigger", "").strip()
+        if not trigger:
+            continue
+        parsed = _parse_trigger(trigger)
+        if parsed is None:
+            logger.warning(f"[Playbooks] Could not parse trigger: '{trigger}'")
+            continue
+        var, op, threshold = parsed
+        if not _eval_condition(impact.get(var), op, threshold):
+            continue
+        try:
+            play_text = p["play"].format(**impact)
+        except (KeyError, ValueError):
+            play_text = p["play"]
+        matched.append({
+            "name": p.get("name", ""),
+            "category": p.get("category", "industry"),
+            "play": play_text,
+        })
+
+    logger.info(
+        f"[Playbooks] Industry playbooks: {len(matched)}/{len(industry_playbooks)} matched"
+    )
+    return matched

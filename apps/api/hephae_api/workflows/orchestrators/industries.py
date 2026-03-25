@@ -2047,6 +2047,7 @@ _INDEX: dict[str, IndustryConfig] = {}
 for _cfg in _ALL:
     for _alias in _cfg.aliases:
         _INDEX[_alias] = _cfg
+    _INDEX[_cfg.id] = _cfg  # always index by id so resolve(industry_key) works
 
 
 def resolve(business_type: str) -> IndustryConfig:

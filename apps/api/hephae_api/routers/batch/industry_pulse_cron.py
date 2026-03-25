@@ -94,6 +94,8 @@ async def industry_pulse_cron(
 
 async def _send_summary_email(results: list[dict], generated: int, failed: int):
     """Send a summary email to admins after industry pulse cron completes."""
+    import asyncio
+
     try:
         from hephae_api.config import settings
         from hephae_common.email import send_email
@@ -145,8 +147,20 @@ async def _send_summary_email(results: list[dict], generated: int, failed: int):
         text = f"Industry Pulse Cron: {generated} generated, {failed} failed. " + \
                ", ".join(f'{r["industryKey"]}={r["status"]}' for r in results)
 
-        await send_email(to=email_list, subject=subject, text=text, html_content=html)
-        logger.info(f"[IndustryPulseCron] Summary email sent to {len(email_list)} recipients")
+        # Retry up to 3 times on transient errors (Resend SSL drops, etc.)
+        last_err = None
+        for attempt in range(3):
+            try:
+                await send_email(to=email_list, subject=subject, text=text, html_content=html)
+                logger.info(f"[IndustryPulseCron] Summary email sent to {len(email_list)} recipients")
+                return
+            except Exception as send_err:
+                last_err = send_err
+                logger.warning(f"[IndustryPulseCron] Email attempt {attempt + 1}/3 failed: {send_err}")
+                if attempt < 2:
+                    await asyncio.sleep(5)
+
+        logger.error(f"[IndustryPulseCron] All email attempts failed: {last_err}")
 
     except Exception as e:
         logger.error(f"[IndustryPulseCron] Failed to send summary email: {e}")

@@ -122,7 +122,7 @@ if [ -n "$EXISTING_API_URL" ]; then
   ENV_VARS="${ENV_VARS},API_BASE_URL=${EXISTING_API_URL}"
 fi
 
-RESEND_FROM_EMAIL="${RESEND_FROM_EMAIL:-onboarding@resend.dev}"
+RESEND_FROM_EMAIL="${RESEND_FROM_EMAIL:-hello@info.hephae.co}"
 ENV_VARS="${ENV_VARS},RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL}"
 
 gcloud run deploy "$API_SERVICE" \

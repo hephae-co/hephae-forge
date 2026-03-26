@@ -358,6 +358,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         </div>
                     )}
 
+
                     {messages.map((msg, idx) => {
                         const isWelcome = isCentered && msg.role === 'model' && msg.id === '1';
                         return (

@@ -118,35 +118,70 @@ async def _load_osm_competitors(latitude: float, longitude: float, business_type
 
 
 async def _load_latest_pulse(zip_code: str, business_type: str) -> dict[str, Any] | None:
-    """Load the latest weekly pulse for this zip + business type."""
-    if not zip_code:
-        return None
+    """Load the best available pulse for this business.
 
+    Priority:
+    1. Ultralocal: zip-level weekly pulse (hyperlocal events, competitors, neighborhood intel)
+    2. National: industry-level pulse (BLS/USDA commodity prices, national playbooks, trend summary)
+    3. None: no pulse data available
+    """
+    # --- Try ultralocal first ---
+    if zip_code:
+        try:
+            from hephae_db.firestore.weekly_pulse import get_latest_pulse
+
+            pulse = await get_latest_pulse(zip_code, business_type or "Restaurants")
+            if pulse:
+                pulse_data = pulse.get("pulse", {})
+                insights = pulse_data.get("insights", [])
+                local_briefing = pulse_data.get("localBriefing", {})
+                return {
+                    "source": "ultralocal",
+                    "headline": pulse_data.get("headline", ""),
+                    "weekOf": pulse.get("weekOf", ""),
+                    "topInsights": [
+                        {"title": i.get("title", ""), "recommendation": i.get("recommendation", "")}
+                        for i in insights[:3]
+                    ],
+                    "events": (local_briefing.get("thisWeekInTown", []) if isinstance(local_briefing, dict) else [])[:3],
+                    "communityBuzz": local_briefing.get("communityBuzz", "") if isinstance(local_briefing, dict) else "",
+                    "competitorWatch": local_briefing.get("competitorWatch", []) if isinstance(local_briefing, dict) else [],
+                }
+        except Exception as e:
+            logger.warning(f"[BusinessOverview] Ultralocal pulse load failed: {e}")
+
+    # --- Fall back to national industry pulse ---
     try:
-        from hephae_db.firestore.weekly_pulse import get_latest_pulse
+        from hephae_db.firestore.industry_pulse import get_latest_industry_pulse
+        from hephae_api.workflows.orchestrators.industries import resolve as resolve_industry
 
-        pulse = await get_latest_pulse(zip_code, business_type or "Restaurants")
-        if not pulse:
-            return None
-
-        pulse_data = pulse.get("pulse", {})
-        insights = pulse_data.get("insights", [])
-        local_briefing = pulse_data.get("localBriefing", {})
-
-        return {
-            "headline": pulse_data.get("headline", ""),
-            "weekOf": pulse.get("weekOf", ""),
-            "topInsights": [
-                {"title": i.get("title", ""), "recommendation": i.get("recommendation", "")}
-                for i in insights[:3]
-            ],
-            "events": (local_briefing.get("thisWeekInTown", []) if isinstance(local_briefing, dict) else [])[:3],
-            "communityBuzz": local_briefing.get("communityBuzz", "") if isinstance(local_briefing, dict) else "",
-            "competitorWatch": local_briefing.get("competitorWatch", []) if isinstance(local_briefing, dict) else [],
-        }
+        industry = resolve_industry(business_type or "Restaurants")
+        if industry:
+            nat_pulse = await get_latest_industry_pulse(industry.id)
+            if nat_pulse:
+                playbooks = nat_pulse.get("nationalPlaybooks") or []
+                national_impact = nat_pulse.get("nationalImpact") or {}
+                key_metrics = {
+                    k: v for k, v in national_impact.items()
+                    if isinstance(v, (int, float)) and v != 0
+                }
+                return {
+                    "source": "national",
+                    "headline": nat_pulse.get("trendSummary", "")[:200],
+                    "weekOf": nat_pulse.get("weekOf", ""),
+                    "topInsights": [
+                        {"title": p.get("name", ""), "recommendation": p.get("play", "")}
+                        for p in playbooks[:3]
+                    ],
+                    "keyMetrics": key_metrics,
+                    "events": [],
+                    "communityBuzz": "",
+                    "competitorWatch": [],
+                }
     except Exception as e:
-        logger.warning(f"[BusinessOverview] Pulse load failed: {e}")
-        return None
+        logger.warning(f"[BusinessOverview] National pulse load failed: {e}")
+
+    return None
 
 
 def _build_dashboard(
@@ -191,6 +226,9 @@ def _build_dashboard(
         dashboard["events"] = pulse_data.get("events", [])[:5]
         dashboard["communityBuzz"] = pulse_data.get("communityBuzz")
         dashboard["topInsights"] = pulse_data.get("topInsights", [])[:3]
+        dashboard["coverage"] = pulse_data.get("source", "none")  # "ultralocal" | "national" | "none"
+    else:
+        dashboard["coverage"] = "none"
 
     return dashboard
 

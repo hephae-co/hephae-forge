@@ -74,6 +74,9 @@ async def write_discovery(
         enriched_fields = {
             "phone": profile.get("phone"),
             "email": profile.get("email"),
+            "emailStatus": profile.get("emailStatus"),
+            "contactFormUrl": profile.get("contactFormUrl"),
+            "contactFormStatus": profile.get("contactFormStatus"),
             "hours": profile.get("hours"),
             "googleMapsUrl": profile.get("googleMapsUrl"),
             "socialLinks": profile.get("socialLinks", {}),

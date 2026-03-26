@@ -255,6 +255,27 @@ export default function Home() {
       return;
     }
 
+    // Intercept: ultralocal coverage interest — "yes, add my area"
+    if (/yes.*add.*area|add.*area|yes.*ultralocal|request.*coverage|cover.*my.*area/i.test(text.trim()) && locatedBusiness) {
+      setMessages(prev => [...prev, msg('user', text)]);
+      const zipCode = (locatedBusiness as any).zipCode;
+      if (zipCode) {
+        try {
+          const res = await apiFetch('/api/pulse/zipcode-interest', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ zipCode, businessType: (locatedBusiness as any).businessType }),
+          });
+          const data = await res.json();
+          setMessages(prev => [...prev, msg('model',
+            `✅ Done! **${data.city || zipCode}** has been added to our coverage roadmap. We'll reach out once weekly pulse data is live for your neighborhood.`
+          )]);
+        } catch {
+          setMessages(prev => [...prev, msg('model', `Got it — I've noted your interest in ultralocal coverage for your area.`)]);
+        }
+      }
+      return;
+    }
+
     // Intercept: if we're waiting for a menu URL from the user, retry surgery
     if (awaitingMenuUrl && locatedBusiness && /^https?:\/\//i.test(text.trim())) {
       setAwaitingMenuUrl(false);
@@ -413,7 +434,7 @@ export default function Home() {
     }
   };
 
-  const triggerBusinessOverview = async (identity: BaseIdentity) => {
+  const triggerBusinessOverview = async (identity: BaseIdentity, coverage?: { ultralocal: boolean; zipCode?: string; coverageCity?: string | null }) => {
     setIsDiscovering(true);
     setActiveCapability("discovery");
     setCapabilityStartTime(Date.now());
@@ -495,6 +516,15 @@ export default function Home() {
         parts.push('What would you like to dig into? Ask me anything about your market, competitors, or opportunities.');
 
         setMessages(prev => [...prev, msg('model', parts.join('\n\n'))]);
+
+        // Show ultralocal interest prompt if coverage is national-only
+        const dashCoverage = overview?.dashboard?.coverage;
+        if (coverage && !coverage.ultralocal && dashCoverage !== 'ultralocal') {
+          const cityLabel = coverage.coverageCity || coverage.zipCode || 'your area';
+          setMessages(prev => [...prev, msg('model',
+            `📍 **${cityLabel} doesn't have hyperlocal weekly coverage yet.** Right now you're seeing national industry data. Want Hephae to add **${cityLabel}** to the ultralocal network for neighborhood-level intelligence every week?\n\nType **"yes, add my area"** and I'll put it on our list.`
+          )]);
+        }
       } else {
         console.error("Overview returned", res.status);
         setMessages(prev => [...prev, msg('model', `I found **${identity.name}** but couldn't generate a full overview right now. Try again in a moment.`)]);
@@ -509,38 +539,26 @@ export default function Home() {
     }
   };
 
-  // Fast-track location from Places Autocomplete — validates zipcode, then runs overview
+  // Fast-track location from Places Autocomplete — checks coverage tier, then runs overview
   const handlePlaceSelect = async (identity: BaseIdentity) => {
     // Add user message immediately
     setMessages(prev => [...prev, msg('user', identity.name)]);
 
-    // --- Zipcode validation gate ---
+    // --- Coverage check (non-blocking — all US zips proceed) ---
     const zipCode = (identity as any).zipCode;
+    let ultralocal = false;
+    let coverageCity: string | null = null;
+
     if (zipCode) {
       try {
         const valRes = await apiFetch(`/api/places/validate-zipcode?zipCode=${zipCode}`);
         if (valRes.ok) {
           const valData = await valRes.json();
-          if (!valData.supported) {
-            // Unsupported zipcode — register interest
-            setMessages(prev => [
-              ...prev,
-              msg('model', `We don't cover zipcode **${zipCode}** yet. Leave your email and we'll notify you when we expand there!`),
-            ]);
-            // Track unsupported zipcode interest
-            try {
-              await apiFetch('/api/track', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: identity.name, unsupportedZipcode: true, zipCode }),
-              });
-            } catch (e) { console.error("Interest tracking failed", e); }
-            // Show email capture wall for notification
-            setShowAuthWall(true);
-            return; // Do not proceed with overview
-          }
+          ultralocal = valData.ultralocal === true;
+          coverageCity = valData.city || null;
         }
       } catch (e) {
-        console.error("Zipcode validation failed, proceeding anyway", e);
+        console.error("Zipcode coverage check failed, proceeding anyway", e);
       }
     }
 
@@ -558,10 +576,14 @@ export default function Home() {
       } catch (e) { console.error("Tracking failed", e); }
     }
 
-    // Zipcode supported — proceed with overview
+    // Show coverage-aware discovery message
+    const locationLabel = coverageCity || (identity.address?.split(',').slice(-3, -1).join(',').trim()) || identity.address;
     setMessages(prev => [
       ...prev,
-      msg('model', `Found **${identity.name}** at ${identity.address}! Analyzing your market...`),
+      msg('model', ultralocal
+        ? `Found **${identity.name}** at ${identity.address}! 📡 ${locationLabel} has **ultralocal weekly coverage** — pulling live neighborhood intelligence...`
+        : `Found **${identity.name}** at ${identity.address}! Analyzing your market with national industry data...`
+      ),
     ]);
 
     // Reset and set located business
@@ -579,8 +601,8 @@ export default function Home() {
     setCompetitiveReportUrl(null);
     setMarketingReportUrl(null);
 
-    // Trigger lightweight overview (replaces heavy discovery)
-    triggerBusinessOverview(identity);
+    // Trigger overview (will auto-select ultralocal or national pulse)
+    triggerBusinessOverview(identity, { ultralocal, zipCode, coverageCity });
   };
 
   const handleSelectCapability = async (capId: string) => {

@@ -341,10 +341,12 @@ def _gate_agent(agent: LlmAgent, skip_fn, output_key: str) -> LlmAgent:
             data = raw if isinstance(raw, dict) else {}
             if output_key == "contactData":
                 det = data.get("deterministicContact", {})
+                contact_pages = data.get("contactPages", [])
+                contact_form_url = contact_pages[0] if contact_pages else None
                 logger.info("[StageGating] Skipping ContactAgent — deterministic data available")
                 return (
                     "The contact information was already extracted deterministically. "
-                    f"Return this JSON exactly: {json.dumps({'phone': det.get('phone'), 'email': det.get('email'), 'emailStatus': 'found' if det.get('email') else 'not_found', 'contactFormUrl': None, 'contactFormStatus': 'not_found'})}"
+                    f"Return this JSON exactly: {json.dumps({'phone': det.get('phone'), 'email': det.get('email'), 'emailStatus': 'found' if det.get('email') else 'not_found', 'contactFormUrl': contact_form_url, 'contactFormStatus': 'found' if contact_form_url else 'not_found'})}"
                 )
             elif output_key == "socialData":
                 sa = data.get("socialAnchors", {})

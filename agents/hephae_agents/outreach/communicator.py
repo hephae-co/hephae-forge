@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import html as _html
 import json
 import logging
+import os
 from datetime import datetime
 
 from google.adk.agents import LlmAgent
@@ -34,6 +36,48 @@ Format the content as a professional email that:
 Return the formatted message body as plain text (not JSON).""",
     on_model_error_callback=fallback_on_error,
 )
+
+
+def _build_outreach_html(biz_name: str, body: str, unsub_url: str) -> str:
+    """Wrap plain-text outreach body in a simple branded HTML email."""
+    body_html = _html.escape(body).replace("\n", "<br/>")
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Insights for {_html.escape(biz_name)}</title>
+</head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;">
+    <tr>
+      <td align="center" style="padding:40px 20px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+          <tr>
+            <td style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);border-radius:16px 16px 0 0;padding:28px 40px;text-align:center;">
+              <div style="font-size:22px;font-weight:800;color:#fff;">Hephae</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.7);">Surgical Intelligence for Local Businesses</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:rgba(255,255,255,0.03);border-left:1px solid rgba(255,255,255,0.08);border-right:1px solid rgba(255,255,255,0.08);padding:36px 40px;">
+              <div style="font-size:15px;color:#e2e8f0;line-height:1.7;">{body_html}</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-top:none;border-radius:0 0 16px 16px;padding:20px 40px;text-align:center;">
+              <div style="font-size:11px;color:rgba(226,232,240,0.3);line-height:1.6;">
+                Powered by <a href="https://hephae.co" style="color:#818cf8;text-decoration:none;">Hephae</a> &mdash; Surgical intelligence, delivered.<br/>
+                <a href="{_html.escape(unsub_url)}" style="color:rgba(226,232,240,0.3);text-decoration:underline;">Unsubscribe</a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
 
 
 async def draft_and_send_outreach(
@@ -90,10 +134,26 @@ async def draft_and_send_outreach(
             if not email:
                 return {"success": False, "sentTo": "", "error": "No email address available"}
 
+            # CAN-SPAM: check unsubscribe list before sending
+            from hephae_db.firestore.email_unsubscribes import is_unsubscribed, generate_unsubscribe_token
+            if await is_unsubscribed(email):
+                logger.info(f"[Communicator] Skipping {email} — unsubscribed")
+                return {"success": False, "sentTo": "", "error": "recipient_unsubscribed"}
+
+            # Build unsubscribe URL and HTML email
+            base_url = os.environ.get("FORGE_WEB_URL", "https://hephae.co")
+            token = generate_unsubscribe_token(email)
+            unsub_url = f"{base_url}/api/unsubscribe?email={_html.escape(email)}&token={token}"
+
+            biz_name = identity.get("name", "Your Business")
+            html_content = _build_outreach_html(biz_name, body, unsub_url)
+            plain_text = body + f"\n\n---\nTo unsubscribe: {unsub_url}"
+
             await send_email(
                 to=email,
-                subject=f"Insights for {identity.get('name', 'Your Business')}",
-                text=body,
+                subject=f"Insights for {biz_name}",
+                text=plain_text,
+                html_content=html_content,
             )
             sent_to = email
         else:

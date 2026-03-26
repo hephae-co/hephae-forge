@@ -122,16 +122,31 @@ async def places_details(placeId: str = Query(...), sessiontoken: str = Query(""
 
 @router.get("/places/validate-zipcode")
 async def validate_zipcode(zipCode: str = Query(...)):
-    """Check if a zipcode is onboarded and supported for business analysis."""
+    """Check zipcode coverage tier.
+
+    All valid US zip codes are supported (national industry data available for all).
+    Zips in registered_zipcodes with status=active additionally have ultralocal
+    weekly pulse data (hyperlocal events, competitors, neighborhood intelligence).
+    """
+    import re as _re
+    if not _re.match(r"^\d{5}$", zipCode):
+        return JSONResponse({"supported": False, "ultralocal": False})
+
     try:
         doc = await get_registered_zipcode(zipCode)
-        if doc and doc.get("onboardingStatus") == "onboarded":
-            return JSONResponse({
-                "supported": True,
-                "city": doc.get("city", ""),
-                "state": doc.get("state", ""),
-            })
-        return JSONResponse({"supported": False})
+        ultralocal = bool(doc and doc.get("status") == "active")
+        city = doc.get("city", "") if doc else ""
+        state = doc.get("state", "") if doc else ""
+        last_headline = doc.get("lastPulseHeadline") if doc else None
+
+        return JSONResponse({
+            "supported": True,
+            "ultralocal": ultralocal,
+            "city": city,
+            "state": state,
+            "lastPulseHeadline": last_headline,
+        })
     except Exception as e:
         logger.error(f"[API/Places] Validate zipcode failed: {e}")
-        return JSONResponse({"error": "Internal Server Error"}, status_code=500)
+        # Fail open — always supported, just not ultralocal
+        return JSONResponse({"supported": True, "ultralocal": False})

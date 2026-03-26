@@ -124,6 +124,8 @@ def _register_routers() -> None:
         heartbeat,
         overview,
         profile_builder,
+        pulse_public,
+        unsubscribe,
     )
 
     app.include_router(auth.router, prefix="/api")
@@ -140,6 +142,8 @@ def _register_routers() -> None:
     app.include_router(capabilities.router, prefix="/api")
     app.include_router(blog.router, prefix="/api")
     app.include_router(heartbeat.router, prefix="/api")
+    app.include_router(pulse_public.router, prefix="/api")
+    app.include_router(unsubscribe.router, prefix="/api")
 
     # --- V1 backward-compat routers ---
     from hephae_api.routers.v1 import (

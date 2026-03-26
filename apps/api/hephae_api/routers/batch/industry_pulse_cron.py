@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ async def industry_pulse_cron(
         if not token:
             token = (authorization or "").removeprefix("Bearer ").strip()
         if token != cron_secret:
-            return {"error": "Unauthorized"}, 401
+            raise HTTPException(status_code=401, detail="Unauthorized")
 
     from hephae_db.firestore.registered_industries import (
         list_registered_industries,

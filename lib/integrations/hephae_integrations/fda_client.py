@@ -64,8 +64,10 @@ def _simplify_recall_reason(reason: str) -> str:
 
 
 async def query_fda_enforcements(state: str) -> dict[str, Any]:
-    """Query FDA food enforcement API for recall data in a given state.
+    """Query FDA food enforcement API for recall data.
 
+    Pass a 2-letter state code (e.g. "NJ") for state-level data, or
+    "US" / "national" for national data (no state filter).
     Returns dict with enforcements, totalRecalls, recentRecallCount, topReasons.
     """
     empty: dict[str, Any] = {"enforcements": [], "totalRecalls": 0, "recentRecallCount": 0, "topReasons": []}
@@ -73,15 +75,20 @@ async def query_fda_enforcements(state: str) -> dict[str, Any]:
         return empty
 
     try:
-        state_query = state.upper() if len(state) == 2 else state
         one_year_ago = datetime.utcnow() - timedelta(days=365)
         date_from = _format_fda_date(one_year_ago)
         date_to = _format_fda_date(datetime.utcnow())
 
-        search_query = f'state:"{state_query}"+AND+report_date:[{date_from}+TO+{date_to}]'
-        url = f"{FDA_BASE_URL}?search={search_query}&limit=100"
+        is_national = state.upper() in ("US", "NATIONAL", "ALL")
+        if is_national:
+            search_query = f'report_date:[{date_from}+TO+{date_to}]'
+            logger.info("[FDA] Querying national enforcements")
+        else:
+            state_query = state.upper() if len(state) == 2 else state
+            search_query = f'state:"{state_query}"+AND+report_date:[{date_from}+TO+{date_to}]'
+            logger.info(f'[FDA] Querying enforcements for state "{state_query}"')
 
-        logger.info(f'[FDA] Querying enforcements for state "{state_query}"')
+        url = f"{FDA_BASE_URL}?search={search_query}&limit=100"
 
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.get(url)

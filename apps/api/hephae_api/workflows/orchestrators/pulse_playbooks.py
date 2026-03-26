@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -134,6 +135,8 @@ def _eval_condition(value: Any, operator: str, threshold: Any) -> bool:
             return float(value) <= float(threshold)
         elif operator == "==":
             return value == threshold
+        elif operator == "in":
+            return float(value) in [float(t) for t in threshold]
         return False
     except (ValueError, TypeError):
         return False
@@ -300,11 +303,26 @@ def compute_impact_multipliers(signals: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 _TRIGGER_RE = re.compile(r'^(\S+)\s*(>=|<=|==|!=|>|<)\s*(-?\d+(?:\.\d+)?)$')
+_IN_RE = re.compile(r'^(\S+)\s+in\s+\[([^\]]+)\]$')
 
 
-def _parse_trigger(trigger: str) -> tuple[str, str, float | str] | None:
-    """Parse a string trigger like 'milk_mom_pct > 1.5' into (var, op, value)."""
-    m = _TRIGGER_RE.match(trigger.strip())
+def _parse_trigger(trigger: str) -> tuple[str, str, Any] | None:
+    """Parse a single trigger expression into (var, op, value).
+
+    Supports:
+    - Simple comparison: 'milk_mom_pct > 1.5'
+    - List membership:   'month in [3, 4, 5]'
+    """
+    trigger = trigger.strip()
+    m = _IN_RE.match(trigger)
+    if m:
+        var = m.group(1)
+        try:
+            items = [float(x.strip()) for x in m.group(2).split(",")]
+            return var, "in", items
+        except ValueError:
+            return None
+    m = _TRIGGER_RE.match(trigger)
     if not m:
         return None
     var, op, val_str = m.groups()
@@ -312,6 +330,20 @@ def _parse_trigger(trigger: str) -> tuple[str, str, float | str] | None:
         return var, op, float(val_str)
     except ValueError:
         return var, op, val_str
+
+
+def _evaluate_trigger(trigger: str, impact: dict[str, Any]) -> bool:
+    """Evaluate a trigger string, supporting compound 'and' expressions."""
+    parts = re.split(r'\s+and\s+', trigger, flags=re.IGNORECASE)
+    for part in parts:
+        parsed = _parse_trigger(part.strip())
+        if parsed is None:
+            logger.warning(f"[Playbooks] Could not parse trigger part: '{part}'")
+            return False
+        var, op, threshold = parsed
+        if not _eval_condition(impact.get(var), op, threshold):
+            return False
+    return True
 
 
 def match_industry_playbooks(
@@ -323,22 +355,23 @@ def match_industry_playbooks(
     IndustryConfig playbooks use the format:
         {"name": "...", "trigger": "variable > threshold", "play": "..."}
 
-    The trigger is a simple comparison against a key in `impact`.
+    Triggers support:
+    - Simple comparison:  'milk_mom_pct > 1.5'
+    - List membership:    'month in [3, 4, 5]'
+    - Compound AND:       'dairy_mom_pct > 1.0 and poultry_mom_pct < 0'
     """
+    # Inject temporal variables so time-based triggers evaluate correctly
+    enriched = {**impact, "month": datetime.now(timezone.utc).month}
+
     matched: list[dict[str, Any]] = []
     for p in industry_playbooks:
         trigger = p.get("trigger", "").strip()
         if not trigger:
             continue
-        parsed = _parse_trigger(trigger)
-        if parsed is None:
-            logger.warning(f"[Playbooks] Could not parse trigger: '{trigger}'")
-            continue
-        var, op, threshold = parsed
-        if not _eval_condition(impact.get(var), op, threshold):
+        if not _evaluate_trigger(trigger, enriched):
             continue
         try:
-            play_text = p["play"].format(**impact)
+            play_text = p["play"].format(**enriched)
         except (KeyError, ValueError):
             play_text = p["play"]
         matched.append({

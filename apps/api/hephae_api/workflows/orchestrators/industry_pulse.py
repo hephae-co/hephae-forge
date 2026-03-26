@@ -72,6 +72,7 @@ async def generate_industry_pulse(
     business_type = industry_key
     national_signals = await fetch_national_signals(
         business_type,
+        state="US",  # national query — FDA/USDA use no state filter
         config_bls_series=dict(industry.bls_series) if industry.bls_series else None,
     )
 

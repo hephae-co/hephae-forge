@@ -102,8 +102,11 @@ async def send_job_completion_email(
 
     subject = f"[Hephae] Marketing discovery '{job_name}' — {qualified} businesses with contact details"
 
+    # Support comma-separated recipient list
+    recipients = [e.strip() for e in notify_email.split(",") if e.strip()]
+
     try:
-        await send_email(to=notify_email, subject=subject, html=html)
-        logger.info(f"[Notifier] Completion email sent to {notify_email} for job {job.get('id')}")
+        await send_email(to=recipients, subject=subject, text=f"{job_name} — {status_label}: {qualified} qualified, {total} discovered across {zips_done}/{zips_total} zips.", html_content=html)
+        logger.info(f"[Notifier] Completion email sent to {recipients} for job {job.get('id')}")
     except Exception as e:
         logger.error(f"[Notifier] Failed to send email: {e}")

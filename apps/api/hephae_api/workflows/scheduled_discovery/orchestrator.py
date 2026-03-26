@@ -182,7 +182,6 @@ async def _process_zip(
         businesses = [
             b for b in businesses
             if any(t in (b.category or "").lower() for t in type_set)
-            or any(t in (b.businessType or "").lower() for t in type_set)
         ] or businesses  # fall back to all if filter removes everything
 
     total = len(businesses)

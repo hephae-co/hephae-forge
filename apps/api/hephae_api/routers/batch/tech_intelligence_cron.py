@@ -79,6 +79,8 @@ async def tech_intelligence_cron(
 
 async def _send_summary_email(results: list[dict], generated: int, failed: int):
     """Send a summary email after tech intelligence cron completes (always — even on failure)."""
+    import asyncio
+
     try:
         from hephae_common.email import send_email
 
@@ -126,8 +128,19 @@ async def _send_summary_email(results: list[dict], generated: int, failed: int):
         text = f"Tech Intelligence Cron: {generated} generated, {failed} failed. " + \
                ", ".join(f'{r["vertical"]}={r["status"]}' for r in results)
 
-        await send_email(to=email_list, subject=subject, text=text, html_content=html)
-        logger.info(f"[TechIntelCron] Summary email sent to {len(email_list)} recipients")
+        last_err = None
+        for attempt in range(3):
+            try:
+                await send_email(to=email_list, subject=subject, text=text, html_content=html)
+                logger.info(f"[TechIntelCron] Summary email sent to {len(email_list)} recipients")
+                return
+            except Exception as send_err:
+                last_err = send_err
+                logger.warning(f"[TechIntelCron] Email attempt {attempt + 1}/3 failed: {send_err}")
+                if attempt < 2:
+                    await asyncio.sleep(5)
+
+        logger.error(f"[TechIntelCron] All email attempts failed: {last_err}")
 
     except Exception as e:
         logger.error(f"[TechIntelCron] Failed to send summary email: {e}")

@@ -450,7 +450,7 @@ export default function Home() {
   const makeBusinessSlug = (identity: BaseIdentity): string => {
     const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     const namePart = slugify(identity.name).slice(0, 40);
-    const addrParts = identity.address.split(',');
+    const addrParts = (identity.address ?? '').split(',');
     const city = addrParts.length >= 2 ? slugify(addrParts[addrParts.length - 2].trim()).slice(0, 20) : '';
     const zip = (identity as any).zipCode || '';
     return [namePart, city, zip].filter(Boolean).join('-');

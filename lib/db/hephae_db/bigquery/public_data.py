@@ -289,18 +289,41 @@ async def query_census_demographics(zip_code: str) -> dict[str, Any]:
 
 # Mapping from business types to OSM amenity/shop tags
 OSM_BUSINESS_TAGS: dict[str, dict[str, list[str]]] = {
-    "restaurants": {"amenity": ["restaurant", "fast_food", "food_court"], "shop": []},
-    "bakeries": {"amenity": ["cafe"], "shop": ["bakery"]},
-    "cafes": {"amenity": ["cafe"], "shop": ["coffee"]},
+    "restaurant": {"amenity": ["restaurant", "fast_food", "food_court"], "shop": []},
+    "bakery": {"amenity": ["cafe", "restaurant"], "shop": ["bakery"]},
+    "cafe": {"amenity": ["cafe"], "shop": ["coffee"]},
     "coffee": {"amenity": ["cafe"], "shop": ["coffee"]},
     "pizza": {"amenity": ["restaurant", "fast_food"], "shop": []},
+    "bar": {"amenity": ["bar", "pub", "biergarten"], "shop": []},
     "retail": {"amenity": [], "shop": ["clothes", "shoes", "gift", "department_store", "variety_store"]},
     "salon": {"amenity": [], "shop": ["hairdresser", "beauty"]},
     "barber": {"amenity": [], "shop": ["hairdresser"]},
-    "gym": {"amenity": [], "shop": []},  # OSM uses leisure=fitness_centre
-    "grocery": {"amenity": [], "shop": ["supermarket", "convenience", "greengrocer"]},
-    "default": {"amenity": ["restaurant", "cafe", "fast_food", "bar", "pub"], "shop": ["convenience", "supermarket"]},
+    "gym": {"amenity": ["gym", "fitness_centre"], "shop": []},
+    "grocery": {"amenity": [], "shop": ["supermarket", "convenience", "greengrocer", "deli"]},
+    "meal prep": {"amenity": ["restaurant", "fast_food"], "shop": ["deli"]},
+    "meal": {"amenity": ["restaurant", "fast_food"], "shop": ["deli"]},
+    "catering": {"amenity": ["restaurant"], "shop": ["deli"]},
+    "deli": {"amenity": ["restaurant"], "shop": ["deli"]},
+    "juice": {"amenity": ["cafe", "fast_food"], "shop": []},
+    "smoothie": {"amenity": ["cafe", "fast_food"], "shop": []},
+    "food truck": {"amenity": ["fast_food", "restaurant"], "shop": []},
+    "pharmacy": {"amenity": ["pharmacy"], "shop": ["chemist"]},
+    "dentist": {"amenity": ["dentist", "clinic"], "shop": []},
+    "auto repair": {"amenity": [], "shop": ["car_repair", "tyres"]},
+    "nail": {"amenity": [], "shop": ["beauty"]},
+    "spa": {"amenity": [], "shop": ["beauty"]},
+    # Default: broad food/service amenities only — no convenience/supermarket
+    # to avoid gas stations and unrelated shops showing as competitors
+    "default": {"amenity": ["restaurant", "cafe", "fast_food", "bar", "pub"], "shop": []},
 }
+
+# OSM amenity/shop categories that are never meaningful competitors regardless of business type
+_JUNK_COMPETITOR_CATEGORIES = frozenset([
+    "fuel", "parking", "bank", "atm", "post_office", "place_of_worship",
+    "school", "library", "hospital", "clinic", "pharmacy", "police",
+    "fire_station", "car_wash", "car_rental", "bus_station", "taxi",
+    "charging_station", "recycling", "toilets", "shelter", "bench",
+])
 
 
 async def query_osm_business_density(
@@ -317,8 +340,16 @@ async def query_osm_business_density(
     empty: dict[str, Any] = {}
 
     try:
-        normalized = business_type.lower().strip().rstrip("s")
-        tags = OSM_BUSINESS_TAGS.get(normalized, OSM_BUSINESS_TAGS["default"])
+        raw = business_type.lower().strip()
+        # Try progressively looser matches: exact → strip trailing 's' → keyword scan
+        tags = (
+            OSM_BUSINESS_TAGS.get(raw)
+            or OSM_BUSINESS_TAGS.get(raw.rstrip("s"))
+            or next(
+                (v for k, v in OSM_BUSINESS_TAGS.items() if k != "default" and k in raw),
+                OSM_BUSINESS_TAGS["default"],
+            )
+        )
         amenity_tags = tags["amenity"]
         shop_tags = tags["shop"]
 
@@ -372,11 +403,14 @@ async def query_osm_business_density(
             logger.info(f"[BQ:OSM] No businesses found within {radius_m}m of ({latitude}, {longitude})")
             return {"totalBusinesses": 0, "saturationLevel": "minimal", "categories": {}, "nearby": []}
 
-        # Categorize results
+        # Categorize results, filtering out irrelevant categories
         categories: dict[str, int] = {}
         nearby: list[dict[str, Any]] = []
         for row in rows:
             cat = row.get("amenity") or row.get("shop") or "other"
+            # Skip categories that are never real competitors
+            if cat in _JUNK_COMPETITOR_CATEGORIES:
+                continue
             categories[cat] = categories.get(cat, 0) + 1
             if len(nearby) < 10:
                 entry: dict[str, Any] = {

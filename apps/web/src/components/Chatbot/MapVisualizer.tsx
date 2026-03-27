@@ -37,13 +37,20 @@ const SOURCE_STYLES: Record<string, { badge: string; text: string; border: strin
     rose:   { badge: 'bg-rose-500/10',   text: 'text-rose-300',   border: 'border-rose-500/25' },
 };
 
-// Categories that are clearly unrelated to food/restaurant businesses
-const UNRELATED_FOOD_CATEGORIES = new Set([
-    'supermarket', 'grocery', 'convenience', 'pharmacy', 'drug_store',
-    'bank', 'atm', 'gas_station', 'fuel', 'car_wash', 'car_repair',
-    'hardware', 'electronics', 'clothing', 'beauty_salon', 'hair_care',
-    'gym', 'fitness', 'school', 'hospital', 'dentist', 'doctor',
-    'hotel', 'lodging', 'real_estate', 'insurance', 'lawyer',
+// OSM categories that are never relevant as nearby competitors for any business type
+const IRRELEVANT_NEARBY_CATEGORIES = new Set([
+    // Fuel & automotive
+    'fuel', 'gas_station', 'car_wash', 'car_repair', 'car_rental', 'tyres',
+    // Retail unrelated to food/service
+    'supermarket', 'convenience', 'grocery', 'hardware', 'electronics',
+    'clothing', 'furniture', 'department_store',
+    // Finance & services
+    'bank', 'atm', 'insurance', 'lawyer', 'real_estate', 'post_office',
+    // Healthcare
+    'pharmacy', 'drug_store', 'hospital', 'clinic', 'dentist', 'doctor', 'veterinary',
+    // Other
+    'school', 'library', 'place_of_worship', 'hotel', 'lodging',
+    'parking', 'charging_station', 'recycling',
 ]);
 
 function filterRelevantCompetitors(
@@ -52,17 +59,19 @@ function filterRelevantCompetitors(
 ): DashboardData['competitors'] {
     if (!competitors?.length) return competitors;
     const lowerType = (businessType || '').toLowerCase();
-    const isFoodBiz = lowerType.includes('restaurant') || lowerType.includes('cafe') ||
-        lowerType.includes('bakery') || lowerType.includes('bar') || lowerType.includes('diner') ||
-        lowerType.includes('pizza') || lowerType.includes('grill') || lowerType.includes('food') ||
-        lowerType.includes('bistro') || lowerType.includes('steakhouse') || lowerType.includes('steak') ||
-        lowerType.includes('sushi') || lowerType.includes('coffee');
-
-    if (!isFoodBiz) return competitors;
 
     return competitors.filter(c => {
         const cat = (c.cuisine || c.category || '').toLowerCase();
-        return !UNRELATED_FOOD_CATEGORIES.has(cat);
+        // Always strip universally irrelevant categories
+        if (IRRELEVANT_NEARBY_CATEGORIES.has(cat)) return false;
+        // For non-food businesses, also strip pure food amenities
+        const isFoodBiz = lowerType.includes('restaurant') || lowerType.includes('cafe') ||
+            lowerType.includes('bakery') || lowerType.includes('bar') || lowerType.includes('diner') ||
+            lowerType.includes('pizza') || lowerType.includes('grill') || lowerType.includes('food') ||
+            lowerType.includes('meal') || lowerType.includes('bistro') || lowerType.includes('steak') ||
+            lowerType.includes('sushi') || lowerType.includes('coffee') || lowerType.includes('kitchen');
+        if (!isFoodBiz && (cat === 'fast_food' || cat === 'pub' || cat === 'bar')) return false;
+        return true;
     });
 }
 
@@ -820,12 +829,12 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                             if (!filtered?.length) return null;
                             return (
                                 <div>
-                                    <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider mb-1.5">Nearby Competitors</p>
+                                    <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider mb-1.5">Nearby Businesses</p>
                                     <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
                                         {filtered.slice(0, 6).map((c, i) => (
                                             <div key={i} className="flex-shrink-0 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm">
                                                 <div className="text-[11px] font-semibold text-white/90 whitespace-nowrap">{c.name}</div>
-                                                <div className="text-[9px] text-white/45 mt-0.5">{c.cuisine || c.category} · {c.distanceM}m</div>
+                                                <div className="text-[9px] text-white/45 mt-0.5">{(c.cuisine || c.category || '').replace(/_/g, ' ')} · {c.distanceM < 1000 ? `${c.distanceM}m` : `${(c.distanceM / 1000).toFixed(1)}km`}</div>
                                             </div>
                                         ))}
                                     </div>

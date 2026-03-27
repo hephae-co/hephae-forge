@@ -500,7 +500,7 @@ export default function Home() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ slug, identity }),
           });
-          router.replace('/b/' + slug, { scroll: false });
+          window.history.replaceState(null, '', '/forge/b/' + slug);
         } catch {
           // Non-critical — URL update is best-effort
         }
@@ -1843,7 +1843,7 @@ export default function Home() {
             setIsChatCollapsed(false);
             setAddMyAreaCity(null);
             setBusinessSlug(null);
-            router.replace('/', { scroll: false });
+            window.history.replaceState(null, '', '/forge/');
           }}
           capabilities={capabilities}
           onSelectCapability={handleSelectCapability}

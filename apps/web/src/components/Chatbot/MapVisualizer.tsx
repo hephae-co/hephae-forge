@@ -233,7 +233,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
 
             {/* ── MINI MAP (fixed height) ───────────────────────────────────── */}
             <div className="flex-shrink-0 px-3 pt-3 pb-1">
-            <div className="relative h-52 bg-slate-800 overflow-hidden rounded-2xl border border-white/10 shadow-xl">
+            <div className="relative h-[250px] bg-slate-800 overflow-hidden rounded-2xl border border-white/10 shadow-xl">
                 <iframe
                     key={`${resetKey}-${zoomLevel}`}
                     className="w-full h-full transition-all duration-500 pointer-events-auto"
@@ -881,14 +881,15 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                     </div>
             )}
 
-            {/* ── CTA Actions — pinned at bottom, separated from business data ── */}
+
+            </div>{/* end scrollable content panel */}
+
+            {/* ── CTA Actions — pinned to bottom of panel, outside scroll ── */}
             {ctaSlot && !isDiscovering && (
-                <div className="flex-shrink-0 border-t border-white/8 bg-slate-950/60 px-3 py-3 flex flex-wrap gap-2">
+                <div className="flex-shrink-0 border-t-2 border-white/10 bg-slate-950 px-4 py-4 flex flex-wrap gap-2">
                     {ctaSlot}
                 </div>
             )}
-
-            </div>{/* end scrollable content panel */}
         </div>
     );
 }

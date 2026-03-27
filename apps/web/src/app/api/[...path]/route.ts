@@ -4,7 +4,7 @@ import { createHmac } from 'crypto';
 export const maxDuration = 180; // 3 minutes — discovery + analyze pipelines are long-running
 export const dynamic = 'force-dynamic';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 const FORGE_API_SECRET = process.env.FORGE_API_SECRET || '';
 
 /**

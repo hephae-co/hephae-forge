@@ -93,11 +93,12 @@ interface MapVisualizerProps {
     business?: BaseIdentity | EnrichedProfile;
     isDiscovering?: boolean;
     dashboard?: DashboardData | null;
+    ctaSlot?: React.ReactNode;
 }
 
 type ActiveTab = 'overview' | 'profile' | 'theme' | 'contact' | 'social' | 'menu' | 'competitors';
 
-export default function MapVisualizer({ lat, lng, businessName, business, isDiscovering = false, dashboard }: MapVisualizerProps) {
+export default function MapVisualizer({ lat, lng, businessName, business, isDiscovering = false, dashboard, ctaSlot }: MapVisualizerProps) {
     const [zoomLevel, setZoomLevel] = useState<number>(15);
     const [resetKey, setResetKey] = useState(0);
     const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
@@ -841,6 +842,13 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                                 </div>
                             );
                         })()}
+
+                        {/* ── CTA Actions ──────────────────────────────────── */}
+                        {ctaSlot && (
+                            <div className="flex flex-wrap gap-2">
+                                {ctaSlot}
+                            </div>
+                        )}
 
                         {/* ── Stat pills + sources icon ─────────────────────── */}
                         <div className="flex items-center justify-between gap-2">

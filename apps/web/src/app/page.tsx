@@ -1834,7 +1834,56 @@ export default function Home() {
                 </div>
               </div>
             ) : locatedBusiness && locatedBusiness.coordinates ? (
-              <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} dashboard={businessOverview?.dashboard} />
+              <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} dashboard={businessOverview?.dashboard}
+                ctaSlot={!isDiscovering && (
+                  <>
+                    <a
+                      href="https://hephae.co/schedule"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-md group whitespace-nowrap"
+                    >
+                      <Calendar className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                      Schedule Call
+                    </a>
+                    {activeReportUrl && (
+                      <button
+                        onClick={() => setShowSharePanel(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-md group whitespace-nowrap"
+                      >
+                        <Share2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                        Share Report
+                      </button>
+                    )}
+                    {businessSlug && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(window.location.origin + '/b/' + businessSlug);
+                          setCopyToast(true);
+                          setTimeout(() => setCopyToast(false), 2000);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-slate-700 hover:bg-slate-600 transition-all shadow-md group whitespace-nowrap"
+                        title="Copy shareable link"
+                      >
+                        <svg className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                        Share Profile
+                      </button>
+                    )}
+                    {user && !activeHeartbeatId && (
+                      <button
+                        onClick={() => setShowHeartbeatSetup(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-md group whitespace-nowrap"
+                      >
+                        <Activity className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                        Monitor Weekly
+                      </button>
+                    )}
+                    {activeHeartbeatId && (
+                      <HeartbeatBadge onClick={() => setShowHeartbeatSetup(true)} />
+                    )}
+                  </>
+                )}
+              />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center bg-transparent gap-4 p-8">
                 {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) && (
@@ -1983,59 +2032,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* CTA buttons — fixed bottom center, always visible when business is loaded */}
-      {!isCentered && !isDiscovering && !isTyping && locatedBusiness && (
-        <div className="fixed bottom-16 md:bottom-5 left-1/2 -translate-x-1/2 z-[65] flex items-center gap-2 pointer-events-auto animate-fade-in-up">
-          <a
-            href="https://hephae.co/schedule"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/25 group whitespace-nowrap backdrop-blur-sm"
-          >
-            <Calendar className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-            Schedule Call
-          </a>
-
-          {activeReportUrl && (
-            <button
-              onClick={() => setShowSharePanel(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/25 group whitespace-nowrap"
-            >
-              <Share2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-              Share Report
-            </button>
-          )}
-
-          {businessSlug && (
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.origin + '/b/' + businessSlug);
-                setCopyToast(true);
-                setTimeout(() => setCopyToast(false), 2000);
-              }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-slate-700 hover:bg-slate-600 transition-all shadow-lg group whitespace-nowrap"
-              title="Copy shareable link"
-            >
-              <svg className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-              Share Profile
-            </button>
-          )}
-
-          {user && locatedBusiness && !activeHeartbeatId && (
-            <button
-              onClick={() => setShowHeartbeatSetup(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/25 group whitespace-nowrap"
-            >
-              <Activity className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-              Monitor Weekly
-            </button>
-          )}
-
-          {activeHeartbeatId && (
-            <HeartbeatBadge onClick={() => setShowHeartbeatSetup(true)} />
-          )}
-        </div>
-      )}
     </main>
   );
 }

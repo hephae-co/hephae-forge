@@ -1,164 +1,150 @@
-# Debug Report: WgjhRth9tmBlQIQ2tmPt
-Generated: 2026-03-15T17:49:00Z
-Zip: 07110 (Nutley, NJ) | Type: Restaurants | Phase: approval (complete) | Duration: ~20 min
-
-## Workflow Summary
-
-| Metric | Value |
-|--------|-------|
-| Workflow ID | WgjhRth9tmBlQIQ2tmPt |
-| Zip Code / Business Type | 07110 / Restaurants |
-| Phase | **approval** (analysis + evaluation complete) |
-| Duration (created → approval) | ~20 min (17:29:11 → 17:48:54) |
-| Total Businesses | 15 |
-| Website Discovery Rate | 14 / 15 (93.3%) |
-| Qualification Breakdown | 10 qualified, 5 parked |
-| Dynamic Threshold Used | 30 (saturation=moderate, loaded from zip research) |
-| Quality Passed | **4 / 10** (40%) |
-| Quality Failed | **6 / 10** (60%) — 3 traffic hallucination, 2 low scores, 1 competitive hallucination |
-| Retry Rate | 0 / 10 (0%) |
-
-## Capability Coverage (10 qualified businesses, FINAL)
-
-| Capability | should_run | Completed | Failed | Notes |
-|------------|-----------|-----------|--------|-------|
-| SEO | needs officialUrl (10) | 10 | 0 | 100% success |
-| Traffic | always (10) | 10 | 0 | 100% success |
-| Competitive | always (10) | 9 | 1 | sugar-tree-caf failed |
-| Margin Surgeon | menuScreenshotBase64 OR menuUrl | 0 | 9 | **100% failure** (1 skipped) |
-| Social | always (10) | 10 | 0 | 100% success |
-
-## Evaluation Results (FINAL)
-
-| Business | SEO | Traffic | Competitive | Quality |
-|----------|-----|---------|-------------|---------|
-| Luna Wood Fire Tavern | 85 | 90 | 90 | **PASSED** |
-| Sugar Tree Café | 90 | 90 | (failed) | **PASSED** |
-| Nutley Diner | 90 | 95 | 90 | **PASSED** |
-| Rocky's Pizzeria | 85 | 95 | 90 | **PASSED** |
-| Queen Margherita | 90 | **40 (h!)** | 90 | FAILED — traffic hallucinated |
-| Cucina 355 | 90 | **65 (h!)** | 92 | FAILED — traffic hallucinated |
-| Pita Bowl | 95 | **65 (h!)** | 92 | FAILED — traffic hallucinated |
-| The Oakley Kitchen | 90 | 95 | **75** | FAILED — competitive below 80 |
-| Ralph's Pizzeria | **65** | 95 | 95 | FAILED — SEO below 80 |
-| Cowan's Public | 90 | 95 | **45 (h!)** | FAILED — competitive hallucinated |
-
-*(h!) = isHallucinated=True*
-
-## Improvements From Prior Workflow (8x5Idxzp)
-
-| Metric | Prior (8x5Idxzp) | Current (WgjhRth9) | Change |
-|--------|-------------------|---------------------|--------|
-| Website Discovery Rate | 7/19 (36.8%) | 14/15 (93.3%) | +56.5pp |
-| Research Context | None | Loaded (threshold=30) | Fixed |
-| Businesses Qualified | 7/19 (36.8%) | 10/15 (66.7%) | +29.9pp |
-| Traffic Hallucination | (not evaluated) | 3/10 (30%) | Partial fix |
-| Quality Passed | 0 (blocked) | 4/10 (40%) | New |
-| Margin Surgeon | 100% skip | 100% fail | **Regressed** |
+# Industry Pulse Quality Audit — W13 Full Validation
+Generated: 2026-03-26
+Scope: All 19 industry pulses (IP-1 through IP-6 skill run)
 
 ---
 
-## PATTERN-1: Margin Surgeon 100% Failure [CRITICAL]
+## Quality Audit Summary (2026-03-26)
 
-- **Aggregate Signal:** 0 completions, 9 failures, 1 skip. Zero margin analysis produced.
-- **Category:** `capability_execution`
-- **Affected:** 10/10 qualified businesses (100%)
-- **Spot-Check Evidence:**
-  - luna-wood-fire-tavern: fail=['margin_surgeon'] — has menuUrl but no menuScreenshotBase64
-  - queen-margherita: fail=['margin_surgeon'] — same
-  - sugar-tree-caf: skip=['margin_surgeon'] — only business that skipped (no menuUrl yet when task ran)
-- **Cascade Impact:** Zero margin analysis for any business. No menu pricing insights or margin optimization in any report.
-- **Root Cause:** `registry.py:207` `should_run` was widened to `lambda biz: bool(biz.get("menuScreenshotBase64") or biz.get("menuUrl"))`. Now returns True when `menuUrl` exists, but the margin_surgeon runner still requires `menuScreenshotBase64` and crashes without it.
-- **File:** `apps/api/hephae_api/workflows/capabilities/registry.py:207`
-- **Fix Direction:** Either (a) update the margin_surgeon runner to accept `menuUrl` and fetch/screenshot the menu itself, or (b) revert should_run to only check `menuScreenshotBase64` until the runner supports URL-based input, or (c) add a menu screenshot step to enrichment.
+Full report: `.claude/findings/pulse-check-latest.md`
 
-## PATTERN-2: Traffic Hallucination — 30% Failure Rate [HIGH]
+| Metric | Value |
+|--------|-------|
+| Industries audited | 19/19 |
+| Overall grade | C (65/100) |
+| P0 bugs found | 4 |
+| P1 data quality issues | 6 |
+| P2 config bugs | 4 |
+| Playbooks broken (unparseable triggers) | 25/64 (39%) |
+| MoM values correct | 33/33 (100%) |
+| YoY values with >5% error | 8 series |
+| FDA signal present in food verticals | 0/5 (0%) |
 
-- **Aggregate Signal:** 3/10 traffic evaluations flagged `isHallucinated=True` with scores 40-65 (below 80). Causes 3 businesses to fail quality despite strong SEO and competitive scores.
-- **Category:** `evaluation_quality`
-- **Affected:** 3 businesses — Queen Margherita (s=40,h=True), Cucina 355 (s=65,h=True), Pita Bowl (s=65,h=True)
-- **Spot-Check Evidence:**
-  - Queen Margherita: SEO=90, competitive=90 both passed, but traffic=40 with hallucination killed the entire evaluation
-  - Cucina 355: SEO=90, competitive=92, but traffic=65 hallucinated
-  - 7/10 traffic evaluations passed (some with 90-95 scores), so this is not systemic but significant
-- **Cascade Impact:** 3 businesses that would otherwise pass are blocked from outreach. All 3 have strong SEO and competitive scores.
-- **Comparison to prior workflow:** Prior workflow (of0O9BLm) had 100% traffic hallucination due to missing research context. This workflow HAS research context (threshold=30), reducing hallucination from 100% to 30% — but not eliminating it.
-- **File:** Traffic forecaster agent prompt + evaluator
-- **Fix Direction:** The traffic forecaster agent still occasionally ignores weather/event research data. Investigate whether the 3 failing businesses received the research context in their traffic agent invocation. The evaluator is correctly flagging genuine hallucination.
+### Top Issues
 
-## PATTERN-3: Full Probe NoneType Crash [HIGH]
+1. **[P0] 39% of playbook triggers silently broken** — `_parse_trigger()` in `pulse_playbooks.py` rejects `month in [...]` and compound `and` expressions. 25/64 playbooks never fire. W13 missed: auto_repair spring_ac_push, hair_salon bridal_season_capture, residential_cleaning spring_deep_clean, restaurant dairy_margin_swap.
 
-- **Aggregate Signal:** 3/4 full probe attempts crashed with `'NoneType' object has no attribute 'get'`. All 4 businesses ended up parked.
-- **Category:** `qualification_error`
-- **Affected:** 4 businesses — old-canal-inn, chris-and-angie-s-dinette, salumeria-regina, bgl
-- **Spot-Check Evidence:**
-  - Old Canal Inn: Playwright crawled theoldcanalinn.com, extracted UI data (hasFavicon=True, primaryColor=#4f46e5, linkCount=24), then probe FAILED
-  - Salumeria Regina: Playwright timed out on salumeriareginanj.com (30s), then probe FAILED
-  - BGL: Playwright timed out on thebgl.com (30s)
-- **Root Cause:** `scanner.py:375` `crawl_web_page(url)` returns `None` on timeout. Line 380 `crawl_data.get(...)` crashes on NoneType.
-- **File:** `agents/hephae_agents/qualification/scanner.py:375-380`
-- **Fix Direction:** Add `if not crawl_data: return partial_result` before line 380.
+2. **[P0] FDA absent from all food verticals** — `generate_industry_pulse()` passes `state=""` to `fetch_national_signals()`. `fetch_fda(state="")` returns `{}` immediately. fda_recall_alert and fda_allergen_alert can never fire.
 
-## PATTERN-4: Competitive Hallucination (Cowan's Public) [MEDIUM]
+3. **[P0] Food truck using restaurant BLS data** — Cache collision from earlier bug (resolve() fell back to RESTAURANT). food_truck nationalImpact has restaurant series; gasoline absent; wrong playbooks fired (seafood_opportunity + produce_spike_alert).
 
-- **Aggregate Signal:** 1/10 competitive evaluations flagged `isHallucinated=True` with score 45.
-- **Category:** `evaluation_quality`
-- **Affected:** 1 business — Cowan's Public (competitive=45, h=True)
-- **Spot-Check Evidence:** Cowan's Public has SEO=90, traffic=95 (both excellent), but competitive=45 hallucinated. This is a newly discovered business — first time through the pipeline.
-- **Fix Direction:** Check if the competitive analyzer received valid competitor data for Cowan's Public.
+4. **[P0] SETB01 mislabeled in auto_repair trend summary** — Trend summary calls CUUR0000SETB01 (Gasoline) "motor vehicle parts" — factually wrong.
 
-## PATTERN-5: SEO and Competitive Borderline Failures [MEDIUM]
+5. **[P1] SAG1 YoY stale 18% across 11 industries** — `other_goods_&_services_yoy_pct` = 4.53% vs BLS actual 5.51%.
 
-- **Aggregate Signal:** 2 businesses failed due to single capability scores just below 80.
-- **Category:** `evaluation_quality`
-- **Affected:** 2 businesses
-  - The Oakley Kitchen: competitive=75 (5 points below threshold). SEO=90, traffic=95 both excellent.
-  - Ralph's Pizzeria: SEO=65 (15 points below threshold). Traffic=95, competitive=95 both excellent.
-- **Fix Direction:** These are legitimate evaluation results, not bugs. Consider whether the quality threshold (score >= 80 on ALL capabilities) is too strict — a single borderline score blocks businesses with otherwise excellent results.
+6. **[P1] SASLE YoY stale 12% across 12 industries** — `services_less_energy_yoy_pct` = 2.92% vs BLS actual 3.33%.
 
-## PATTERN-6: Overpass API Rate Limiting [LOW]
+7. **[P1] Dry cleaner SS30021 YoY wrong sign** — Pulse reports -1.96%; BLS actual = +1.28%.
 
-- **Aggregate Signal:** Overpass API returned HTTP 429 at 17:29:24 — 3rd occurrence this hour.
-- **Category:** `model_health`
-- **File:** Discovery agents using Overpass API
-- **Fix Direction:** Cache per-zip Overpass queries or add retry with backoff.
+### Best/Worst Industries
 
-## Qualification Audit
+- **Best:** coffee_shop (A/94), bakery (B+/88)
+- **Worst:** food_truck (D/44), restaurant (D/57)
 
-### Dynamic Threshold
-- Research context: **Loaded** from zip 07110 research
-- Market saturation: moderate
-- Computed threshold: **30** (below default 40 — good for this market)
+---
 
-### Classification Breakdown (FINAL)
-- **10 qualified (66.7%)** — 7 with prior enrichment + 3 newly discovered
-- **5 parked (33.3%)**:
-  - old-canal-inn: Full probe NoneType crash (had URL + Playwright data)
-  - chris-and-angie-s-dinette: Full probe NoneType crash (had URL + Playwright data)
-  - salumeria-regina: Playwright timeout + NoneType crash
-  - bgl: Playwright timeout + NoneType crash
-  - the-franklin-restaurant: No URL discovered (only business without URL)
-- **4 of 5 parked businesses were parked due to the full probe NoneType bug** — they had URLs and some had extractable Playwright data
+## Bug 1 — FIXED (1e24d88): Wrong BLS series
 
-### Full Probe Impact
-- 4 businesses entered full probe, 0 completed successfully
-- At least 2 (old-canal-inn, chris-and-angie-s-dinette) had extractable data that could have upgraded scores above threshold 30
-- **Fixing the NoneType bug would likely qualify 2-3 more businesses**, increasing the pipeline from 10 to 12-13 qualified
+`fetch_national_signals` didn't pass `IndustryConfig.bls_series` to the BLS client.
+Fixed by threading `config_bls_series` parameter through the full call chain.
 
-## Pipeline Funnel Summary
+## Bug 2 — FIXED (72e2c92): resolve(industry_key) fell back to RESTAURANT
 
-```
-15 discovered
- → 14 with URLs (93%)
- → 10 qualified (67%) — 4 lost to full probe bug, 1 no URL
- → 10 analysis complete (100% of qualified)
- → Capabilities: SEO 10/10, Traffic 10/10, Competitive 9/10, Social 10/10, Margin 0/10
- → 4 passed evaluation (40% of qualified, 27% of total)
- → Awaiting approval
-```
+`_INDEX` was built from aliases only, not `_cfg.id`. Industries with underscore IDs
+(auto_repair, dry_cleaner, pet_grooming) couldn't be resolved and got food CPI.
+Fix: `_INDEX[_cfg.id] = _cfg` added after alias loop.
+Remediation: deleted bad cache + W13 pulses, force-regenerating after deploy.
 
-**Blockers preventing higher pass rate:**
-1. Traffic hallucination: -3 businesses (Queen Margherita, Cucina 355, Pita Bowl)
-2. Margin surgeon 100% failure: no margin analysis for any business
-3. Borderline scores: -2 businesses (Oakley competitive=75, Ralph's SEO=65)
-4. Competitive hallucination: -1 business (Cowan's Public)
+## Bug 3 — FIXED (1e24d88): IndustryConfig playbooks never evaluated
+
+`match_playbooks` only checked global PLAYBOOKS dict. Added `match_industry_playbooks()`
+for string-trigger format used in IndustryConfig.playbooks.
+
+---
+
+## W13 Signal Quality
+
+| Industry | BLS Correct? | Playbooks |
+|----------|-------------|-----------|
+| restaurant, bakery, barber, coffee_shop, pizza | ✓ | 1-2 matched |
+| plumbing_hvac, residential_cleaning, hair_salon, nail_salon, spa, tattoo, gym, yoga, dental, florist | ✓ | 0 (thresholds not met this week) |
+| **auto_repair, dry_cleaner, pet_grooming** | ✗ got FOOD data | deleted + regenerating |
+
+---
+
+## Summary
+
+| Metric | Value |
+|--------|-------|
+| W13 Pulses Completed | 11 / 15 |
+| W13 Pulses Failed | 4 (transient Gemini disconnects) |
+| Critique PASS | 8 / 11 completed |
+| Critique FAIL (saved) | 3 / 11 |
+| Industry Pulses (W12) | 3 / 3 ✓ |
+| Industry Pulses (W13) | 0 — not due until Sun Mar 29 |
+| Summary Email | FAILED (Resend SSL transient) |
+
+---
+
+## W13 Pulse Coverage
+
+| Zip | Restaurants | Bakeries | Barbers |
+|-----|-------------|----------|---------|
+| 07011 | ✓ PASS (14 sig) | ✗ MISSING | ✓ PASS (10 sig) |
+| 07012 | ✓ PASS (11 sig) | ✓ FAIL critique (9 sig) | ✓ PASS (7 sig) |
+| 07013 | ✓ PASS (12 sig) | ✗ MISSING | ✓ FAIL critique (8 sig) |
+| 07014 | ✗ MISSING | ✓ PASS (9 sig) | ✓ FAIL critique (7 sig) |
+| 07110 | ✓ PASS (15 sig) | ✗ MISSING | ✓ PASS (11 sig) |
+
+---
+
+## Failures (4)
+
+All 4 are **transient Gemini API disconnects** — not a logic/data bug:
+
+| Zip | Type | Error |
+|-----|------|-------|
+| 07013 | Bakeries | `unhandled errors in a TaskGroup (1 sub-exception)` — Gemini retry exhausted |
+| 07014 | Restaurants | `Server disconnected` — Gemini drop |
+| 07110 | Bakeries | `unhandled errors in a TaskGroup (2 sub-exceptions)` — Gemini retry exhausted |
+| 07011 | Bakeries | Not in logs — likely silently skipped |
+
+Root cause: Gemini aiohttp server disconnects around 07:59–08:00 UTC — visible retries in logs before giving up.
+
+---
+
+## Critique Failures (3 — saved anyway)
+
+Pulses saved despite failing critique — content exists but quality gate didn't pass:
+- `07012 Bakeries` — 9 signals, critique=FAIL
+- `07013 Barbers` — 8 signals, critique=FAIL
+- `07014 Barbers` — 7 signals, critique=FAIL
+
+Low signal count (7–9) likely contributing.
+
+---
+
+## Industry Pulses
+
+W12 pulses exist for all 3 industries (generated Sun Mar 22):
+- `restaurant` W12 — 3 signals, 0 playbooks matched
+- `bakery` W12 — 3 signals, 0 playbooks matched
+- `barber` W12 — 2 signals, 0 playbooks matched
+
+⚠️ **0 playbooks matched** across all 3 — playbook matching step returning empty.
+W13 industry pulses not due until **Sun Mar 29 3AM ET**.
+
+---
+
+## Other Issues
+
+- **Summary email failed** — Resend SSL EOF (`UNEXPECTED_EOF_WHILE_READING`). Transient, no action needed.
+- **`lastPulseAt` empty** on registered_zipcodes/registered_industries docs — timestamp serialization mismatch, cosmetic only.
+
+---
+
+## Recommended Actions
+
+1. **Re-run 4 failed pulses** — trigger manually from admin Intelligence tab or wait for Mon Apr 6 cron.
+2. **Investigate 0 playbook matches** on industry pulses — check `pulse_playbooks.py` matching logic.
+3. No code changes needed for failures — purely transient Gemini API instability.

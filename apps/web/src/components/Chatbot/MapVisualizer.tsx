@@ -228,103 +228,104 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
     }, [carouselItems.length]);
 
     return (
-        <div className="relative w-full h-full bg-slate-800 overflow-hidden group">
-            {/* NATIVE MAP INTERACTION ENABLED */}
-            <iframe
-                key={`${resetKey}-${zoomLevel}`}
-                className="w-full h-full transition-all duration-500 pointer-events-auto"
-                style={getMapStyle()}
-                src={getUrl()}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer"
-                title="Traffic Intelligence Map"
-                tabIndex={-1}
-            ></iframe>
+        <div className="relative flex flex-col w-full h-full bg-slate-900 overflow-hidden">
 
-            {/* CONTROLS (Top-Right — above card, away from intelligence overlay) */}
-            <div className="absolute top-3 right-3 z-30 flex flex-col items-center gap-2">
-                <button
-                    onClick={() => setResetKey(p => p + 1)}
-                    className="w-10 h-10 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center font-bold shadow-lg border border-indigo-400/50"
-                    title="Re-Center Map"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                </button>
-                <div className="flex flex-col gap-1">
-                    <button onClick={() => handleZoom(1)} className="bg-white text-gray-700 w-11 h-11 md:w-10 md:h-10 rounded-t-lg shadow-lg hover:bg-gray-100 font-bold flex items-center justify-center border-b border-gray-200 text-lg">+</button>
-                    <button onClick={() => handleZoom(-1)} className="bg-white text-gray-700 w-11 h-11 md:w-10 md:h-10 rounded-b-lg shadow-lg hover:bg-gray-100 font-bold flex items-center justify-center text-lg">-</button>
-                </div>
-            </div>
+            {/* ── MINI MAP (fixed height) ───────────────────────────────────── */}
+            <div className="relative flex-shrink-0 h-44 bg-slate-800 overflow-hidden">
+                <iframe
+                    key={`${resetKey}-${zoomLevel}`}
+                    className="w-full h-full transition-all duration-500 pointer-events-auto"
+                    style={getMapStyle()}
+                    src={getUrl()}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    title="Traffic Intelligence Map"
+                    tabIndex={-1}
+                />
 
-            {/* VISUALIZATION OVERLAY */}
-            <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center animate-fade-in">
-                <div className="absolute inset-0 pointer-events-none mix-blend-screen overflow-visible flex items-center justify-center">
-                    <div className="absolute z-20 pointer-events-none">
-                        <div className="relative flex items-center justify-center">
-                            <div className="absolute w-12 h-12 bg-indigo-500 rounded-full animate-ping opacity-40"></div>
-                            <div className="relative w-4 h-4 bg-indigo-400 rounded-full border-2 border-white shadow-[0_0_20px_rgba(255,255,255,0.9)]"></div>
-                            <div className={`absolute top-full mt-2 text-indigo-100 font-bold text-sm bg-slate-900/90 px-3 py-1.5 rounded-md border border-indigo-500/50 shadow backdrop-blur whitespace-nowrap max-w-[200px] truncate`}>
-                                {businessName}
-                            </div>
+                {/* Business pin — centered */}
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="relative flex flex-col items-center">
+                        <div className="absolute w-10 h-10 bg-indigo-500 rounded-full animate-ping opacity-40" />
+                        <div className="relative w-3.5 h-3.5 bg-indigo-400 rounded-full border-2 border-white shadow-[0_0_20px_rgba(255,255,255,0.9)]" />
+                        <div className="mt-2 text-indigo-100 font-bold text-xs bg-slate-900/90 px-2.5 py-1 rounded-md border border-indigo-500/50 shadow backdrop-blur whitespace-nowrap max-w-[180px] truncate">
+                            {businessName}
                         </div>
+                    </div>
+                </div>
+
+                {/* Controls — compact, top-right of mini map */}
+                <div className="absolute top-2 right-2 z-30 flex flex-col items-center gap-1.5">
+                    <button
+                        onClick={() => setResetKey(p => p + 1)}
+                        className="w-7 h-7 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center shadow-lg border border-indigo-400/50"
+                        title="Re-Center Map"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    </button>
+                    <div className="flex flex-col">
+                        <button onClick={() => handleZoom(1)} className="bg-white text-gray-700 w-7 h-7 rounded-t-md shadow hover:bg-gray-100 font-bold flex items-center justify-center border-b border-gray-200 text-sm">+</button>
+                        <button onClick={() => handleZoom(-1)} className="bg-white text-gray-700 w-7 h-7 rounded-b-md shadow hover:bg-gray-100 font-bold flex items-center justify-center text-sm">−</button>
                     </div>
                 </div>
             </div>
 
-            {/* GLASSMORPHISM DISCOVERY OVERLAY */}
+            {/* ── SCROLLABLE CONTENT PANEL ─────────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide divide-y divide-white/5">
+
+            {/* PROFILE CARD — inline, full width */}
             {business && (
-                <div className="absolute top-3 left-3 right-3 z-40 max-w-sm animate-fade-in-up flex flex-col gap-3" style={{ animationDelay: '0.5s' }}>
-                    <div className="bg-slate-900/85 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl overflow-hidden">
+                <div className="bg-slate-900 animate-fade-in-up">
 
-                        {/* HEADER */}
-                        <div className={`px-3 pt-3 ${profileCollapsed ? 'pb-3' : 'pb-2'} ${profileCollapsed ? '' : 'border-b border-white/10'}`}>
-                            <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/50 shrink-0">
-                                    <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h2 className="text-white font-bold text-sm leading-tight truncate">{business.name}</h2>
-                                    {isDiscovering ? (
-                                        <DiscoveryProgress phase="all" variant="inline" />
-                                    ) : (
-                                        <p className="text-emerald-400 text-[10px] font-semibold flex items-center gap-1 mt-0.5">
-                                            <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                            Enriched
-                                        </p>
-                                    )}
-                                </div>
-                                {/* Collapse toggle */}
-                                <button
-                                    onClick={() => setProfileCollapsed(v => !v)}
-                                    className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors shrink-0"
-                                    title={profileCollapsed ? 'Expand' : 'Collapse'}
+                    {/* HEADER */}
+                    <div className={`px-3 pt-3 ${profileCollapsed ? 'pb-3' : 'pb-2'} ${profileCollapsed ? '' : 'border-b border-white/10'}`}>
+                        <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/50 shrink-0">
+                                <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <h2 className="text-white font-bold text-sm leading-tight truncate">{business.name}</h2>
+                                {isDiscovering ? (
+                                    <DiscoveryProgress phase="all" variant="inline" />
+                                ) : (
+                                    <p className="text-emerald-400 text-[10px] font-semibold flex items-center gap-1 mt-0.5">
+                                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        Enriched
+                                    </p>
+                                )}
+                            </div>
+                            {/* Collapse toggle */}
+                            <button
+                                onClick={() => setProfileCollapsed(v => !v)}
+                                className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors shrink-0"
+                                title={profileCollapsed ? 'Expand' : 'Collapse'}
+                            >
+                                <svg
+                                    className={`w-3 h-3 text-slate-400 transition-transform duration-300 ${profileCollapsed ? 'rotate-180' : ''}`}
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
                                 >
-                                    <svg
-                                        className={`w-3 h-3 text-slate-400 transition-transform duration-300 ${profileCollapsed ? 'rotate-180' : ''}`}
-                                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                    >
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            {/* TABS — compact */}
-                            <div className={`flex gap-0.5 p-0.5 bg-black/40 rounded-lg overflow-x-auto scrollbar-hide transition-all duration-300 ${profileCollapsed ? 'max-h-0 opacity-0 overflow-hidden mt-0 p-0' : 'max-h-10 opacity-100 mt-2'}`}>
-                                {TABS.map(tab => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
-                                        className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-colors leading-tight flex-shrink-0 ${activeTab === tab.id ? 'bg-indigo-500 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
-                            </div>
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                                </svg>
+                            </button>
                         </div>
 
-                        {/* TAB CONTENT */}
-                        <div className={`transition-all duration-300 ${profileCollapsed ? 'max-h-0 opacity-0 overflow-hidden p-0' : 'max-h-[500px] opacity-100 overflow-y-auto p-3 pt-2 space-y-2'}`}>
+                        {/* TABS */}
+                        <div className={`flex gap-0.5 p-0.5 bg-black/40 rounded-lg overflow-x-auto scrollbar-hide transition-all duration-300 ${profileCollapsed ? 'max-h-0 opacity-0 overflow-hidden mt-0 p-0' : 'max-h-10 opacity-100 mt-2'}`}>
+                            {TABS.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-colors leading-tight flex-shrink-0 ${activeTab === tab.id ? 'bg-indigo-500 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* TAB CONTENT */}
+                    <div className={`transition-all duration-300 ${profileCollapsed ? 'max-h-0 opacity-0 overflow-hidden p-0' : 'opacity-100 p-3 pt-2 space-y-2'}`}>
 
                             {/* OVERVIEW TAB: AI Overview summary */}
                             {activeTab === 'overview' && (
@@ -720,18 +721,17 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                             )}
                         </div>
                     </div>
-                </div>
             )}
 
-            {/* MARKET DASHBOARD OVERLAY (bottom) */}
+            {/* MARKET INTELLIGENCE — inline in scroll section */}
             {dashboard && !isDiscovering && (
-                <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-auto">
+                <div className="p-3 space-y-2.5">
 
-                    {/* ── Intelligence Sources Popover ─────────────────────── */}
+                    {/* ── Intelligence Sources Popover (absolute overlay) ── */}
                     {showSourcesPopover && (
                         <>
-                            <div className="absolute inset-0 z-30" onClick={() => setShowSourcesPopover(false)} />
-                            <div className="absolute bottom-full left-3 right-3 mb-2 z-40 bg-slate-900/96 backdrop-blur-xl border border-white/10 rounded-2xl p-3 shadow-2xl animate-fade-in-up">
+                            <div className="absolute inset-0 z-50" onClick={() => setShowSourcesPopover(false)} />
+                            <div className="absolute bottom-0 left-3 right-3 mb-16 z-50 bg-slate-900/96 backdrop-blur-xl border border-white/10 rounded-2xl p-3 shadow-2xl animate-fade-in-up">
                                 <div className="flex items-center justify-between mb-2.5">
                                     <div className="flex items-center gap-1.5">
                                         <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Intelligence Inputs</span>
@@ -759,9 +759,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                         </>
                     )}
 
-                    <div className="bg-gradient-to-t from-slate-950 via-slate-900/97 to-transparent pt-10 pb-3 px-3 space-y-2">
-
-                        {/* ── Intelligence Carousel (expandable) ───────────── */}
+                    {/* ── Intelligence Carousel (expandable) ───────────── */}
                         {carouselItems.length > 0 && (() => {
                             const item = carouselItems[carouselIdx];
                             return (
@@ -878,8 +876,9 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                         </div>
 
                     </div>
-                </div>
             )}
+
+            </div>{/* end scrollable content panel */}
         </div>
     );
 }

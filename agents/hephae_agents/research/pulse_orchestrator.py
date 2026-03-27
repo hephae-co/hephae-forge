@@ -35,22 +35,27 @@ from hephae_db.schemas import CritiqueResult, WeeklyPulseOutput
 # Import instruction builders (stateless functions, safe to reuse)
 from hephae_agents.research.pulse_data_gatherer import (
     BaseLayerFetcher,
-    _social_pulse_instruction,
-    _local_catalyst_instruction,
+    _social_pulse_before_model,
+    _local_catalyst_before_model,
 )
+from hephae_agents.research.social_pulse import SOCIAL_PULSE_INSTRUCTION
+from hephae_agents.research.local_catalyst import LOCAL_CATALYST_INSTRUCTION
 from hephae_agents.research.pulse_domain_experts import (
-    _historian_instruction,
-    _economist_instruction,
-    _local_scout_instruction,
+    HISTORIAN_INSTRUCTION,
+    ECONOMIST_INSTRUCTION,
+    LOCAL_SCOUT_INSTRUCTION,
+    _historian_before_model,
+    _economist_before_model,
+    _local_scout_before_model,
 )
 from hephae_agents.research.weekly_pulse_agent import (
-    _full_instruction,
     WEEKLY_PULSE_CORE_INSTRUCTION,
-    _synthesis_instruction,
+    _synthesis_before_model,
 )
 from hephae_agents.research.pulse_critique_agent import (
     CritiqueRouter,
-    _critique_instruction,
+    CRITIQUE_INSTRUCTION,
+    _critique_before_model,
 )
 
 logger = logging.getLogger(__name__)
@@ -231,12 +236,13 @@ class InsightMerger(BaseAgent):
 def create_pulse_orchestrator() -> SequentialAgent:
     """Create a fresh PulseOrchestrator agent tree."""
 
-    # ── Stage 1: DataGatherer ──────────────────────────────────────
+    # ── Stage 1: DataGatherer (static instructions + callbacks for caching) ──
     social_pulse = LlmAgent(
         name="SocialPulseResearch",
         model=AgentModels.PRIMARY_MODEL,
         description="Scans social media for community sentiment.",
-        instruction=_social_pulse_instruction,
+        instruction=SOCIAL_PULSE_INSTRUCTION,
+        before_model_callback=_social_pulse_before_model,
         tools=[google_search],
         output_key="socialPulse",
         on_model_error_callback=fallback_on_error,
@@ -245,7 +251,8 @@ def create_pulse_orchestrator() -> SequentialAgent:
         name="LocalCatalystResearch",
         model=AgentModels.PRIMARY_MODEL,
         description="Researches forward-looking local government signals.",
-        instruction=_local_catalyst_instruction,
+        instruction=LOCAL_CATALYST_INSTRUCTION,
+        before_model_callback=_local_catalyst_before_model,
         tools=[google_search_tool, crawl4ai_advanced_tool],
         output_key="localCatalysts",
         on_model_error_callback=fallback_on_error,
@@ -260,12 +267,13 @@ def create_pulse_orchestrator() -> SequentialAgent:
         sub_agents=[BaseLayerFetcher(), research_fan_out],
     )
 
-    # ── Stage 2: PreSynthesis ──────────────────────────────────────
+    # ── Stage 2: PreSynthesis (static instructions + before_model_callback for caching) ──
     historian = LlmAgent(
         name="PulseHistorySummarizer",
         model=AgentModels.PRIMARY_MODEL,
         description="Analyzes 12-week pulse history for longitudinal trends.",
-        instruction=_historian_instruction,
+        instruction=HISTORIAN_INSTRUCTION,
+        before_model_callback=_historian_before_model,
         output_key="trendNarrative",
         on_model_error_callback=fallback_on_error,
     )
@@ -273,7 +281,8 @@ def create_pulse_orchestrator() -> SequentialAgent:
         name="EconomistAgent",
         model=AgentModels.PRIMARY_MODEL,
         description="Distills economic and demographic signals into a macro report.",
-        instruction=_economist_instruction,
+        instruction=ECONOMIST_INSTRUCTION,
+        before_model_callback=_economist_before_model,
         output_key="macroReport",
         on_model_error_callback=fallback_on_error,
     )
@@ -281,7 +290,8 @@ def create_pulse_orchestrator() -> SequentialAgent:
         name="LocalScoutAgent",
         model=AgentModels.PRIMARY_MODEL,
         description="Distills local weather, news, catalysts, and social signals.",
-        instruction=_local_scout_instruction,
+        instruction=LOCAL_SCOUT_INSTRUCTION,
+        before_model_callback=_local_scout_before_model,
         output_key="localReport",
         on_model_error_callback=fallback_on_error,
     )
@@ -292,12 +302,14 @@ def create_pulse_orchestrator() -> SequentialAgent:
     )
 
     # ── Stage 3: Dual-Model Synthesis (Gemini + Claude via LiteLlm) ──
+    # Static WEEKLY_PULSE_CORE_INSTRUCTION is cacheable; dynamic data via callback
     gemini_synth = LlmAgent(
         name="GeminiSynthesis",
         model=AgentModels.SYNTHESIS_MODEL,
         generate_content_config=ThinkingPresets.HIGH,
         description="Gemini synthesis — generates pulse with local briefing.",
-        instruction=_full_instruction,
+        instruction=WEEKLY_PULSE_CORE_INSTRUCTION,
+        before_model_callback=_synthesis_before_model,
         output_key="geminiPulseOutput",
         output_schema=WeeklyPulseOutput,
         on_model_error_callback=fallback_on_error,
@@ -306,7 +318,8 @@ def create_pulse_orchestrator() -> SequentialAgent:
         name="ClaudeSynthesis",
         model=LiteLlm(model=AgentModels.CLAUDE_SYNTHESIS_MODEL),
         description="Claude synthesis — generates pulse with local briefing.",
-        instruction=_full_instruction,
+        instruction=WEEKLY_PULSE_CORE_INSTRUCTION,
+        before_model_callback=_synthesis_before_model,
         output_key="claudePulseOutput",
         output_schema=WeeklyPulseOutput,
         on_model_error_callback=fallback_on_error,
@@ -327,7 +340,8 @@ def create_pulse_orchestrator() -> SequentialAgent:
         model=AgentModels.SYNTHESIS_MODEL,
         generate_content_config=ThinkingPresets.MEDIUM,
         description="Evaluates pulse insights for quality.",
-        instruction=_critique_instruction,
+        instruction=CRITIQUE_INSTRUCTION,
+        before_model_callback=_critique_before_model,
         output_key="critiqueResult",
         output_schema=CritiqueResult,
         on_model_error_callback=fallback_on_error,
@@ -337,7 +351,8 @@ def create_pulse_orchestrator() -> SequentialAgent:
         model=AgentModels.SYNTHESIS_MODEL,
         generate_content_config=ThinkingPresets.DEEP,
         description="Rewrites failing insights based on critique feedback.",
-        instruction=_full_instruction,
+        instruction=WEEKLY_PULSE_CORE_INSTRUCTION,
+        before_model_callback=_synthesis_before_model,
         output_key="pulseOutput",
         output_schema=WeeklyPulseOutput,
         on_model_error_callback=fallback_on_error,

@@ -24,6 +24,8 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event
 from google.adk.events.event_actions import EventActions
 
+from google.genai import types as genai_types
+
 from hephae_agents.research.social_pulse import SOCIAL_PULSE_INSTRUCTION
 from hephae_agents.research.local_catalyst import LOCAL_CATALYST_INSTRUCTION
 
@@ -223,32 +225,42 @@ class BaseLayerFetcher(BaseAgent):
 # ---------------------------------------------------------------------------
 
 
-def _social_pulse_instruction(ctx) -> str:
-    """Inject location from session state into SocialPulse instruction."""
-    state = getattr(ctx, "state", {})
+def _social_pulse_before_model(ctx, llm_request):
+    """Inject location from session state into the model request."""
+    state = ctx.state
     city = state.get("city", "unknown")
     st = state.get("state", "")
     zip_code = state.get("zipCode", "")
-    return (
-        f"{SOCIAL_PULSE_INSTRUCTION}\n\n"
+    context_text = (
         f"TOWN/CITY: {city}\nSTATE: {st}\nZIP CODE: {zip_code}\n"
         f"CURRENT DATE: {datetime.now().strftime('%Y-%m-%d')}"
     )
+    llm_request.contents.append(
+        genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=context_text)])
+    )
+    return None
 
 
-def _local_catalyst_instruction(ctx) -> str:
-    """Inject location from session state into LocalCatalyst instruction."""
-    state = getattr(ctx, "state", {})
+def _local_catalyst_before_model(ctx, llm_request):
+    """Inject location from session state into the model request."""
+    state = ctx.state
     city = state.get("city", "unknown")
     st = state.get("state", "")
     biz_type = state.get("businessType", "unknown")
-    return (
-        f"{LOCAL_CATALYST_INSTRUCTION}\n\n"
+    context_text = (
         f"TOWN/CITY: {city}\nSTATE: {st}\nBUSINESS TYPE: {biz_type}\n"
         f"CURRENT DATE: {datetime.now().strftime('%Y-%m-%d')}"
     )
+    llm_request.contents.append(
+        genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=context_text)])
+    )
+    return None
 
+
+# Backward compat: export static instructions as the old callable names
+_social_pulse_instruction = SOCIAL_PULSE_INSTRUCTION
+_local_catalyst_instruction = LOCAL_CATALYST_INSTRUCTION
 
 # NOTE: Module-level agent instances REMOVED — ADK agents can only have one parent.
 # All agent instantiation happens in create_pulse_orchestrator() factory function
-# in pulse_orchestrator.py. Only export instruction builders and BaseLayerFetcher.
+# in pulse_orchestrator.py. Only export instruction constants, callbacks, and BaseLayerFetcher.

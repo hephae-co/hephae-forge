@@ -11,6 +11,9 @@ writing a focused report to their output_key:
 These focused reports replace the 15+ raw JSON blocks that the synthesis
 agent previously had to process, reducing "lost in the middle" attention
 dilution.
+
+Context caching: Instructions are static strings so ADK can cache the system
+prompt across zip codes. Dynamic data is injected via before_model_callback.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ import logging
 from datetime import datetime
 
 from google.adk.agents import LlmAgent, ParallelAgent
+from google.genai import types as genai_types
 
 from hephae_api.config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
@@ -28,17 +32,32 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Dynamic instruction builders — read from session.state
+# Static instructions (cacheable) + before_model_callbacks (dynamic data)
 # ---------------------------------------------------------------------------
 
 
-def _historian_instruction(ctx) -> str:
-    state = getattr(ctx, "state", {})
+HISTORIAN_INSTRUCTION = """You are a Trend Historian for local businesses.
+
+Analyze the last 12 weeks of pulse insights to identify:
+1. **Recurring themes** — topics that appear in 3+ weeks
+2. **Escalating trends** — signals that are getting stronger week over week
+3. **Resolved issues** — problems from past weeks that are no longer present
+4. **Seasonal patterns** — signals that align with time-of-year expectations
+5. **New anomalies** — signals THIS week that have never appeared before
+
+The business type, zip code, and pulse history will be provided in the data context below.
+
+Write a 3-5 paragraph trend narrative. Be specific about which weeks showed which patterns.
+If no history is available, say so briefly and note that this is a baseline week."""
+
+
+def _historian_before_model(ctx, llm_request):
+    """Inject zip code, business type, and pulse history into the model request."""
+    state = ctx.state
     zip_code = state.get("zipCode", "")
     business_type = state.get("businessType", "")
     history_insights = state.get("pulseHistoryInsights", [])
 
-    # Format last 12 weeks of insights for trend detection
     history_text = ""
     if history_insights:
         for i, week_insights in enumerate(history_insights[:12]):
@@ -48,30 +67,42 @@ def _historian_instruction(ctx) -> str:
             elif isinstance(week_insights, str):
                 history_text += f"Week -{i+1}: {week_insights[:200]}\n"
 
-    return f"""You are a Trend Historian for {business_type} businesses in zip code {zip_code}.
-
-Analyze the last 12 weeks of pulse insights to identify:
-1. **Recurring themes** — topics that appear in 3+ weeks
-2. **Escalating trends** — signals that are getting stronger week over week
-3. **Resolved issues** — problems from past weeks that are no longer present
-4. **Seasonal patterns** — signals that align with time-of-year expectations
-5. **New anomalies** — signals THIS week that have never appeared before
-
-PULSE HISTORY (most recent first):
-{history_text or "No historical data available — this is the first pulse for this zip/business."}
-
-Write a 3-5 paragraph trend narrative. Be specific about which weeks showed which patterns.
-If no history is available, say so briefly and note that this is a baseline week."""
+    context_text = (
+        f"BUSINESS TYPE: {business_type}\n"
+        f"ZIP CODE: {zip_code}\n\n"
+        f"PULSE HISTORY (most recent first):\n"
+        f"{history_text or 'No historical data available — this is the first pulse for this zip/business.'}"
+    )
+    llm_request.contents.append(
+        genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=context_text)])
+    )
+    return None
 
 
-def _economist_instruction(ctx) -> str:
-    state = getattr(ctx, "state", {})
+ECONOMIST_INSTRUCTION = """You are a Local Business Economist.
+
+Review economic and demographic signals and produce a macro report covering:
+1. **Price pressure** — which costs are rising/falling and by how much
+2. **Consumer spending power** — income trends, housing values, economic stress
+3. **Labor market** — employment trends, new business formation
+4. **Demand signals** — Google Trends, search interest shifts
+5. **Competitive landscape** — establishment counts, saturation level
+
+The business type, zip code, and economic signal data will be provided in the data context below.
+
+Write a structured macro report (3-5 paragraphs). Cite specific numbers.
+Do NOT make up data — if a source is missing, skip that section."""
+
+
+def _economist_before_model(ctx, llm_request):
+    """Inject economic signals and industry context into the model request."""
+    state = ctx.state
     zip_code = state.get("zipCode", "")
     business_type = state.get("businessType", "")
     signals = state.get("rawSignals", {})
 
-    # Extract economic signals
-    sections = []
+    sections = [f"BUSINESS TYPE: {business_type}\nZIP CODE: {zip_code}\nCurrent date: {datetime.now().strftime('%Y-%m-%d')}\n"]
+
     if signals.get("blsCpi"):
         sections.append(f"BLS CPI: {json.dumps(signals['blsCpi'], default=str)[:2000]}")
     if signals.get("priceDeltas"):
@@ -95,16 +126,12 @@ def _economist_instruction(ctx) -> str:
     if pre_computed:
         sections.append(f"Pre-Computed Impact: {json.dumps(pre_computed, default=str)}")
 
-    signal_text = "\n\n".join(sections) if sections else "No economic data available."
-
-    # Inject industry-specific economist context if available
     industry_cfg = state.get("industryConfig", {})
     economist_context = industry_cfg.get("economistContext", "")
-    context_line = f"\n\nINDUSTRY FOCUS: {economist_context}" if economist_context else ""
+    if economist_context:
+        sections.append(f"\nINDUSTRY FOCUS: {economist_context}")
 
-    # Inject external research references if available
     ext_refs = state.get("externalReferences", [])
-    ref_block = ""
     if ext_refs:
         ref_lines = []
         for ref in ext_refs[:4]:
@@ -113,41 +140,64 @@ def _economist_instruction(ctx) -> str:
             stats = ref.get("key_stats", [])
             stat_str = f": {'; '.join(stats[:2])}" if stats else ""
             ref_lines.append(f"  - [{source}] {title}{stat_str}")
-        ref_block = "\n\nEXTERNAL RESEARCH (cite where relevant):\n" + "\n".join(ref_lines)
+        sections.append("\nEXTERNAL RESEARCH (cite where relevant):\n" + "\n".join(ref_lines))
 
-    return f"""You are a Local Business Economist analyzing {business_type} in zip {zip_code}.
-
-Review these economic and demographic signals and produce a macro report covering:
-1. **Price pressure** — which costs are rising/falling and by how much
-2. **Consumer spending power** — income trends, housing values, economic stress
-3. **Labor market** — employment trends, new business formation
-4. **Demand signals** — Google Trends, search interest shifts
-5. **Competitive landscape** — establishment counts, saturation level
-{context_line}
-
-Current date: {datetime.now().strftime('%Y-%m-%d')}
-
-ECONOMIC SIGNALS:
-{signal_text}
-{ref_block}
-
-Write a structured macro report (3-5 paragraphs). Cite specific numbers.
-Do NOT make up data — if a source is missing, skip that section."""
+    context_text = "\n\nECONOMIC SIGNALS:\n" + "\n\n".join(sections)
+    llm_request.contents.append(
+        genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=context_text)])
+    )
+    return None
 
 
-def _local_scout_instruction(ctx) -> str:
-    state = getattr(ctx, "state", {})
+LOCAL_SCOUT_INSTRUCTION = """You are a Local Scout for small businesses.
+
+Review local signals and produce a ground-level report covering:
+1. **This week's weather impact** — compare forecast to historical baseline, note unusual patterns
+2. **Local events & catalysts** — construction, government decisions, community events
+3. **Community sentiment** — what locals are talking about (from social pulse)
+4. **News relevance** — any local news that could affect the business
+5. **Physical changes** — road work, new developments, closures
+
+The business type, location, and local signal data will be provided in the data context below.
+
+Write a structured local report. Be specific about timing.
+Do NOT make up data — if a source is missing, skip that section.
+
+Structure your report with these CLEARLY LABELED sections:
+## EVENTS THIS WEEK
+List each event with: name, venue, address (if known), date/time, relevance
+
+## COMPETITOR OBSERVATIONS
+Name SPECIFIC local businesses from the Nearby Competitors list. For each, note what they're doing. Cross-reference with local news and social pulse. Do NOT name national chains unless there's a specific local story.
+
+## COMMUNITY SENTIMENT
+What are locals saying on social media, Patch, Reddit?
+
+## GOVERNMENT & INFRASTRUCTURE
+Any road work, permits, zoning changes, planning board items?
+
+## WEATHER IMPACT
+This week's forecast vs historical baseline, impact on foot traffic"""
+
+
+def _local_scout_before_model(ctx, llm_request):
+    """Inject location and local signals into the model request."""
+    state = ctx.state
     zip_code = state.get("zipCode", "")
     city = state.get("city", "")
     st = state.get("state", "")
     business_type = state.get("businessType", "")
     signals = state.get("rawSignals", {})
 
-    # Extract local signals
-    sections = []
+    sections = [
+        f"BUSINESS TYPE: {business_type}",
+        f"LOCATION: {city}, {st} ({zip_code})",
+        f"Current date: {datetime.now().strftime('%Y-%m-%d')}",
+        "",
+    ]
+
     if signals.get("weather"):
         w = signals["weather"]
-        # Add freshness warning if weather data has a fetchedAt timestamp
         fetched_at = w.get("fetchedAt") or w.get("fetched_at", "")
         freshness_note = ""
         if fetched_at:
@@ -168,7 +218,6 @@ def _local_scout_instruction(ctx) -> str:
     if signals.get("legalNotices"):
         sections.append(f"Legal Notices: {json.dumps(signals['legalNotices'], default=str)[:1500]}")
 
-    # OSM nearby businesses — feed competitor names to the LLM
     if signals.get("osmDensity"):
         osm = signals["osmDensity"]
         nearby = osm.get("nearby", [])
@@ -186,7 +235,6 @@ def _local_scout_instruction(ctx) -> str:
                 + "\n".join(biz_lines)
             )
 
-    # LLM-gathered research (from Stage 1 ResearchFanOut)
     social = state.get("socialPulse", "")
     if social:
         sections.append(f"Social Pulse: {social[:2000] if isinstance(social, str) else json.dumps(social, default=str)[:2000]}")
@@ -194,50 +242,26 @@ def _local_scout_instruction(ctx) -> str:
     if catalysts:
         sections.append(f"Local Catalysts: {catalysts[:2000] if isinstance(catalysts, str) else json.dumps(catalysts, default=str)[:2000]}")
 
-    signal_text = "\n\n".join(sections) if sections else "No local data available."
-
-    # Inject industry-specific scout context
     industry_cfg = state.get("industryConfig", {})
     scout_context = industry_cfg.get("scoutContext", "")
-    scout_line = f"\n\nINDUSTRY INTELLIGENCE: {scout_context}" if scout_context else ""
+    if scout_context:
+        sections.append(f"\nINDUSTRY INTELLIGENCE: {scout_context}")
 
-    return f"""You are a Local Scout for {business_type} businesses in {city}, {st} ({zip_code}).
+    context_text = "\n".join(sections)
+    llm_request.contents.append(
+        genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=context_text)])
+    )
+    return None
 
-Review these local signals and produce a ground-level report covering:
-1. **This week's weather impact** — compare forecast to historical baseline, note unusual patterns
-2. **Local events & catalysts** — construction, government decisions, community events
-3. **Community sentiment** — what locals are talking about (from social pulse)
-4. **News relevance** — any local news that could affect {business_type} businesses
-5. **Physical changes** — road work, new developments, closures
 
-Current date: {datetime.now().strftime('%Y-%m-%d')}
-
-LOCAL SIGNALS:
-{signal_text}
-{scout_line}
-
-Write a structured local report. Be specific about timing.
-Do NOT make up data — if a source is missing, skip that section.
-
-Structure your report with these CLEARLY LABELED sections:
-## EVENTS THIS WEEK
-List each event with: name, venue, address (if known), date/time, relevance to {business_type}
-
-## COMPETITOR OBSERVATIONS
-Name SPECIFIC local businesses from the Nearby Competitors list. For each, note what they're doing (new menu, promotion, event, closure, opening). Cross-reference with local news and social pulse. Do NOT name national chains unless there's a specific local story about them.
-
-## COMMUNITY SENTIMENT
-What are locals saying on social media, Patch, Reddit?
-
-## GOVERNMENT & INFRASTRUCTURE
-Any road work, permits, zoning changes, planning board items?
-
-## WEATHER IMPACT
-This week's forecast vs historical baseline, impact on foot traffic"""
+# Export instruction builders for backward compat (pulse_orchestrator imports these)
+_historian_instruction = HISTORIAN_INSTRUCTION
+_economist_instruction = ECONOMIST_INSTRUCTION
+_local_scout_instruction = LOCAL_SCOUT_INSTRUCTION
 
 
 # ---------------------------------------------------------------------------
-# Stage 2 sub-agents
+# Stage 2 sub-agents — static instructions + before_model_callback
 # ---------------------------------------------------------------------------
 
 
@@ -245,7 +269,8 @@ _pulse_history_summarizer = LlmAgent(
     name="PulseHistorySummarizer",
     model=AgentModels.PRIMARY_MODEL,
     description="Analyzes 12-week pulse history for longitudinal trends.",
-    instruction=_historian_instruction,
+    instruction=HISTORIAN_INSTRUCTION,
+    before_model_callback=_historian_before_model,
     output_key="trendNarrative",
     on_model_error_callback=fallback_on_error,
 )
@@ -254,7 +279,8 @@ _economist_agent = LlmAgent(
     name="EconomistAgent",
     model=AgentModels.PRIMARY_MODEL,
     description="Distills economic and demographic signals into a macro report.",
-    instruction=_economist_instruction,
+    instruction=ECONOMIST_INSTRUCTION,
+    before_model_callback=_economist_before_model,
     output_key="macroReport",
     on_model_error_callback=fallback_on_error,
 )
@@ -263,7 +289,8 @@ _local_scout_agent = LlmAgent(
     name="LocalScoutAgent",
     model=AgentModels.PRIMARY_MODEL,
     description="Distills local weather, news, catalysts, and social signals.",
-    instruction=_local_scout_instruction,
+    instruction=LOCAL_SCOUT_INSTRUCTION,
+    before_model_callback=_local_scout_before_model,
     output_key="localReport",
     on_model_error_callback=fallback_on_error,
 )

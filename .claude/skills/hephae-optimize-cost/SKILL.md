@@ -215,6 +215,61 @@ Find cases where the same data is processed by multiple agents unnecessarily:
 - Could weekly pulses be biweekly for low-traffic industries?
 - Could industry pulses be cached and reused for 2 weeks instead of 1?
 
+### Check 9: Claude Model Cost
+
+Verify CLAUDE_SYNTHESIS_MODEL is the cheapest viable option:
+```bash
+grep -n "CLAUDE_SYNTHESIS_MODEL" lib/common/hephae_common/model_config.py
+```
+
+**Pricing comparison:**
+| Model | Input/1M | Output/1M | Use Case |
+|-------|----------|-----------|----------|
+| claude-haiku-4-5-20251001 | $0.80 | $4.00 | Dual-synthesis secondary (recommended) |
+| claude-sonnet-4-20250514 | $3.00 | $15.00 | Only if Haiku quality is insufficient |
+
+Flag if using Sonnet when Haiku would suffice (dual-synthesis where Gemini is primary).
+
+### Check 10: Cron Batch API Coverage
+
+For each cron that makes LLM calls, check if it uses batch processing:
+```bash
+for f in apps/api/hephae_api/routers/batch/*.py; do
+  echo "=== $(basename $f) ==="
+  grep -c "batch_generate\|submit_vertex_batch" "$f" 2>/dev/null || echo "0"
+done
+```
+
+**Important distinction:**
+- `batch_generate()` — concurrent calls with semaphore, **NO cost discount** (just faster)
+- `submit_vertex_batch()` — TRUE Vertex AI Batch API with **50% cost discount** (requires GCS)
+
+Flag any cron with sequential LLM calls (`for ... run_agent_to_text`) that could use `batch_generate()`.
+Flag high-volume crons (>50 calls) that should use `submit_vertex_batch()` for the 50% discount.
+
+### Check 11: Context Cache Exclusion Rate
+
+Count agents with callable vs static instructions:
+```bash
+echo "=== Callable instructions (excluded from cache) ==="
+grep -rn "instruction=_" agents/ --include="*.py" | grep -v __pycache__ | grep -v "instruction=_.*INSTRUCTION" | wc -l
+
+echo "=== Static string instructions (cached) ==="
+grep -rn 'instruction="' agents/ --include="*.py" | grep -v __pycache__ | wc -l
+grep -rn 'instruction=[A-Z]' agents/ --include="*.py" | grep -v __pycache__ | wc -l
+```
+
+**Target:** < 20% callable instruction rate (currently ~53% before refactoring).
+
+For each callable instruction, check if it could be refactored to:
+- Static instruction string (the core prompt)
+- `before_model_callback` (dynamic data injection from session.state)
+
+Also verify the pulse pipeline uses `App` with `ContextCacheConfig`:
+```bash
+grep -n "ContextCacheConfig\|context_cache_config" apps/api/hephae_api/workflows/orchestrators/weekly_pulse.py
+```
+
 ---
 
 ## PHASE 4: ESTIMATE SAVINGS
@@ -312,9 +367,10 @@ Generated: {date}
 
 | Area | File |
 |------|------|
-| Model tiers | `lib/common/hephae_common/model_config.py` |
+| Model tiers + Claude model | `lib/common/hephae_common/model_config.py` |
 | Model fallback | `lib/common/hephae_common/model_fallback.py` |
-| Batch API | `lib/common/hephae_common/gemini_batch.py` |
+| Batch API (batch_generate + submit_vertex_batch) | `lib/common/hephae_common/gemini_batch.py` |
+| ADK helpers + default cache config | `lib/common/hephae_common/adk_helpers.py` |
 | Pulse orchestrator (biggest cost center) | `agents/hephae_agents/research/pulse_orchestrator.py` |
 | Pulse domain experts | `agents/hephae_agents/research/pulse_domain_experts.py` |
 | Pulse synthesis agent | `agents/hephae_agents/research/weekly_pulse_agent.py` |

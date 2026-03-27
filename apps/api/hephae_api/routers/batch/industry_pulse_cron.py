@@ -43,7 +43,7 @@ async def industry_pulse_cron(
         list_registered_industries,
         update_last_industry_pulse,
     )
-    from hephae_api.workflows.orchestrators.industry_pulse import generate_industry_pulse
+    from hephae_api.workflows.orchestrators.industry_pulse import generate_industry_pulses_batch
 
     industries = await list_registered_industries(status="active")
     if not industries:
@@ -51,28 +51,37 @@ async def industry_pulse_cron(
         await _send_summary_email([], 0, 0)
         return {"success": True, "message": "No active industries", "generated": 0}
 
+    # Build display name lookup
+    display_names = {
+        ind.get("industryKey", ""): ind.get("displayName", ind.get("industryKey", ""))
+        for ind in industries
+    }
+    industry_keys = [ind.get("industryKey", "") for ind in industries if ind.get("industryKey")]
+
+    # Batch-generate all industry pulses (LLM calls are batched)
     results = []
-    for ind in industries:
-        industry_key = ind.get("industryKey", "")
-        try:
-            logger.info(f"[IndustryPulseCron] Generating pulse for {industry_key}")
-            pulse = await generate_industry_pulse(industry_key)
+    try:
+        batch_results = await generate_industry_pulses_batch(industry_keys)
+        for pulse in batch_results:
+            industry_key = pulse.get("industryKey", "")
             pulse_id = pulse.get("id", "")
             await update_last_industry_pulse(industry_key, pulse_id)
             results.append({
                 "industryKey": industry_key,
-                "displayName": ind.get("displayName", industry_key),
+                "displayName": display_names.get(industry_key, industry_key),
                 "status": "generated",
                 "pulseId": pulse_id,
                 "signalCount": len(pulse.get("signalsUsed", [])),
                 "playbooksMatched": len(pulse.get("nationalPlaybooks", [])),
                 "trendPreview": (pulse.get("trendSummary") or "")[:200],
             })
-        except Exception as e:
-            logger.error(f"[IndustryPulseCron] Failed for {industry_key}: {e}")
+    except Exception as e:
+        logger.error(f"[IndustryPulseCron] Batch generation failed: {e}")
+        # Mark all as failed
+        for key in industry_keys:
             results.append({
-                "industryKey": industry_key,
-                "displayName": ind.get("displayName", industry_key),
+                "industryKey": key,
+                "displayName": display_names.get(key, key),
                 "status": "failed",
                 "error": str(e)[:200],
             })

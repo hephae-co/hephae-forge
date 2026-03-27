@@ -25,6 +25,7 @@ from google.adk.agents import BaseAgent, LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event
 from google.adk.events.event_actions import EventActions
+from google.genai import types as genai_types
 
 from hephae_api.config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
@@ -33,34 +34,8 @@ from hephae_db.schemas import CritiqueResult
 logger = logging.getLogger(__name__)
 
 
-def _critique_instruction(ctx) -> str:
-    """Build critique instruction from session.state."""
-    state = getattr(ctx, "state", {})
-    pulse_output = state.get("pulseOutput", "")
-
-    pulse_text = ""
-    if pulse_output:
-        if isinstance(pulse_output, str):
-            pulse_text = pulse_output
-        else:
-            pulse_text = json.dumps(pulse_output, default=str, indent=2)
-
-    # Also pass local report and social pulse for cross-checking
-    local_report = state.get("localReport", "")
-    social_pulse = state.get("socialPulse", "")
-    local_context_text = ""
-    if local_report:
-        lr = local_report if isinstance(local_report, str) else json.dumps(local_report, default=str)
-        local_context_text += f"\n\n=== LOCAL SCOUT REPORT (for cross-check) ===\n{lr[:2000]}"
-    if social_pulse:
-        sp = social_pulse if isinstance(social_pulse, str) else json.dumps(social_pulse, default=str)
-        local_context_text += f"\n\n=== SOCIAL PULSE (for cross-check) ===\n{sp[:2000]}"
-
-    # Use industry-specific critique persona if available
-    industry_cfg = state.get("industryConfig", {})
-    persona = industry_cfg.get("critiquePersona", "restaurant owner with 15 years experience")
-
-    return f"""You are a {persona} reviewing an intelligence briefing someone wrote for you. You paid good money for this and you're pissed if it's vague.
+# Static critique instruction — cacheable across zip codes
+CRITIQUE_INSTRUCTION = """You are a business owner reviewing an intelligence briefing someone wrote for you. You paid good money for this and you're pissed if it's vague.
 
 ## Pass A: Local Briefing Quality
 Check the localBriefing section:
@@ -99,9 +74,6 @@ Score 0-100, HIGHER = MORE DATA = BETTER.
 - THRESHOLD: must be 60 OR ABOVE to pass
 - Count the actual numbers in the analysis. If fewer than 2, score cannot exceed 40.
 
-## PULSE OUTPUT TO EVALUATE:
-{pulse_text}
-
 ## SCORING RULES:
 - Evaluate EVERY insight
 - Verdict: PASS (all 3 tests pass), REWRITE (fixable), or DROP (unfixable fluff)
@@ -110,12 +82,54 @@ Score 0-100, HIGHER = MORE DATA = BETTER.
 - If an insight has zero specific numbers from the data → automatic DROP
 - If an insight reads like a business school essay → automatic REWRITE with instruction to strip the fluff
 
-Return ONLY the structured JSON matching the CritiqueResult schema.
-{local_context_text}"""
+The pulse output to evaluate and cross-check data will be provided in the data context below.
+
+Return ONLY the structured JSON matching the CritiqueResult schema."""
+
+
+def _critique_before_model(ctx, llm_request):
+    """Inject pulse output and cross-check data into the model request."""
+    state = ctx.state
+    pulse_output = state.get("pulseOutput", "")
+
+    pulse_text = ""
+    if pulse_output:
+        if isinstance(pulse_output, str):
+            pulse_text = pulse_output
+        else:
+            pulse_text = json.dumps(pulse_output, default=str, indent=2)
+
+    sections = []
+
+    # Industry-specific persona context
+    industry_cfg = state.get("industryConfig", {})
+    persona = industry_cfg.get("critiquePersona", "restaurant owner with 15 years experience")
+    sections.append(f"CRITIQUE PERSONA: {persona}")
+
+    sections.append(f"\n## PULSE OUTPUT TO EVALUATE:\n{pulse_text}")
+
+    local_report = state.get("localReport", "")
+    social_pulse = state.get("socialPulse", "")
+    if local_report:
+        lr = local_report if isinstance(local_report, str) else json.dumps(local_report, default=str)
+        sections.append(f"\n=== LOCAL SCOUT REPORT (for cross-check) ===\n{lr[:2000]}")
+    if social_pulse:
+        sp = social_pulse if isinstance(social_pulse, str) else json.dumps(social_pulse, default=str)
+        sections.append(f"\n=== SOCIAL PULSE (for cross-check) ===\n{sp[:2000]}")
+
+    context_text = "\n".join(sections)
+    llm_request.contents.append(
+        genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=context_text)])
+    )
+    return None
+
+
+# Keep backward compat export
+_critique_instruction = CRITIQUE_INSTRUCTION
 
 
 # ---------------------------------------------------------------------------
-# Critique agent (LLM — scores the insights)
+# Critique agent (LLM — scores the insights) — static instruction for caching
 # ---------------------------------------------------------------------------
 
 PulseCritiqueAgent = LlmAgent(
@@ -123,7 +137,8 @@ PulseCritiqueAgent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     generate_content_config=ThinkingPresets.MEDIUM,
     description="Evaluates pulse insights for obviousness, actionability, and cross-signal reasoning.",
-    instruction=_critique_instruction,
+    instruction=CRITIQUE_INSTRUCTION,
+    before_model_callback=_critique_before_model,
     output_key="critiqueResult",
     output_schema=CritiqueResult,
     on_model_error_callback=fallback_on_error,

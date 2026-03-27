@@ -124,16 +124,31 @@ async def generate_pulse(
         "externalReferences": external_references,
     }
 
-    # 4. Run ADK agent tree
+    # 4. Run ADK agent tree (wrapped in App for context caching)
     from google.adk.runners import Runner
+    from google.adk.agents.context_cache_config import ContextCacheConfig
+    from google.adk.apps.app import App
     from google.adk.sessions import InMemorySessionService
     from hephae_common.adk_helpers import user_msg
     from hephae_agents.research.pulse_orchestrator import create_pulse_orchestrator
 
     orchestrator = create_pulse_orchestrator()
     session_service = InMemorySessionService()
+
+    # Context caching: static instructions are cached across zip codes
+    # processed within the TTL window (15 min). Saves ~30-40% input tokens.
+    cache_config = ContextCacheConfig(
+        min_tokens=1024,
+        ttl_seconds=900,
+        cache_intervals=50,
+    )
+    app = App(
+        name="weekly_pulse",
+        root_agent=orchestrator,
+        context_cache_config=cache_config,
+    )
     runner = Runner(
-        agent=orchestrator,
+        app=app,
         app_name="weekly_pulse",
         session_service=session_service,
     )

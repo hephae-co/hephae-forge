@@ -21,6 +21,7 @@ from datetime import datetime
 from typing import Any
 
 from google.adk.agents import LlmAgent
+from google.genai import types as genai_types
 
 from hephae_api.config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
@@ -245,13 +246,146 @@ Return ONLY the structured JSON matching the schema."""
 
 
 def _full_instruction(ctx) -> str:
-    """Combine core instruction with dynamic state-based context."""
+    """Combine core instruction with dynamic state-based context.
+
+    DEPRECATED: Used only for backward compat. The orchestrator now uses
+    WEEKLY_PULSE_CORE_INSTRUCTION (static) + _synthesis_before_model (callback).
+    """
     context = _synthesis_instruction(ctx)
     return f"{WEEKLY_PULSE_CORE_INSTRUCTION}\n\n{context}"
 
 
+def _synthesis_before_model(ctx, llm_request):
+    """Inject dynamic synthesis context (domain reports, playbooks, etc.) into the model request.
+
+    This replaces the callable _full_instruction pattern, allowing the static
+    WEEKLY_PULSE_CORE_INSTRUCTION to be cached across zip codes.
+    """
+    state = ctx.state
+    context_text = _synthesis_instruction_from_state(state)
+    llm_request.contents.append(
+        genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=context_text)])
+    )
+    return None
+
+
+def _synthesis_instruction_from_state(state: dict) -> str:
+    """Build synthesis context from a state dict (shared by callback and standalone)."""
+    zip_code = state.get("zipCode", "")
+    business_type = state.get("businessType", "")
+    week_of = state.get("weekOf", "")
+
+    macro_report = state.get("macroReport", "")
+    local_report = state.get("localReport", "")
+    trend_narrative = state.get("trendNarrative", "")
+    pre_computed = state.get("preComputedImpact", {})
+    matched_playbooks = state.get("matchedPlaybooks", [])
+    rewrite_feedback = state.get("rewriteFeedback", "")
+
+    sections = [
+        f"ZIP CODE: {zip_code}",
+        f"BUSINESS TYPE: {business_type}",
+        f"WEEK OF: {week_of}",
+        f"CURRENT DATE: {datetime.now().strftime('%Y-%m-%d')}",
+        "",
+    ]
+
+    industry_cfg = state.get("industryConfig", {})
+    synthesis_context = industry_cfg.get("synthesisContext", "")
+    if synthesis_context:
+        sections.append("=== INDUSTRY CONTEXT ===")
+        sections.append(synthesis_context)
+        sections.append("")
+
+    industry_trend = state.get("industryTrendSummary", "")
+    if industry_trend:
+        sections.append("=== NATIONAL INDUSTRY TREND ===")
+        sections.append(industry_trend)
+        sections.append("")
+
+    tech_intel = state.get("techIntelligence", {})
+    if tech_intel:
+        tech_parts = []
+        highlight = tech_intel.get("weeklyHighlight")
+        if highlight:
+            tech_parts.append(f"**This week's tech highlight:** {highlight.get('title', '')} — {highlight.get('detail', '')}")
+        ai_opps = tech_intel.get("aiOpportunities", [])
+        if ai_opps:
+            for opp in ai_opps[:2]:
+                tech_parts.append(f"- {opp.get('tool', '')}: {opp.get('capability', '')} → {opp.get('actionForOwner', '')}")
+        updates = tech_intel.get("platformUpdates", {})
+        if updates:
+            for cat, update in list(updates.items())[:3]:
+                if update:
+                    tech_parts.append(f"- {cat}: {update}")
+        if tech_parts:
+            sections.append("=== TECHNOLOGY INTELLIGENCE ===")
+            sections.append("Include technology recommendations when relevant to insights.")
+            sections.append("\n".join(tech_parts))
+            sections.append("")
+
+    if rewrite_feedback:
+        existing_output = state.get("pulseOutput", "")
+        sections.append("=== REWRITE MODE ===")
+        sections.append("You previously generated insights that failed quality review.")
+        sections.append("Revise ONLY the failing insights based on this feedback:")
+        sections.append(rewrite_feedback)
+        sections.append("")
+        if existing_output:
+            sections.append("=== YOUR PREVIOUS OUTPUT ===")
+            sections.append(json.dumps(existing_output, default=str)[:3000])
+            sections.append("")
+        sections.append(
+            "Keep passing insights unchanged. Rewrite ONLY the ones flagged. "
+            "Apply the specific feedback for each."
+        )
+        sections.append("")
+
+    if macro_report:
+        sections.append("=== ECONOMIST REPORT ===")
+        sections.append(macro_report if isinstance(macro_report, str) else json.dumps(macro_report, default=str))
+        sections.append("")
+
+    if local_report:
+        sections.append("=== LOCAL SCOUT REPORT ===")
+        sections.append(local_report if isinstance(local_report, str) else json.dumps(local_report, default=str))
+        sections.append("")
+
+    if trend_narrative:
+        sections.append("=== TREND NARRATIVE (12-week history) ===")
+        sections.append(trend_narrative if isinstance(trend_narrative, str) else json.dumps(trend_narrative, default=str))
+        sections.append("")
+
+    if pre_computed:
+        sections.append("=== PRE-COMPUTED IMPACT MULTIPLIERS (verified arithmetic) ===")
+        sections.append("Use these pre-computed figures exactly as given. Do NOT recalculate.")
+        sections.append(json.dumps(pre_computed, default=str, indent=2))
+        sections.append("")
+
+    if matched_playbooks:
+        sections.append("=== MATCHED STRATEGY PLAYBOOKS ===")
+        sections.append(
+            "Where applicable, map your recommendations to these established plays. "
+            "Set the playbookUsed field on insights that use a playbook."
+        )
+        for pb in matched_playbooks:
+            sections.append(f"- [{pb['name']}] ({pb['category']}): {pb['play']}")
+        sections.append("")
+
+    raw_signals = state.get("rawSignals", {})
+    if raw_signals:
+        signal_keys = [k for k, v in raw_signals.items() if v]
+        sections.append(f"=== DATA SOURCES AVAILABLE: {', '.join(signal_keys)} ===")
+        sections.append(
+            "The expert reports above are distilled from these sources. "
+            "If you need a specific data point, it's in the reports."
+        )
+
+    return "\n".join(sections)
+
+
 # ---------------------------------------------------------------------------
-# Stage 3: Synthesis LlmAgent
+# Stage 3: Synthesis LlmAgent — static instruction for caching
 # ---------------------------------------------------------------------------
 
 WeeklyPulseAgent = LlmAgent(
@@ -259,7 +393,8 @@ WeeklyPulseAgent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     generate_content_config=ThinkingPresets.DEEP,
     description="Synthesizes expert reports into weekly insight cards for local businesses.",
-    instruction=_full_instruction,
+    instruction=WEEKLY_PULSE_CORE_INSTRUCTION,
+    before_model_callback=_synthesis_before_model,
     output_key="pulseOutput",
     output_schema=WeeklyPulseOutput,
     on_model_error_callback=fallback_on_error,

@@ -95,6 +95,8 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
     const [logoError, setLogoError] = useState(false);
     const [profileCollapsed, setProfileCollapsed] = useState(false);
     const [carouselIdx, setCarouselIdx] = useState(0);
+    const [carouselExpanded, setCarouselExpanded] = useState(false);
+    const [showSourcesPopover, setShowSourcesPopover] = useState(false);
 
     const getUrl = () => {
         // Google Maps embed — no API key needed for this format, avoids 403 referrer issues
@@ -166,17 +168,46 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDiscovering]);
 
-    // Build carousel items from dashboard data
-    const carouselItems: { label: string; text: string }[] = [];
+    // Build carousel items from dashboard data — each can carry source links
+    type CarouselItem = { label: string; text: string; links?: { label: string; url: string }[] };
+    const carouselItems: CarouselItem[] = [];
     if (dashboard) {
-        if (dashboard.pulseHeadline) carouselItems.push({ label: 'This Week', text: dashboard.pulseHeadline });
+        if (dashboard.pulseHeadline) carouselItems.push({
+            label: 'This Week',
+            text: dashboard.pulseHeadline,
+            links: [
+                { label: 'BLS CPI', url: 'https://www.bls.gov/cpi/' },
+                { label: 'USDA ERS', url: 'https://www.ers.usda.gov/data-products/food-price-outlook/' },
+                { label: 'NWS Forecast', url: 'https://www.weather.gov/' },
+            ],
+        });
         (dashboard.topInsights || []).slice(0, 2).forEach(i =>
-            carouselItems.push({ label: 'Intelligence', text: `${i.title} — ${i.recommendation}` })
+            carouselItems.push({
+                label: 'Intelligence',
+                text: `${i.title} — ${i.recommendation}`,
+                links: [
+                    { label: 'BLS Data', url: 'https://www.bls.gov/cpi/' },
+                    { label: 'USDA Prices', url: 'https://www.ers.usda.gov/' },
+                    { label: 'SBA Loans', url: 'https://www.sba.gov/funding-programs/loans' },
+                ],
+            })
         );
         (dashboard.events || []).slice(0, 2).forEach(e =>
-            carouselItems.push({ label: 'Local Event', text: e.what + (e.when ? ` · ${e.when}` : '') })
+            carouselItems.push({
+                label: 'Local Event',
+                text: e.what + (e.when ? ` · ${e.when}` : ''),
+                links: dashboard.stats?.patchUrl
+                    ? [{ label: 'Patch News', url: dashboard.stats.patchUrl }]
+                    : [{ label: 'Google Events', url: 'https://www.google.com/search?q=local+events+near+me' }],
+            })
         );
-        if (dashboard.communityBuzz) carouselItems.push({ label: 'Community', text: dashboard.communityBuzz });
+        if (dashboard.communityBuzz) carouselItems.push({
+            label: 'Community',
+            text: dashboard.communityBuzz,
+            links: dashboard.stats?.patchUrl
+                ? [{ label: 'Patch', url: dashboard.stats.patchUrl }]
+                : [{ label: 'Local News', url: 'https://patch.com/' }],
+        });
     }
 
     // Auto-advance carousel every 5 seconds
@@ -686,35 +717,102 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
             {/* MARKET DASHBOARD OVERLAY (bottom) */}
             {dashboard && !isDiscovering && (
                 <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-auto">
-                    <div className="bg-gradient-to-t from-slate-950 via-slate-900/97 to-transparent pt-10 pb-3 px-3 space-y-2.5">
 
-                        {/* ── Intelligence Feed (carousel) ─────────────────── */}
-                        {carouselItems.length > 0 && (
-                            <div
-                                className="px-3 py-2 rounded-xl bg-indigo-500/10 border border-indigo-400/20 backdrop-blur-sm cursor-pointer select-none"
-                                onClick={() => setCarouselIdx(i => (i + 1) % carouselItems.length)}
-                                title="Click for next update"
-                            >
-                                <div className="flex items-center justify-between mb-0.5">
+                    {/* ── Intelligence Sources Popover ─────────────────────── */}
+                    {showSourcesPopover && (
+                        <>
+                            <div className="absolute inset-0 z-30" onClick={() => setShowSourcesPopover(false)} />
+                            <div className="absolute bottom-full left-3 right-3 mb-2 z-40 bg-slate-900/96 backdrop-blur-xl border border-white/10 rounded-2xl p-3 shadow-2xl animate-fade-in-up">
+                                <div className="flex items-center justify-between mb-2.5">
                                     <div className="flex items-center gap-1.5">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-                                        <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider">
-                                            {carouselItems[carouselIdx]?.label}
-                                        </span>
+                                        <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Intelligence Inputs</span>
+                                        {dashboard.confirmedSources ? (
+                                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/25">{dashboard.confirmedSources} active</span>
+                                        ) : null}
                                     </div>
-                                    {carouselItems.length > 1 && (
-                                        <div className="flex gap-0.5">
-                                            {carouselItems.map((_, i) => (
-                                                <span key={i} className={`w-1 h-1 rounded-full transition-colors ${i === carouselIdx ? 'bg-indigo-400' : 'bg-white/20'}`} />
-                                            ))}
+                                    <button onClick={() => setShowSourcesPopover(false)} className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                                        <svg className="w-2.5 h-2.5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-4 gap-1.5">
+                                    {INTELLIGENCE_SOURCES.map(src => {
+                                        const s = SOURCE_STYLES[src.tw];
+                                        return (
+                                            <a key={src.name} href={src.url} target="_blank" rel="noopener noreferrer" title={src.desc}
+                                                className={`flex flex-col items-center px-2 py-2 rounded-xl ${s.badge} border ${s.border} hover:brightness-125 transition-all group`}>
+                                                <span className={`text-[10px] font-bold ${s.text} whitespace-nowrap`}>{src.name}</span>
+                                                <span className="text-[8px] text-white/35 whitespace-nowrap group-hover:text-white/55 transition-colors mt-0.5">{src.label}</span>
+                                            </a>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    <div className="bg-gradient-to-t from-slate-950 via-slate-900/97 to-transparent pt-10 pb-3 px-3 space-y-2">
+
+                        {/* ── Intelligence Carousel (expandable) ───────────── */}
+                        {carouselItems.length > 0 && (() => {
+                            const item = carouselItems[carouselIdx];
+                            return (
+                                <div className={`rounded-xl border backdrop-blur-sm transition-all duration-300 ${carouselExpanded ? 'bg-indigo-500/15 border-indigo-400/30' : 'bg-indigo-500/8 border-indigo-400/15'}`}>
+                                    {/* Header row */}
+                                    <div
+                                        className="flex items-center justify-between px-3 pt-2.5 pb-1.5 cursor-pointer select-none"
+                                        onClick={() => setCarouselExpanded(v => !v)}
+                                    >
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse shrink-0" />
+                                            <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider">{item?.label}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {carouselItems.length > 1 && (
+                                                <div className="flex gap-0.5">
+                                                    {carouselItems.map((_, i) => (
+                                                        <span key={i} className={`w-1 h-1 rounded-full transition-colors ${i === carouselIdx ? 'bg-indigo-400' : 'bg-white/20'}`} />
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <svg className={`w-3 h-3 text-indigo-400/60 transition-transform duration-200 ${carouselExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+                                        </div>
+                                    </div>
+
+                                    {/* Text */}
+                                    <p className={`text-xs text-white/85 leading-relaxed px-3 pb-2 ${carouselExpanded ? '' : 'line-clamp-2'}`}>
+                                        {item?.text}
+                                    </p>
+
+                                    {/* Expanded: source links + prev/next nav */}
+                                    {carouselExpanded && item?.links && item.links.length > 0 && (
+                                        <div className="flex items-center justify-between px-3 pb-2.5 pt-1 border-t border-white/5">
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {item.links.map(link => (
+                                                    <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer"
+                                                        className="flex items-center gap-1 text-[10px] font-semibold text-indigo-300 hover:text-indigo-200 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/25 px-2 py-0.5 rounded-full transition-all"
+                                                        onClick={e => e.stopPropagation()}>
+                                                        {link.label}
+                                                        <svg className="w-2.5 h-2.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                            {carouselItems.length > 1 && (
+                                                <div className="flex gap-1 shrink-0 ml-2">
+                                                    <button onClick={e => { e.stopPropagation(); setCarouselIdx(i => (i - 1 + carouselItems.length) % carouselItems.length); }}
+                                                        className="w-5 h-5 rounded-full bg-white/8 hover:bg-white/15 flex items-center justify-center transition-colors">
+                                                        <svg className="w-2.5 h-2.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
+                                                    </button>
+                                                    <button onClick={e => { e.stopPropagation(); setCarouselIdx(i => (i + 1) % carouselItems.length); }}
+                                                        className="w-5 h-5 rounded-full bg-white/8 hover:bg-white/15 flex items-center justify-center transition-colors">
+                                                        <svg className="w-2.5 h-2.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
-                                <p className="text-xs text-white/85 leading-relaxed line-clamp-2">
-                                    {carouselItems[carouselIdx]?.text}
-                                </p>
-                            </div>
-                        )}
+                            );
+                        })()}
 
                         {/* ── Nearby Competitors ───────────────────────────── */}
                         {(() => {
@@ -735,58 +833,39 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                             );
                         })()}
 
-                        {/* ── Market Stat Pills ────────────────────────────── */}
-                        <div className="flex flex-wrap gap-1.5">
-                            {dashboard.stats?.city && (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/8 text-white/60 font-medium border border-white/8">
-                                    📍 {dashboard.stats.city}{dashboard.stats.state ? `, ${dashboard.stats.state}` : ''}
-                                </span>
-                            )}
-                            {dashboard.stats?.medianIncome && (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300/80 font-medium border border-emerald-500/15">
-                                    {dashboard.stats.medianIncome} med. income
-                                </span>
-                            )}
-                            {dashboard.stats?.population && (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/8 text-white/60 font-medium border border-white/8">
-                                    {dashboard.stats.population} residents
-                                </span>
-                            )}
-                            {dashboard.stats?.competitorCount !== undefined && (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-300/80 font-medium border border-red-500/15">
-                                    {dashboard.stats.competitorCount} competitors nearby
-                                </span>
-                            )}
-                        </div>
-
-                        {/* ── Intelligence Data Sources ────────────────────── */}
-                        <div>
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                                <span className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Intelligence Inputs</span>
-                                {dashboard.confirmedSources ? (
-                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/25">
-                                        {dashboard.confirmedSources} active
+                        {/* ── Stat pills + sources icon ─────────────────────── */}
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+                                {dashboard.stats?.city && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/8 text-white/55 font-medium border border-white/8">
+                                        📍 {dashboard.stats.city}{dashboard.stats.state ? `, ${dashboard.stats.state}` : ''}
                                     </span>
-                                ) : null}
+                                )}
+                                {dashboard.stats?.medianIncome && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300/75 font-medium border border-emerald-500/15">
+                                        {dashboard.stats.medianIncome} income
+                                    </span>
+                                )}
+                                {dashboard.stats?.population && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/8 text-white/55 font-medium border border-white/8">
+                                        {dashboard.stats.population} residents
+                                    </span>
+                                )}
+                                {dashboard.stats?.competitorCount !== undefined && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-300/75 font-medium border border-red-500/15">
+                                        {dashboard.stats.competitorCount} rivals nearby
+                                    </span>
+                                )}
                             </div>
-                            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-                                {INTELLIGENCE_SOURCES.map(src => {
-                                    const s = SOURCE_STYLES[src.tw];
-                                    return (
-                                        <a
-                                            key={src.name}
-                                            href={src.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            title={src.desc}
-                                            className={`flex-shrink-0 flex flex-col items-center px-2.5 py-1.5 rounded-lg ${s.badge} border ${s.border} hover:brightness-125 transition-all group`}
-                                        >
-                                            <span className={`text-[10px] font-bold ${s.text} whitespace-nowrap`}>{src.name}</span>
-                                            <span className="text-[8px] text-white/35 whitespace-nowrap group-hover:text-white/55 transition-colors">{src.label}</span>
-                                        </a>
-                                    );
-                                })}
-                            </div>
+                            {/* Sources toggle icon */}
+                            <button
+                                onClick={() => setShowSourcesPopover(v => !v)}
+                                title="View intelligence data sources"
+                                className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-full border transition-all ${showSourcesPopover ? 'bg-indigo-500/20 border-indigo-400/40 text-indigo-300' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60 hover:bg-white/10'}`}
+                            >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                <span className="text-[9px] font-bold uppercase tracking-wider">Sources</span>
+                            </button>
                         </div>
 
                     </div>

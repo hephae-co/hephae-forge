@@ -21,6 +21,8 @@ async def save_business_profile(request: Request):
         body = await request.json()
         slug = body.get("slug")
         identity = body.get("identity")
+        snapshot = body.get("snapshot")       # full snapshot (from overview save)
+        snapshot_update = body.get("snapshotUpdate")  # partial update (from capability save)
 
         if not slug or not identity:
             return JSONResponse({"error": "slug and identity required"}, status_code=400)
@@ -28,13 +30,28 @@ async def save_business_profile(request: Request):
         from hephae_common.firebase import get_db
         db = get_db()
         doc_ref = db.collection("business_profiles").document(slug)
-        doc_ref.set({
-            "slug": slug,
-            "identity": identity,
-            "savedAt": datetime.utcnow().isoformat(),
-            "name": identity.get("name", ""),
-            "address": identity.get("address", ""),
-        }, merge=True)
+
+        if snapshot_update:
+            # Merge only the new capability key into the existing snapshot
+            update_payload = {f"snapshot.{k}": v for k, v in snapshot_update.items()}
+            update_payload["updatedAt"] = datetime.utcnow().isoformat()
+            # Ensure doc exists first
+            doc_ref.set({
+                "slug": slug,
+                "identity": identity,
+                "name": identity.get("name", ""),
+                "address": identity.get("address", ""),
+            }, merge=True)
+            doc_ref.update(update_payload)
+        else:
+            doc_ref.set({
+                "slug": slug,
+                "identity": identity,
+                "savedAt": datetime.utcnow().isoformat(),
+                "name": identity.get("name", ""),
+                "address": identity.get("address", ""),
+                **({"snapshot": snapshot} if snapshot else {}),
+            }, merge=True)
 
         logger.info(f"[BusinessProfile] Saved: {slug}")
         return JSONResponse({"slug": slug, "url": f"/b/{slug}"})

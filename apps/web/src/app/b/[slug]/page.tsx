@@ -19,9 +19,12 @@ export default function BusinessProfilePage() {
                 if (data?.identity?.name) {
                     setBusinessName(data.identity.name);
                     setStatus('found');
-                    // Store identity in sessionStorage for the forge page to pick up
+                    // Store identity + full snapshot in sessionStorage for the forge page
                     sessionStorage.setItem('forge_preload_slug', slug);
                     sessionStorage.setItem('forge_preload_identity', JSON.stringify(data.identity));
+                    if (data.snapshot) {
+                        sessionStorage.setItem('forge_preload_snapshot', JSON.stringify(data.snapshot));
+                    }
                     // Redirect to forge home — must use /forge/ since this app is
                     // mounted at hephae.co/forge/ via nginx reverse proxy
                     window.location.href = '/forge/';

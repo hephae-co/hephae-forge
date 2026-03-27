@@ -163,14 +163,32 @@ export default function Home() {
   useEffect(() => {
     const preloadSlug = sessionStorage.getItem('forge_preload_slug');
     const preloadIdentityStr = sessionStorage.getItem('forge_preload_identity');
+    const preloadSnapshotStr = sessionStorage.getItem('forge_preload_snapshot');
     if (preloadSlug && preloadIdentityStr) {
       sessionStorage.removeItem('forge_preload_slug');
       sessionStorage.removeItem('forge_preload_identity');
+      sessionStorage.removeItem('forge_preload_snapshot');
       try {
         const identity = JSON.parse(preloadIdentityStr);
         setBusinessSlug(preloadSlug);
-        // Trigger the full business overview as if the user had searched
-        handlePlaceSelect(identity);
+
+        // If a full snapshot is available, restore all state instantly
+        if (preloadSnapshotStr) {
+          const snap = JSON.parse(preloadSnapshotStr);
+          setLocatedBusiness(identity);
+          if (snap.overview) setBusinessOverview(snap.overview);
+          if (snap.margin?.data) { setReport(snap.margin.data); setMarginReportUrl(snap.margin.reportUrl || null); }
+          if (snap.traffic?.data) { setForecast(snap.traffic.data); setTrafficReportUrl(snap.traffic.reportUrl || null); if (snap.traffic.data.forecast?.length) { setSelectedDay(snap.traffic.data.forecast[0]); setSelectedSlot(snap.traffic.data.forecast[0].slots?.[0] || null); } }
+          if (snap.seo?.data) { setSeoReport(snap.seo.data); setSeoReportUrl(snap.seo.reportUrl || null); }
+          if (snap.marketing?.data) { setSocialAuditReport(snap.marketing.data); setMarketingReportUrl(snap.marketing.reportUrl || null); }
+          if (snap.competitive?.data) { setCompetitiveReport(snap.competitive.data); setCompetitiveReportUrl(snap.competitive.reportUrl || null); }
+          if (snap.profileReportUrl) setProfileReportUrl(snap.profileReportUrl);
+          const msg_ = (role: 'user' | 'model', text: string) => ({ id: Math.random().toString(36), role, text, timestamp: Date.now() });
+          setMessages([msg_('model', `Loaded saved analysis for **${identity.name}**. All previously discovered insights are restored below.`)]);
+        } else {
+          // No snapshot — trigger fresh overview
+          handlePlaceSelect(identity);
+        }
       } catch {
         // ignore malformed data
       }
@@ -456,6 +474,22 @@ export default function Home() {
     return [namePart, city, zip].filter(Boolean).join('-');
   };
 
+  // Save a snapshot of capability results to the business profile (best-effort)
+  const saveCapabilitySnapshot = async (
+    slug: string | null,
+    identity: BaseIdentity | null,
+    snapshotUpdate: Record<string, unknown>
+  ) => {
+    if (!slug || !identity) return;
+    try {
+      await apiFetch('/api/b/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, identity, snapshotUpdate }),
+      });
+    } catch { /* non-critical */ }
+  };
+
   const submitUltralocalInterest = async () => {
     const zipCode = (locatedBusiness as any)?.zipCode;
     setAddMyAreaCity(null);
@@ -498,7 +532,7 @@ export default function Home() {
           await apiFetch('/api/b/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug, identity }),
+            body: JSON.stringify({ slug, identity, snapshot: { overview } }),
           });
           window.history.replaceState(null, '', '/forge/b/' + slug);
         } catch {
@@ -752,6 +786,7 @@ export default function Home() {
           const totalLeakage = data.menu_items?.reduce((s: number, i: { price_leakage: number }) => s + i.price_leakage, 0) || 0;
           sendReportEmailAsync('margin', data.reportUrl, locatedBusiness!.name, `$${totalLeakage.toFixed(2)} total profit leakage detected across ${data.menu_items?.length || 0} menu items. Overall score: ${data.overall_score}/100.`);
         }
+        saveCapabilitySnapshot(businessSlug, locatedBusiness, { margin: { data, reportUrl: data.reportUrl || null } });
         setMessages(prev => [...prev, msg('model', "Price analysis complete! Your optimization dashboard is ready.\n\n[Schedule a call](https://hephae.co/schedule) to discuss your pricing strategy with our team.")]);
         maybeShowAuthWall();
 
@@ -791,6 +826,7 @@ export default function Home() {
           setSelectedDay(firstDay);
           setSelectedSlot(firstDay.slots.find((s: any) => s.score > 70) || firstDay.slots[0]);
         }
+        saveCapabilitySnapshot(businessSlug, locatedBusiness, { traffic: { data, reportUrl: data.reportUrl || null } });
 
         setMessages(prev => [...prev, msg('model', `Forecast complete!\n\n**Executive Summary**:\n${data.summary}\n\n[Schedule a call](https://hephae.co/schedule) to plan your staffing strategy with our team.`)]);
         maybeShowAuthWall();
@@ -836,6 +872,7 @@ export default function Home() {
             setSeoReportUrl(data.reportUrl);
             sendReportEmailAsync('seo', data.reportUrl, locatedBusiness!.name, `SEO score: ${data.overallScore ?? 'N/A'}/100. ${sectionCount} categories analyzed. ${data.summary || ''}`);
           }
+          saveCapabilitySnapshot(businessSlug, locatedBusiness, { seo: { data, reportUrl: data.reportUrl || null } });
           setMessages(prev => [...prev, msg('model', `SEO Audit complete! Verified ${sectionCount} critical infrastructure categories.\n\n[Schedule a call](https://hephae.co/schedule) to improve your search rankings with our team.`)]);
           maybeShowAuthWall();
         }
@@ -870,6 +907,7 @@ export default function Home() {
           setMarketingReportUrl(data.reportUrl);
           sendReportEmailAsync('marketing', data.reportUrl, locatedBusiness!.name, data.summary || 'Your social media audit is ready.');
         }
+        saveCapabilitySnapshot(businessSlug, locatedBusiness, { marketing: { data, reportUrl: data.reportUrl || null } });
 
         const platformCount = data.platforms?.length || 0;
         setMessages(prev => [...prev, msg('model', `**Social media check** for **${locatedBusiness.name}** is complete! Score: **${data.overall_score ?? 'N/A'}/100** across ${platformCount} platform${platformCount !== 1 ? 's' : ''}.${data.summary ? `\n\n${data.summary}` : ''}\n\n[Schedule a call](https://hephae.co/schedule) to build your social strategy with our team.`)]);
@@ -905,6 +943,7 @@ export default function Home() {
           setCompetitiveReportUrl(data.reportUrl);
           sendReportEmailAsync('competitive', data.reportUrl, locatedBusiness!.name, data.market_summary || 'Your competitive strategy report is ready.');
         }
+        saveCapabilitySnapshot(businessSlug, locatedBusiness, { competitive: { data, reportUrl: data.reportUrl || null } });
         setMessages(prev => [...prev, msg('model', `Competitive Strategy complete! ${data.market_summary}\n\n[Schedule a call](https://hephae.co/schedule) to discuss your competitive positioning with our team.`)]);
         maybeShowAuthWall();
 

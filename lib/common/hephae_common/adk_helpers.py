@@ -9,6 +9,7 @@ eliminating manual JSON parsing and markdown stripping.
 
 import json
 import logging
+import re
 import uuid
 
 from google.adk import Runner
@@ -21,6 +22,14 @@ from google.genai import types as genai_types
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
+
+_MARKDOWN_FENCE_RE = re.compile(r"^```[a-zA-Z]*\n?|```$", re.MULTILINE)
+
+
+def _strip_markdown_fences(text: str) -> str:
+    """Strip leading/trailing markdown code fences from LLM output."""
+    return _MARKDOWN_FENCE_RE.sub("", text).strip()
+
 
 _session_service = InMemorySessionService()
 _app_cache: dict[str, App] = {}

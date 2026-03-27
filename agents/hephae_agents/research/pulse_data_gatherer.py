@@ -61,11 +61,12 @@ class BaseLayerFetcher(BaseAgent):
         logger.info(f"[BaseLayerFetcher] Fetching signals for {zip_code} ({business_type})")
 
         # Read zipcode profile if available (for downstream source-aware fetching)
+        zipcode_profile = None
         try:
             from hephae_db.firestore.zipcode_profiles import get_zipcode_profile
             profile = await get_zipcode_profile(zip_code)
             if profile:
-                state["zipcodeProfile"] = profile
+                zipcode_profile = profile
                 logger.info(
                     f"[BaseLayerFetcher] Loaded profile for {zip_code}: "
                     f"{profile.get('confirmedSources', 0)} confirmed sources"
@@ -202,6 +203,8 @@ class BaseLayerFetcher(BaseAgent):
             "industryConfig": industry_config,
             "techIntelligence": tech_intelligence,
         }
+        if zipcode_profile is not None:
+            state_delta["zipcodeProfile"] = zipcode_profile
 
         logger.info(
             f"[BaseLayerFetcher] Done: {len(signals)} signals, "

@@ -12,7 +12,7 @@ import logging
 import time
 from typing import Any
 
-from google.adk.agents import LlmAgent
+from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
@@ -62,6 +62,36 @@ blog_copywriter_agent = LlmAgent(
     instruction=BLOG_COPYWRITER_INSTRUCTION,
     output_key="blogDraft",
     on_model_error_callback=fallback_on_error,
+)
+
+
+def _copywriter_instruction(ctx) -> str:
+    """Dynamic instruction that reads platformDecision from state and selects the right template."""
+    state = getattr(ctx, "state", {})
+    creative_direction = state.get("creativeDirection", "")
+    platform_raw = state.get("platformDecision", "{}")
+    try:
+        pd = json.loads(platform_raw) if isinstance(platform_raw, str) else platform_raw
+        platform = pd.get("platform", "Instagram")
+    except Exception:
+        platform = "Instagram"
+    base = INSTAGRAM_COPYWRITER_INSTRUCTION if platform == "Instagram" else BLOG_COPYWRITER_INSTRUCTION
+    return f"{base}\n\nCreative Direction:\n{creative_direction}\nPlatform: {platform}"
+
+
+copywriter_agent = LlmAgent(
+    name="CopywriterAgent",
+    model=AgentModels.PRIMARY_MODEL,
+    description="Writes platform-appropriate marketing copy based on creative direction and platform decision.",
+    instruction=_copywriter_instruction,
+    output_key="contentDraft",
+    on_model_error_callback=fallback_on_error,
+)
+
+marketing_pipeline = SequentialAgent(
+    name="MarketingPipeline",
+    description="3-stage marketing content pipeline: creative direction → platform routing → copywriting.",
+    sub_agents=[creative_director_agent, platform_router_agent, copywriter_agent],
 )
 
 
@@ -122,82 +152,42 @@ async def run_marketing_pipeline(identity: dict[str, Any], business_context: Any
 
     prompt = "\n".join(context_parts)
 
-    # Single shared session for all 3 steps — output_key writes from each agent
-    # accumulate in state and are readable by subsequent runners.
+    # Single shared session — SequentialAgent runs all 3 agents, each writing to output_key
     await session_service.create_session(
         app_name="hephae-hub", session_id=session_id, user_id="sys", state={}
     )
 
-    # Step 1: Creative Director
-    cd_runner = Runner(
+    pipeline_runner = Runner(
         app_name="hephae-hub",
-        agent=creative_director_agent,
+        agent=marketing_pipeline,
         session_service=session_service,
     )
-    async for _ in cd_runner.run_async(
+    async for _ in pipeline_runner.run_async(
         session_id=session_id, user_id="sys", new_message=user_msg(prompt),
     ):
         pass
 
-    session = await session_service.get_session(
+    final_session = await session_service.get_session(
         app_name="hephae-hub", session_id=session_id, user_id="sys"
     )
-    creative_direction = (session.state or {}).get("creativeDirection", "{}")
+    state = (final_session.state or {}) if final_session else {}
 
-    # Step 2: Platform Router — reads creativeDirection from shared session state
-    pr_runner = Runner(
-        app_name="hephae-hub",
-        agent=platform_router_agent,
-        session_service=session_service,
-    )
-    async for _ in pr_runner.run_async(
-        session_id=session_id,
-        user_id="sys",
-        new_message=user_msg(f"Creative Direction:\n{creative_direction}"),
-    ):
-        pass
-
-    session = await session_service.get_session(
-        app_name="hephae-hub", session_id=session_id, user_id="sys"
-    )
-    platform_decision = (session.state or {}).get("platformDecision", "{}")
     platform = "Instagram"
     try:
-        pd = json.loads(platform_decision) if isinstance(platform_decision, str) else platform_decision
+        pd_raw = state.get("platformDecision", "{}")
+        pd = json.loads(pd_raw) if isinstance(pd_raw, str) else pd_raw
         platform = pd.get("platform", "Instagram")
     except Exception:
         pass
 
-    # Step 3: Copywriter — reads creativeDirection + platformDecision from shared session state
-    copywriter = instagram_copywriter_agent if platform == "Instagram" else blog_copywriter_agent
-    cw_runner = Runner(
-        app_name="hephae-hub",
-        agent=copywriter,
-        session_service=session_service,
-    )
-    async for _ in cw_runner.run_async(
-        session_id=session_id,
-        user_id="sys",
-        new_message=user_msg(
-            f"Creative Direction:\n{creative_direction}\nPlatform: {platform}\nBusiness: {business_name}"
-        ),
-    ):
-        pass
-
-    session = await session_service.get_session(
-        app_name="hephae-hub", session_id=session_id, user_id="sys"
-    )
-    output_key = "instagramDraft" if platform == "Instagram" else "blogDraft"
-    draft = (session.state or {}).get(output_key, "")
-
     result = {
         "platform": platform,
-        "creativeDirection": creative_direction,
-        "draft": draft,
+        "creativeDirection": state.get("creativeDirection", ""),
+        "draft": state.get("contentDraft", ""),
         "summary": f"{platform} content strategy for {business_name}",
     }
 
-    logger.info(f"[MarketingSwarm] Pipeline complete: platform={platform}, draft_len={len(str(draft))}")
+    logger.info(f"[MarketingSwarm] Pipeline complete: platform={platform}, draft_len={len(str(result['draft']))}")
     return result
 
 

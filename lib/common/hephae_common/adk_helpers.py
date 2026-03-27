@@ -9,7 +9,6 @@ eliminating manual JSON parsing and markdown stripping.
 
 import json
 import logging
-import re
 import uuid
 
 from google.adk import Runner
@@ -34,12 +33,16 @@ _DEFAULT_CACHE_CONFIG = ContextCacheConfig(
 
 
 def _get_or_create_app(agent: LlmAgent, app_name: str) -> App:
-    key = f"{app_name}:{agent.name}"
+    schema_name = getattr(agent, 'output_schema', None)
+    schema_key = schema_name.__name__ if schema_name and hasattr(schema_name, '__name__') else 'none'
+    key = f"{app_name}:{agent.name}:{schema_key}"
     if key not in _app_cache:
+        # Only cache agents with static (non-callable) instructions
+        cache_config = None if callable(getattr(agent, 'instruction', None)) else _DEFAULT_CACHE_CONFIG
         _app_cache[key] = App(
             name=app_name,
             root_agent=agent,
-            context_cache_config=_DEFAULT_CACHE_CONFIG,
+            context_cache_config=cache_config,
         )
     return _app_cache[key]
 
@@ -58,14 +61,6 @@ def user_msg_with_image(text: str, image_b64: str, mime_type: str = "image/jpeg"
             genai_types.Part(inline_data=genai_types.Blob(data=image_b64, mime_type=mime_type)),
         ],
     )
-
-
-def _strip_markdown_fences(text: str) -> str:
-    """Remove ```json ... ``` wrappers from LLM output."""
-    text = text.strip()
-    text = re.sub(r"^```(?:json)?\s*", "", text)
-    text = re.sub(r"\s*```$", "", text)
-    return text.strip()
 
 
 async def run_agent_to_text(
@@ -140,6 +135,8 @@ async def run_agent_to_json(
         instruction=enriched_instruction,
         tools=agent.tools if hasattr(agent, "tools") else [],
         on_model_error_callback=agent.on_model_error_callback if hasattr(agent, "on_model_error_callback") else None,
+        before_agent_callback=getattr(agent, 'before_agent_callback', None),
+        after_agent_callback=getattr(agent, 'after_agent_callback', None),
         output_schema=response_schema,
         # Forward thinking config; force JSON mode only when no schema (ADK handles it natively when schema is set)
         generate_content_config=agent.generate_content_config if response_schema else {"response_mime_type": "application/json"},

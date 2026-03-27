@@ -4,11 +4,11 @@ Port of src/agents/seo-auditor/seoAuditor.ts.
 """
 
 from google.adk.agents import LlmAgent
+from google.adk.tools import google_search
 from google.adk.tools.load_memory_tool import load_memory_tool
 
 from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
-from hephae_agents.shared_tools import google_search_tool
 from hephae_agents.seo_auditor.prompt import SEO_AUDITOR_INSTRUCTION
 from hephae_agents.seo_auditor.tools import pagespeed_tool  # noqa: F401
 seo_auditor_agent = LlmAgent(
@@ -16,8 +16,8 @@ seo_auditor_agent = LlmAgent(
     description="An elite Technical SEO Auditor capable of analyzing websites using Google Search and PageSpeed Insights.",
     instruction=SEO_AUDITOR_INSTRUCTION,
     model=AgentModels.PRIMARY_MODEL,
-    generate_content_config=ThinkingPresets.DEEP,
-    tools=[google_search_tool, pagespeed_tool, load_memory_tool],
+    generate_content_config=ThinkingPresets.HIGH,
+    tools=[google_search, pagespeed_tool, load_memory_tool],
     # output_schema incompatible with tools — Gemini rejects response_schema + tool use
     on_model_error_callback=fallback_on_error,
 )

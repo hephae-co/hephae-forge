@@ -94,7 +94,7 @@ def _demographic_expert_instruction(ctx) -> str:
 _industry_analyst_intel = LlmAgent(
     name="IndustryAnalystIntel",
     model=AgentModels.PRIMARY_MODEL,
-    generate_content_config=ThinkingPresets.DEEP,
+    generate_content_config=ThinkingPresets.HIGH,
     instruction=_industry_analyst_instruction,
     output_key="industryAnalysis",
     on_model_error_callback=fallback_on_error,
@@ -130,6 +130,7 @@ _demographic_expert_intel = LlmAgent(
 # The fan-out: 4 LLM agents running in parallel
 intelligence_fan_out = ParallelAgent(
     name="IntelligenceFanOut",
+    description="Runs 4 LLM research agents in parallel: industry analyst, industry news, local catalysts, and demographics.",
     sub_agents=[
         _industry_analyst_intel,
         _industry_news_intel,

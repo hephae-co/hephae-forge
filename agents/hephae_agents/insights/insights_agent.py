@@ -35,8 +35,8 @@ When the business data includes a FOOD_PRICING_CONTEXT section, incorporate cost
 analysis into your recommendations. Reference specific BLS/USDA data points (e.g., "dairy up
 3.2% YoY per BLS CPI") when suggesting menu strategy, pricing adjustments, or margin optimization.
 Distinguish between rising-cost categories (where margins are under pressure) and stable/declining
-categories (where there may be pricing opportunities).
-Output JSON only — no markdown fencing.""",
+categories (where there may be pricing opportunities).""",
+    output_schema=InsightsOutput,
     on_model_error_callback=fallback_on_error,
 )
 

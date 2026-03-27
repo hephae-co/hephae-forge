@@ -256,6 +256,7 @@ def create_pulse_orchestrator() -> SequentialAgent:
     )
     data_gatherer = ParallelAgent(
         name="DataGatherer",
+        description="Parallel data layer: fetches all signals and runs LLM research fan-out simultaneously.",
         sub_agents=[BaseLayerFetcher(), research_fan_out],
     )
 
@@ -286,6 +287,7 @@ def create_pulse_orchestrator() -> SequentialAgent:
     )
     pre_synthesis = ParallelAgent(
         name="PreSynthesis",
+        description="Parallel pre-processing: history summarizer, economist, and local scout run simultaneously.",
         sub_agents=[historian, economist, local_scout],
     )
 
@@ -311,6 +313,7 @@ def create_pulse_orchestrator() -> SequentialAgent:
     )
     dual_synthesis = ParallelAgent(
         name="DualSynthesis",
+        description="Parallel dual-model synthesis: Gemini and Claude generate pulse independently.",
         sub_agents=[gemini_synth, claude_synth],
     )
     synthesis_stage = SequentialAgent(

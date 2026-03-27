@@ -7,12 +7,12 @@ Pipeline: CompetitorProfiler → MarketPositioning (via session state).
 import json
 
 from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.tools import google_search
 from google.adk.tools.load_memory_tool import load_memory_tool
 
 from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
 from hephae_common.adk_callbacks import log_agent_start, log_agent_complete
-from hephae_agents.shared_tools import google_search_tool
 from hephae_agents.competitive_analysis.prompts import (
     COMPETITOR_PROFILER_INSTRUCTION,
     MARKET_POSITIONING_INSTRUCTION,
@@ -48,15 +48,17 @@ def _positioning_instruction(ctx):
 competitor_profiler_agent = LlmAgent(
     name="CompetitorProfilerAgent",
     model=AgentModels.PRIMARY_MODEL,
+    description="Researches and profiles named competitors from web search sources.",
     instruction=_profiler_instruction,
     output_key="competitorBrief",
-    tools=[google_search_tool, load_memory_tool],
+    tools=[google_search, load_memory_tool],
     on_model_error_callback=fallback_on_error,
 )
 
 market_positioning_agent = LlmAgent(
     name="MarketPositioningAgent",
     model=AgentModels.PRIMARY_MODEL,
+    description="Synthesizes competitor profiles into a structured market positioning report.",
     generate_content_config=ThinkingPresets.HIGH,
     instruction=_positioning_instruction,
     output_schema=CompetitiveAnalysisOutput,

@@ -22,8 +22,8 @@ from hephae_common.adk_callbacks import log_agent_start, log_agent_complete
 from hephae_db.schemas.agent_outputs import (
     EntityMatchOutput,
 )
+from google.adk.tools import google_search
 from hephae_agents.shared_tools import (
-    google_search_tool,
     playwright_tool,
     crawl4ai_tool,
     crawl4ai_advanced_tool,
@@ -60,7 +60,7 @@ def _with_raw_data(base_instruction: str):
         raw = getattr(context, "state", {}).get("rawSiteData", {})
         raw_str = raw if isinstance(raw, str) else json.dumps(raw or {})
         # Truncate to avoid context window bloat
-        truncated = raw_str[:30000] + "...[truncated]" if len(raw_str) > 30000 else raw_str
+        truncated = raw_str[:15000] + "...[truncated]" if len(raw_str) > 15000 else raw_str
         return f"{base_instruction}\n\n--- RAW CRAWL DATA ---\n{truncated}"
 
     return build_instruction
@@ -77,6 +77,86 @@ def _with_social_urls(base_instruction: str):
         social = getattr(context, "state", {}).get("socialData", {})
         social_str = social if isinstance(social, str) else json.dumps(social or {})
         return f"{base_instruction}\n\n--- SOCIAL PROFILE URLS ---\n{social_str}"
+
+    return build_instruction
+
+
+# ---------------------------------------------------------------------------
+# P1.2: Targeted crawl instructions — inject discovered page URLs
+# (defined here, before agent definitions, to avoid post-construction mutation)
+# ---------------------------------------------------------------------------
+
+def _with_raw_data_and_contact_pages(base_instruction: str):
+    """Inject rawSiteData + discovered contact page URLs into instruction."""
+
+    def build_instruction(context) -> str:
+        state = getattr(context, "state", {})
+        raw = state.get("rawSiteData", {})
+        raw_str = raw if isinstance(raw, str) else json.dumps(raw or {})
+        truncated = raw_str[:15000] + "...[truncated]" if len(raw_str) > 15000 else raw_str
+
+        # Extract contact page URLs and deterministic contact results from Stage 1
+        contact_pages = []
+        det_contact = {}
+        if isinstance(raw, dict):
+            contact_pages = raw.get("contactPages", [])
+            det_contact = raw.get("deterministicContact", {})
+        elif isinstance(raw, str):
+            try:
+                parsed = json.loads(raw)
+                contact_pages = parsed.get("contactPages", [])
+                det_contact = parsed.get("deterministicContact", {})
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        hints = ""
+        if det_contact.get("email"):
+            hints += f"\n\nDETERMINISTIC EXTRACTION ALREADY FOUND EMAIL: {det_contact['email']}"
+            hints += "\nYou can skip email extraction steps and focus on verifying this email and finding other contact info."
+        if det_contact.get("phone"):
+            hints += f"\nDETERMINISTIC EXTRACTION ALREADY FOUND PHONE: {det_contact['phone']}"
+        if contact_pages:
+            hints += f"\n\nDISCOVERED CONTACT PAGES (crawl these first if email is missing): {json.dumps(contact_pages)}"
+
+        return f"{base_instruction}{hints}\n\n--- RAW CRAWL DATA ---\n{truncated}"
+
+    return build_instruction
+
+
+def _with_raw_data_and_menu_hints(base_instruction: str):
+    """Inject rawSiteData + discovered pages for targeted menu search."""
+
+    def build_instruction(context) -> str:
+        state = getattr(context, "state", {})
+        raw = state.get("rawSiteData", {})
+        raw_str = raw if isinstance(raw, str) else json.dumps(raw or {})
+        truncated = raw_str[:15000] + "...[truncated]" if len(raw_str) > 15000 else raw_str
+
+        # Extract discovered pages from deep crawl
+        discovered = []
+        if isinstance(raw, dict):
+            discovered = raw.get("discoveredPages", []) or []
+        elif isinstance(raw, str):
+            try:
+                parsed = json.loads(raw)
+                discovered = parsed.get("discoveredPages", []) or []
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        hints = ""
+        if discovered:
+            # Filter for menu-like pages
+            menu_pages = [
+                p for p in discovered
+                if isinstance(p, (str, dict)) and any(
+                    kw in (p if isinstance(p, str) else json.dumps(p)).lower()
+                    for kw in ("menu", "food", "dining", "eat", "drink", "lunch", "dinner", "catering")
+                )
+            ]
+            if menu_pages:
+                hints += f"\n\nDISCOVERED MENU-LIKE PAGES (crawl these first): {json.dumps(menu_pages[:5])}"
+
+        return f"{base_instruction}{hints}\n\n--- RAW CRAWL DATA ---\n{truncated}"
 
     return build_instruction
 
@@ -117,7 +197,7 @@ theme_agent = LlmAgent(
     name="ThemeAgent",
     model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(THEME_AGENT_INSTRUCTION),
-    tools=[google_search_tool],
+    tools=[google_search],
     output_key="themeData",
     # output_schema incompatible with tools — Gemini rejects response_schema + tool use
     on_model_error_callback=fallback_on_error,
@@ -126,8 +206,8 @@ theme_agent = LlmAgent(
 contact_agent = LlmAgent(
     name="ContactAgent",
     model=AgentModels.PRIMARY_MODEL,
-    instruction=_with_raw_data(CONTACT_AGENT_INSTRUCTION),
-    tools=[google_search_tool, playwright_tool],
+    instruction=_with_raw_data_and_contact_pages(CONTACT_AGENT_INSTRUCTION),
+    tools=[google_search, playwright_tool],
     output_key="contactData",
     on_model_error_callback=fallback_on_error,
 )
@@ -136,7 +216,7 @@ social_media_agent = LlmAgent(
     name="SocialMediaAgent",
     model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(SOCIAL_MEDIA_AGENT_INSTRUCTION),
-    tools=[google_search_tool],
+    tools=[google_search],
     output_key="socialData",
     on_model_error_callback=fallback_on_error,
 )
@@ -144,8 +224,8 @@ social_media_agent = LlmAgent(
 menu_agent = LlmAgent(
     name="MenuAgent",
     model=AgentModels.PRIMARY_MODEL,
-    instruction=_with_raw_data(MENU_AGENT_INSTRUCTION),
-    tools=[google_search_tool, playwright_tool, crawl4ai_advanced_tool, crawl4ai_deep_tool],
+    instruction=_with_raw_data_and_menu_hints(MENU_AGENT_INSTRUCTION),
+    tools=[google_search, playwright_tool, crawl4ai_advanced_tool, crawl4ai_deep_tool],
     output_key="menuData",
     on_model_error_callback=fallback_on_error,
 )
@@ -154,7 +234,7 @@ maps_agent = LlmAgent(
     name="MapsAgent",
     model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(MAPS_AGENT_INSTRUCTION),
-    tools=[google_search_tool],
+    tools=[google_search],
     output_key="mapsData",
     on_model_error_callback=fallback_on_error,
 )
@@ -164,7 +244,7 @@ competitor_agent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     generate_content_config=ThinkingPresets.HIGH,
     instruction=_with_raw_data(COMPETITOR_AGENT_INSTRUCTION),
-    tools=[google_search_tool, crawl4ai_tool, crawl4ai_advanced_tool],
+    tools=[google_search, crawl4ai_tool, crawl4ai_advanced_tool],
     output_key="competitorData",
     on_model_error_callback=fallback_on_error,
 )
@@ -173,7 +253,7 @@ news_agent = LlmAgent(
     name="NewsAgent",
     model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(NEWS_AGENT_INSTRUCTION),
-    tools=[google_search_tool],
+    tools=[google_search],
     output_key="newsData",
     on_model_error_callback=fallback_on_error,
 )
@@ -182,7 +262,7 @@ business_overview_agent = LlmAgent(
     name="BusinessOverviewAgent",
     model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(BUSINESS_OVERVIEW_INSTRUCTION),
-    tools=[google_search_tool],
+    tools=[google_search],
     output_key="aiOverview",
     on_model_error_callback=fallback_on_error,
 )
@@ -195,89 +275,10 @@ challenges_agent = LlmAgent(
     name="ChallengesAgent",
     model=AgentModels.PRIMARY_MODEL,
     instruction=_with_raw_data(CHALLENGES_AGENT_INSTRUCTION),
-    tools=[google_search_tool],
+    tools=[google_search],
     output_key="challengesData",
     on_model_error_callback=fallback_on_error,
 )
-
-
-# ---------------------------------------------------------------------------
-# P1.2: Targeted crawl instructions — inject discovered page URLs
-# ---------------------------------------------------------------------------
-
-def _with_raw_data_and_contact_pages(base_instruction: str):
-    """Inject rawSiteData + discovered contact page URLs into instruction."""
-
-    def build_instruction(context) -> str:
-        state = getattr(context, "state", {})
-        raw = state.get("rawSiteData", {})
-        raw_str = raw if isinstance(raw, str) else json.dumps(raw or {})
-        truncated = raw_str[:30000] + "...[truncated]" if len(raw_str) > 30000 else raw_str
-
-        # Extract contact page URLs and deterministic contact results from Stage 1
-        contact_pages = []
-        det_contact = {}
-        if isinstance(raw, dict):
-            contact_pages = raw.get("contactPages", [])
-            det_contact = raw.get("deterministicContact", {})
-        elif isinstance(raw, str):
-            try:
-                parsed = json.loads(raw)
-                contact_pages = parsed.get("contactPages", [])
-                det_contact = parsed.get("deterministicContact", {})
-            except (json.JSONDecodeError, ValueError):
-                pass
-
-        hints = ""
-        if det_contact.get("email"):
-            hints += f"\n\nDETERMINISTIC EXTRACTION ALREADY FOUND EMAIL: {det_contact['email']}"
-            hints += "\nYou can skip email extraction steps and focus on verifying this email and finding other contact info."
-        if det_contact.get("phone"):
-            hints += f"\nDETERMINISTIC EXTRACTION ALREADY FOUND PHONE: {det_contact['phone']}"
-        if contact_pages:
-            hints += f"\n\nDISCOVERED CONTACT PAGES (crawl these first if email is missing): {json.dumps(contact_pages)}"
-
-        return f"{base_instruction}{hints}\n\n--- RAW CRAWL DATA ---\n{truncated}"
-
-    return build_instruction
-
-
-def _with_raw_data_and_menu_hints(base_instruction: str):
-    """Inject rawSiteData + discovered pages for targeted menu search."""
-
-    def build_instruction(context) -> str:
-        state = getattr(context, "state", {})
-        raw = state.get("rawSiteData", {})
-        raw_str = raw if isinstance(raw, str) else json.dumps(raw or {})
-        truncated = raw_str[:30000] + "...[truncated]" if len(raw_str) > 30000 else raw_str
-
-        # Extract discovered pages from deep crawl
-        discovered = []
-        if isinstance(raw, dict):
-            discovered = raw.get("discoveredPages", []) or []
-        elif isinstance(raw, str):
-            try:
-                parsed = json.loads(raw)
-                discovered = parsed.get("discoveredPages", []) or []
-            except (json.JSONDecodeError, ValueError):
-                pass
-
-        hints = ""
-        if discovered:
-            # Filter for menu-like pages
-            menu_pages = [
-                p for p in discovered
-                if isinstance(p, (str, dict)) and any(
-                    kw in (p if isinstance(p, str) else json.dumps(p)).lower()
-                    for kw in ("menu", "food", "dining", "eat", "drink", "lunch", "dinner", "catering")
-                )
-            ]
-            if menu_pages:
-                hints += f"\n\nDISCOVERED MENU-LIKE PAGES (crawl these first): {json.dumps(menu_pages[:5])}"
-
-        return f"{base_instruction}{hints}\n\n--- RAW CRAWL DATA ---\n{truncated}"
-
-    return build_instruction
 
 
 # ---------------------------------------------------------------------------
@@ -376,10 +377,6 @@ def _gate_agent(agent: LlmAgent, skip_fn, output_key: str) -> LlmAgent:
     )
 
 
-# Apply P1.2 targeted instructions to ContactAgent and MenuAgent
-contact_agent.instruction = _with_raw_data_and_contact_pages(CONTACT_AGENT_INSTRUCTION)
-menu_agent.instruction = _with_raw_data_and_menu_hints(MENU_AGENT_INSTRUCTION)
-
 # Apply P2.1 stage gating — reassign to new gated instances (original objects unchanged)
 contact_agent = _gate_agent(contact_agent, _should_skip_contact, "contactData")
 social_media_agent = _gate_agent(social_media_agent, _should_skip_social, "socialData")
@@ -404,7 +401,7 @@ social_profiler_agent = LlmAgent(
     name="SocialProfilerAgent",
     model=AgentModels.PRIMARY_MODEL,
     instruction=_with_social_urls(SOCIAL_PROFILER_INSTRUCTION),
-    tools=[google_search_tool, crawl4ai_advanced_tool],
+    tools=[google_search, crawl4ai_advanced_tool],
     output_key="socialProfileMetrics",
     on_model_error_callback=fallback_on_error,
 )
@@ -429,13 +426,13 @@ def _with_all_discovery_data(base_instruction: str):
             val = state.get(key)
             if val is not None:
                 if isinstance(val, str):
-                    all_data[key] = val[:10000]
+                    all_data[key] = val[:5000]
                 else:
                     serialized = json.dumps(val)
-                    all_data[key] = serialized[:10000]
+                    all_data[key] = serialized[:5000]
         data_str = json.dumps(all_data, indent=2)
-        if len(data_str) > 40000:
-            data_str = data_str[:40000] + "\n...[truncated]"
+        if len(data_str) > 20000:
+            data_str = data_str[:20000] + "\n...[truncated]"
         return f"{base_instruction}\n\n--- ALL DISCOVERY DATA ---\n{data_str}"
 
     return build_instruction
@@ -449,7 +446,7 @@ discovery_reviewer_agent = LlmAgent(
     name="DiscoveryReviewerAgent",
     model=AgentModels.PRIMARY_MODEL,
     instruction=_with_all_discovery_data(DISCOVERY_REVIEWER_INSTRUCTION),
-    tools=[validate_url_tool, google_search_tool],
+    tools=[validate_url_tool, google_search],
     output_key="reviewerData",
     on_model_error_callback=fallback_on_error,
 )

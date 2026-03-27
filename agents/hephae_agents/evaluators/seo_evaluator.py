@@ -16,12 +16,7 @@ SeoEvaluatorAgent = LlmAgent(
 You will be given the TARGET_URL and the ACTUAL_OUTPUT JSON from the SEO Auditor.
 Evaluate if the output is coherent, actually belongs to the given URL, and properly describes SEO aspects without hallucinating.
 
-Output MUST STRICTLY match this JSON schema:
-{
-    "score": number (0-100),
-    "isHallucinated": boolean,
-    "issues": string[]
-}""",
+Return your evaluation as a structured JSON object.""",
     output_schema=EvaluationOutput,
     generate_content_config=ThinkingPresets.MEDIUM,
     on_model_error_callback=fallback_on_error,

@@ -21,7 +21,7 @@ import json
 import logging
 from typing import AsyncGenerator
 
-from google.adk.agents import BaseAgent, LlmAgent, LoopAgent, SequentialAgent
+from google.adk.agents import BaseAgent, LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event
 from google.adk.events.event_actions import EventActions
@@ -180,6 +180,22 @@ class CritiqueRouter(BaseAgent):
             )
             return
 
+        # If ALL failing insights are close to passing (actionability > 62, cross_signal > 55),
+        # escalate to avoid a DEEP rewrite for marginal improvements
+        if not overall_pass and insights:
+            failing = [ic for ic in insights if ic.get("verdict") in ("REWRITE", "DROP")]
+            if failing and all(
+                ic.get("actionability_score", 0) >= 62 and ic.get("cross_signal_score", 0) >= 55
+                for ic in failing
+            ):
+                logger.info("[CritiqueRouter] Failing insights are close to threshold — escalating to avoid unnecessary rewrite")
+                yield Event(
+                    author=self.name,
+                    invocation_id=ctx.invocation_id,
+                    actions=EventActions(escalate=True, state_delta={"rewriteFeedback": ""}),
+                )
+                return
+
         # Build rewrite feedback for failing insights
         feedback_parts: list[str] = []
         for ic in insights:
@@ -210,24 +226,3 @@ class CritiqueRouter(BaseAgent):
         )
 
 
-# ---------------------------------------------------------------------------
-# Import the synthesis agent for rewrite iterations
-# ---------------------------------------------------------------------------
-
-from hephae_agents.research.weekly_pulse_agent import WeeklyPulseAgent  # noqa: E402
-
-
-# ---------------------------------------------------------------------------
-# Stage 4: Critique Loop
-# ---------------------------------------------------------------------------
-
-_critique_then_rewrite = SequentialAgent(
-    name="CritiqueThenRewrite",
-    sub_agents=[PulseCritiqueAgent, CritiqueRouter(), WeeklyPulseAgent],
-)
-
-critique_loop = LoopAgent(
-    name="CritiqueLoop",
-    sub_agents=[_critique_then_rewrite],
-    max_iterations=2,
-)

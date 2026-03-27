@@ -5,6 +5,38 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BaseIdentity, EnrichedProfile, SocialPlatformMetrics } from '@/types/api';
 import DiscoveryProgress from './DiscoveryProgress';
 
+// Data intelligence sources powering the pulse analysis
+const INTELLIGENCE_SOURCES = [
+    { name: 'BLS', label: 'Price Index', desc: 'Consumer Price Index for food & services', url: 'https://www.bls.gov/cpi/', tw: 'blue' },
+    { name: 'USDA', label: 'Commodities', desc: 'Commodity price outlooks & food cost data', url: 'https://www.ers.usda.gov/data-products/food-price-outlook/', tw: 'green' },
+    { name: 'Census', label: 'Demographics', desc: 'Population, income & poverty statistics', url: 'https://www.census.gov/topics/income-poverty.html', tw: 'violet' },
+    { name: 'NWS', label: 'Weather', desc: 'National Weather Service 7-day forecasts', url: 'https://www.weather.gov/', tw: 'sky' },
+    { name: 'FDA', label: 'Food Safety', desc: 'Food recalls & enforcement actions', url: 'https://www.fda.gov/food/recalls-outbreaks-emergencies', tw: 'red' },
+    { name: 'SBA', label: 'Lending', desc: 'Small business loan activity by zip code', url: 'https://www.sba.gov/funding-programs/loans', tw: 'amber' },
+    { name: 'OSM', label: 'Local Map', desc: 'OpenStreetMap competitor density', url: 'https://www.openstreetmap.org/', tw: 'emerald' },
+    { name: 'Trends', label: 'Search', desc: 'Google Trends for local search demand', url: 'https://trends.google.com/', tw: 'orange' },
+    { name: 'CDC', label: 'Health', desc: 'PLACES local health & lifestyle metrics', url: 'https://www.cdc.gov/places/', tw: 'teal' },
+    { name: 'IRS', label: 'Income', desc: 'IRS SOI adjusted gross income by zip', url: 'https://www.irs.gov/statistics/soi-tax-stats-individual-income-tax-statistics', tw: 'slate' },
+    { name: 'QCEW', label: 'Employment', desc: 'Quarterly Census of Employment & Wages', url: 'https://www.bls.gov/cew/', tw: 'indigo' },
+    { name: 'News', label: 'Local News', desc: 'RSS feeds: local papers, Patch, TAPinto', url: 'https://patch.com/', tw: 'rose' },
+] as const;
+
+// Colour map for TW classes (can't use dynamic tw class names)
+const SOURCE_STYLES: Record<string, { badge: string; text: string; border: string }> = {
+    blue:   { badge: 'bg-blue-500/10',   text: 'text-blue-300',   border: 'border-blue-500/25' },
+    green:  { badge: 'bg-green-500/10',  text: 'text-green-300',  border: 'border-green-500/25' },
+    violet: { badge: 'bg-violet-500/10', text: 'text-violet-300', border: 'border-violet-500/25' },
+    sky:    { badge: 'bg-sky-500/10',    text: 'text-sky-300',    border: 'border-sky-500/25' },
+    red:    { badge: 'bg-red-500/10',    text: 'text-red-300',    border: 'border-red-500/25' },
+    amber:  { badge: 'bg-amber-500/10',  text: 'text-amber-300',  border: 'border-amber-500/25' },
+    emerald:{ badge: 'bg-emerald-500/10',text: 'text-emerald-300',border: 'border-emerald-500/25' },
+    orange: { badge: 'bg-orange-500/10', text: 'text-orange-300', border: 'border-orange-500/25' },
+    teal:   { badge: 'bg-teal-500/10',   text: 'text-teal-300',   border: 'border-teal-500/25' },
+    slate:  { badge: 'bg-slate-500/10',  text: 'text-slate-300',  border: 'border-slate-500/25' },
+    indigo: { badge: 'bg-indigo-500/10', text: 'text-indigo-300', border: 'border-indigo-500/25' },
+    rose:   { badge: 'bg-rose-500/10',   text: 'text-rose-300',   border: 'border-rose-500/25' },
+};
+
 // Categories that are clearly unrelated to food/restaurant businesses
 const UNRELATED_FOOD_CATEGORIES = new Set([
     'supermarket', 'grocery', 'convenience', 'pharmacy', 'drug_store',
@@ -654,43 +686,48 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
             {/* MARKET DASHBOARD OVERLAY (bottom) */}
             {dashboard && !isDiscovering && (
                 <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-auto">
-                    <div className="bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent pt-8 pb-4 px-4">
-                        {/* Stat pills row */}
-                        <div className="flex flex-wrap gap-2 mb-3">
-                            {dashboard.stats?.medianIncome && (
-                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/10 text-white/90 font-medium backdrop-blur-sm border border-white/10">
-                                    {dashboard.stats.medianIncome} income
-                                </span>
-                            )}
-                            {dashboard.stats?.population && (
-                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/10 text-white/90 font-medium backdrop-blur-sm border border-white/10">
-                                    {dashboard.stats.population} residents
-                                </span>
-                            )}
-                            {dashboard.stats?.competitorCount !== undefined && (
-                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/10 text-white/90 font-medium backdrop-blur-sm border border-white/10">
-                                    {dashboard.stats.competitorCount} competitors nearby
-                                </span>
-                            )}
-                            {dashboard.confirmedSources ? (
-                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-medium backdrop-blur-sm border border-indigo-400/20">
-                                    {dashboard.confirmedSources} data sources active
-                                </span>
-                            ) : null}
-                        </div>
+                    <div className="bg-gradient-to-t from-slate-950 via-slate-900/97 to-transparent pt-10 pb-3 px-3 space-y-2.5">
 
-                        {/* Competitors strip — filtered to relevant businesses */}
+                        {/* ── Intelligence Feed (carousel) ─────────────────── */}
+                        {carouselItems.length > 0 && (
+                            <div
+                                className="px-3 py-2 rounded-xl bg-indigo-500/10 border border-indigo-400/20 backdrop-blur-sm cursor-pointer select-none"
+                                onClick={() => setCarouselIdx(i => (i + 1) % carouselItems.length)}
+                                title="Click for next update"
+                            >
+                                <div className="flex items-center justify-between mb-0.5">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                                        <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider">
+                                            {carouselItems[carouselIdx]?.label}
+                                        </span>
+                                    </div>
+                                    {carouselItems.length > 1 && (
+                                        <div className="flex gap-0.5">
+                                            {carouselItems.map((_, i) => (
+                                                <span key={i} className={`w-1 h-1 rounded-full transition-colors ${i === carouselIdx ? 'bg-indigo-400' : 'bg-white/20'}`} />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-xs text-white/85 leading-relaxed line-clamp-2">
+                                    {carouselItems[carouselIdx]?.text}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* ── Nearby Competitors ───────────────────────────── */}
                         {(() => {
                             const filtered = filterRelevantCompetitors(dashboard.competitors, (business as any)?.businessType || businessName);
                             if (!filtered?.length) return null;
                             return (
-                                <div className="mb-3">
-                                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Nearby Competitors</span>
-                                    <div className="flex gap-2 mt-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                                <div>
+                                    <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider mb-1.5">Nearby Competitors</p>
+                                    <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
                                         {filtered.slice(0, 6).map((c, i) => (
-                                            <div key={i} className="flex-shrink-0 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm">
-                                                <div className="text-xs font-semibold text-white/90 whitespace-nowrap">{c.name}</div>
-                                                <div className="text-[10px] text-white/50">{c.cuisine || c.category} &middot; {c.distanceM}m</div>
+                                            <div key={i} className="flex-shrink-0 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm">
+                                                <div className="text-[11px] font-semibold text-white/90 whitespace-nowrap">{c.name}</div>
+                                                <div className="text-[9px] text-white/45 mt-0.5">{c.cuisine || c.category} · {c.distanceM}m</div>
                                             </div>
                                         ))}
                                     </div>
@@ -698,33 +735,60 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                             );
                         })()}
 
-                        {/* Rotating carousel — pulse headline, insights, events, buzz */}
-                        {carouselItems.length > 0 && (
-                            <div
-                                className="px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-400/20 backdrop-blur-sm cursor-pointer select-none"
-                                onClick={() => setCarouselIdx(i => (i + 1) % carouselItems.length)}
-                                title="Click to see next update"
-                            >
-                                <div className="flex items-center justify-between mb-0.5">
-                                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">
-                                        {carouselItems[carouselIdx]?.label}
+                        {/* ── Market Stat Pills ────────────────────────────── */}
+                        <div className="flex flex-wrap gap-1.5">
+                            {dashboard.stats?.city && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/8 text-white/60 font-medium border border-white/8">
+                                    📍 {dashboard.stats.city}{dashboard.stats.state ? `, ${dashboard.stats.state}` : ''}
+                                </span>
+                            )}
+                            {dashboard.stats?.medianIncome && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300/80 font-medium border border-emerald-500/15">
+                                    {dashboard.stats.medianIncome} med. income
+                                </span>
+                            )}
+                            {dashboard.stats?.population && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/8 text-white/60 font-medium border border-white/8">
+                                    {dashboard.stats.population} residents
+                                </span>
+                            )}
+                            {dashboard.stats?.competitorCount !== undefined && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-300/80 font-medium border border-red-500/15">
+                                    {dashboard.stats.competitorCount} competitors nearby
+                                </span>
+                            )}
+                        </div>
+
+                        {/* ── Intelligence Data Sources ────────────────────── */}
+                        <div>
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                                <span className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Intelligence Inputs</span>
+                                {dashboard.confirmedSources ? (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/25">
+                                        {dashboard.confirmedSources} active
                                     </span>
-                                    {carouselItems.length > 1 && (
-                                        <div className="flex gap-0.5">
-                                            {carouselItems.map((_, i) => (
-                                                <span
-                                                    key={i}
-                                                    className={`w-1 h-1 rounded-full transition-colors ${i === carouselIdx ? 'bg-indigo-400' : 'bg-white/20'}`}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                                <p className="text-xs text-white/80 leading-relaxed line-clamp-2">
-                                    {carouselItems[carouselIdx]?.text}
-                                </p>
+                                ) : null}
                             </div>
-                        )}
+                            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                                {INTELLIGENCE_SOURCES.map(src => {
+                                    const s = SOURCE_STYLES[src.tw];
+                                    return (
+                                        <a
+                                            key={src.name}
+                                            href={src.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            title={src.desc}
+                                            className={`flex-shrink-0 flex flex-col items-center px-2.5 py-1.5 rounded-lg ${s.badge} border ${s.border} hover:brightness-125 transition-all group`}
+                                        >
+                                            <span className={`text-[10px] font-bold ${s.text} whitespace-nowrap`}>{src.name}</span>
+                                            <span className="text-[8px] text-white/35 whitespace-nowrap group-hover:text-white/55 transition-colors">{src.label}</span>
+                                        </a>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             )}

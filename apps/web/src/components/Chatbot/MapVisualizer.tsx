@@ -202,34 +202,34 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
 
             {/* GLASSMORPHISM DISCOVERY OVERLAY */}
             {business && (
-                <div className="absolute top-6 left-6 right-6 z-40 max-w-xl animate-fade-in-up flex flex-col gap-4" style={{ animationDelay: '0.5s' }}>
-                    <div className="bg-slate-900/85 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl overflow-hidden">
+                <div className="absolute top-3 left-3 right-3 z-40 max-w-sm animate-fade-in-up flex flex-col gap-3" style={{ animationDelay: '0.5s' }}>
+                    <div className="bg-slate-900/85 backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl overflow-hidden">
 
                         {/* HEADER */}
-                        <div className={`p-6 ${profileCollapsed ? 'pb-5' : 'pb-4'} ${profileCollapsed ? '' : 'border-b border-white/10'}`}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/50 shrink-0">
-                                    <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        <div className={`px-3 pt-3 ${profileCollapsed ? 'pb-3' : 'pb-2'} ${profileCollapsed ? '' : 'border-b border-white/10'}`}>
+                            <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/50 shrink-0">
+                                    <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <h2 className="text-white font-bold text-lg leading-tight truncate">{business.name}</h2>
+                                    <h2 className="text-white font-bold text-sm leading-tight truncate">{business.name}</h2>
                                     {isDiscovering ? (
                                         <DiscoveryProgress phase="all" variant="inline" />
                                     ) : (
-                                        <p className="text-indigo-300 text-xs font-medium uppercase tracking-wider flex items-center gap-1 mt-0.5">
-                                            <svg className="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                                            Profile Enriched
+                                        <p className="text-emerald-400 text-[10px] font-semibold flex items-center gap-1 mt-0.5">
+                                            <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                            Enriched
                                         </p>
                                     )}
                                 </div>
                                 {/* Collapse toggle */}
                                 <button
                                     onClick={() => setProfileCollapsed(v => !v)}
-                                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors shrink-0"
-                                    title={profileCollapsed ? 'Expand profile' : 'Collapse profile'}
+                                    className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors shrink-0"
+                                    title={profileCollapsed ? 'Expand' : 'Collapse'}
                                 >
                                     <svg
-                                        className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${profileCollapsed ? 'rotate-180' : ''}`}
+                                        className={`w-3 h-3 text-slate-400 transition-transform duration-300 ${profileCollapsed ? 'rotate-180' : ''}`}
                                         fill="none" stroke="currentColor" viewBox="0 0 24 24"
                                     >
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
@@ -237,13 +237,13 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                                 </button>
                             </div>
 
-                            {/* TABS — 6 tabs, compact */}
-                            <div className={`flex gap-0.5 p-1 bg-black/40 rounded-lg overflow-x-auto scrollbar-hide transition-all duration-300 ${profileCollapsed ? 'max-h-0 opacity-0 overflow-hidden mt-0 p-0' : 'max-h-20 opacity-100 mt-4'}`}>
+                            {/* TABS — compact */}
+                            <div className={`flex gap-0.5 p-0.5 bg-black/40 rounded-lg overflow-x-auto scrollbar-hide transition-all duration-300 ${profileCollapsed ? 'max-h-0 opacity-0 overflow-hidden mt-0 p-0' : 'max-h-10 opacity-100 mt-2'}`}>
                                 {TABS.map(tab => (
                                     <button
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
-                                        className={`flex-1 py-2 md:py-1 text-[11px] md:text-[10px] font-bold rounded-md transition-colors leading-tight flex-shrink-0 ${activeTab === tab.id ? 'bg-indigo-500 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                                        className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-colors leading-tight flex-shrink-0 ${activeTab === tab.id ? 'bg-indigo-500 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                                     >
                                         {tab.label}
                                     </button>
@@ -252,11 +252,11 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                         </div>
 
                         {/* TAB CONTENT */}
-                        <div className={`space-y-4 transition-all duration-300 ${profileCollapsed ? 'max-h-0 opacity-0 overflow-hidden p-0' : 'max-h-[600px] opacity-100 p-6 pt-4'}`}>
+                        <div className={`transition-all duration-300 ${profileCollapsed ? 'max-h-0 opacity-0 overflow-hidden p-0' : 'max-h-[500px] opacity-100 overflow-y-auto p-3 pt-2 space-y-2'}`}>
 
                             {/* OVERVIEW TAB: AI Overview summary */}
                             {activeTab === 'overview' && (
-                                <div className="space-y-3 animate-fade-in relative min-h-[140px]">
+                                <div className="space-y-2 animate-fade-in relative min-h-[80px]">
                                     {isDiscovering ? (
                                         <DiscoveryProgress phase="overview" variant="dots" />
                                     ) : profile?.aiOverview ? (
@@ -327,14 +327,14 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
 
                             {/* PROFILE TAB: address + website only */}
                             {activeTab === 'profile' && (
-                                <div className="space-y-3 animate-fade-in relative min-h-[100px]">
-                                    <div className="flex items-start gap-3 text-slate-300 bg-black/20 p-3 rounded-xl border border-white/5">
-                                        <svg className="w-4 h-4 mt-0.5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                        <p className="text-sm leading-snug">{business.address}</p>
+                                <div className="space-y-2 animate-fade-in relative min-h-[60px]">
+                                    <div className="flex items-start gap-2 text-slate-300 bg-black/20 px-2.5 py-2 rounded-lg border border-white/5">
+                                        <svg className="w-3.5 h-3.5 mt-0.5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                        <p className="text-xs leading-snug">{business.address}</p>
                                     </div>
-                                    <div className="flex items-center gap-3 text-slate-300 bg-black/20 p-3 rounded-xl border border-white/5">
-                                        <svg className="w-4 h-4 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                                        <a href={business.officialUrl} target="_blank" rel="noreferrer" className="text-sm text-indigo-400 hover:text-indigo-300 truncate underline decoration-indigo-500/30 underline-offset-2">
+                                    <div className="flex items-center gap-2 text-slate-300 bg-black/20 px-2.5 py-2 rounded-lg border border-white/5">
+                                        <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                                        <a href={business.officialUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-400 hover:text-indigo-300 truncate underline decoration-indigo-500/30 underline-offset-2">
                                             {business.officialUrl.replace(/^https?:\/\/(www\.)?/, '')}
                                         </a>
                                     </div>
@@ -343,7 +343,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
 
                             {/* THEME TAB: logo, favicon, colors, persona */}
                             {activeTab === 'theme' && (
-                                <div className="space-y-3 animate-fade-in relative min-h-[140px]">
+                                <div className="space-y-2 animate-fade-in relative min-h-[80px]">
                                     {isDiscovering ? (
                                         <DiscoveryProgress phase="theme" variant="dots" />
                                     ) : (
@@ -404,7 +404,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
 
                             {/* CONTACT TAB: phone, email, hours */}
                             {activeTab === 'contact' && (
-                                <div className="space-y-3 animate-fade-in relative min-h-[100px]">
+                                <div className="space-y-2 animate-fade-in relative min-h-[60px]">
                                     {isDiscovering ? (
                                         <DiscoveryProgress phase="contact" variant="dots" />
                                     ) : (
@@ -439,7 +439,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
 
                             {/* SOCIAL TAB: social icons + Google Maps */}
                             {activeTab === 'social' && (
-                                <div className="space-y-3 animate-fade-in relative min-h-[100px]">
+                                <div className="space-y-2 animate-fade-in relative min-h-[60px]">
                                     {isDiscovering ? (
                                         <DiscoveryProgress phase="social" variant="dots" />
                                     ) : (
@@ -553,7 +553,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
 
                             {/* MENU TAB: menu link + delivery platforms */}
                             {activeTab === 'menu' && (
-                                <div className="space-y-3 animate-fade-in relative min-h-[140px]">
+                                <div className="space-y-2 animate-fade-in relative min-h-[60px]">
                                     {isDiscovering ? (
                                         <DiscoveryProgress phase="menu" variant="dots" />
                                     ) : (
@@ -620,7 +620,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
 
                             {/* RIVALS TAB: unchanged */}
                             {activeTab === 'competitors' && (
-                                <div className="space-y-3 animate-fade-in relative min-h-[140px]">
+                                <div className="space-y-2 animate-fade-in relative min-h-[60px]">
                                     {isDiscovering ? (
                                         <DiscoveryProgress phase="competitors" variant="dots" />
                                     ) : profile.competitors?.length ? (

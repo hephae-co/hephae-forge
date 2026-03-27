@@ -1666,9 +1666,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Auth buttons — only on home screen (centered), hidden when chat panel is active */}
-      {isCentered && (
-        <div className="fixed top-4 right-4 z-[100] animate-fade-in">
+      {/* Auth button — always visible in top-right */}
+      <div className="fixed top-4 right-4 z-[100]">
           {user ? (
             <div className="relative">
               <button
@@ -1728,7 +1727,6 @@ export default function Home() {
             </div>
           )}
         </div>
-      )}
 
       {/* LEFT VISUALIZER PANEL - Hidden when centered, fills remaining space when active */}
       <div className={`relative z-10 transition-all duration-500 ease-in-out flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden hidden md:flex' : isChatCollapsed ? 'md:w-[calc(100%-56px)] w-full opacity-100' : `md:w-[55%] w-full opacity-100 ${mobilePanel === 'chat' ? 'hidden md:flex' : 'flex'}`} ${!isCentered ? 'h-full' : ''}`}>

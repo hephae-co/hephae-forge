@@ -36,7 +36,8 @@ vision_intake_agent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     instruction=VISION_INTAKE_INSTRUCTION,
     output_key="parsedMenuItems",
-    output_schema=MenuIntakeOutput,
+    # output_schema removed — response_schema conflicts with multimodal (image) input in ADK
+    # The instruction tells the model to output a JSON array directly
     on_model_error_callback=fallback_on_error,
 )
 
@@ -73,7 +74,8 @@ advisor_agent = LlmAgent(
     model=AgentModels.PRIMARY_MODEL,
     instruction=ADVISOR_INSTRUCTION,
     output_key="strategicAdvice",
-    output_schema=AdvisorOutput,
+    # output_schema removed — the instruction already specifies exact JSON format
+    # Using output_schema conflicts with the full {recommendations, overall_health, headline} shape
     on_model_error_callback=fallback_on_error,
 )
 

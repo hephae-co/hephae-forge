@@ -833,7 +833,11 @@ async def screenshot_page(
             user_agent=_DEFAULT_UA,
         )
         page = await context.new_page()
-        await page.goto(url, wait_until="networkidle", timeout=15000)
+        await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        try:
+            await page.wait_for_load_state("networkidle", timeout=8000)
+        except Exception:
+            pass  # networkidle timeout is ok — DOM is loaded
         await page.wait_for_timeout(int(wait_seconds * 1000))
 
         buf = await page.screenshot(full_page=True, type="jpeg", quality=quality)

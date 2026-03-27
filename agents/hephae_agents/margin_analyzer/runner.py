@@ -29,6 +29,75 @@ from hephae_agents.margin_analyzer.agent import (
 logger = logging.getLogger(__name__)
 
 
+async def _extract_menu_from_html(url: str) -> list[dict]:
+    """
+    Fallback: download a menu URL as HTML and extract items using Gemini text model.
+    Used when the screenshot vision agent returns an empty menu.
+    """
+    import os
+    import httpx
+    from hephae_common.adk_helpers import _strip_markdown_fences
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0 (compatible)"})
+            html = resp.text
+    except Exception as e:
+        logger.warning(f"[HTML Extract] Failed to fetch {url}: {e}")
+        return []
+
+    # Strip scripts/styles and condense whitespace
+    html_clean = re.sub(r"<(script|style)[^>]*>.*?</\1>", "", html, flags=re.DOTALL)
+    html_clean = re.sub(r"<[^>]+>", " ", html_clean)
+    html_clean = re.sub(r"\s+", " ", html_clean).strip()
+
+    # Quick check — if fewer than 3 price patterns, not worth calling LLM
+    if len(re.findall(r"\$\s*\d+\.?\d*", html_clean)) < 3:
+        return []
+
+    # Cap HTML at 8000 chars to stay within context limits
+    html_snippet = html_clean[:8000]
+
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    if not gemini_key:
+        return []
+
+    payload = {
+        "contents": [{
+            "parts": [{
+                "text": (
+                    "Extract all food menu items with prices from the following text (from a restaurant website).\n"
+                    "Return ONLY a JSON array. Each object must have: item_name, current_price (number), category, description.\n"
+                    "Do not include items without a clear price. Output only the JSON array, no markdown.\n\n"
+                    f"{html_snippet}"
+                )
+            }]
+        }],
+        "generationConfig": {"temperature": 0},
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={gemini_key}",
+                json=payload,
+            )
+            data = resp.json()
+            text = data["candidates"][0]["content"]["parts"][0]["text"]
+            clean = _strip_markdown_fences(text)
+            parsed = json.loads(clean)
+            if isinstance(parsed, list):
+                return parsed
+            if isinstance(parsed, dict):
+                for v in parsed.values():
+                    if isinstance(v, list):
+                        return v
+    except Exception as e:
+        logger.warning(f"[HTML Extract] Gemini extraction failed: {e}")
+
+    return []
+
+
 def _parse_json_safe(text: str) -> Any:
     """Parse JSON from agent output, stripping markdown fences if needed."""
     if not text:
@@ -130,10 +199,29 @@ async def run_margin_analysis(
         logger.info(f"[Margin Runner] Raw Vision Output: {menu_items_prompt[:200]}")
         parsed = _parse_json_safe(menu_items_prompt)
         if parsed is not None:
-            menu_items = parsed if isinstance(parsed, list) else []
-            menu_items_prompt = json.dumps(parsed)
+            if isinstance(parsed, list):
+                menu_items = parsed
+            elif isinstance(parsed, dict):
+                # MenuIntakeOutput schema wraps items in {"items": [...]}
+                menu_items = parsed.get("items") or []
+                for key, val in parsed.items():
+                    if isinstance(val, list) and val:
+                        menu_items = val
+                        break
+            menu_items_prompt = json.dumps(menu_items)
     except (json.JSONDecodeError, ValueError):
         logger.warning("Vision parse failed")
+
+    # Fallback: if screenshot vision returned nothing, try HTML text extraction
+    if not menu_items and identity.get("menuUrl"):
+        logger.info("[Margin Runner] Vision returned empty — trying HTML text extraction fallback...")
+        try:
+            menu_items = await _extract_menu_from_html(identity["menuUrl"])
+            if menu_items:
+                menu_items_prompt = json.dumps(menu_items)
+                logger.info(f"[Margin Runner] HTML extraction found {len(menu_items)} items")
+        except Exception as e:
+            logger.warning(f"[Margin Runner] HTML extraction failed: {e}")
 
     if not menu_items:
         raise ValueError("Failed to parse menu items from crawled screenshot.")
@@ -145,13 +233,26 @@ async def run_margin_analysis(
         # 2 & 3. Benchmarker + Commodity Watchdog via ADK ParallelAgent
         logger.info("[Margin Runner] Steps 2+3: Benchmarker || CommodityWatchdog (Advanced Mode)...")
 
+        # Extract competitor names from identity so benchmarker can search for real prices
+        competitors_raw = identity.get("competitors") or []
+        if isinstance(competitors_raw, list):
+            competitor_names = [
+                c.get("name", "") if isinstance(c, dict) else str(c)
+                for c in competitors_raw
+                if c
+            ]
+        else:
+            competitor_names = []
+
         bc_runner = Runner(app_name="hephae-hub", agent=benchmark_and_commodity, session_service=session_service, memory_service=memory_service)
         async for _ in bc_runner.run_async(
             user_id=user_id,
             session_id=session_id,
             new_message=user_msg(
-                f"Here are the parsed menu items for {identity.get('name')} "
-                f"in {identity.get('address', 'their local area')}:\n{menu_items_prompt}"
+                f"Restaurant: {identity.get('name')}\n"
+                f"Location: {identity.get('address', 'their local area')}\n"
+                f"Known competitors: {', '.join(competitor_names) if competitor_names else 'none provided'}\n\n"
+                f"Parsed menu items:\n{menu_items_prompt}"
             ),
         ):
             pass
@@ -166,33 +267,48 @@ async def run_margin_analysis(
         commodity_prompt = cv if isinstance(cv, str) else json.dumps(cv)
 
     else:
-        logger.info("[Margin Runner] Fast Mode: Bypassing Benchmarker and Watchdog LLMs.")
-        benchmark_prompt = json.dumps(
-            {
-                "competitors": [
-                    {
-                        "competitor_name": "Local Average (Estimate)",
-                        "item_match": item.get("item_name", ""),
-                        "price": round((item.get("current_price", 0) or 0) * 1.05, 2),
-                        "source_url": "",
-                        "distance_miles": 1.0,
-                    }
-                    for item in menu_items
-                ],
-                "macroeconomic_context": {
-                    "analysis_hint": "Standard estimation mode enabled. Assume moderate inflation."
-                },
-            }
+        logger.info("[Margin Runner] Fast Mode: Using cuisine-aware estimates + commodity data.")
+        from hephae_agents.margin_analyzer.tools import _estimate_cuisine_medians, _infer_commodities_from_terms
+        import asyncio
+
+        item_names = [item.get("item_name", "") for item in menu_items]
+        cuisine_benchmarks = _estimate_cuisine_medians(
+            identity.get("address", "New Jersey"), item_names
         )
-        commodity_prompt = json.dumps(
-            [
-                {
-                    "ingredient": "GENERAL",
-                    "inflation_rate_12mo": 3.2,
-                    "trend_description": "Standard national food-at-home inflation estimate.",
-                }
-            ]
+        benchmark_prompt = json.dumps({
+            "competitors": cuisine_benchmarks,
+            "macroeconomic_context": {
+                "analysis_hint": "Cuisine-aware area estimates. Accuracy: medium.",
+            },
+        })
+
+        # Still run real commodity data even in fast mode
+        commodity_set = _infer_commodities_from_terms(
+            item_names + [item.get("category", "") for item in menu_items]
         )
+        commodity_results = []
+        from hephae_agents.market_data import fetch_commodity_prices
+        for comm in list(commodity_set)[:6]:  # cap at 6 to stay fast
+            try:
+                data = await fetch_commodity_prices(comm)
+                if data and data.get("commodity"):
+                    trend_str = data.get("trend30Day", "0%")
+                    import re as _re
+                    inflation_val = float(_re.sub(r"[^0-9.\-]", "", trend_str) or "2.4")
+                    commodity_results.append({
+                        "ingredient": data["commodity"].upper(),
+                        "inflation_rate_12mo": inflation_val,
+                        "trend_description": (
+                            f"BLS Retail Price: {data.get('pricePerUnit')}. "
+                            f"Trend: {data.get('trend30Day')}."
+                        ),
+                    })
+            except Exception:
+                pass
+        if not commodity_results:
+            commodity_results = [{"ingredient": "GENERAL", "inflation_rate_12mo": 3.2,
+                                   "trend_description": "National food-at-home inflation estimate."}]
+        commodity_prompt = json.dumps(commodity_results)
 
     # 4. Surgeon
     logger.info("[Margin Runner] Step 4: The Surgeon...")
@@ -238,7 +354,7 @@ async def run_margin_analysis(
     # 5. Advisor
     logger.info("[Margin Runner] Step 5: The Advisor...")
     advisor_runner = Runner(app_name="hephae-hub", agent=advisor_agent, session_service=session_service, memory_service=memory_service)
-    strategic_advice: list = []
+    strategic_advice: dict = {}
 
     async for raw_event in advisor_runner.run_async(
         user_id=user_id,
@@ -252,9 +368,11 @@ async def run_margin_analysis(
                 val = delta["strategicAdvice"]
                 raw_adv = val if isinstance(val, str) else json.dumps(val)
                 try:
-                    strategic_advice = _parse_json_safe(raw_adv)
-                    if not isinstance(strategic_advice, list):
-                        strategic_advice = []
+                    parsed_adv = _parse_json_safe(raw_adv)
+                    if isinstance(parsed_adv, dict):
+                        strategic_advice = parsed_adv
+                    elif isinstance(parsed_adv, list):
+                        strategic_advice = {"recommendations": parsed_adv}
                 except (json.JSONDecodeError, ValueError):
                     pass
 

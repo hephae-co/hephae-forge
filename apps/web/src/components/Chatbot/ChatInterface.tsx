@@ -32,6 +32,9 @@ interface ChatInterfaceProps {
     onToggleCollapse?: () => void;
     addMyAreaCity?: string | null;
     onAddMyArea?: () => void;
+    authUser?: { displayName?: string | null; email?: string | null; photoURL?: string | null } | null;
+    onSignIn?: () => void;
+    onSignOut?: () => void;
 }
 
 // Skip autocomplete for inputs that are clearly chat messages
@@ -116,9 +119,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     onToggleCollapse,
     addMyAreaCity = null,
     onAddMyArea,
+    authUser = null,
+    onSignIn,
+    onSignOut,
 }) => {
     const [input, setInput] = useState('');
     const [isExplainerOpen, setIsExplainerOpen] = useState(false);
+    const [showAuthMenu, setShowAuthMenu] = useState(false);
     const [quoteIndex, setQuoteIndex] = useState(0);
     const [quoteVisible, setQuoteVisible] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -333,9 +340,54 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         <HephaeLogo size="sm" variant="white" />
                         <p className="text-[10px] text-white/40 font-semibold tracking-wider uppercase hidden md:block">The Hephae Forge</p>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)] animate-pulse"></div>
-                        <span className="text-[10px] text-white/40 font-medium">Live</span>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)] animate-pulse"></div>
+                            <span className="text-[10px] text-white/40 font-medium">Live</span>
+                        </div>
+                        {/* Auth indicator in header */}
+                        {authUser ? (
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowAuthMenu(v => !v)}
+                                    className="flex items-center gap-1.5 pl-1.5 pr-2 py-1 rounded-full bg-white/8 hover:bg-white/15 border border-white/10 transition-all"
+                                >
+                                    {authUser.photoURL ? (
+                                        <img src={authUser.photoURL} alt="" className="w-5 h-5 rounded-full" referrerPolicy="no-referrer" />
+                                    ) : (
+                                        <div className="w-5 h-5 rounded-full bg-indigo-500/40 flex items-center justify-center">
+                                            <span className="text-[9px] font-bold text-indigo-200">{authUser.displayName?.[0] || authUser.email?.[0] || '?'}</span>
+                                        </div>
+                                    )}
+                                    <span className="text-[10px] text-white/60 hidden sm:block max-w-[80px] truncate">{authUser.displayName || authUser.email?.split('@')[0]}</span>
+                                </button>
+                                {showAuthMenu && (
+                                    <>
+                                        <div className="fixed inset-0 z-[49]" onClick={() => setShowAuthMenu(false)} />
+                                        <div className="absolute right-0 top-full mt-1.5 w-44 bg-slate-800 rounded-xl shadow-xl border border-white/10 py-1 z-50">
+                                            <div className="px-3 py-1.5 border-b border-white/8">
+                                                <p className="text-xs font-medium text-white/80 truncate">{authUser.displayName}</p>
+                                                <p className="text-[10px] text-white/40 truncate">{authUser.email}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => { setShowAuthMenu(false); onSignOut?.(); }}
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/60 hover:text-white hover:bg-white/8 transition-colors"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                                Sign out
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        ) : (
+                            <button
+                                onClick={onSignIn}
+                                className="px-2.5 py-1 rounded-full bg-indigo-500/20 hover:bg-indigo-500/35 border border-indigo-400/20 text-[10px] font-semibold text-indigo-300 transition-all"
+                            >
+                                Sign in
+                            </button>
+                        )}
                     </div>
                 </div>
             )}

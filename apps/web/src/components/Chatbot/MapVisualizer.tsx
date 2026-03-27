@@ -242,8 +242,8 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                 tabIndex={-1}
             ></iframe>
 
-            {/* CONTROLS (Right Side) */}
-            <div className="absolute bottom-20 right-6 z-30 flex flex-col items-center gap-4">
+            {/* CONTROLS (Top-Right — above card, away from intelligence overlay) */}
+            <div className="absolute top-3 right-3 z-30 flex flex-col items-center gap-2">
                 <button
                     onClick={() => setResetKey(p => p + 1)}
                     className="w-10 h-10 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center font-bold shadow-lg border border-indigo-400/50"
@@ -788,7 +788,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                                     </div>
 
                                     {/* Text */}
-                                    <p className={`text-xs text-white/85 leading-relaxed px-3 pb-2 ${carouselExpanded ? '' : 'line-clamp-2'}`}>
+                                    <p className={`text-xs text-white/85 leading-relaxed px-3 pb-2 ${carouselExpanded ? '' : 'line-clamp-3'}`}>
                                         {item?.text}
                                     </p>
 

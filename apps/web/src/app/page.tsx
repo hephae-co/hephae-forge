@@ -1666,8 +1666,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Auth button — always visible in top-right */}
-      <div className="fixed top-4 right-4 z-[100]">
+      {/* Auth button — only shown centered (home screen); when chat active it lives in the ChatInterface header */}
+      <div className={`fixed top-4 right-4 z-[100] transition-all duration-300 ${isCentered ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
           {user ? (
             <div className="relative">
               <button
@@ -1891,6 +1891,9 @@ export default function Home() {
           onToggleCollapse={() => setIsChatCollapsed(v => !v)}
           addMyAreaCity={addMyAreaCity}
           onAddMyArea={submitUltralocalInterest}
+          authUser={user}
+          onSignIn={signInWithGoogle}
+          onSignOut={signOut}
         />
       </div>
 

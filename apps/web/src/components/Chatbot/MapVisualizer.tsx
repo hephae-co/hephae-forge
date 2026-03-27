@@ -231,7 +231,8 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
         <div className="relative flex flex-col w-full h-full bg-slate-900 overflow-hidden">
 
             {/* ── MINI MAP (fixed height) ───────────────────────────────────── */}
-            <div className="relative flex-shrink-0 h-44 bg-slate-800 overflow-hidden">
+            <div className="flex-shrink-0 px-3 pt-3 pb-1">
+            <div className="relative h-52 bg-slate-800 overflow-hidden rounded-2xl border border-white/10 shadow-xl">
                 <iframe
                     key={`${resetKey}-${zoomLevel}`}
                     className="w-full h-full transition-all duration-500 pointer-events-auto"
@@ -269,6 +270,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                         <button onClick={() => handleZoom(-1)} className="bg-white text-gray-700 w-7 h-7 rounded-b-md shadow hover:bg-gray-100 font-bold flex items-center justify-center text-sm">−</button>
                     </div>
                 </div>
+            </div>
             </div>
 
             {/* ── SCROLLABLE CONTENT PANEL ─────────────────────────────────── */}

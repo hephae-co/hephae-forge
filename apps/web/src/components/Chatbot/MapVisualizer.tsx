@@ -843,13 +843,6 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                             );
                         })()}
 
-                        {/* ── CTA Actions ──────────────────────────────────── */}
-                        {ctaSlot && (
-                            <div className="flex flex-wrap gap-2">
-                                {ctaSlot}
-                            </div>
-                        )}
-
                         {/* ── Stat pills + sources icon ─────────────────────── */}
                         <div className="flex items-center justify-between gap-2">
                             <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
@@ -886,6 +879,13 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                         </div>
 
                     </div>
+            )}
+
+            {/* ── CTA Actions — pinned at bottom, separated from business data ── */}
+            {ctaSlot && !isDiscovering && (
+                <div className="flex-shrink-0 border-t border-white/8 bg-slate-950/60 px-3 py-3 flex flex-wrap gap-2">
+                    {ctaSlot}
+                </div>
             )}
 
             </div>{/* end scrollable content panel */}

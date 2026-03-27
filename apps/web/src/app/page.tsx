@@ -109,6 +109,9 @@ export default function Home() {
   // Menu URL prompt: when margin analysis can't find a menu, we ask the user
   const [awaitingMenuUrl, setAwaitingMenuUrl] = useState(false);
 
+  // Ultralocal coverage CTA card state
+  const [addMyAreaCity, setAddMyAreaCity] = useState<string | null>(null);
+
   // Profile building mode: guided Q&A after sign-in
   const [isProfileBuilding, setIsProfileBuilding] = useState(false);
   const [profileSessionId, setProfileSessionId] = useState<string | null>(null);
@@ -255,24 +258,10 @@ export default function Home() {
       return;
     }
 
-    // Intercept: ultralocal coverage interest — "yes, add my area"
+    // Intercept: ultralocal coverage interest — "yes, add my area" (text path kept for fallback)
     if (/yes.*add.*area|add.*area|yes.*ultralocal|request.*coverage|cover.*my.*area/i.test(text.trim()) && locatedBusiness) {
       setMessages(prev => [...prev, msg('user', text)]);
-      const zipCode = (locatedBusiness as any).zipCode;
-      if (zipCode) {
-        try {
-          const res = await apiFetch('/api/pulse/zipcode-interest', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ zipCode, businessType: (locatedBusiness as any).businessType }),
-          });
-          const data = await res.json();
-          setMessages(prev => [...prev, msg('model',
-            `✅ Done! **${data.city || zipCode}** has been added to our coverage roadmap. We'll reach out once weekly pulse data is live for your neighborhood.`
-          )]);
-        } catch {
-          setMessages(prev => [...prev, msg('model', `Got it — I've noted your interest in ultralocal coverage for your area.`)]);
-        }
-      }
+      await submitUltralocalInterest();
       return;
     }
 
@@ -434,6 +423,25 @@ export default function Home() {
     }
   };
 
+  const submitUltralocalInterest = async () => {
+    const zipCode = (locatedBusiness as any)?.zipCode;
+    setAddMyAreaCity(null);
+    if (zipCode) {
+      try {
+        const res = await apiFetch('/api/pulse/zipcode-interest', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zipCode, businessType: (locatedBusiness as any)?.businessType }),
+        });
+        const data = await res.json();
+        setMessages(prev => [...prev, msg('model',
+          `✅ Done! **${data.city || zipCode}** has been added to our coverage roadmap. We'll reach out once weekly pulse data is live for your neighborhood.`
+        )]);
+      } catch {
+        setMessages(prev => [...prev, msg('model', `Got it — noted your interest in ultralocal coverage for your area.`)]);
+      }
+    }
+  };
+
   const triggerBusinessOverview = async (identity: BaseIdentity, coverage?: { ultralocal: boolean; zipCode?: string; coverageCity?: string | null }) => {
     setIsDiscovering(true);
     setActiveCapability("discovery");
@@ -522,8 +530,9 @@ export default function Home() {
         if (coverage && !coverage.ultralocal && dashCoverage !== 'ultralocal') {
           const cityLabel = coverage.coverageCity || coverage.zipCode || 'your area';
           setMessages(prev => [...prev, msg('model',
-            `📍 **${cityLabel} doesn't have hyperlocal weekly coverage yet.** Right now you're seeing national industry data. Want Hephae to add **${cityLabel}** to the ultralocal network for neighborhood-level intelligence every week?\n\nType **"yes, add my area"** and I'll put it on our list.`
+            `📍 **${cityLabel}** doesn't have hyperlocal weekly coverage yet. Right now you're seeing national industry data.`
           )]);
+          setAddMyAreaCity(cityLabel);
         }
       } else {
         console.error("Overview returned", res.status);
@@ -1828,6 +1837,7 @@ export default function Home() {
             setCompetitiveReportUrl(null);
             setMarketingReportUrl(null);
             setIsChatCollapsed(false);
+            setAddMyAreaCity(null);
           }}
           capabilities={capabilities}
           onSelectCapability={handleSelectCapability}
@@ -1836,6 +1846,8 @@ export default function Home() {
           followUpChips={dynamicChips}
           isCollapsed={isChatCollapsed}
           onToggleCollapse={() => setIsChatCollapsed(v => !v)}
+          addMyAreaCity={addMyAreaCity}
+          onAddMyArea={submitUltralocalInterest}
         />
       </div>
 

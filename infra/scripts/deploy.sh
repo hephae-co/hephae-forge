@@ -365,6 +365,30 @@ if [ -n "$CRON_SECRET_VAL" ] && [ -n "$API_URL" ]; then
     echo "  ✓ Created scheduler: ${INDUSTRY_PULSE_JOB} (${INDUSTRY_PULSE_SCHEDULE})"
   fi
 
+  # --- Reference Harvest Cron (Friday 6am ET) ---
+  REF_HARVEST_JOB="reference-harvest-cron"
+  REF_HARVEST_SCHEDULE="0 6 * * 5"
+  REF_HARVEST_FLAGS=(
+    --schedule "$REF_HARVEST_SCHEDULE"
+    --time-zone "America/New_York"
+    --location "$REGION"
+    --project "$PROJECT_ID"
+    --uri "${API_URL}/api/cron/reference-harvest"
+    --http-method GET
+    --oidc-service-account-email "$SERVICE_ACCOUNT"
+    --attempt-deadline "30m"
+  )
+  if gcloud scheduler jobs describe "$REF_HARVEST_JOB" \
+      --location "$REGION" --project "$PROJECT_ID" &>/dev/null; then
+    gcloud scheduler jobs update http "$REF_HARVEST_JOB" "${REF_HARVEST_FLAGS[@]}" \
+      --update-headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}" --quiet
+    echo "  ✓ Updated scheduler: ${REF_HARVEST_JOB} (${REF_HARVEST_SCHEDULE})"
+  else
+    gcloud scheduler jobs create http "$REF_HARVEST_JOB" "${REF_HARVEST_FLAGS[@]}" \
+      --headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}"
+    echo "  ✓ Created scheduler: ${REF_HARVEST_JOB} (${REF_HARVEST_SCHEDULE})"
+  fi
+
   # --- AI Tool Discovery Cron (Tuesday 7am ET) ---
   AI_TOOL_JOB="ai-tool-discovery-cron"
   AI_TOOL_SCHEDULE="0 7 * * 2"

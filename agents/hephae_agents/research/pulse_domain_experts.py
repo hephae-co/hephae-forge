@@ -102,6 +102,19 @@ def _economist_instruction(ctx) -> str:
     economist_context = industry_cfg.get("economistContext", "")
     context_line = f"\n\nINDUSTRY FOCUS: {economist_context}" if economist_context else ""
 
+    # Inject external research references if available
+    ext_refs = state.get("externalReferences", [])
+    ref_block = ""
+    if ext_refs:
+        ref_lines = []
+        for ref in ext_refs[:4]:
+            title = ref.get("title", "")
+            source = ref.get("source", "")
+            stats = ref.get("key_stats", [])
+            stat_str = f": {'; '.join(stats[:2])}" if stats else ""
+            ref_lines.append(f"  - [{source}] {title}{stat_str}")
+        ref_block = "\n\nEXTERNAL RESEARCH (cite where relevant):\n" + "\n".join(ref_lines)
+
     return f"""You are a Local Business Economist analyzing {business_type} in zip {zip_code}.
 
 Review these economic and demographic signals and produce a macro report covering:
@@ -116,6 +129,7 @@ Current date: {datetime.now().strftime('%Y-%m-%d')}
 
 ECONOMIC SIGNALS:
 {signal_text}
+{ref_block}
 
 Write a structured macro report (3-5 paragraphs). Cite specific numbers.
 Do NOT make up data — if a source is missing, skip that section."""

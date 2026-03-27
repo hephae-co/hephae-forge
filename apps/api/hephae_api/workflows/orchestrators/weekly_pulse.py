@@ -97,6 +97,15 @@ async def generate_pulse(
     # 2. Load pulse history for longitudinal context
     history = await get_pulse_history(zip_code, business_type, limit=12)
 
+    # 2b. Load external research references for economist context
+    external_references: list[dict] = []
+    try:
+        from hephae_db.firestore.research_references import get_references_for_blog
+        ref_topics = ["restaurant_industry_trends", "restaurant_food_cost", "commodity_inflation", "small_business_margins"]
+        external_references = await get_references_for_blog(ref_topics, limit=4)
+    except Exception:
+        pass  # Non-critical — pulse runs fine without references
+
     # 3. Build initial session state
     initial_state = {
         "zipCode": zip_code,
@@ -112,6 +121,7 @@ async def generate_pulse(
         "pulseHistoryInsights": [
             p.get("pulse", {}).get("insights", []) for p in history
         ],
+        "externalReferences": external_references,
     }
 
     # 4. Run ADK agent tree

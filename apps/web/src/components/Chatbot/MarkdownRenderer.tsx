@@ -5,73 +5,141 @@ interface MarkdownRendererProps {
 }
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
-    // Simple regex-based parser for basic markdown
     const parseMarkdown = (text: string) => {
         const lines = text.split('\n');
-        let inList = false;
         const elements: React.ReactNode[] = [];
+        let listItems: React.ReactNode[] = [];
+
+        const flushList = (key: string) => {
+            if (listItems.length) {
+                elements.push(
+                    <ul key={key} className="list-none pl-0 space-y-1 mb-3">
+                        {listItems}
+                    </ul>
+                );
+                listItems = [];
+            }
+        };
 
         lines.forEach((line, index) => {
-            // Headers
-            if (line.startsWith('### ')) {
-                elements.push(<h3 key={index} className="text-md font-bold text-gray-800 mt-3 mb-1">{parseInline(line.replace('### ', ''))}</h3>);
-                return;
-            }
+            // H2
             if (line.startsWith('## ')) {
-                elements.push(<h2 key={index} className="text-lg font-bold text-gray-900 mt-4 mb-2">{parseInline(line.replace('## ', ''))}</h2>);
+                flushList(`fl-${index}`);
+                elements.push(
+                    <h2 key={index} className="text-base font-bold text-gray-900 mt-4 mb-1.5 tracking-tight">
+                        {parseInline(line.slice(3))}
+                    </h2>
+                );
                 return;
             }
-            if (line.startsWith('**') && line.endsWith('**')) {
-                elements.push(<p key={index} className="font-bold text-gray-800 mt-2 mb-1">{parseInline(line.replace(/\*\*/g, ''))}</p>);
+            // H3
+            if (line.startsWith('### ')) {
+                flushList(`fl-${index}`);
+                elements.push(
+                    <h3 key={index} className="text-sm font-semibold text-gray-800 mt-3 mb-1">
+                        {parseInline(line.slice(4))}
+                    </h3>
+                );
                 return;
             }
-
-            // Lists
-            if (line.trim().startsWith('* ') || line.trim().startsWith('- ')) {
-                const content = line.trim().substring(2);
-                if (!inList) {
-                    inList = true;
-                    elements.push(
-                        <ul key={`list-${index}`} className="list-disc pl-5 space-y-1 mb-2 text-gray-700">
-                            <li key={index}>{parseInline(content)}</li>
-                        </ul>
-                    );
-                } else {
-                    const lastElement = elements[elements.length - 1] as React.ReactElement;
-                    if (lastElement && lastElement.type === 'ul') {
-                        elements.push(
-                            <ul key={`list-sub-${index}`} className="list-disc pl-5 space-y-1 text-gray-700">
-                                <li key={index}>{parseInline(content)}</li>
-                            </ul>
-                        );
-                    }
-                }
+            // Standalone bold line
+            if (/^\*\*[^*]+\*\*$/.test(line.trim())) {
+                flushList(`fl-${index}`);
+                elements.push(
+                    <p key={index} className="font-semibold text-gray-900 mt-2 mb-0.5 text-sm">
+                        {line.trim().slice(2, -2)}
+                    </p>
+                );
                 return;
             }
-            inList = false;
-
-            // Paragraphs
+            // Horizontal rule
+            if (line.trim() === '---') {
+                flushList(`fl-${index}`);
+                elements.push(<hr key={index} className="border-gray-100 my-3" />);
+                return;
+            }
+            // List items (• or * or -)
+            if (/^[•*-] /.test(line.trim())) {
+                const itemContent = line.trim().slice(2);
+                listItems.push(
+                    <li key={index} className="flex items-start gap-2 text-sm text-gray-700 leading-relaxed">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0" />
+                        <span>{parseInline(itemContent)}</span>
+                    </li>
+                );
+                return;
+            }
+            // Empty line
             if (line.trim() === '') {
-                elements.push(<div key={index} className="h-2"></div>);
-            } else {
-                elements.push(<p key={index} className="text-gray-700 mb-1 leading-relaxed">{parseInline(line)}</p>);
+                flushList(`fl-${index}`);
+                elements.push(<div key={index} className="h-1.5" />);
+                return;
             }
+            // Paragraph
+            flushList(`fl-${index}`);
+            elements.push(
+                <p key={index} className="text-sm text-gray-700 leading-relaxed mb-1">
+                    {parseInline(line)}
+                </p>
+            );
         });
 
+        flushList('final');
         return elements;
     };
 
-    const parseInline = (text: string) => {
-        const parts = text.split(/(\*\*.*?\*\*)/g);
-        return parts.map((part, i) => {
-            if (part.startsWith('**') && part.endsWith('**')) {
-                return <strong key={i} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>;
+    const parseInline = (text: string): React.ReactNode[] => {
+        // Split on links [text](url), bold **text**, italic *text*, and inline code `text`
+        const pattern = /(\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`)/g;
+        const nodes: React.ReactNode[] = [];
+        let last = 0;
+        let match: RegExpExecArray | null;
+
+        while ((match = pattern.exec(text)) !== null) {
+            // Push preceding plain text
+            if (match.index > last) {
+                nodes.push(text.slice(last, match.index));
             }
-            return part;
-        });
+            const full = match[0];
+            if (full.startsWith('[')) {
+                // Link
+                nodes.push(
+                    <a
+                        key={match.index}
+                        href={match[3]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 font-medium hover:text-indigo-800 hover:underline underline-offset-2 transition-colors"
+                    >
+                        {match[2]}
+                    </a>
+                );
+            } else if (full.startsWith('**')) {
+                nodes.push(
+                    <strong key={match.index} className="font-semibold text-gray-900">
+                        {match[4]}
+                    </strong>
+                );
+            } else if (full.startsWith('*')) {
+                nodes.push(
+                    <em key={match.index} className="italic text-gray-600">
+                        {match[5]}
+                    </em>
+                );
+            } else if (full.startsWith('`')) {
+                nodes.push(
+                    <code key={match.index} className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        {match[6]}
+                    </code>
+                );
+            }
+            last = match.index + full.length;
+        }
+        if (last < text.length) nodes.push(text.slice(last));
+        return nodes;
     };
 
-    return <div className="text-sm">{parseMarkdown(content)}</div>;
+    return <div className="text-sm space-y-0">{parseMarkdown(content)}</div>;
 };
 
 export default MarkdownRenderer;

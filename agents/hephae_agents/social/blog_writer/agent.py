@@ -156,6 +156,7 @@ def _build_data_context(
     latest_outputs: dict[str, Any] | None = None,
     pulse_data: dict[str, Any] | None = None,
     industry_pulse: dict[str, Any] | None = None,
+    external_references: list[dict[str, Any]] | None = None,
 ) -> str:
     """Build data context from any combination of sources."""
     parts = [f"Subject: {subject}"]
@@ -233,6 +234,22 @@ def _build_data_context(
                     if data.get(field) is not None:
                         parts.append(f"  {field}: {data[field]}")
 
+    # External research references (from research_references collection)
+    if external_references:
+        parts.append("\n## External Research References")
+        parts.append("Cite these authoritative sources where relevant. Use their titles and URLs inline.")
+        for ref in external_references[:6]:
+            title = ref.get("title", "")
+            url = ref.get("url", "")
+            source = ref.get("source", "")
+            stats = ref.get("key_stats", [])
+            summary = ref.get("summary", "")
+            stat_str = f" — Key stats: {'; '.join(stats[:2])}" if stats else ""
+            summary_str = f" — {summary}" if summary else ""
+            parts.append(f"  - [{source}] \"{title}\"{stat_str}{summary_str}")
+            if url:
+                parts.append(f"    URL: {url}")
+
     return "\n".join(parts)
 
 
@@ -280,8 +297,33 @@ async def generate_blog_post(
         }
     """
     session_service = InMemorySessionService()
+
+    # Fetch relevant external research references
+    external_references: list[dict[str, Any]] = []
+    try:
+        from hephae_db.firestore.research_references import get_references_for_blog
+        # Determine topics from available data
+        topics: list[str] = []
+        if industry_pulse:
+            industry_key = industry_pulse.get("industryKey", "")
+            if "restaurant" in industry_key or "food" in industry_key:
+                topics = ["restaurant_food_cost", "commodity_inflation", "restaurant_industry_trends", "small_business_margins"]
+            elif "bakery" in industry_key:
+                topics = ["restaurant_food_cost", "commodity_inflation", "small_business_margins"]
+            else:
+                topics = ["restaurant_industry_trends", "small_business_margins"]
+        elif pulse_data:
+            topics = ["restaurant_industry_trends", "restaurant_food_cost", "small_business_margins"]
+        else:
+            topics = ["restaurant_industry_trends", "small_business_margins"]
+        external_references = await get_references_for_blog(topics, limit=6)
+        if external_references:
+            logger.info(f"[BlogWriter] Loaded {len(external_references)} external references")
+    except Exception as e:
+        logger.debug(f"[BlogWriter] External references unavailable: {e}")
+
     data_context = _build_data_context(
-        business_name, latest_outputs, pulse_data, industry_pulse,
+        business_name, latest_outputs, pulse_data, industry_pulse, external_references,
     )
 
     logger.info(f"[BlogWriter] Starting pipeline for {business_name}")

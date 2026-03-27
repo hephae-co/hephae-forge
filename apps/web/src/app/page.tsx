@@ -1545,7 +1545,7 @@ export default function Home() {
       hasSeoReport: !!seoReport,
       hasCompetitiveReport: !!competitiveReport,
       hasSocialAuditReport: !!socialAuditReport,
-      hasCapabilities: capabilities.length > 0,
+      hasCapabilities: !!locatedBusiness,
     });
   }, [isCentered, isDiscovering, isTyping, locatedBusiness, report, seoReport, forecast, competitiveReport, socialAuditReport, capabilities]);
 
@@ -1648,7 +1648,7 @@ export default function Home() {
             )}
 
             {!isDiscovering && !isTyping && (
-              <div className="absolute bottom-6 left-4 right-4 z-50 animate-fade-in-up pointer-events-auto flex flex-col items-center gap-2">
+              <div className="absolute bottom-32 left-4 right-4 z-50 animate-fade-in-up pointer-events-auto flex flex-col items-center gap-2">
                 {/* TODO: Capability icons for logged-in users — moved to CapabilityBar component */}
 
                 {/* CTAs — always prominent */}

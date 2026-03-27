@@ -5,6 +5,35 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BaseIdentity, EnrichedProfile, SocialPlatformMetrics } from '@/types/api';
 import DiscoveryProgress from './DiscoveryProgress';
 
+// Categories that are clearly unrelated to food/restaurant businesses
+const UNRELATED_FOOD_CATEGORIES = new Set([
+    'supermarket', 'grocery', 'convenience', 'pharmacy', 'drug_store',
+    'bank', 'atm', 'gas_station', 'fuel', 'car_wash', 'car_repair',
+    'hardware', 'electronics', 'clothing', 'beauty_salon', 'hair_care',
+    'gym', 'fitness', 'school', 'hospital', 'dentist', 'doctor',
+    'hotel', 'lodging', 'real_estate', 'insurance', 'lawyer',
+]);
+
+function filterRelevantCompetitors(
+    competitors: DashboardData['competitors'],
+    businessType?: string,
+): DashboardData['competitors'] {
+    if (!competitors?.length) return competitors;
+    const lowerType = (businessType || '').toLowerCase();
+    const isFoodBiz = lowerType.includes('restaurant') || lowerType.includes('cafe') ||
+        lowerType.includes('bakery') || lowerType.includes('bar') || lowerType.includes('diner') ||
+        lowerType.includes('pizza') || lowerType.includes('grill') || lowerType.includes('food') ||
+        lowerType.includes('bistro') || lowerType.includes('steakhouse') || lowerType.includes('steak') ||
+        lowerType.includes('sushi') || lowerType.includes('coffee');
+
+    if (!isFoodBiz) return competitors;
+
+    return competitors.filter(c => {
+        const cat = (c.cuisine || c.category || '').toLowerCase();
+        return !UNRELATED_FOOD_CATEGORIES.has(cat);
+    });
+}
+
 interface DashboardData {
     businessLocation?: { lat: number; lng: number } | null;
     competitors?: { name: string; category: string; cuisine: string; distanceM: number; lat?: number; lng?: number }[];
@@ -33,6 +62,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
     const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
     const [logoError, setLogoError] = useState(false);
     const [profileCollapsed, setProfileCollapsed] = useState(false);
+    const [carouselIdx, setCarouselIdx] = useState(0);
 
     const getUrl = () => {
         // Google Maps embed — no API key needed for this format, avoids 403 referrer issues
@@ -92,13 +122,38 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
     ];
     const TABS = ALL_TABS.filter(t => t.hasData);
 
-    // Auto-select first available tab when enrichment completes
+    // Auto-select overview when enrichment completes (if overview has data)
     useEffect(() => {
-        if (!isDiscovering && TABS.length && !TABS.find(t => t.id === activeTab)) {
-            setActiveTab(TABS[0].id);
+        if (!isDiscovering) {
+            if (hasOverview) {
+                setActiveTab('overview');
+            } else if (TABS.length && !TABS.find(t => t.id === activeTab)) {
+                setActiveTab(TABS[0].id);
+            }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDiscovering]);
+
+    // Build carousel items from dashboard data
+    const carouselItems: { label: string; text: string }[] = [];
+    if (dashboard) {
+        if (dashboard.pulseHeadline) carouselItems.push({ label: 'This Week', text: dashboard.pulseHeadline });
+        (dashboard.topInsights || []).slice(0, 2).forEach(i =>
+            carouselItems.push({ label: 'Intelligence', text: `${i.title} — ${i.recommendation}` })
+        );
+        (dashboard.events || []).slice(0, 2).forEach(e =>
+            carouselItems.push({ label: 'Local Event', text: e.what + (e.when ? ` · ${e.when}` : '') })
+        );
+        if (dashboard.communityBuzz) carouselItems.push({ label: 'Community', text: dashboard.communityBuzz });
+    }
+
+    // Auto-advance carousel every 5 seconds
+    useEffect(() => {
+        if (carouselItems.length <= 1) return;
+        const timer = setInterval(() => setCarouselIdx(i => (i + 1) % carouselItems.length), 5000);
+        return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [carouselItems.length]);
 
     return (
         <div className="relative w-full h-full bg-slate-800 overflow-hidden group">
@@ -624,35 +679,50 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                             ) : null}
                         </div>
 
-                        {/* Competitors strip */}
-                        {dashboard.competitors && dashboard.competitors.length > 0 && (
-                            <div className="mb-3">
-                                <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Nearby Competitors</span>
-                                <div className="flex gap-2 mt-1.5 overflow-x-auto pb-1 scrollbar-hide">
-                                    {dashboard.competitors.slice(0, 6).map((c, i) => (
-                                        <div key={i} className="flex-shrink-0 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm">
-                                            <div className="text-xs font-semibold text-white/90 whitespace-nowrap">{c.name}</div>
-                                            <div className="text-[10px] text-white/50">{c.cuisine || c.category} &middot; {c.distanceM}m</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Local buzz from pulse */}
-                        {dashboard.pulseHeadline && (
-                            <div className="px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-400/20 backdrop-blur-sm">
-                                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">This Week</span>
-                                <p className="text-xs text-white/80 mt-0.5 leading-relaxed">{dashboard.pulseHeadline}</p>
-                                {dashboard.events && dashboard.events.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                        {dashboard.events.slice(0, 3).map((ev, i) => (
-                                            <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/60 border border-white/10">
-                                                {ev.what}
-                                            </span>
+                        {/* Competitors strip — filtered to relevant businesses */}
+                        {(() => {
+                            const filtered = filterRelevantCompetitors(dashboard.competitors, (business as any)?.businessType || businessName);
+                            if (!filtered?.length) return null;
+                            return (
+                                <div className="mb-3">
+                                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Nearby Competitors</span>
+                                    <div className="flex gap-2 mt-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                                        {filtered.slice(0, 6).map((c, i) => (
+                                            <div key={i} className="flex-shrink-0 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm">
+                                                <div className="text-xs font-semibold text-white/90 whitespace-nowrap">{c.name}</div>
+                                                <div className="text-[10px] text-white/50">{c.cuisine || c.category} &middot; {c.distanceM}m</div>
+                                            </div>
                                         ))}
                                     </div>
-                                )}
+                                </div>
+                            );
+                        })()}
+
+                        {/* Rotating carousel — pulse headline, insights, events, buzz */}
+                        {carouselItems.length > 0 && (
+                            <div
+                                className="px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-400/20 backdrop-blur-sm cursor-pointer select-none"
+                                onClick={() => setCarouselIdx(i => (i + 1) % carouselItems.length)}
+                                title="Click to see next update"
+                            >
+                                <div className="flex items-center justify-between mb-0.5">
+                                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">
+                                        {carouselItems[carouselIdx]?.label}
+                                    </span>
+                                    {carouselItems.length > 1 && (
+                                        <div className="flex gap-0.5">
+                                            {carouselItems.map((_, i) => (
+                                                <span
+                                                    key={i}
+                                                    className={`w-1 h-1 rounded-full transition-colors ${i === carouselIdx ? 'bg-indigo-400' : 'bg-white/20'}`}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-xs text-white/80 leading-relaxed line-clamp-2">
+                                    {carouselItems[carouselIdx]?.text}
+                                </p>
                             </div>
                         )}
                     </div>

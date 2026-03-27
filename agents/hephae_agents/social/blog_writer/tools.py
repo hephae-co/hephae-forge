@@ -13,17 +13,28 @@ from datetime import datetime
 from typing import Any
 
 
-# Hephae brand colors
-COLORS = [
-    "#d97706",  # amber (primary)
-    "#475569",  # slate
-    "#059669",  # emerald
-    "#7c3aed",  # violet
-    "#dc2626",  # red
-    "#0284c7",  # sky
-    "#ca8a04",  # yellow
-    "#6366f1",  # indigo
-]
+# Hephae brand palette — semantic color sets
+_PALETTE_DANGER  = ["#ef4444", "#f97316", "#eab308", "#f43f5e", "#fb7185", "#fca5a5", "#fed7aa", "#fef08a"]
+_PALETTE_BRAND   = ["#d97706", "#f59e0b", "#fbbf24", "#fcd34d", "#b45309", "#92400e", "#78350f", "#451a03"]
+_PALETTE_COOL    = ["#3b82f6", "#6366f1", "#8b5cf6", "#0ea5e9", "#06b6d4", "#14b8a6", "#10b981", "#22c55e"]
+_PALETTE_MIXED   = ["#d97706", "#059669", "#3b82f6", "#7c3aed", "#ef4444", "#0284c7", "#ca8a04", "#6366f1"]
+
+# Colour theme selector — pick a themed palette based on a hint keyword
+_THEME_MAP: dict[str, list[str]] = {
+    "danger": _PALETTE_DANGER,
+    "cost":   _PALETTE_DANGER,
+    "risk":   _PALETTE_DANGER,
+    "warn":   _PALETTE_BRAND,
+    "brand":  _PALETTE_BRAND,
+    "cool":   _PALETTE_COOL,
+    "growth": _PALETTE_COOL,
+    "mixed":  _PALETTE_MIXED,
+}
+
+
+def _pick_colors(n: int, theme: str = "mixed") -> list[str]:
+    palette = _THEME_MAP.get(theme.lower(), _PALETTE_MIXED)
+    return (palette * ((n // len(palette)) + 1))[:n]
 
 
 def generate_chart_js(
@@ -36,8 +47,11 @@ def generate_chart_js(
     dataset_label: str = "",
     secondary_values: list[float] | None = None,
     secondary_label: str = "",
+    color_theme: str = "mixed",
+    reference_line: float | None = None,
+    reference_label: str = "",
 ) -> str:
-    """Generate a Chart.js chart as an HTML block (canvas + script).
+    """Generate a richly styled Chart.js chart as an HTML block.
 
     Args:
         chart_id: Unique DOM id for the canvas element.
@@ -49,66 +63,163 @@ def generate_chart_js(
         dataset_label: Label for the primary dataset.
         secondary_values: Optional second dataset for grouped bar/line.
         secondary_label: Label for the secondary dataset.
+        color_theme: "danger" (reds/oranges), "cool" (blues/greens), "brand" (ambers), "mixed".
+        reference_line: Draw a horizontal/vertical annotation line at this value.
+        reference_label: Label for the reference line.
 
     Returns:
         HTML string with <div>, <canvas>, and <script> tags.
     """
     is_horizontal = chart_type == "horizontalBar"
     actual_type = "bar" if is_horizontal else chart_type
+    is_circular = chart_type in ("pie", "doughnut")
 
-    colors = COLORS[: len(values)]
-    border_colors = colors
+    colors = _pick_colors(len(values), color_theme)
 
-    datasets = [
+    # Gradient fill helper (injected via inline JS for line charts)
+    use_gradient = actual_type == "line"
+
+    if is_circular:
+        bg_colors = colors
+        border_colors = ["#ffffff"] * len(values)
+        border_width = 3
+    elif use_gradient:
+        # Will be replaced by JS gradient at render time
+        bg_colors = [f"{colors[0]}33"]  # translucent fill
+        border_colors = [colors[0]]
+        border_width = 3
+    else:
+        bg_colors = colors
+        border_colors = [c + "cc" for c in colors]
+        border_width = 0
+
+    datasets: list[dict[str, Any]] = [
         {
             "label": dataset_label or title,
             "data": values,
-            "backgroundColor": colors if chart_type in ("pie", "doughnut", "bar", "horizontalBar") else [COLORS[0]],
-            "borderColor": border_colors if chart_type in ("pie", "doughnut") else [COLORS[0]],
-            "borderWidth": 1,
+            "backgroundColor": bg_colors,
+            "borderColor": border_colors,
+            "borderWidth": border_width,
+            "borderRadius": 6 if actual_type == "bar" else 0,
+            "borderSkipped": False,
+            "tension": 0.4 if use_gradient else 0,
+            "fill": use_gradient,
+            "pointBackgroundColor": colors[0] if use_gradient else None,
+            "pointRadius": 5 if use_gradient else None,
+            "pointHoverRadius": 8 if use_gradient else None,
         }
     ]
 
     if secondary_values:
-        datasets.append(
-            {
-                "label": secondary_label,
-                "data": secondary_values,
-                "backgroundColor": [COLORS[1]],
-                "borderColor": [COLORS[1]],
-                "borderWidth": 1,
-            }
-        )
+        sec_color = _pick_colors(1, "cool")[0]
+        datasets.append({
+            "label": secondary_label,
+            "data": secondary_values,
+            "backgroundColor": sec_color + "99",
+            "borderColor": sec_color,
+            "borderWidth": border_width,
+            "borderRadius": 6 if actual_type == "bar" else 0,
+            "borderSkipped": False,
+        })
 
     options: dict[str, Any] = {
         "responsive": True,
         "maintainAspectRatio": True,
+        "animation": {"duration": 900, "easing": "easeOutQuart"},
         "plugins": {
-            "title": {"display": True, "text": title, "font": {"size": 16}},
-            "legend": {"display": bool(secondary_values) or chart_type in ("pie", "doughnut")},
+            "title": {
+                "display": True,
+                "text": title,
+                "font": {"size": 17, "weight": "700", "family": "'Inter', sans-serif"},
+                "color": "#111827",
+                "padding": {"bottom": 16},
+            },
+            "legend": {
+                "display": bool(secondary_values) or is_circular,
+                "labels": {"font": {"size": 13}, "padding": 16, "usePointStyle": True},
+            },
+            "tooltip": {
+                "backgroundColor": "#1f2937",
+                "titleFont": {"size": 13, "weight": "600"},
+                "bodyFont": {"size": 12},
+                "padding": 12,
+                "cornerRadius": 8,
+                "displayColors": True,
+            },
+        },
+        "scales": {} if is_circular else {
+            "x": {
+                "grid": {"display": False},
+                "ticks": {"font": {"size": 12}, "color": "#6b7280"},
+            },
+            "y": {
+                "grid": {"color": "#f3f4f6", "drawBorder": False},
+                "ticks": {"font": {"size": 12}, "color": "#6b7280"},
+                "beginAtZero": True,
+            },
         },
     }
 
     if is_horizontal:
         options["indexAxis"] = "y"
+        # Swap scale keys for horizontal
+        options["scales"] = {
+            "x": {"grid": {"color": "#f3f4f6"}, "ticks": {"font": {"size": 12}, "color": "#6b7280"}, "beginAtZero": True},
+            "y": {"grid": {"display": False}, "ticks": {"font": {"size": 12}, "color": "#374151"}, "crossAlign": "far"},
+        }
 
-    chart_config = json.dumps(
-        {"type": actual_type, "data": {"labels": labels, "datasets": datasets}, "options": options}
-    )
+    if is_circular:
+        options["plugins"]["legend"]["position"] = "bottom"  # type: ignore[index]
+
+    chart_data = {"labels": labels, "datasets": datasets}
+    chart_config_str = json.dumps({"type": actual_type, "data": chart_data, "options": options})
+
+    # Reference line annotation (drawn via afterDraw plugin — no extra CDN needed)
+    ref_js = ""
+    if reference_line is not None and not is_circular:
+        axis = "x" if is_horizontal else "y"
+        ref_js = f"""
+    // Reference line annotation
+    Chart.register({{
+      id: 'refLine_{chart_id}',
+      afterDraw(chart) {{
+        const ctx = chart.ctx;
+        const {axis}Scale = chart.scales['{axis}'];
+        const pos = {axis}Scale.getPixelForValue({reference_line});
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        {'ctx.moveTo(chart.chartArea.left, pos); ctx.lineTo(chart.chartArea.right, pos);' if axis == 'y' else 'ctx.moveTo(pos, chart.chartArea.top); ctx.lineTo(pos, chart.chartArea.bottom);'}
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.fillText('{html_lib.escape(reference_label or str(reference_line))}', chart.chartArea.left + 4, pos - 5);
+        ctx.restore();
+      }}
+    }});"""
 
     # Accessibility: text fallback for screen readers
-    fallback_rows = "\n".join(f"    <li>{l}: {v}</li>" for l, v in zip(labels, values))
+    fallback_rows = "\n".join(f"    <li>{lbl}: {val}</li>" for lbl, val in zip(labels, values))
 
-    return f"""<div class="chart-container" style="max-width:700px;margin:2rem auto">
-  <canvas id="{chart_id}" width="700" height="400" role="img" aria-label="{html_lib.escape(title)}"></canvas>
-  <noscript>
-    <ul>
-{fallback_rows}
-    </ul>
-  </noscript>
-  {f'<p class="chart-caption" style="text-align:center;color:#6b7280;font-size:0.9rem;margin-top:0.5rem">{html_lib.escape(caption)}</p>' if caption else ''}
+    caption_html = (
+        f'<p style="text-align:center;color:#6b7280;font-size:0.875rem;margin-top:0.75rem;font-style:italic">'
+        f'{html_lib.escape(caption)}</p>'
+        if caption else ""
+    )
+
+    return f"""<div class="hephae-chart" style="max-width:720px;margin:2.5rem auto;background:#ffffff;border-radius:16px;padding:1.75rem 2rem;box-shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 16px rgba(0,0,0,0.04);border:1px solid #f3f4f6">
+  <canvas id="{chart_id}" role="img" aria-label="{html_lib.escape(title)}" style="max-height:380px"></canvas>
+  <noscript><ul aria-label="{html_lib.escape(title)}">{fallback_rows}</ul></noscript>
+  {caption_html}
   <script>
-    new Chart(document.getElementById('{chart_id}'), {chart_config});
+    (function() {{
+      {ref_js}
+      var cfg = {chart_config_str};
+      new Chart(document.getElementById('{chart_id}'), cfg);
+    }})();
   </script>
 </div>"""
 

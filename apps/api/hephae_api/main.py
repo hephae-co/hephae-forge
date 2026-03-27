@@ -202,7 +202,7 @@ def _register_routers() -> None:
     app.include_router(ai_tool_discovery_admin.router)
 
     # --- Batch / Cron routers ---
-    from hephae_api.routers.batch import cron, heartbeat_cron, pulse_batch, pulse_cron, industry_pulse_cron, tech_intelligence_cron, ai_tool_discovery_cron
+    from hephae_api.routers.batch import cron, heartbeat_cron, pulse_batch, pulse_cron, industry_pulse_cron, tech_intelligence_cron, ai_tool_discovery_cron, reference_cron
 
     app.include_router(cron.router)
     app.include_router(heartbeat_cron.router)
@@ -211,6 +211,7 @@ def _register_routers() -> None:
     app.include_router(industry_pulse_cron.router)
     app.include_router(tech_intelligence_cron.router)
     app.include_router(ai_tool_discovery_cron.router)
+    app.include_router(reference_cron.router)
 
 
 _register_routers()

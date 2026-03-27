@@ -110,15 +110,23 @@ Check the critique result. If `overall_pass=false`, the agent already retried on
 
 ## STEP 3: GENERATE HERO IMAGE
 
+Use `stat_pills` (up to 4 short data strings) to make the hero content-specific.
+Pick the 3-4 most impactful numbers from the blog and pass them as pills.
+The `headline` should be the single biggest number (e.g., "35.9%"), and `subtitle` the one-line interpretation.
+
 ```python
 from hephae_common.social_card import generate_universal_social_card
 
 hero = await generate_universal_social_card(
-    business_name='SUBJECT',
-    report_type='profile',
-    headline='KEY_STAT_FROM_BLOG',
-    subtitle='SUBTITLE',
-    highlight='Hephae Intelligence',
+    business_name='SUBJECT',          # e.g. "NJ Restaurant Margins 2026"
+    report_type='profile',            # or "margin", "traffic", "seo", "competitive"
+    headline='KEY_STAT',              # single big number, e.g. "35.9%"
+    subtitle='ONE LINE INTERPRETATION',  # e.g. "avg food cost — 6 pts above target"
+    stat_pills=[                      # 3-4 short data strings from the blog
+        'STAT 1',  # e.g. "260/399 items critical"
+        'STAT 2',  # e.g. "Eggs +38.2% YoY"
+        'STAT 3',  # e.g. "$95.81 avg leakage"
+    ],
 )
 ```
 

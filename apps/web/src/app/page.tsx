@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2, Zap, Shield, Eye, MessageCircle, Map, Sparkles, Calendar, LogIn, LogOut } from 'lucide-react';
 import { SurgicalReport } from '@/types/api';
 import { SuggestionChip } from '@/components/Chatbot/types';
@@ -63,6 +64,7 @@ export default function Home() {
   const { user, signInWithGoogle, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { apiFetch } = useApiClient();
+  const router = useRouter();
   const [showAuthWall, setShowAuthWall] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -112,6 +114,9 @@ export default function Home() {
   // Ultralocal coverage CTA card state
   const [addMyAreaCity, setAddMyAreaCity] = useState<string | null>(null);
 
+  // Unique business URL slug
+  const [businessSlug, setBusinessSlug] = useState<string | null>(null);
+
   // Profile building mode: guided Q&A after sign-in
   const [isProfileBuilding, setIsProfileBuilding] = useState(false);
   const [profileSessionId, setProfileSessionId] = useState<string | null>(null);
@@ -153,6 +158,25 @@ export default function Home() {
 
   // Rotating messages for the discovery overlay
   // Discovery messages now handled inside LoadingOverlay
+
+  // On mount: check for business profile preload (from /b/[slug] redirect)
+  useEffect(() => {
+    const preloadSlug = sessionStorage.getItem('forge_preload_slug');
+    const preloadIdentityStr = sessionStorage.getItem('forge_preload_identity');
+    if (preloadSlug && preloadIdentityStr) {
+      sessionStorage.removeItem('forge_preload_slug');
+      sessionStorage.removeItem('forge_preload_identity');
+      try {
+        const identity = JSON.parse(preloadIdentityStr);
+        setBusinessSlug(preloadSlug);
+        // Trigger the full business overview as if the user had searched
+        handlePlaceSelect(identity);
+      } catch {
+        // ignore malformed data
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleEmailSubmit = async (email: string) => {
     let docId = searchDocId;
@@ -423,6 +447,15 @@ export default function Home() {
     }
   };
 
+  const makeBusinessSlug = (identity: BaseIdentity): string => {
+    const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const namePart = slugify(identity.name).slice(0, 40);
+    const addrParts = identity.address.split(',');
+    const city = addrParts.length >= 2 ? slugify(addrParts[addrParts.length - 2].trim()).slice(0, 20) : '';
+    const zip = (identity as any).zipCode || '';
+    return [namePart, city, zip].filter(Boolean).join('-');
+  };
+
   const submitUltralocalInterest = async () => {
     const zipCode = (locatedBusiness as any)?.zipCode;
     setAddMyAreaCity(null);
@@ -457,6 +490,20 @@ export default function Home() {
       if (res.ok) {
         const overview = await res.json();
         setBusinessOverview(overview);
+
+        // Generate slug and save business profile for shareable URL
+        const slug = makeBusinessSlug(identity);
+        setBusinessSlug(slug);
+        try {
+          await apiFetch('/api/b/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug, identity }),
+          });
+          router.replace('/b/' + slug, { scroll: false });
+        } catch {
+          // Non-critical — URL update is best-effort
+        }
 
         // Build conversational insight message with real numbers
         const parts: string[] = [];
@@ -1651,51 +1698,8 @@ export default function Home() {
             {(isTyping || isDiscovering) && <BlobBackground className="z-0 opacity-30" />}
             {/* Copy-link toast */}
             {copyToast && (
-              <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-xl border border-white/10 animate-fade-in-up pointer-events-none">
+              <div className="fixed bottom-28 md:bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-xl border border-white/10 animate-fade-in-up pointer-events-none">
                 Link copied!
-              </div>
-            )}
-
-            {!isDiscovering && !isTyping && (
-              <div className="absolute bottom-[210px] left-4 right-4 z-50 animate-fade-in-up pointer-events-auto flex flex-col items-center gap-2">
-                {/* TODO: Capability icons for logged-in users — moved to CapabilityBar component */}
-
-                {/* CTAs — always prominent */}
-                <div className="flex items-center gap-2">
-                  <a
-                    href="https://hephae.co/schedule"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/25 group whitespace-nowrap"
-                  >
-                    <Calendar className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                    Schedule Call
-                  </a>
-
-                  {activeReportUrl && (
-                    <button
-                      onClick={() => setShowSharePanel(true)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/25 group whitespace-nowrap"
-                    >
-                      <Share2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                      Share Report
-                    </button>
-                  )}
-
-                  {user && locatedBusiness && !activeHeartbeatId && (
-                    <button
-                      onClick={() => setShowHeartbeatSetup(true)}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/25 group whitespace-nowrap"
-                    >
-                      <Activity className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                      Monitor Weekly
-                    </button>
-                  )}
-
-                  {activeHeartbeatId && (
-                    <HeartbeatBadge onClick={() => setShowHeartbeatSetup(true)} />
-                  )}
-                </div>
               </div>
             )}
 
@@ -1838,6 +1842,8 @@ export default function Home() {
             setMarketingReportUrl(null);
             setIsChatCollapsed(false);
             setAddMyAreaCity(null);
+            setBusinessSlug(null);
+            router.replace('/', { scroll: false });
           }}
           capabilities={capabilities}
           onSelectCapability={handleSelectCapability}
@@ -1934,6 +1940,60 @@ export default function Home() {
             businessName={locatedBusiness?.name}
             businessLogo={(locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon}
           />
+        </div>
+      )}
+
+      {/* CTA buttons — fixed bottom center, always visible when business is loaded */}
+      {!isCentered && !isDiscovering && !isTyping && locatedBusiness && (
+        <div className="fixed bottom-16 md:bottom-5 left-1/2 -translate-x-1/2 z-[65] flex items-center gap-2 pointer-events-auto animate-fade-in-up">
+          <a
+            href="https://hephae.co/schedule"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/25 group whitespace-nowrap backdrop-blur-sm"
+          >
+            <Calendar className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+            Schedule Call
+          </a>
+
+          {activeReportUrl && (
+            <button
+              onClick={() => setShowSharePanel(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/25 group whitespace-nowrap"
+            >
+              <Share2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+              Share Report
+            </button>
+          )}
+
+          {businessSlug && (
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.origin + '/b/' + businessSlug);
+                setCopyToast(true);
+                setTimeout(() => setCopyToast(false), 2000);
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-slate-700 hover:bg-slate-600 transition-all shadow-lg group whitespace-nowrap"
+              title="Copy shareable link"
+            >
+              <svg className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+              Share Profile
+            </button>
+          )}
+
+          {user && locatedBusiness && !activeHeartbeatId && (
+            <button
+              onClick={() => setShowHeartbeatSetup(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/25 group whitespace-nowrap"
+            >
+              <Activity className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+              Monitor Weekly
+            </button>
+          )}
+
+          {activeHeartbeatId && (
+            <HeartbeatBadge onClick={() => setShowHeartbeatSetup(true)} />
+          )}
         </div>
       )}
     </main>

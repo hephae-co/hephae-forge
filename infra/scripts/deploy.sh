@@ -231,68 +231,11 @@ echo "  ℹ crawl4ai: ephemeral (spun up per-job)"
 echo "══════════════════════════════════════════════"
 
 # ─────────────────────────────────────────────────────────────
-# Cloud Scheduler: Workflow Monitor (every 30 min)
+# Cloud Scheduler: Pulse & Intelligence Crons
 # ─────────────────────────────────────────────────────────────
-MONITOR_JOB="workflow-monitor"
-MONITOR_SCHEDULE="*/30 * * * *"
 CRON_SECRET_VAL=$(gcloud secrets versions access latest --secret=CRON_SECRET --project="$PROJECT_ID" 2>/dev/null || echo "")
 
 if [ -n "$CRON_SECRET_VAL" ] && [ -n "$API_URL" ]; then
-  echo ""
-  echo "── Setting up Workflow Monitor scheduler..."
-
-  MONITOR_BASE_FLAGS=(
-    --schedule "$MONITOR_SCHEDULE"
-    --time-zone "America/New_York"
-    --location "$REGION"
-    --project "$PROJECT_ID"
-    --uri "${API_URL}/api/cron/workflow-monitor"
-    --http-method GET
-    --oidc-service-account-email "$SERVICE_ACCOUNT"
-  )
-
-  if gcloud scheduler jobs describe "$MONITOR_JOB" \
-      --location "$REGION" --project "$PROJECT_ID" &>/dev/null; then
-    gcloud scheduler jobs update http "$MONITOR_JOB" "${MONITOR_BASE_FLAGS[@]}" \
-      --update-headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}" --quiet
-    echo "  ✓ Updated scheduler: ${MONITOR_JOB} (${MONITOR_SCHEDULE})"
-  else
-    gcloud scheduler jobs create http "$MONITOR_JOB" "${MONITOR_BASE_FLAGS[@]}" \
-      --headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}"
-    echo "  ✓ Created scheduler: ${MONITOR_JOB} (${MONITOR_SCHEDULE})"
-  fi
-
-  echo ""
-  echo "  To change frequency:"
-  echo "    gcloud scheduler jobs update http ${MONITOR_JOB} \\"
-  echo "      --schedule '0 * * * *' \\"
-  echo "      --location ${REGION} --project ${PROJECT_ID}"
-
-  # --- Workflow Dispatcher (every 5 min) ---
-  DISPATCHER_JOB="workflow-dispatcher"
-  DISPATCHER_SCHEDULE="*/5 * * * *"
-
-  DISPATCHER_BASE_FLAGS=(
-    --schedule "$DISPATCHER_SCHEDULE"
-    --time-zone "America/New_York"
-    --location "$REGION"
-    --project "$PROJECT_ID"
-    --uri "${API_URL}/api/cron/workflow-dispatcher"
-    --http-method GET
-    --oidc-service-account-email "$SERVICE_ACCOUNT"
-  )
-
-  if gcloud scheduler jobs describe "$DISPATCHER_JOB" \
-      --location "$REGION" --project "$PROJECT_ID" &>/dev/null; then
-    gcloud scheduler jobs update http "$DISPATCHER_JOB" "${DISPATCHER_BASE_FLAGS[@]}" \
-      --update-headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}" --quiet
-    echo "  ✓ Updated scheduler: ${DISPATCHER_JOB} (${DISPATCHER_SCHEDULE})"
-  else
-    gcloud scheduler jobs create http "$DISPATCHER_JOB" "${DISPATCHER_BASE_FLAGS[@]}" \
-      --headers "X-Cron-Secret=Bearer ${CRON_SECRET_VAL}"
-    echo "  ✓ Created scheduler: ${DISPATCHER_JOB} (${DISPATCHER_SCHEDULE})"
-  fi
-
   # --- Weekly Pulse Cron (Monday 3am ET) ---
   PULSE_CRON_JOB="weekly-pulse-cron"
   PULSE_CRON_SCHEDULE="0 3 * * 1"

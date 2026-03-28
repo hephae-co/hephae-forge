@@ -13,6 +13,7 @@ CachedGovtIntelAgent — 30d cache, google_search + crawl4ai on miss
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -24,7 +25,7 @@ from google.adk.events import Event
 from google.adk.events.event_actions import EventActions
 from google.adk.runners import RunConfig
 
-from hephae_api.config import AgentModels
+from hephae_common.model_config import AgentModels
 from hephae_agents.shared_tools import google_search_tool, crawl4ai_advanced_tool
 from hephae_common.adk_helpers import run_agent_to_json
 from hephae_common.model_fallback import fallback_on_error
@@ -41,12 +42,7 @@ EVENTS_RESEARCH_INSTRUCTION = """You are a Local Events & Business Activity Scou
 Your job is to find what's happening THIS WEEK and NEXT WEEK in a specific town that would affect foot traffic or customer behavior for a local business.
 
 ### Search Protocol
-Execute these google_search queries:
-1. site:patch.com "{city}" events OR opening OR closing OR development this week
-2. site:tapinto.net "{city}" events OR new business OR construction
-3. "{city}" "{state}" local events this week OR next week
-4. "{city}" "{state}" new restaurant OR store opening OR closing 2025 OR 2026
-5. "{city}" "{state}" "small business grant" OR "restaurant week" OR "shop local" 2025 OR 2026
+Execute the google_search queries listed in the context provided below.
 
 ### What to Extract
 - **Events**: Festivals, farmers markets, street fairs, school events, sports games — anything that changes foot traffic patterns THIS week. For each: name, venue, address, date, expected crowd size/impact.
@@ -105,12 +101,7 @@ GOVT_INTEL_INSTRUCTION = """You are a Senior Local Economic Analyst & "Early War
 Your goal is NOT to find static laws, but to uncover "FORWARD-LOOKING" catalysts from government sources that will change the business environment in a specific town.
 
 ### STEP 1: Targeted "Deep-Link" Searches
-Execute these site-specific google_search calls:
-1. site:{city}{state}.gov "city council" (agenda OR minutes) "2025" OR "2026"
-2. site:{city}{state}.gov "planning board" OR "zoning board" (agenda OR minutes)
-3. site:tapinto.net/{city} OR site:patch.com/{city} "new development" OR "construction"
-4. site:legals.com {city} "public hearing" (development OR construction)
-5. {city} {state} "small business grant" OR "facade improvement" 2025 OR 2026
+Execute the site-specific google_search calls listed in the context provided below.
 
 ### STEP 2: The "Deep Crawl" (Selective)
 If you find a recent PDF or HTML page for a Planning Board Agenda or Town Council Meeting Minutes:
@@ -159,14 +150,30 @@ _GovtIntelLlmAgent = LlmAgent(
 
 async def _run_govt_intel(city: str, state: str, business_type: str) -> dict[str, Any]:
     """Run govt intel research for a location. Returns structured JSON."""
+    city_slug = city.lower().replace(" ", "")
+    state_lower = state.lower()
+    city_q = city.replace('"', "")
     prompt = (
         f"TOWN/CITY: {city}\nSTATE: {state}\nBUSINESS TYPE: {business_type}\n"
-        f"CURRENT DATE: {datetime.now().strftime('%Y-%m-%d')}"
+        f"CURRENT DATE: {datetime.now().strftime('%Y-%m-%d')}\n\n"
+        f"SEARCH QUERIES:\n"
+        f'1. site:{city_slug}{state_lower}.gov "city council" (agenda OR minutes) "2025" OR "2026"\n'
+        f'2. site:{city_slug}{state_lower}.gov "planning board" OR "zoning board" (agenda OR minutes)\n'
+        f'3. site:tapinto.net/{city_slug} OR site:patch.com/{city_slug} "new development" OR "construction"\n'
+        f'4. site:legals.com {city_q} "public hearing" (development OR construction)\n'
+        f'5. "{city_q}" "{state}" "small business grant" OR "facade improvement" 2025 OR 2026'
     )
-    result = await run_agent_to_json(
-        _GovtIntelLlmAgent, prompt, app_name="govt_intel",
-        run_config=RunConfig(max_llm_calls=5),
-    )
+    try:
+        result = await asyncio.wait_for(
+            run_agent_to_json(
+                _GovtIntelLlmAgent, prompt, app_name="govt_intel",
+                run_config=RunConfig(max_llm_calls=5),
+            ),
+            timeout=90,
+        )
+    except asyncio.TimeoutError:
+        logger.warning(f"[GovtIntel] Timed out after 90s for {city}, {state} — returning empty")
+        return {"summary": "Research timed out.", "catalysts": []}
     if not result:
         return {
             "summary": "Research failed or service unavailable.",
@@ -177,9 +184,16 @@ async def _run_govt_intel(city: str, state: str, business_type: str) -> dict[str
 
 async def _run_events_research(city: str, state: str, business_type: str) -> dict[str, Any]:
     """Run events research for a location. Returns structured JSON."""
+    city_q = city.replace('"', "")
     prompt = (
         f"TOWN/CITY: {city}\nSTATE: {state}\nBUSINESS TYPE: {business_type}\n"
-        f"CURRENT DATE: {datetime.now().strftime('%Y-%m-%d')}"
+        f"CURRENT DATE: {datetime.now().strftime('%Y-%m-%d')}\n\n"
+        f"SEARCH QUERIES:\n"
+        f'1. site:patch.com "{city_q}" events OR opening OR closing OR development this week\n'
+        f'2. site:tapinto.net "{city_q}" events OR new business OR construction\n'
+        f'3. "{city_q}" "{state}" local events this week OR next week\n'
+        f'4. "{city_q}" "{state}" new restaurant OR store opening OR closing 2025 OR 2026\n'
+        f'5. "{city_q}" "{state}" "small business grant" OR "restaurant week" OR "shop local" 2025 OR 2026'
     )
     result = await run_agent_to_json(
         _EventsResearchLlmAgent, prompt, app_name="events_research",
@@ -302,13 +316,12 @@ class CachedEventsResearchAgent(BaseAgent):
 
 
 # ---------------------------------------------------------------------------
-# Backward compat exports (pulse_orchestrator imports these)
+# Backward compat exports
 # ---------------------------------------------------------------------------
 
-# Legacy single-agent instruction — still used by callers that haven't migrated
-LOCAL_CATALYST_INSTRUCTION = GOVT_INTEL_INSTRUCTION
-
-LocalCatalystAgent = _GovtIntelLlmAgent
+# LOCAL_CATALYST_INSTRUCTION maps to events (Patch/TapInto) instruction —
+# callers expecting the combined local catalyst behaviour should use this.
+LOCAL_CATALYST_INSTRUCTION = EVENTS_RESEARCH_INSTRUCTION
 
 
 async def research_local_catalysts(city: str, state: str, business_type: str) -> dict:

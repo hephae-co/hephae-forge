@@ -4,30 +4,23 @@ Architecture:
   DataGatherer (ParallelAgent)
   ├─ BaseLayerFetcher (custom BaseAgent — no LLM, deterministic)
   │   Calls all API/BQ fetch tools in parallel, writes to session.state
-  ├─ ResearchFanOut (ParallelAgent)
-  │   ├─ SocialPulseResearch (LlmAgent + google_search)
-  │   └─ LocalCatalystResearch (LlmAgent + google_search + crawl4ai)
-
-BaseLayerFetcher also computes pre_computed_impact and matches playbooks
-AFTER fetching signals, writing both to session.state for Stage 3.
+  │   Also computes pre_computed_impact and matches playbooks.
+  └─ ResearchFanOut (ParallelAgent)
+     ├─ CachedSocialPulseAgent  (7d city-level cache)
+     ├─ CachedEventsResearchAgent (7d city-level cache — Patch/TapInto)
+     └─ CachedGovtIntelAgent    (30d zip-level cache — planning/permits)
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
 from typing import Any, AsyncGenerator
 
 from google.adk.agents import BaseAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event
 from google.adk.events.event_actions import EventActions
-
-from google.genai import types as genai_types
-
-from hephae_agents.research.social_pulse import SOCIAL_PULSE_INSTRUCTION
-from hephae_agents.research.local_catalyst import LOCAL_CATALYST_INSTRUCTION
 
 logger = logging.getLogger(__name__)
 
@@ -223,51 +216,5 @@ class BaseLayerFetcher(BaseAgent):
         )
 
 
-# ---------------------------------------------------------------------------
-# Research sub-agents (LLM-powered, parallel)
-# ---------------------------------------------------------------------------
-
-
-def _social_pulse_before_model(callback_context, llm_request):
-    """Inject location from session state into the model request."""
-    state = callback_context.state
-    city = state.get("city", "unknown")
-    st = state.get("state", "")
-    zip_code = state.get("zipCode", "")
-    context_text = (
-        f"TOWN/CITY: {city}\nSTATE: {st}\nZIP CODE: {zip_code}\n"
-        f"CURRENT DATE: {datetime.now().strftime('%Y-%m-%d')}"
-    )
-    llm_request.contents.append(
-        genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=context_text)])
-    )
-    return None
-
-
-def _local_catalyst_before_model(callback_context, llm_request):
-    """Inject location from session state into the model request."""
-    state = callback_context.state
-    city = state.get("city", "unknown")
-    st = state.get("state", "")
-    biz_type = state.get("businessType", "unknown")
-    context_text = (
-        f"TOWN/CITY: {city}\nSTATE: {st}\nBUSINESS TYPE: {biz_type}\n"
-        f"CURRENT DATE: {datetime.now().strftime('%Y-%m-%d')}"
-    )
-    llm_request.contents.append(
-        genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=context_text)])
-    )
-    return None
-
-
-# EventsResearchAgent uses the same location inputs
-_events_research_before_model = _local_catalyst_before_model
-
-
-# Backward compat: export static instructions as the old callable names
-_social_pulse_instruction = SOCIAL_PULSE_INSTRUCTION
-_local_catalyst_instruction = LOCAL_CATALYST_INSTRUCTION
-
-# NOTE: Module-level agent instances REMOVED — ADK agents can only have one parent.
-# All agent instantiation happens in create_pulse_orchestrator() factory function
-# in pulse_orchestrator.py. Only export instruction constants, callbacks, and BaseLayerFetcher.
+# NOTE: All agent instantiation happens in create_pulse_orchestrator() factory function
+# in pulse_orchestrator.py. Only export instruction constants and BaseLayerFetcher.

@@ -27,7 +27,7 @@ from google.adk.events import Event
 from google.adk.events.event_actions import EventActions
 from google.genai import types as genai_types
 
-from hephae_api.config import AgentModels, ThinkingPresets
+from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
 from hephae_db.schemas import CritiqueResult
 
@@ -122,27 +122,6 @@ def _critique_before_model(callback_context, llm_request):
         genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=context_text)])
     )
     return None
-
-
-# Keep backward compat export
-_critique_instruction = CRITIQUE_INSTRUCTION
-
-
-# ---------------------------------------------------------------------------
-# Critique agent (LLM — scores the insights) — static instruction for caching
-# ---------------------------------------------------------------------------
-
-PulseCritiqueAgent = LlmAgent(
-    name="PulseCritique",
-    model=AgentModels.PRIMARY_MODEL,
-    generate_content_config=ThinkingPresets.MEDIUM,
-    description="Evaluates pulse insights for obviousness, actionability, and cross-signal reasoning.",
-    instruction=CRITIQUE_INSTRUCTION,
-    before_model_callback=_critique_before_model,
-    output_key="critiqueResult",
-    output_schema=CritiqueResult,
-    on_model_error_callback=fallback_on_error,
-)
 
 
 # ---------------------------------------------------------------------------

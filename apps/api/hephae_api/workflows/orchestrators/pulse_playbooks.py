@@ -269,14 +269,18 @@ def compute_impact_multipliers(signals: dict[str, Any]) -> dict[str, Any]:
         )
         impact["weather_traffic_modifier"] = round(-0.05 * rain_days, 2)
 
-    # Event traffic modifier (placeholder — computed from catalysts)
-    catalysts = signals.get("localCatalysts", {})
-    if isinstance(catalysts, dict):
-        event_count = len([
-            c for c in catalysts.get("catalysts", [])
+    # Event traffic modifier — from govtIntel (planning/infra) and eventsResearch (weekly events)
+    govt = signals.get("govtIntel", {})
+    events = signals.get("eventsResearch", {})
+    infra_count = 0
+    if isinstance(govt, dict):
+        infra_count = len([
+            c for c in govt.get("catalysts", [])
             if c.get("type") in ("Development", "Infrastructure")
         ])
-        impact["catalyst_traffic_modifier"] = round(0.10 * min(event_count, 3), 2)
+    event_count = len(events.get("events", [])) if isinstance(events, dict) else 0
+    if infra_count or event_count:
+        impact["catalyst_traffic_modifier"] = round(0.10 * min(infra_count + event_count, 3), 2)
 
     # Net traffic delta
     weather_mod = impact.get("weather_traffic_modifier", 0)

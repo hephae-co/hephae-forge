@@ -21,7 +21,7 @@ from google.adk.events.event_actions import EventActions
 from google.adk.runners import RunConfig
 from google.adk.tools import google_search
 
-from hephae_api.config import AgentModels
+from hephae_common.model_config import AgentModels
 from hephae_common.adk_helpers import run_agent_to_text
 from hephae_common.model_fallback import fallback_on_error
 
@@ -78,10 +78,6 @@ _SocialPulseLlmAgent = LlmAgent(
     tools=[google_search],
     on_model_error_callback=fallback_on_error,
 )
-
-# Backward compat
-SocialPulseAgent = _SocialPulseLlmAgent
-
 
 async def _run_social_pulse(town: str, state: str, zip_code: str) -> dict[str, Any]:
     """Run social pulse research. Returns dict with summary text."""

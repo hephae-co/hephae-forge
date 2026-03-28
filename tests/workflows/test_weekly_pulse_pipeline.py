@@ -403,7 +403,7 @@ class TestImpactMultipliers:
 
         signals = {
             "weather": {"forecast": [{"shortForecast": "Rain"}] * 2 + [{"shortForecast": "Clear"}] * 5},
-            "localCatalysts": {
+            "govtIntel": {
                 "catalysts": [
                     {"type": "Development"},
                     {"type": "Infrastructure"},
@@ -412,10 +412,10 @@ class TestImpactMultipliers:
         }
         result = compute_impact_multipliers(signals)
         # weather: -0.05 * 2 = -0.10
-        # events: 0.10 * 2 = 0.20
+        # catalysts: 0.10 * 2 = 0.20
         # net: 0.10
         assert result["weather_traffic_modifier"] == -0.10
-        assert result["event_traffic_modifier"] == 0.20
+        assert result["catalyst_traffic_modifier"] == 0.20
         assert result["net_traffic_delta"] == 0.10
 
     def test_osm_competitor_count(self):

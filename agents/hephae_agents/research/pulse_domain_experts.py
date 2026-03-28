@@ -22,11 +22,9 @@ import json
 import logging
 from datetime import datetime
 
-from google.adk.agents import LlmAgent, ParallelAgent
+from google.adk.agents import LlmAgent
 from google.genai import types as genai_types
 
-from hephae_api.config import AgentModels, ThinkingPresets
-from hephae_common.model_fallback import fallback_on_error
 
 logger = logging.getLogger(__name__)
 
@@ -266,57 +264,5 @@ def _local_scout_before_model(callback_context, llm_request):
     return None
 
 
-# Export instruction builders for backward compat (pulse_orchestrator imports these)
-_historian_instruction = HISTORIAN_INSTRUCTION
-_economist_instruction = ECONOMIST_INSTRUCTION
-_local_scout_instruction = LOCAL_SCOUT_INSTRUCTION
-
-
-# ---------------------------------------------------------------------------
-# Stage 2 sub-agents — static instructions + before_model_callback
-# ---------------------------------------------------------------------------
-
-
-_pulse_history_summarizer = LlmAgent(
-    name="PulseHistorySummarizer",
-    model=AgentModels.PRIMARY_MODEL,
-    description="Analyzes 12-week pulse history for longitudinal trends.",
-    instruction=HISTORIAN_INSTRUCTION,
-    before_model_callback=_historian_before_model,
-    output_key="trendNarrative",
-    on_model_error_callback=fallback_on_error,
-)
-
-_economist_agent = LlmAgent(
-    name="EconomistAgent",
-    model=AgentModels.PRIMARY_MODEL,
-    description="Distills economic and demographic signals into a macro report.",
-    instruction=ECONOMIST_INSTRUCTION,
-    before_model_callback=_economist_before_model,
-    output_key="macroReport",
-    on_model_error_callback=fallback_on_error,
-)
-
-_local_scout_agent = LlmAgent(
-    name="LocalScoutAgent",
-    model=AgentModels.PRIMARY_MODEL,
-    description="Distills local weather, news, catalysts, and social signals.",
-    instruction=LOCAL_SCOUT_INSTRUCTION,
-    before_model_callback=_local_scout_before_model,
-    output_key="localReport",
-    on_model_error_callback=fallback_on_error,
-)
-
-
-# ---------------------------------------------------------------------------
-# Stage 2: PreSynthesis — all 3 experts run in parallel
-# ---------------------------------------------------------------------------
-
-pre_synthesis = ParallelAgent(
-    name="PreSynthesis",
-    sub_agents=[
-        _pulse_history_summarizer,
-        _economist_agent,
-        _local_scout_agent,
-    ],
-)
+# NOTE: Agent instantiation happens in create_pulse_orchestrator() factory function
+# in pulse_orchestrator.py. Only export instructions and callbacks from this module.

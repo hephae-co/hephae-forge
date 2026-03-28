@@ -23,7 +23,7 @@ from typing import Any
 from google.adk.agents import LlmAgent
 from google.genai import types as genai_types
 
-from hephae_api.config import AgentModels, ThinkingPresets
+from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
 from hephae_db.schemas import WeeklyPulseOutput
 
@@ -243,16 +243,6 @@ DO NOT leave localBriefing empty if there is ANY local data in the reports. Even
 The numbers in the PRE-COMPUTED IMPACT section are verified Python arithmetic. Use them as FACTS. Do NOT recalculate. Do NOT round differently. Cite them exactly.
 
 Return ONLY the structured JSON matching the schema."""
-
-
-def _full_instruction(ctx) -> str:
-    """Combine core instruction with dynamic state-based context.
-
-    DEPRECATED: Used only for backward compat. The orchestrator now uses
-    WEEKLY_PULSE_CORE_INSTRUCTION (static) + _synthesis_before_model (callback).
-    """
-    context = _synthesis_instruction(ctx)
-    return f"{WEEKLY_PULSE_CORE_INSTRUCTION}\n\n{context}"
 
 
 def _synthesis_before_model(callback_context, llm_request):

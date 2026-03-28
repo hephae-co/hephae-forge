@@ -26,6 +26,9 @@ build/
 
 # Claude Code local settings
 .claude/settings.local.json
+# Claude Code ephemeral outputs (stale snapshots, temp worktrees)
+.claude/findings/
+.claude/worktrees/
 
 # Generated
 tsconfig.tsbuildinfo

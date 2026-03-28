@@ -87,9 +87,9 @@ The pulse output to evaluate and cross-check data will be provided in the data c
 Return ONLY the structured JSON matching the CritiqueResult schema."""
 
 
-def _critique_before_model(ctx, llm_request):
+def _critique_before_model(callback_context, llm_request):
     """Inject pulse output and cross-check data into the model request."""
-    state = ctx.state
+    state = callback_context.state
     pulse_output = state.get("pulseOutput", "")
 
     pulse_text = ""

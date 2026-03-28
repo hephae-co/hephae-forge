@@ -51,9 +51,9 @@ Write a 3-5 paragraph trend narrative. Be specific about which weeks showed whic
 If no history is available, say so briefly and note that this is a baseline week."""
 
 
-def _historian_before_model(ctx, llm_request):
+def _historian_before_model(callback_context, llm_request):
     """Inject zip code, business type, and pulse history into the model request."""
-    state = ctx.state
+    state = callback_context.state
     zip_code = state.get("zipCode", "")
     business_type = state.get("businessType", "")
     history_insights = state.get("pulseHistoryInsights", [])
@@ -94,9 +94,9 @@ Write a structured macro report (3-5 paragraphs). Cite specific numbers.
 Do NOT make up data — if a source is missing, skip that section."""
 
 
-def _economist_before_model(ctx, llm_request):
+def _economist_before_model(callback_context, llm_request):
     """Inject economic signals and industry context into the model request."""
-    state = ctx.state
+    state = callback_context.state
     zip_code = state.get("zipCode", "")
     business_type = state.get("businessType", "")
     signals = state.get("rawSignals", {})
@@ -180,9 +180,9 @@ Any road work, permits, zoning changes, planning board items?
 This week's forecast vs historical baseline, impact on foot traffic"""
 
 
-def _local_scout_before_model(ctx, llm_request):
+def _local_scout_before_model(callback_context, llm_request):
     """Inject location and local signals into the model request."""
-    state = ctx.state
+    state = callback_context.state
     zip_code = state.get("zipCode", "")
     city = state.get("city", "")
     st = state.get("state", "")

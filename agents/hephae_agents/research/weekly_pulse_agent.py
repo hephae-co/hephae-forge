@@ -255,13 +255,13 @@ def _full_instruction(ctx) -> str:
     return f"{WEEKLY_PULSE_CORE_INSTRUCTION}\n\n{context}"
 
 
-def _synthesis_before_model(ctx, llm_request):
+def _synthesis_before_model(callback_context, llm_request):
     """Inject dynamic synthesis context (domain reports, playbooks, etc.) into the model request.
 
     This replaces the callable _full_instruction pattern, allowing the static
     WEEKLY_PULSE_CORE_INSTRUCTION to be cached across zip codes.
     """
-    state = ctx.state
+    state = callback_context.state
     context_text = _synthesis_instruction_from_state(state)
     llm_request.contents.append(
         genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=context_text)])

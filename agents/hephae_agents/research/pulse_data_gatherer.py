@@ -225,9 +225,9 @@ class BaseLayerFetcher(BaseAgent):
 # ---------------------------------------------------------------------------
 
 
-def _social_pulse_before_model(ctx, llm_request):
+def _social_pulse_before_model(callback_context, llm_request):
     """Inject location from session state into the model request."""
-    state = ctx.state
+    state = callback_context.state
     city = state.get("city", "unknown")
     st = state.get("state", "")
     zip_code = state.get("zipCode", "")
@@ -241,9 +241,9 @@ def _social_pulse_before_model(ctx, llm_request):
     return None
 
 
-def _local_catalyst_before_model(ctx, llm_request):
+def _local_catalyst_before_model(callback_context, llm_request):
     """Inject location from session state into the model request."""
-    state = ctx.state
+    state = callback_context.state
     city = state.get("city", "unknown")
     st = state.get("state", "")
     biz_type = state.get("businessType", "unknown")

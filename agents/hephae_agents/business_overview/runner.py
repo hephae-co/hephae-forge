@@ -117,6 +117,33 @@ async def _load_osm_competitors(latitude: float, longitude: float, business_type
         return []
 
 
+async def _load_tech_intelligence(business_type: str) -> dict[str, Any] | None:
+    """Load latest tech intelligence for this business vertical."""
+    try:
+        from hephae_db.firestore.tech_intelligence import list_tech_intelligence
+        from hephae_api.workflows.orchestrators.industries import resolve as resolve_industry
+
+        industry = resolve_industry(business_type or "Restaurants")
+        results = await list_tech_intelligence(vertical=industry.id, limit=1)
+        if results:
+            ti = results[0]
+            # Extract compact highlights for the dashboard
+            highlight = ti.get("weeklyHighlight")
+            ai_opps = ti.get("aiOpportunities", [])
+            platforms = ti.get("platformUpdates", {})
+            return {
+                "highlight": highlight.get("title", "") + " — " + highlight.get("detail", "") if highlight else None,
+                "aiTools": [
+                    f"{o.get('tool', '')}: {o.get('capability', '')}"
+                    for o in (ai_opps or [])[:3]
+                ],
+                "platforms": {k: v for k, v in (platforms or {}).items() if v},
+            }
+    except Exception as e:
+        logger.warning(f"[BusinessOverview] Tech intelligence load failed: {e}")
+    return None
+
+
 async def _load_latest_pulse(zip_code: str, business_type: str) -> dict[str, Any] | None:
     """Load the best available pulse for this business.
 
@@ -190,6 +217,7 @@ def _build_dashboard(
     osm_competitors: list[dict[str, Any]],
     latitude: float,
     longitude: float,
+    tech_intel: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build compact dashboard payload for the frontend map + stat cards."""
     dashboard: dict[str, Any] = {
@@ -227,8 +255,15 @@ def _build_dashboard(
         dashboard["communityBuzz"] = pulse_data.get("communityBuzz")
         dashboard["topInsights"] = pulse_data.get("topInsights", [])[:3]
         dashboard["coverage"] = pulse_data.get("source", "none")  # "ultralocal" | "national" | "none"
+        dashboard["keyMetrics"] = pulse_data.get("keyMetrics")
     else:
         dashboard["coverage"] = "none"
+
+    # Tech intelligence
+    if tech_intel:
+        dashboard["techHighlight"] = tech_intel.get("highlight")
+        dashboard["aiTools"] = tech_intel.get("aiTools", [])
+        dashboard["techPlatforms"] = tech_intel.get("platforms", {})
 
     return dashboard
 
@@ -254,22 +289,24 @@ async def run_business_overview(identity: dict[str, Any], light: bool = False) -
 
     logger.info(f"[BusinessOverview] Starting overview for: {name} ({zip_code})")
 
-    # Load all data sources in parallel
-    zipcode_context, zipcode_profile, pulse_data, osm_competitors = await asyncio.gather(
+    # Load all data sources in parallel (including tech intel)
+    zipcode_context, zipcode_profile, pulse_data, osm_competitors, tech_intel = await asyncio.gather(
         _load_zipcode_context(zip_code),
         _load_zipcode_profile(zip_code),
         _load_latest_pulse(zip_code, business_type),
         _load_osm_competitors(latitude, longitude, business_type),
+        _load_tech_intelligence(business_type),
     )
 
     logger.info(
         f"[BusinessOverview] Data loaded — context: {bool(zipcode_context)}, "
-        f"profile: {bool(zipcode_profile)}, pulse: {bool(pulse_data)}, light: {light}"
+        f"profile: {bool(zipcode_profile)}, pulse: {bool(pulse_data)}, "
+        f"tech: {bool(tech_intel)}, light: {light}"
     )
 
     # Light mode: skip LLM pipeline, return dashboard from pre-existing data only
     if light:
-        dashboard = _build_dashboard(zipcode_profile, pulse_data, osm_competitors, latitude, longitude)
+        dashboard = _build_dashboard(zipcode_profile, pulse_data, osm_competitors, latitude, longitude, tech_intel)
         return {"dashboard": dashboard, "light": True}
 
     # --- Build ADK agents ---
@@ -383,7 +420,7 @@ Search for this business and its competitors in the area."""
         # Build curated dashboard payload (compact, for frontend map + stats)
         dashboard = _build_dashboard(
             zipcode_profile, pulse_data, osm_competitors,
-            latitude, longitude,
+            latitude, longitude, tech_intel,
         )
 
         # Parse JSON from the last text output

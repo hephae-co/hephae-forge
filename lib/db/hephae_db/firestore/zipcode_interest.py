@@ -24,6 +24,7 @@ async def save_zipcode_interest(
     zip_code: str,
     business_type: str | None = None,
     email: str | None = None,
+    uid: str | None = None,
     city: str | None = None,
     state: str | None = None,
 ) -> str:
@@ -40,6 +41,8 @@ async def save_zipcode_interest(
         data["businessType"] = business_type
     if email:
         data["email"] = email
+    if uid:
+        data["uid"] = uid
     if city:
         data["city"] = city
     if state:
@@ -49,7 +52,7 @@ async def save_zipcode_interest(
         db.collection(COLLECTION).add, data
     )
     doc_id = doc_ref[1].id
-    logger.info(f"[ZipcodeInterest] Saved interest for {zip_code} → {doc_id}")
+    logger.info(f"[ZipcodeInterest] Saved interest for {zip_code} → {doc_id} (uid={uid})")
     return doc_id
 
 

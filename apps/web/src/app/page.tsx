@@ -494,6 +494,15 @@ export default function Home() {
   };
 
   const submitUltralocalInterest = async () => {
+    // Require sign-in first
+    if (!user) {
+      setMessages(prev => [...prev, msg('model',
+        `🔒 Please **sign in** first so we can notify you when hyperlocal intelligence is available in your area.`
+      )]);
+      signInWithGoogle();
+      return;
+    }
+
     const zipCode = (locatedBusiness as any)?.zipCode;
     setAddMyAreaCity(null);
     if (zipCode) {
@@ -503,11 +512,15 @@ export default function Home() {
           body: JSON.stringify({ zipCode, businessType: (locatedBusiness as any)?.businessType }),
         });
         const data = await res.json();
+        const location = data.city ? `${data.city} (${zipCode})` : zipCode;
+        const others = data.interestCount > 1 ? ` You're #${data.interestCount} to request this area.` : '';
         setMessages(prev => [...prev, msg('model',
-          `✅ Done! **${data.city || zipCode}** has been added to our coverage roadmap. We'll reach out once weekly pulse data is live for your neighborhood.`
+          `Got it — we've noted your interest in **${location}**.${others} We'll notify you when hyperlocal intelligence is available for your neighborhood.`
         )]);
       } catch {
-        setMessages(prev => [...prev, msg('model', `Got it — noted your interest in ultralocal coverage for your area.`)]);
+        setMessages(prev => [...prev, msg('model',
+          `Got it — we've noted your interest. We'll get back to you when hyperlocal intelligence is available in your location.`
+        )]);
       }
     }
   };
@@ -616,9 +629,6 @@ export default function Home() {
           const cityLabel = coverage.zipCode && coverage.coverageCity
             ? `${coverage.coverageCity} (${coverage.zipCode})`
             : coverage.coverageCity || coverage.zipCode || 'your area';
-          setMessages(prev => [...prev, msg('model',
-            `📍 **${cityLabel}** doesn't have hyperlocal weekly coverage yet. Right now you're seeing national industry data.`
-          )]);
           setAddMyAreaCity(cityLabel);
         }
       } else {

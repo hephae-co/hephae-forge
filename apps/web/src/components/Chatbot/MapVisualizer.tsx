@@ -85,6 +85,11 @@ interface DashboardData {
     pulseHeadline?: string | null;
     topInsights?: { title: string; recommendation: string }[];
     confirmedSources?: number;
+    coverage?: string;
+    keyMetrics?: Record<string, number>;
+    techHighlight?: string | null;
+    aiTools?: string[];
+    techPlatforms?: Record<string, string>;
 }
 
 interface MapVisualizerProps {
@@ -113,7 +118,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
     const [logoError, setLogoError] = useState(false);
     const [profileCollapsed, setProfileCollapsed] = useState(false);
     const [carouselIdx, setCarouselIdx] = useState(0);
-    const [carouselExpanded, setCarouselExpanded] = useState(false);
+    const [carouselExpanded, setCarouselExpanded] = useState(true);
     const [showSourcesPopover, setShowSourcesPopover] = useState(false);
 
     const getUrl = () => {
@@ -226,6 +231,36 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                 ? [{ label: 'Patch', url: dashboard.stats.patchUrl }]
                 : [{ label: 'Local News', url: 'https://patch.com/' }],
         });
+        // Tech intelligence highlight
+        if (dashboard.techHighlight) carouselItems.push({
+            label: 'Technology',
+            text: dashboard.techHighlight,
+            links: [{ label: 'AI Tools', url: 'https://hephae.co' }],
+        });
+        // AI tool recommendations
+        if (dashboard.aiTools?.length) {
+            carouselItems.push({
+                label: 'AI Tools',
+                text: dashboard.aiTools.join(' · '),
+                links: [{ label: 'Explore', url: 'https://hephae.co' }],
+            });
+        }
+        // Key metrics summary (from national pulse)
+        if (dashboard.keyMetrics) {
+            const metrics = Object.entries(dashboard.keyMetrics)
+                .filter(([, v]) => v !== 0)
+                .slice(0, 4)
+                .map(([k, v]) => `${humanize(k)}: ${typeof v === 'number' && v > 0 ? '+' : ''}${typeof v === 'number' ? v.toFixed(1) : v}%`)
+                .join(' · ');
+            if (metrics) carouselItems.push({
+                label: 'Market Data',
+                text: metrics,
+                links: [
+                    { label: 'BLS CPI', url: 'https://www.bls.gov/cpi/' },
+                    { label: 'USDA', url: 'https://www.ers.usda.gov/' },
+                ],
+            });
+        }
     }
 
     // Auto-advance carousel every 5 seconds
@@ -315,19 +350,38 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                             )}
                         </div>
 
-                        {/* GUEST: Sign-in CTA */}
+                        {/* GUEST: Quick stats teaser + compact sign-in pill */}
                         {!isAuthenticated && !isDiscovering && (
-                            <button
-                                onClick={onSignIn}
-                                className="w-full mt-2.5 flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-500/15 border border-indigo-400/30 hover:bg-indigo-500/25 hover:border-indigo-400/50 transition-all text-left group"
-                            >
-                                <svg className="w-4 h-4 text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                                <div className="min-w-0">
-                                    <p className="text-xs font-bold text-indigo-300">Sign in to build a full profile</p>
-                                    <p className="text-[10px] text-slate-500 leading-tight">Discover menu, social profiles, competitors & more</p>
-                                </div>
-                                <svg className="w-3.5 h-3.5 text-indigo-400/50 shrink-0 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
-                            </button>
+                            <div className="mt-2 space-y-2">
+                                {/* Teaser stats — give guests a taste of what's available */}
+                                {dashboard && (
+                                    <div className="flex gap-1.5 flex-wrap">
+                                        {dashboard.stats?.competitorCount !== undefined && dashboard.stats.competitorCount > 0 && (
+                                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-300 border border-orange-500/20">
+                                                {dashboard.stats.competitorCount} rivals nearby
+                                            </span>
+                                        )}
+                                        {dashboard.stats?.medianIncome && (
+                                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
+                                                {dashboard.stats.medianIncome} median income
+                                            </span>
+                                        )}
+                                        {dashboard.confirmedSources ? (
+                                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/20">
+                                                {dashboard.confirmedSources} data sources
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                )}
+                                <button
+                                    onClick={onSignIn}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 transition-all text-left group shadow-md shadow-indigo-900/30"
+                                >
+                                    <svg className="w-3 h-3 text-white/80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                    <span className="text-[11px] font-bold text-white">Sign in to build profile</span>
+                                    <svg className="w-3 h-3 text-white/50 shrink-0 group-hover:text-white/80 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
+                                </button>
+                            </div>
                         )}
 
                         {/* AUTHENTICATED: Profile tabs */}
@@ -815,7 +869,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                                     </div>
 
                                     {/* Text */}
-                                    <p className={`text-xs text-white/85 leading-relaxed px-3 pb-2 ${carouselExpanded ? '' : 'line-clamp-3'}`}>
+                                    <p className={`text-[13px] text-white/85 leading-relaxed px-3 pb-2 ${carouselExpanded ? '' : 'line-clamp-2'}`}>
                                         {item?.text}
                                     </p>
 

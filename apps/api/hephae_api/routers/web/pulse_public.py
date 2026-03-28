@@ -11,9 +11,11 @@ import asyncio
 import logging
 import re
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+
+from hephae_api.lib.auth import optional_firebase_user
 
 logger = logging.getLogger(__name__)
 
@@ -97,24 +99,41 @@ class ZipcodeInterestRequest(BaseModel):
 
 
 @router.post("/pulse/zipcode-interest")
-async def submit_zipcode_interest(body: ZipcodeInterestRequest):
-    """Submit a zip code of interest for future ultralocal coverage."""
+async def submit_zipcode_interest(
+    body: ZipcodeInterestRequest,
+    firebase_user: dict | None = Depends(optional_firebase_user),
+):
+    """Submit a zip code of interest for future ultralocal coverage.
+
+    Accepts both authenticated and unauthenticated requests, but
+    captures uid + email for authenticated users.
+    """
     if not _ZIP_RE.match(body.zipCode):
         return JSONResponse({"error": "Invalid zip code"}, status_code=400)
 
     # Resolve city/state from BigQuery public data if possible
     city, state = await _resolve_geo(body.zipCode)
 
+    uid = firebase_user.get("uid") if firebase_user else None
+    user_email = firebase_user.get("email") if firebase_user else body.email
+
     from hephae_db.firestore.zipcode_interest import save_zipcode_interest
     doc_id = await save_zipcode_interest(
         zip_code=body.zipCode,
         business_type=body.businessType,
-        email=body.email,
+        email=user_email,
+        uid=uid,
         city=city,
         state=state,
     )
 
     interest_count = await _get_interest_count(body.zipCode)
+
+    # Send admin notification email (best-effort, don't block response)
+    import asyncio
+    asyncio.create_task(_notify_admin_zipcode_interest(
+        body.zipCode, city, state, body.businessType, user_email, uid, interest_count,
+    ))
 
     return JSONResponse({
         "success": True,
@@ -123,8 +142,50 @@ async def submit_zipcode_interest(body: ZipcodeInterestRequest):
         "city": city,
         "state": state,
         "interestCount": interest_count,
-        "message": f"Thanks! We've noted your interest in {city or body.zipCode}. We'll add it to our coverage roadmap.",
     })
+
+
+async def _notify_admin_zipcode_interest(
+    zip_code: str,
+    city: str | None,
+    state: str | None,
+    business_type: str | None,
+    email: str | None,
+    uid: str | None,
+    interest_count: int,
+) -> None:
+    """Send admin email about new coverage interest (best-effort)."""
+    try:
+        from hephae_api.config import settings
+        from hephae_common.email import send_email
+
+        recipients = settings.MONITOR_NOTIFY_EMAILS or settings.ADMIN_EMAIL_ALLOWLIST
+        if not recipients:
+            return
+        email_list = [e.strip() for e in recipients.split(",") if e.strip()]
+        if not email_list:
+            return
+
+        location = f"{city}, {state}" if city and state else zip_code
+        subject = f"Coverage Interest: {location} ({interest_count} requests)"
+
+        html = f"""<div style="font-family:system-ui,sans-serif;max-width:500px">
+            <h3 style="color:#d97706">New Coverage Interest</h3>
+            <table style="font-size:14px;border-collapse:collapse">
+                <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Zip Code</td><td style="font-weight:600">{zip_code}</td></tr>
+                <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Location</td><td>{location}</td></tr>
+                <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Business Type</td><td>{business_type or 'N/A'}</td></tr>
+                <tr><td style="padding:4px 12px 4px 0;color:#6b7280">User</td><td>{email or 'anonymous'} {f'(uid: {uid[:8]}...)' if uid else ''}</td></tr>
+                <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Total Requests</td><td style="font-weight:600">{interest_count}</td></tr>
+            </table>
+        </div>"""
+
+        text = f"Coverage interest: {zip_code} ({location}), {interest_count} total requests. User: {email or 'anon'}"
+
+        await send_email(to=email_list, subject=subject, text=text, html_content=html)
+        logger.info(f"[ZipcodeInterest] Admin notified for {zip_code}")
+    except Exception as e:
+        logger.warning(f"[ZipcodeInterest] Admin email failed: {e}")
 
 
 async def _resolve_geo(zip_code: str) -> tuple[str | None, str | None]:

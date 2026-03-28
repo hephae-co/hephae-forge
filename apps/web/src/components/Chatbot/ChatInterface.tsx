@@ -634,21 +634,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         </div>
                     )}
 
-                    {/* Ultralocal coverage CTA — clickable card instead of typing */}
+                    {/* Ultralocal coverage CTA — compact inline chip */}
                     {addMyAreaCity && onAddMyArea && !isCentered && (
-                        <div className="mb-3 mx-1">
+                        <div className="mb-2 mx-1">
                             <button
                                 onClick={onAddMyArea}
-                                className="w-full flex items-start gap-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-teal-500/10 to-emerald-500/10 border border-teal-400/30 hover:border-teal-400/60 hover:from-teal-500/15 hover:to-emerald-500/15 transition-all text-left group shadow-sm"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-teal-500/10 border border-teal-400/25 hover:bg-teal-500/20 hover:border-teal-400/50 transition-all text-left group text-xs"
                             >
-                                <div className="w-8 h-8 rounded-xl bg-teal-500/20 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-teal-500/30 transition-colors">
-                                    <svg className="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-teal-300 leading-tight">Suggest {addMyAreaCity} for the network</p>
-                                    <p className="text-xs text-gray-400 mt-0.5 leading-snug">Nominate this area for hyperlocal weekly intelligence — neighborhood-level data every week.</p>
-                                </div>
-                                <svg className="w-4 h-4 text-teal-400/60 shrink-0 mt-1 group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
+                                <svg className="w-3 h-3 text-teal-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                <span className="font-semibold text-teal-300">Suggest {addMyAreaCity} for weekly intel</span>
+                                <svg className="w-3 h-3 text-teal-400/50 shrink-0 group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
                             </button>
                         </div>
                     )}

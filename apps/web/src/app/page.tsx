@@ -562,7 +562,7 @@ export default function Home() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ slug, identity, snapshot: { overview } }),
           });
-          window.history.replaceState(null, '', '/forge/b/' + slug);
+          window.history.replaceState(null, '', '/b/' + slug);
         } catch {
           // Non-critical — URL update is best-effort
         }
@@ -1957,7 +1957,7 @@ export default function Home() {
             setIsChatCollapsed(false);
             setAddMyAreaCity(null);
             setBusinessSlug(null);
-            window.history.replaceState(null, '', '/forge/');
+            window.history.replaceState(null, '', '/');
           }}
           capabilities={capabilities}
           onSelectCapability={handleSelectCapability}

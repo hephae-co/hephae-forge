@@ -25,9 +25,9 @@ export default function BusinessProfilePage() {
                     if (data.snapshot) {
                         sessionStorage.setItem('forge_preload_snapshot', JSON.stringify(data.snapshot));
                     }
-                    // Redirect to forge home — must use /forge/ since this app is
-                    // mounted at hephae.co/forge/ via nginx reverse proxy
-                    window.location.href = '/forge/';
+                    // Redirect to forge home — must use / since this app is
+                    // mounted at hephae.co/ via nginx reverse proxy
+                    window.location.href = '/';
                 } else {
                     setStatus('notfound');
                 }
@@ -52,7 +52,7 @@ export default function BusinessProfilePage() {
                 <div className="text-center max-w-sm">
                     <p className="text-white font-bold text-lg mb-2">Profile not found</p>
                     <p className="text-slate-400 text-sm mb-6">This business profile link may have expired or been removed.</p>
-                    <a href="/forge/" className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors">
+                    <a href="/" className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors">
                         Search for a business
                     </a>
                 </div>

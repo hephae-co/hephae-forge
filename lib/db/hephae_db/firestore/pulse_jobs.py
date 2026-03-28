@@ -97,6 +97,11 @@ async def get_pulse_job(job_id: str) -> dict[str, Any] | None:
         else:
             timeout_dt = None
 
+        # Normalize both to naive UTC for comparison
+        if timeout_dt:
+            if hasattr(timeout_dt, "tzinfo") and timeout_dt.tzinfo is not None:
+                from datetime import timezone
+                timeout_dt = timeout_dt.astimezone(timezone.utc).replace(tzinfo=None)
         if timeout_dt and datetime.utcnow() > timeout_dt:
             logger.warning(f"[PulseJobs] Job {job_id} timed out — marking as FAILED")
             updates = {

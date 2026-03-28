@@ -150,17 +150,24 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
             });
             if (res.ok) {
                 const result = await res.json();
-                const data = result.data || {};
-                // Check if we actually found anything useful
-                const hasData = Object.values(data).some(v =>
+                const newData = result.data || {};
+                const hasData = Object.values(newData).some(v =>
                     v && v !== '' && !(Array.isArray(v) && v.length === 0)
                 );
-                setSections(prev => ({
-                    ...prev,
-                    [sectionId]: hasData
-                        ? { status: 'found', data, editValue: '' }
-                        : { status: 'not_found', data: null, editValue: '' },
-                }));
+                setSections(prev => {
+                    const existing = prev[sectionId].data || {};
+                    // Merge new results with existing (keeps previously found data)
+                    const merged = hasData ? { ...existing, ...newData } : existing;
+                    const hasMerged = Object.values(merged).some(v =>
+                        v && v !== '' && !(Array.isArray(v) && v.length === 0)
+                    );
+                    return {
+                        ...prev,
+                        [sectionId]: hasMerged
+                            ? { status: 'found', data: merged, editValue: '' }
+                            : { status: 'not_found', data: null, editValue: '' },
+                    };
+                });
             } else {
                 const errText = await res.text().catch(() => res.statusText);
                 console.error(`[ProfileBuilder] ${sectionId} failed: ${res.status}`, errText);
@@ -250,36 +257,41 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
                     const c = sectionColors[id];
 
                     // Discovering state
-                    // Discovering — inline spinner pill
+                    // Discovering — spinner pill
                     if (s.status === 'discovering') {
                         return (
-                            <span key={id} className={`inline-flex items-center gap-1 px-2 py-1 rounded-full ${c.bg} border ${c.border}`}>
-                                <Loader2 className={`w-3 h-3 ${c.text} animate-spin`} />
-                                <span className={`text-[10px] font-semibold ${c.text}`}>{label}</span>
+                            <span key={id} className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full ${c.bg} border ${c.border}`}>
+                                <Loader2 className={`w-3.5 h-3.5 ${c.text} animate-spin`} />
+                                <span className={`text-[11px] font-semibold ${c.text}`}>{label}</span>
                             </span>
                         );
                     }
 
-                    // Confirmed — green check pill
+                    // Confirmed — clickable to view/expand saved data
                     if (s.status === 'confirmed') {
                         return (
-                            <span key={id} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/25">
-                                <Check className="w-3 h-3 text-emerald-400" />
-                                <span className="text-[10px] font-semibold text-emerald-300">{label}</span>
-                            </span>
+                            <button
+                                key={id}
+                                onClick={() => setSections(prev => ({ ...prev, [id]: { ...prev[id], status: 'found' } }))}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/25 hover:bg-emerald-500/25 transition-all"
+                                title="Click to view or add more"
+                            >
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <span className="text-[11px] font-semibold text-emerald-300">{label}</span>
+                            </button>
                         );
                     }
 
-                    // Idle — clickable pill button
+                    // Idle — clickable discover pill
                     if (s.status === 'idle') {
                         return (
                             <button
                                 key={id}
                                 onClick={() => discover(id)}
-                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full ${c.bg} border ${c.border} ${c.activeBg} transition-all`}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full ${c.bg} border ${c.border} ${c.activeBg} transition-all`}
                             >
                                 <span className={`${c.text}`}>{icon}</span>
-                                <span className={`text-[10px] font-semibold ${c.text}`}>{label}</span>
+                                <span className={`text-[11px] font-semibold ${c.text}`}>{label}</span>
                             </button>
                         );
                     }
@@ -294,7 +306,7 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
                 const s = sections[id];
                 const c = sectionColors[id];
 
-                // Found — show result with confirm/edit
+                // Found — show result with confirm/edit/add more
                 if (s.status === 'found' && s.data) {
                     return (
                         <div key={id} className="px-2 py-2 rounded-lg bg-emerald-500/8 border border-emerald-400/15 space-y-1.5">
@@ -305,11 +317,18 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
                                         <Check className="w-2.5 h-2.5" /> OK
                                     </button>
                                     <button onClick={() => setSections(prev => ({ ...prev, [id]: { ...prev[id], status: 'editing', editValue: '' } }))}
-                                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/5 text-slate-400 hover:bg-white/10">
-                                        <Pencil className="w-2.5 h-2.5" />
+                                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/5 text-slate-400 hover:bg-white/10"
+                                        title="Add or edit manually">
+                                        <Pencil className="w-2.5 h-2.5" /> Add
                                     </button>
-                                    <button onClick={() => setSections(prev => ({ ...prev, [id]: { status: 'idle', data: null, editValue: '' } }))}
-                                        className="px-1 py-0.5 rounded text-[9px] bg-white/5 text-slate-400 hover:bg-white/10">
+                                    <button onClick={() => discover(id)}
+                                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/5 text-slate-400 hover:bg-white/10"
+                                        title="Search for more">
+                                        <Search className="w-2.5 h-2.5" />
+                                    </button>
+                                    <button onClick={() => setSections(prev => ({ ...prev, [id]: { status: 'confirmed', data: s.data, editValue: '' } }))}
+                                        className="px-1 py-0.5 rounded text-[9px] bg-white/5 text-slate-400 hover:bg-white/10"
+                                        title="Collapse">
                                         <X className="w-2.5 h-2.5" />
                                     </button>
                                 </div>

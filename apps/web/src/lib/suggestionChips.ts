@@ -47,10 +47,7 @@ export function computeSuggestionChips(state: ChipState): SuggestionChip[] {
   } = state;
 
   if (isCentered) {
-    return [
-      { text: "Bosphorus Nutley NJ", category: 'insight' },
-      { text: "Tick Tock Diner Clifton NJ", category: 'insight' },
-    ];
+    return [];
   }
 
   if (isDiscovering || isTyping) return [];

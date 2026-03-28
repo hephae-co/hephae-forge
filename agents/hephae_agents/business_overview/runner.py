@@ -233,8 +233,13 @@ def _build_dashboard(
     return dashboard
 
 
-async def run_business_overview(identity: dict[str, Any]) -> dict[str, Any]:
+async def run_business_overview(identity: dict[str, Any], light: bool = False) -> dict[str, Any]:
     """Run business overview with Google Search + Maps + Zipcode/Pulse data.
+
+    Args:
+        identity: Business identity (name, address, zipCode, coordinates, etc.)
+        light: If True, skip the LLM pipeline and return only pre-existing
+               data (pulse, competitors, zipcode profile). No API cost.
 
     Returns structured overview with businessSnapshot, marketPosition,
     localEconomy, localBuzz, keyOpportunities, capabilityTeasers.
@@ -259,8 +264,13 @@ async def run_business_overview(identity: dict[str, Any]) -> dict[str, Any]:
 
     logger.info(
         f"[BusinessOverview] Data loaded — context: {bool(zipcode_context)}, "
-        f"profile: {bool(zipcode_profile)}, pulse: {bool(pulse_data)}"
+        f"profile: {bool(zipcode_profile)}, pulse: {bool(pulse_data)}, light: {light}"
     )
+
+    # Light mode: skip LLM pipeline, return dashboard from pre-existing data only
+    if light:
+        dashboard = _build_dashboard(zipcode_profile, pulse_data, osm_competitors, latitude, longitude)
+        return {"dashboard": dashboard, "light": True}
 
     # --- Build ADK agents ---
 

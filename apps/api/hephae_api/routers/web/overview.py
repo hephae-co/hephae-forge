@@ -34,7 +34,8 @@ async def overview(request: Request):
 
         from hephae_agents.business_overview.runner import run_business_overview
 
-        result = await run_business_overview(identity)
+        light = body.get("light", False)
+        result = await run_business_overview(identity, light=light)
 
         logger.info(f"[API/Overview] Overview complete for: {name}")
         return JSONResponse(result)

@@ -7,6 +7,9 @@ import { SurgicalReport } from '@/types/api';
 import { SuggestionChip } from '@/components/Chatbot/types';
 import { computeSuggestionChips, ACTION_CHIP_MAP } from '@/lib/suggestionChips';
 import clsx from 'clsx';
+
+/** Convert snake_case/kebab-case to Title Case */
+const humanize = (s: string) => s.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 import dynamic from 'next/dynamic';
 
 const RechartsBarChart = dynamic(() => import('recharts').then(m => {
@@ -518,7 +521,7 @@ export default function Home() {
       const res = await apiFetch('/api/overview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identity })
+        body: JSON.stringify({ identity, light: !user })
       });
 
       if (res.ok) {
@@ -587,13 +590,13 @@ export default function Home() {
 
         // Top pulse insights
         if (dash?.topInsights?.length) {
-          const insights = dash.topInsights.slice(0, 2).map((i: any) => `• **${i.title}** — ${i.recommendation}`).join('\n');
+          const insights = dash.topInsights.slice(0, 2).map((i: any) => `• **${humanize(i.title)}** — ${i.recommendation}`).join('\n');
           parts.push(`**Intelligence from this week's analysis:**\n${insights}`);
         }
 
         // Opportunities from synthesizer
         if (overview.keyOpportunities?.length) {
-          const opps = overview.keyOpportunities.slice(0, 2).map((o: any) => `• **${o.title}** — ${o.detail}`).join('\n');
+          const opps = overview.keyOpportunities.slice(0, 2).map((o: any) => `• **${humanize(o.title)}** — ${o.detail}`).join('\n');
           parts.push(`**Opportunities:**\n${opps}`);
         }
 
@@ -609,7 +612,10 @@ export default function Home() {
         // Show ultralocal interest prompt if coverage is national-only
         const dashCoverage = overview?.dashboard?.coverage;
         if (coverage && !coverage.ultralocal && dashCoverage !== 'ultralocal') {
-          const cityLabel = coverage.coverageCity || coverage.zipCode || 'your area';
+          const cityName = coverage.coverageCity || 'your area';
+          const cityLabel = coverage.zipCode && coverage.coverageCity
+            ? `${coverage.coverageCity} (${coverage.zipCode})`
+            : coverage.coverageCity || coverage.zipCode || 'your area';
           setMessages(prev => [...prev, msg('model',
             `📍 **${cityLabel}** doesn't have hyperlocal weekly coverage yet. Right now you're seeing national industry data.`
           )]);
@@ -1834,7 +1840,7 @@ export default function Home() {
                 </div>
               </div>
             ) : locatedBusiness && locatedBusiness.coordinates ? (
-              <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} dashboard={businessOverview?.dashboard}
+              <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} dashboard={businessOverview?.dashboard} isAuthenticated={!!user} onSignIn={signInWithGoogle}
                 ctaSlot={!isDiscovering && (
                   <>
                     <a

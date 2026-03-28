@@ -645,8 +645,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                     <svg className="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-teal-300 leading-tight">Add {addMyAreaCity} to the network</p>
-                                    <p className="text-xs text-gray-400 mt-0.5 leading-snug">Get hyperlocal weekly intelligence — neighborhood-level data every week.</p>
+                                    <p className="text-sm font-bold text-teal-300 leading-tight">Suggest {addMyAreaCity} for the network</p>
+                                    <p className="text-xs text-gray-400 mt-0.5 leading-snug">Nominate this area for hyperlocal weekly intelligence — neighborhood-level data every week.</p>
                                 </div>
                                 <svg className="w-4 h-4 text-teal-400/60 shrink-0 mt-1 group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
                             </button>

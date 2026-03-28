@@ -324,15 +324,19 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
             {business && (
                 <div className="bg-slate-900 animate-fade-in-up">
 
-                    {/* HEADER — compact for everyone */}
-                    <div className={`px-3 pt-3 ${!isAuthenticated || profileCollapsed ? 'pb-3' : 'pb-2'} ${!isAuthenticated || profileCollapsed ? '' : 'border-b border-white/10'}`}>
+                    {/* HEADER — tight single row */}
+                    <div className={`px-3 py-2 ${!isAuthenticated || profileCollapsed ? '' : 'border-b border-white/10'}`}>
                         <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/50 shrink-0">
-                                <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                            </div>
                             <div className="min-w-0 flex-1">
-                                <h2 className="text-white font-bold text-sm leading-tight truncate">{business.name}</h2>
-                                <p className="text-slate-400 text-[10px] leading-tight mt-0.5 truncate">{business.address}</p>
+                                <h2 className="text-white font-bold text-[13px] leading-tight truncate">{business.name}</h2>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <p className="text-slate-500 text-[10px] leading-tight truncate">{business.address}</p>
+                                    {business.officialUrl && (
+                                        <a href={business.officialUrl} target="_blank" rel="noreferrer" className="text-[10px] text-indigo-400 hover:text-indigo-300 truncate shrink-0">
+                                            {business.officialUrl.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+                                        </a>
+                                    )}
+                                </div>
                             </div>
                             {isAuthenticated && (
                                 <button

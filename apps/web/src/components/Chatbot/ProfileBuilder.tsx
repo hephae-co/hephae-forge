@@ -227,153 +227,143 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
         }
     };
 
-    return (
-        <div className="p-3 space-y-2">
-            <div className="flex items-center gap-1.5 mb-1">
-                <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider">Build Profile</span>
-            </div>
-            {error && (
-                <p className="text-[10px] text-red-400 bg-red-500/10 px-2 py-1 rounded">{error}</p>
-            )}
+    // Color scheme per section for visual distinction
+    const sectionColors: Record<Section, { bg: string; text: string; border: string; activeBg: string }> = {
+        menu: { bg: 'bg-orange-500/10', text: 'text-orange-300', border: 'border-orange-500/20', activeBg: 'hover:bg-orange-500/20' },
+        social: { bg: 'bg-pink-500/10', text: 'text-pink-300', border: 'border-pink-500/20', activeBg: 'hover:bg-pink-500/20' },
+        competitors: { bg: 'bg-red-500/10', text: 'text-red-300', border: 'border-red-500/20', activeBg: 'hover:bg-red-500/20' },
+        theme: { bg: 'bg-violet-500/10', text: 'text-violet-300', border: 'border-violet-500/20', activeBg: 'hover:bg-violet-500/20' },
+        contact: { bg: 'bg-cyan-500/10', text: 'text-cyan-300', border: 'border-cyan-500/20', activeBg: 'hover:bg-cyan-500/20' },
+    };
 
-            <div className="grid grid-cols-2 gap-1.5">
+    return (
+        <div className="px-3 py-2 space-y-2">
+            <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Build Profile</span>
+                {error && <span className="text-[9px] text-red-400">{error}</span>}
+            </div>
+
+            {/* Idle sections as a compact row of pills */}
+            <div className="flex flex-wrap gap-1">
                 {SECTIONS.map(({ id, label, icon, description, placeholder }) => {
                     const s = sections[id];
+                    const c = sectionColors[id];
 
                     // Discovering state
+                    // Discovering — inline spinner pill
                     if (s.status === 'discovering') {
                         return (
-                            <div key={id} className="col-span-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-400/20">
-                                <Loader2 className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
-                                <span className="text-xs text-indigo-300">Finding {label.toLowerCase()}...</span>
-                            </div>
+                            <span key={id} className={`inline-flex items-center gap-1 px-2 py-1 rounded-full ${c.bg} border ${c.border}`}>
+                                <Loader2 className={`w-3 h-3 ${c.text} animate-spin`} />
+                                <span className={`text-[10px] font-semibold ${c.text}`}>{label}</span>
+                            </span>
                         );
                     }
 
-                    // Found — show result with confirm/edit/dismiss
-                    if (s.status === 'found' && s.data) {
-                        return (
-                            <div key={id} className="col-span-2 px-3 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-400/20 space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-emerald-300">{label}</span>
-                                    <div className="flex gap-1">
-                                        <button onClick={() => confirm(id)} className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30">
-                                            <Check className="w-3 h-3" /> Confirm
-                                        </button>
-                                        <button onClick={() => setSections(prev => ({ ...prev, [id]: { ...prev[id], status: 'editing', editValue: '' } }))}
-                                            className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-slate-400 hover:bg-white/10">
-                                            <Pencil className="w-3 h-3" /> Edit
-                                        </button>
-                                        <button onClick={() => setSections(prev => ({ ...prev, [id]: { status: 'idle', data: null, editValue: '' } }))}
-                                            className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-slate-400 hover:bg-white/10">
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="text-[11px]">{renderSectionData(id, s.data)}</div>
-                            </div>
-                        );
-                    }
-
-                    // Not found — ask user to provide data
-                    if (s.status === 'not_found') {
-                        return (
-                            <div key={id} className="col-span-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-400/20 space-y-1.5">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-bold text-amber-300">{label}</span>
-                                    <span className="text-[10px] text-slate-500">— not found automatically</span>
-                                </div>
-                                <div className="flex gap-1.5">
-                                    <input
-                                        type="text"
-                                        value={s.editValue}
-                                        onChange={e => setSections(prev => ({ ...prev, [id]: { ...prev[id], editValue: e.target.value } }))}
-                                        placeholder={placeholder}
-                                        className="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/50"
-                                        onKeyDown={e => e.key === 'Enter' && submitOverride(id)}
-                                        autoFocus
-                                    />
-                                    <button onClick={() => submitOverride(id)} disabled={!s.editValue.trim()}
-                                        className="px-2 py-1 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 disabled:opacity-30">
-                                        Save
-                                    </button>
-                                    <button onClick={() => setSections(prev => ({ ...prev, [id]: { status: 'idle', data: null, editValue: '' } }))}
-                                        className="px-1 py-1 rounded text-[10px] bg-white/5 text-slate-400 hover:bg-white/10">
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    }
-
-                    // Confirmed state
+                    // Confirmed — green check pill
                     if (s.status === 'confirmed') {
                         return (
-                            <div key={id} className="col-span-1 flex items-center gap-2 px-2.5 py-2 rounded-lg bg-emerald-500/10 border border-emerald-400/15">
+                            <span key={id} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/25">
                                 <Check className="w-3 h-3 text-emerald-400" />
-                                <span className="text-[11px] font-semibold text-emerald-300 truncate">{label}</span>
-                            </div>
+                                <span className="text-[10px] font-semibold text-emerald-300">{label}</span>
+                            </span>
                         );
                     }
 
-                    // Editing — manual input
-                    if (s.status === 'editing') {
+                    // Idle — clickable pill button
+                    if (s.status === 'idle') {
                         return (
-                            <div key={id} className="col-span-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 space-y-1.5">
-                                <span className="text-xs font-bold text-slate-300">{label} — paste URL or details</span>
-                                <div className="flex gap-1.5">
-                                    <input
-                                        type="text"
-                                        value={s.editValue}
-                                        onChange={e => setSections(prev => ({ ...prev, [id]: { ...prev[id], editValue: e.target.value } }))}
-                                        placeholder={placeholder}
-                                        className="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400/50"
-                                        onKeyDown={e => e.key === 'Enter' && submitOverride(id)}
-                                    />
-                                    <button onClick={() => submitOverride(id)} className="px-2 py-1 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30">
-                                        Save
-                                    </button>
-                                    <button onClick={() => setSections(prev => ({ ...prev, [id]: { status: 'idle', data: null, editValue: '' } }))}
-                                        className="px-2 py-1 rounded text-[10px] font-bold bg-white/5 text-slate-400 hover:bg-white/10">
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            </div>
+                            <button
+                                key={id}
+                                onClick={() => discover(id)}
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full ${c.bg} border ${c.border} ${c.activeBg} transition-all`}
+                            >
+                                <span className={`${c.text}`}>{icon}</span>
+                                <span className={`text-[10px] font-semibold ${c.text}`}>{label}</span>
+                            </button>
                         );
                     }
 
-                    // Idle — action button
-                    return (
-                        <button
-                            key={id}
-                            onClick={() => discover(id)}
-                            className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-white/5 border border-white/8 hover:bg-indigo-500/10 hover:border-indigo-400/20 transition-all text-left group"
-                        >
-                            <div className="w-6 h-6 rounded-md bg-indigo-500/15 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-500/25 transition-colors shrink-0">
-                                {icon}
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-[11px] font-bold text-slate-300 leading-tight">{label}</p>
-                                <p className="text-[9px] text-slate-500 leading-tight truncate">{description}</p>
-                            </div>
-                        </button>
-                    );
+                    // Other states (found, not_found, editing) render below the pill row
+                    return null;
                 })}
             </div>
 
-            {/* Manual input shortcut */}
-            <button
-                onClick={() => {
-                    // Toggle the first idle section to editing mode
-                    const firstIdle = SECTIONS.find(s => sections[s.id].status === 'idle');
-                    if (firstIdle) {
-                        setSections(prev => ({ ...prev, [firstIdle.id]: { ...prev[firstIdle.id], status: 'editing' } }));
-                    }
-                }}
-                className="w-full text-center text-[10px] text-slate-500 hover:text-indigo-400 transition-colors py-1"
-            >
-                Or paste details manually
-            </button>
+            {/* Expanded panels for found / not_found / editing states */}
+            {SECTIONS.map(({ id, label, icon, description, placeholder }) => {
+                const s = sections[id];
+                const c = sectionColors[id];
+
+                // Found — show result with confirm/edit
+                if (s.status === 'found' && s.data) {
+                    return (
+                        <div key={id} className="px-2 py-2 rounded-lg bg-emerald-500/8 border border-emerald-400/15 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-bold text-emerald-300">{label}</span>
+                                <div className="flex gap-1">
+                                    <button onClick={() => confirm(id)} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30">
+                                        <Check className="w-2.5 h-2.5" /> OK
+                                    </button>
+                                    <button onClick={() => setSections(prev => ({ ...prev, [id]: { ...prev[id], status: 'editing', editValue: '' } }))}
+                                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/5 text-slate-400 hover:bg-white/10">
+                                        <Pencil className="w-2.5 h-2.5" />
+                                    </button>
+                                    <button onClick={() => setSections(prev => ({ ...prev, [id]: { status: 'idle', data: null, editValue: '' } }))}
+                                        className="px-1 py-0.5 rounded text-[9px] bg-white/5 text-slate-400 hover:bg-white/10">
+                                        <X className="w-2.5 h-2.5" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="text-[10px]">{renderSectionData(id, s.data)}</div>
+                        </div>
+                    );
+                }
+
+                // Not found — ask user
+                if (s.status === 'not_found') {
+                    return (
+                        <div key={id} className="px-2 py-2 rounded-lg bg-amber-500/8 border border-amber-400/15 space-y-1">
+                            <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-bold text-amber-300">{label}</span>
+                                <span className="text-[9px] text-slate-500">— not found, paste below</span>
+                            </div>
+                            <div className="flex gap-1">
+                                <input type="text" value={s.editValue}
+                                    onChange={e => setSections(prev => ({ ...prev, [id]: { ...prev[id], editValue: e.target.value } }))}
+                                    placeholder={placeholder}
+                                    className="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1 text-[11px] text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/50"
+                                    onKeyDown={e => e.key === 'Enter' && submitOverride(id)} autoFocus />
+                                <button onClick={() => submitOverride(id)} disabled={!s.editValue.trim()}
+                                    className="px-2 py-1 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 disabled:opacity-30">Save</button>
+                                <button onClick={() => setSections(prev => ({ ...prev, [id]: { status: 'idle', data: null, editValue: '' } }))}
+                                    className="px-1 py-1 rounded bg-white/5 text-slate-400 hover:bg-white/10"><X className="w-2.5 h-2.5" /></button>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // Editing
+                if (s.status === 'editing') {
+                    return (
+                        <div key={id} className="px-2 py-2 rounded-lg bg-white/5 border border-white/10 space-y-1">
+                            <span className="text-[10px] font-bold text-slate-300">{label}</span>
+                            <div className="flex gap-1">
+                                <input type="text" value={s.editValue}
+                                    onChange={e => setSections(prev => ({ ...prev, [id]: { ...prev[id], editValue: e.target.value } }))}
+                                    placeholder={placeholder}
+                                    className="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1 text-[11px] text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400/50"
+                                    onKeyDown={e => e.key === 'Enter' && submitOverride(id)} autoFocus />
+                                <button onClick={() => submitOverride(id)} disabled={!s.editValue.trim()}
+                                    className="px-2 py-1 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 disabled:opacity-30">Save</button>
+                                <button onClick={() => setSections(prev => ({ ...prev, [id]: { status: 'idle', data: null, editValue: '' } }))}
+                                    className="px-1 py-1 rounded bg-white/5 text-slate-400 hover:bg-white/10"><X className="w-2.5 h-2.5" /></button>
+                            </div>
+                        </div>
+                    );
+                }
+
+                return null;
+            })}
         </div>
     );
 }

@@ -86,6 +86,28 @@ def _build_chat_agent(
             parts.append(
                 f"Competitive Analysis:\n{json.dumps(context['competitiveReport'], indent=1)}"
             )
+        if context.get("overview"):
+            ov = context["overview"]
+            ov_parts = []
+            bs = ov.get("businessSnapshot", {})
+            if bs:
+                ov_parts.append(f"Rating: {bs.get('rating', 'N/A')}/5 ({bs.get('reviewCount', '?')} reviews)")
+            mp = ov.get("marketPosition", {})
+            if mp:
+                ov_parts.append(f"Market: {mp.get('competitorCount', '?')} competitors, {mp.get('saturationLevel', '?')} saturation")
+            le = ov.get("localEconomy", {})
+            if le:
+                ov_parts.append(f"Economy: median income {le.get('medianIncome', '?')}, pop {le.get('population', '?')}")
+            opps = ov.get("keyOpportunities", [])
+            if opps:
+                ov_parts.append("Key Opportunities:\n" + "\n".join(f"- {o.get('title', '')}: {o.get('detail', '')}" for o in opps[:3]))
+            dash = ov.get("dashboard", {})
+            if dash.get("topInsights"):
+                ov_parts.append("Weekly Intelligence:\n" + "\n".join(f"- {i.get('title', '')}: {i.get('recommendation', '')}" for i in dash["topInsights"][:3]))
+            if dash.get("communityBuzz"):
+                ov_parts.append(f"Community: {dash['communityBuzz']}")
+            if ov_parts:
+                parts.append("Business Overview:\n" + "\n".join(ov_parts))
 
         if parts:
             instruction += (

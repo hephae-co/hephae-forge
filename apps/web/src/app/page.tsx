@@ -362,6 +362,7 @@ export default function Home() {
           context: {
             businessName: locatedBusiness?.name,
             address: locatedBusiness?.address,
+            overview: businessOverview || undefined,
             seoReport: seoReport ? { overallScore: seoReport.overallScore, sections: seoReport.sections?.map((s: any) => ({ name: s.name, score: s.score, recommendations: s.recommendations })), summary: seoReport.summary } : undefined,
             marginReport: report ? { overall_score: report.overall_score, menu_items: report.menu_items?.slice(0, 10), strategic_advice: report.strategic_advice } : undefined,
             trafficForecast: forecast ? { summary: forecast.summary, forecast: forecast.forecast?.slice(0, 5) } : undefined,

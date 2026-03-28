@@ -358,12 +358,15 @@ async def _run_section_discovery(section: str, identity: dict[str, Any]) -> dict
         session_service=session_service,
     )
 
+    # Menu/theme need more calls (crawl → follow links → extract)
+    max_calls = 15 if section in ("menu", "theme") else 8
+
     last_text = ""
     async for event in runner.run_async(
         user_id="system",
         session_id=session.id,
         new_message=user_msg(prompt),
-        run_config=RunConfig(max_llm_calls=5),
+        run_config=RunConfig(max_llm_calls=max_calls),
     ):
         if event.content and event.content.parts:
             for part in event.content.parts:

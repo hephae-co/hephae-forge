@@ -25,21 +25,18 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event
 from google.adk.events.event_actions import EventActions
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools import google_search
 
 from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
-from hephae_agents.shared_tools import google_search_tool, crawl4ai_advanced_tool
 from hephae_db.schemas import CritiqueResult, WeeklyPulseOutput
 
 # Import instruction builders (stateless functions, safe to reuse)
-from hephae_agents.research.pulse_data_gatherer import (
-    BaseLayerFetcher,
-    _social_pulse_before_model,
-    _local_catalyst_before_model,
+from hephae_agents.research.pulse_data_gatherer import BaseLayerFetcher
+from hephae_agents.research.social_pulse import CachedSocialPulseAgent
+from hephae_agents.research.local_catalyst import (
+    CachedEventsResearchAgent,
+    CachedGovtIntelAgent,
 )
-from hephae_agents.research.social_pulse import SOCIAL_PULSE_INSTRUCTION
-from hephae_agents.research.local_catalyst import LOCAL_CATALYST_INSTRUCTION
 from hephae_agents.research.pulse_domain_experts import (
     HISTORIAN_INSTRUCTION,
     ECONOMIST_INSTRUCTION,
@@ -237,29 +234,9 @@ def create_pulse_orchestrator() -> SequentialAgent:
     """Create a fresh PulseOrchestrator agent tree."""
 
     # ── Stage 1: DataGatherer (static instructions + callbacks for caching) ──
-    social_pulse = LlmAgent(
-        name="SocialPulseResearch",
-        model=AgentModels.PRIMARY_MODEL,
-        description="Scans social media for community sentiment.",
-        instruction=SOCIAL_PULSE_INSTRUCTION,
-        before_model_callback=_social_pulse_before_model,
-        tools=[google_search],
-        output_key="socialPulse",
-        on_model_error_callback=fallback_on_error,
-    )
-    local_catalyst = LlmAgent(
-        name="LocalCatalystResearch",
-        model=AgentModels.PRIMARY_MODEL,
-        description="Researches forward-looking local government signals.",
-        instruction=LOCAL_CATALYST_INSTRUCTION,
-        before_model_callback=_local_catalyst_before_model,
-        tools=[google_search_tool, crawl4ai_advanced_tool],
-        output_key="localCatalysts",
-        on_model_error_callback=fallback_on_error,
-    )
     research_fan_out = ParallelAgent(
         name="ResearchFanOut",
-        sub_agents=[social_pulse, local_catalyst],
+        sub_agents=[CachedSocialPulseAgent(), CachedEventsResearchAgent(), CachedGovtIntelAgent()],
     )
     data_gatherer = ParallelAgent(
         name="DataGatherer",

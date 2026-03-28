@@ -94,12 +94,15 @@ class BaseLayerFetcher(BaseAgent):
         industry_pulse = None
         industry_trend_summary = ""
 
-        # Try loading the industry pulse (pre-computed by industry cron)
+        # Load or lazily generate the industry pulse (national signals + playbooks + trend summary).
+        # generate_industry_pulse() checks Firestore cache first — cache hit is instant.
+        # On a miss (cron didn't run), it generates on demand: 1 LLM call, then saves to cache.
+        # All subsequent zips for the same industry this week get the cached result.
         try:
             from hephae_api.workflows.orchestrators.industries import resolve
             industry = resolve(business_type)
-            from hephae_db.firestore.industry_pulse import get_industry_pulse
-            industry_pulse = await get_industry_pulse(industry.id, week_of)
+            from hephae_api.workflows.orchestrators.industry_pulse import generate_industry_pulse
+            industry_pulse = await generate_industry_pulse(industry.id, week_of)
             if industry_pulse:
                 logger.info(
                     f"[BaseLayerFetcher] Loaded industry pulse {industry.id}-{week_of} "
@@ -255,6 +258,10 @@ def _local_catalyst_before_model(callback_context, llm_request):
         genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=context_text)])
     )
     return None
+
+
+# EventsResearchAgent uses the same location inputs
+_events_research_before_model = _local_catalyst_before_model
 
 
 # Backward compat: export static instructions as the old callable names

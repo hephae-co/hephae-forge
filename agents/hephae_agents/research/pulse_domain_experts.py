@@ -238,8 +238,20 @@ def _local_scout_before_model(callback_context, llm_request):
     social = state.get("socialPulse", "")
     if social:
         sections.append(f"Social Pulse: {social[:2000] if isinstance(social, str) else json.dumps(social, default=str)[:2000]}")
+
+    # Weekly events research (new openings, closings, local events, grants)
+    events = state.get("eventsResearch", "")
+    if events:
+        sections.append(f"Weekly Events & Business Activity: {events[:2000] if isinstance(events, str) else json.dumps(events, default=str)[:2000]}")
+
+    # Government intelligence (planning board, permits, construction — 30d cache)
+    govt = state.get("govtIntel", "")
+    if govt:
+        sections.append(f"Government & Infrastructure: {govt[:2000] if isinstance(govt, str) else json.dumps(govt, default=str)[:2000]}")
+
+    # Backward compat: legacy localCatalysts key (pre-split runs)
     catalysts = state.get("localCatalysts", "")
-    if catalysts:
+    if catalysts and not events and not govt:
         sections.append(f"Local Catalysts: {catalysts[:2000] if isinstance(catalysts, str) else json.dumps(catalysts, default=str)[:2000]}")
 
     industry_cfg = state.get("industryConfig", {})

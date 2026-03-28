@@ -76,8 +76,8 @@ export function computeSuggestionChips(state: ChipState): SuggestionChip[] {
     if (!hasReport) chips.push({ text: "Let's check the menu margins", category: 'action', capability: 'surgery' });
     if (!hasSocialAuditReport) chips.push({ text: "Audit their social media", category: 'action', capability: 'marketing' });
   } else if (hasCapabilities) {
-    chips.push({ text: `What did you find about ${name}?`, category: 'insight' });
     chips.push({ text: "Where is their money leaking?", category: 'action', capability: 'surgery' });
+    chips.push({ text: "How do they rank on Google?", category: 'action', capability: 'seo' });
     chips.push({ text: "What's their social media like?", category: 'action', capability: 'marketing' });
   }
 

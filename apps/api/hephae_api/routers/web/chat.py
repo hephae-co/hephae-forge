@@ -220,11 +220,8 @@ async def chat(request: Request, firebase_user: dict | None = Depends(optional_f
         located_business = locate_result.get("identity")
 
         # Fallback if agent produced no text
-        if not response_text and context and context.get("businessName"):
-            response_text = (
-                f"I found some data for **{context['businessName']}** but I'm still processing. "
-                "Try asking a more specific question like 'How many competitors are nearby?' or 'What's the local economy like?'"
-            )
+        if not response_text:
+            response_text = "I don't have enough data to answer that yet. Try running one of the analyses below — they'll give me real numbers to work with."
 
         result: dict[str, Any] = {
             "role": "model",

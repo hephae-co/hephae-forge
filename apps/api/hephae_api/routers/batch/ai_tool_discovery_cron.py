@@ -1,7 +1,7 @@
 """AI Tool Discovery cron — generates AI tool profiles for all registered industries.
 
-GET /api/cron/ai-tool-discovery — Triggered by Cloud Scheduler Tuesday 7 AM ET.
-Runs after Tech Intelligence (Sun 1 AM) and Industry Pulse (Sun 3 AM).
+GET /api/cron/ai-tool-discovery — Triggered by Cloud Scheduler Saturday 7 AM ET.
+Runs after Tech Intelligence (Sat 1 AM) and Industry Pulse (Sat 3 AM).
 Uses bounded concurrency (semaphore=5) to stay within Cloud Run timeout while
 respecting Search rate limits. Idempotent — skips verticals that already have
 a run for the current ISO week.

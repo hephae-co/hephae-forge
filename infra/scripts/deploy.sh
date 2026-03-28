@@ -236,9 +236,9 @@ echo "════════════════════════�
 CRON_SECRET_VAL=$(gcloud secrets versions access latest --secret=CRON_SECRET --project="$PROJECT_ID" 2>/dev/null || echo "")
 
 if [ -n "$CRON_SECRET_VAL" ] && [ -n "$API_URL" ]; then
-  # --- Weekly Pulse Cron (Monday 3am ET) ---
+  # --- Weekly Pulse Cron (Saturday 5am ET) ---
   PULSE_CRON_JOB="weekly-pulse-cron"
-  PULSE_CRON_SCHEDULE="0 3 * * 1"
+  PULSE_CRON_SCHEDULE="0 5 * * 6"
   PULSE_CRON_FLAGS=(
     --schedule "$PULSE_CRON_SCHEDULE"
     --time-zone "America/New_York"
@@ -260,9 +260,9 @@ if [ -n "$CRON_SECRET_VAL" ] && [ -n "$API_URL" ]; then
     echo "  ✓ Created scheduler: ${PULSE_CRON_JOB} (${PULSE_CRON_SCHEDULE})"
   fi
 
-  # --- Tech Intelligence Cron (Sunday 1am ET) ---
+  # --- Tech Intelligence Cron (Saturday 1am ET) ---
   TECH_INTEL_JOB="tech-intelligence-cron"
-  TECH_INTEL_SCHEDULE="0 1 * * 0"
+  TECH_INTEL_SCHEDULE="0 1 * * 6"
   TECH_INTEL_FLAGS=(
     --schedule "$TECH_INTEL_SCHEDULE"
     --time-zone "America/New_York"
@@ -284,9 +284,9 @@ if [ -n "$CRON_SECRET_VAL" ] && [ -n "$API_URL" ]; then
     echo "  ✓ Created scheduler: ${TECH_INTEL_JOB} (${TECH_INTEL_SCHEDULE})"
   fi
 
-  # --- Industry Pulse Cron (Sunday 3am ET) ---
+  # --- Industry Pulse Cron (Saturday 3am ET) ---
   INDUSTRY_PULSE_JOB="industry-pulse-cron"
-  INDUSTRY_PULSE_SCHEDULE="0 3 * * 0"
+  INDUSTRY_PULSE_SCHEDULE="0 3 * * 6"
   INDUSTRY_PULSE_FLAGS=(
     --schedule "$INDUSTRY_PULSE_SCHEDULE"
     --time-zone "America/New_York"
@@ -308,9 +308,9 @@ if [ -n "$CRON_SECRET_VAL" ] && [ -n "$API_URL" ]; then
     echo "  ✓ Created scheduler: ${INDUSTRY_PULSE_JOB} (${INDUSTRY_PULSE_SCHEDULE})"
   fi
 
-  # --- Reference Harvest Cron (Friday 6am ET) ---
+  # --- Reference Harvest Cron (Saturday 9am ET) ---
   REF_HARVEST_JOB="reference-harvest-cron"
-  REF_HARVEST_SCHEDULE="0 6 * * 5"
+  REF_HARVEST_SCHEDULE="0 9 * * 6"
   REF_HARVEST_FLAGS=(
     --schedule "$REF_HARVEST_SCHEDULE"
     --time-zone "America/New_York"
@@ -332,9 +332,9 @@ if [ -n "$CRON_SECRET_VAL" ] && [ -n "$API_URL" ]; then
     echo "  ✓ Created scheduler: ${REF_HARVEST_JOB} (${REF_HARVEST_SCHEDULE})"
   fi
 
-  # --- AI Tool Discovery Cron (Tuesday 7am ET) ---
+  # --- AI Tool Discovery Cron (Saturday 7am ET) ---
   AI_TOOL_JOB="ai-tool-discovery-cron"
-  AI_TOOL_SCHEDULE="0 7 * * 2"
+  AI_TOOL_SCHEDULE="0 7 * * 6"
   AI_TOOL_FLAGS=(
     --schedule "$AI_TOOL_SCHEDULE"
     --time-zone "America/New_York"

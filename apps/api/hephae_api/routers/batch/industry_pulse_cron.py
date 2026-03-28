@@ -1,6 +1,6 @@
 """Industry pulse cron — generates national-level pulse for each registered industry.
 
-Runs Sunday 3:00 AM ET (08:00 UTC), BEFORE the zip-level pulse cron (Monday 11:00 UTC).
+Runs Saturday 3:00 AM ET (08:00 UTC), BEFORE the zip-level pulse cron (Saturday 10:00 UTC).
 Each industry pulse fetches BLS CPI, USDA prices, FDA recalls, computes
 impact multipliers, matches playbooks, and generates a national trend summary.
 

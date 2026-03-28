@@ -1,6 +1,6 @@
 """Weekly pulse cron — auto-generates pulses for all registered active zipcodes.
 
-GET /api/cron/weekly-pulse — Triggered by Cloud Scheduler every Monday 6am ET.
+GET /api/cron/weekly-pulse — Triggered by Cloud Scheduler every Saturday 5am ET.
 Queries all active registered zipcodes and kicks off pulse generation for each
 zip x businessType combination, staggering starts by 30 seconds to avoid rate limits.
 """

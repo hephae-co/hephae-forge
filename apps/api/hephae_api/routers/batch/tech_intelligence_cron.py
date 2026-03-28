@@ -1,6 +1,6 @@
 """Tech Intelligence cron — generates technology landscape profiles for all registered industries.
 
-GET /api/cron/tech-intelligence — Triggered by Cloud Scheduler Sunday 1 AM ET.
+GET /api/cron/tech-intelligence — Triggered by Cloud Scheduler Saturday 1 AM ET.
 Runs TechScout pipeline for each registered industry with bounded concurrency
 (semaphore=5) to stay within Cloud Run timeout while respecting Search rate limits.
 """

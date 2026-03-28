@@ -2,7 +2,7 @@
 
 GET /api/cron/reference-harvest
 
-Runs Friday 6:00 AM ET (11:00 UTC) — before the weekend blog/outreach cycle.
+Runs Saturday 9:00 AM ET (14:00 UTC) — after all pulse crons complete.
 Harvests authoritative external research (Deloitte, NRA, USDA, govt agencies,
 trade press) on topics relevant to Hephae: restaurant margins, food costs,
 commodity prices, small business profitability, restaurant tech, labor costs.

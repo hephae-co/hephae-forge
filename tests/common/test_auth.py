@@ -74,7 +74,7 @@ class TestVerifyAdminRequest:
             from hephae_common.auth import verify_admin_request
 
             with pytest.raises(HTTPException) as exc_info:
-                verify_admin_request(x_firebase_token="valid-token")
+                verify_admin_request(x_firebase_token="valid-token", x_api_key=None)
 
             assert exc_info.value.status_code == 403
             assert "Not authorized" in exc_info.value.detail
@@ -88,7 +88,7 @@ class TestVerifyAdminRequest:
         ):
             from hephae_common.auth import verify_admin_request
 
-            result = verify_admin_request(x_firebase_token="admin-token")
+            result = verify_admin_request(x_firebase_token="admin-token", x_api_key=None)
 
         assert result["uid"] == "admin-1"
         assert result["email"] == "admin@hephae.co"
@@ -102,7 +102,7 @@ class TestVerifyAdminRequest:
         ):
             from hephae_common.auth import verify_admin_request
 
-            result = verify_admin_request(x_firebase_token="token")
+            result = verify_admin_request(x_firebase_token="token", x_api_key=None)
 
         assert result["uid"] == "user-789"
 

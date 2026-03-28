@@ -197,21 +197,34 @@ async def chat(request: Request, firebase_user: dict | None = Depends(optional_f
 
         response_text = ""
 
-        async for raw_event in runner.run_async(
-            user_id=user_id,
-            session_id=session_id,
-            new_message=user_msg(latest_text),
-        ):
-            content = getattr(raw_event, "content", None)
-            if content and hasattr(content, "parts") and content.parts:
-                for part in content.parts:
-                    if getattr(part, "thought", False):
-                        continue
-                    if getattr(part, "text", None):
-                        response_text += part.text
+        try:
+            async for raw_event in runner.run_async(
+                user_id=user_id,
+                session_id=session_id,
+                new_message=user_msg(latest_text),
+            ):
+                content = getattr(raw_event, "content", None)
+                if content and hasattr(content, "parts") and content.parts:
+                    for part in content.parts:
+                        if getattr(part, "thought", False):
+                            continue
+                        if getattr(part, "text", None):
+                            response_text += part.text
+        except Exception as run_err:
+            logger.error(f"[API/Chat] Agent run failed: {run_err}", exc_info=True)
+
+        if not response_text:
+            logger.warning(f"[API/Chat] Empty response for: {latest_text[:80]}. Context keys: {list((context or {}).keys())}")
 
         # Check if locate_business was called via the closure
         located_business = locate_result.get("identity")
+
+        # Fallback if agent produced no text
+        if not response_text and context and context.get("businessName"):
+            response_text = (
+                f"I found some data for **{context['businessName']}** but I'm still processing. "
+                "Try asking a more specific question like 'How many competitors are nearby?' or 'What's the local economy like?'"
+            )
 
         result: dict[str, Any] = {
             "role": "model",

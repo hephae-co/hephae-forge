@@ -362,7 +362,18 @@ export default function Home() {
           context: {
             businessName: locatedBusiness?.name,
             address: locatedBusiness?.address,
-            overview: businessOverview || undefined,
+            overview: businessOverview ? {
+              businessSnapshot: businessOverview.businessSnapshot,
+              marketPosition: businessOverview.marketPosition,
+              localEconomy: businessOverview.localEconomy,
+              keyOpportunities: businessOverview.keyOpportunities?.slice(0, 3),
+              dashboard: businessOverview.dashboard ? {
+                topInsights: businessOverview.dashboard.topInsights?.slice(0, 3),
+                communityBuzz: businessOverview.dashboard.communityBuzz,
+                coverage: businessOverview.dashboard.coverage,
+                stats: businessOverview.dashboard.stats,
+              } : undefined,
+            } : undefined,
             seoReport: seoReport ? { overallScore: seoReport.overallScore, sections: seoReport.sections?.map((s: any) => ({ name: s.name, score: s.score, recommendations: s.recommendations })), summary: seoReport.summary } : undefined,
             marginReport: report ? { overall_score: report.overall_score, menu_items: report.menu_items?.slice(0, 10), strategic_advice: report.strategic_advice } : undefined,
             trafficForecast: forecast ? { summary: forecast.summary, forecast: forecast.forecast?.slice(0, 5) } : undefined,

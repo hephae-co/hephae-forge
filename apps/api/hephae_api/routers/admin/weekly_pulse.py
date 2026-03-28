@@ -110,7 +110,15 @@ async def _run_pulse_job(job_id: str, zip_code: str, business_type: str, week_of
                 logger.warning(f"[PulseJob] Auto-onboard check failed: {e}")
 
     except Exception as e:
-        logger.error(f"[PulseJob] {job_id} failed: {e}")
+        import traceback
+        # Log inner exceptions from Python 3.11+ ExceptionGroup
+        if hasattr(e, "exceptions"):
+            for inner in e.exceptions:
+                logger.error(f"[PulseJob] {job_id} inner exception: {type(inner).__name__}: {inner}")
+                logger.error(traceback.format_exc())
+        else:
+            logger.error(f"[PulseJob] {job_id} failed: {type(e).__name__}: {e}")
+            logger.error(traceback.format_exc())
         await update_pulse_job(job_id, {
             "status": "FAILED",
             "completedAt": datetime.utcnow(),

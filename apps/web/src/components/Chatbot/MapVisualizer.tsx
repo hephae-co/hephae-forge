@@ -101,7 +101,10 @@ interface MapVisualizerProps {
     dashboard?: DashboardData | null;
     ctaSlot?: React.ReactNode;
     isAuthenticated?: boolean;
+    isAdmin?: boolean;
+    businessSlug?: string | null;
     onSignIn?: () => void;
+    onPublish?: () => void;
 }
 
 type ActiveTab = 'overview' | 'profile' | 'theme' | 'contact' | 'social' | 'menu' | 'competitors';
@@ -111,7 +114,7 @@ function humanize(s: string): string {
     return s.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-export default function MapVisualizer({ lat, lng, businessName, business, isDiscovering = false, dashboard, ctaSlot, isAuthenticated = false, onSignIn }: MapVisualizerProps) {
+export default function MapVisualizer({ lat, lng, businessName, business, isDiscovering = false, dashboard, ctaSlot, isAuthenticated = false, isAdmin = false, businessSlug, onSignIn, onPublish }: MapVisualizerProps) {
     const [zoomLevel, setZoomLevel] = useState<number>(15);
     const [resetKey, setResetKey] = useState(0);
     const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
@@ -338,6 +341,16 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                                     )}
                                 </div>
                             </div>
+                            {isAdmin && businessSlug && onPublish && (
+                                <button
+                                    onClick={onPublish}
+                                    className="px-2 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all shrink-0 flex items-center gap-1"
+                                    title="Publish as public case study"
+                                >
+                                    <svg className="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span className="text-[9px] font-bold text-emerald-300">Publish</span>
+                                </button>
+                            )}
                             {isAuthenticated && (
                                 <button
                                     onClick={() => setProfileCollapsed(v => !v)}

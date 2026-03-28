@@ -67,6 +67,10 @@ export default function Home() {
   const { user, signInWithGoogle, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { apiFetch } = useApiClient();
+
+  // Admin check — matches ADMIN_EMAIL_ALLOWLIST on the backend
+  const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  const isAdmin = !!user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
   const router = useRouter();
   const [showAuthWall, setShowAuthWall] = useState(false);
 
@@ -534,6 +538,48 @@ export default function Home() {
           `Got it — we've noted your interest. We'll get back to you when hyperlocal intelligence is available in your location.`
         )]);
       }
+    }
+  };
+
+  const publishProfile = async () => {
+    if (!businessSlug || !isAdmin) return;
+    try {
+      // Get latest version ID
+      const versionsRes = await apiFetch(`/api/b/${businessSlug}/versions`);
+      if (!versionsRes.ok) { alert('Failed to load versions'); return; }
+      const versionsData = await versionsRes.json();
+      const versions = versionsData.versions || [];
+      if (!versions.length) { alert('No versions to publish'); return; }
+
+      const latestId = versions[0].id;
+      const alreadyPublished = versionsData.publishedVersionId;
+
+      if (alreadyPublished === latestId) {
+        if (confirm(`Already published (${latestId}). Unpublish?`)) {
+          await apiFetch(`/api/b/${businessSlug}/unpublish`, { method: 'POST' });
+          setMessages(prev => [...prev, msg('model', `Unpublished **${locatedBusiness?.name}**. The public page is now hidden.`)]);
+        }
+        return;
+      }
+
+      const label = `${latestId} (${versions[0].createdAt?.slice(0, 10) || 'latest'})`;
+      if (!confirm(`Publish version ${label} as public case study?`)) return;
+
+      const res = await apiFetch(`/api/b/${businessSlug}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ versionId: latestId }),
+      });
+      if (res.ok) {
+        setMessages(prev => [...prev, msg('model',
+          `Published **${locatedBusiness?.name}** as a public case study.\n\nPublic URL: [/b/${businessSlug}](/b/${businessSlug})`
+        )]);
+      } else {
+        alert('Publish failed');
+      }
+    } catch (e) {
+      console.error('Publish error:', e);
+      alert('Publish failed');
     }
   };
 
@@ -1862,7 +1908,7 @@ export default function Home() {
                 </div>
               </div>
             ) : locatedBusiness && locatedBusiness.coordinates ? (
-              <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} dashboard={businessOverview?.dashboard} isAuthenticated={!!user} onSignIn={signInWithGoogle}
+              <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} dashboard={businessOverview?.dashboard} isAuthenticated={!!user} isAdmin={isAdmin} businessSlug={businessSlug} onSignIn={signInWithGoogle} onPublish={publishProfile}
                 ctaSlot={!isDiscovering && (
                   <>
                     <a

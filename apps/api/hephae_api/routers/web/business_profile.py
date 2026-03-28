@@ -1,93 +1,364 @@
-"""Business profile link — save and retrieve shareable business profiles.
+"""Business profile — versioned, publishable business case studies.
 
-Also persists a memory summary to the user's long-term ADK memory
-so the chat agent remembers past analysis for this business.
+Data model:
+  business_profiles/{slug}
+    ├── identity, name, address, createdBy (uid)
+    ├── publishedVersionId: "v3" | null
+    ├── latestVersionId: "v5"
+    ├── snapshot: { current working snapshot }
+    └── versions/{versionId}: { snapshot, createdAt, createdBy, label }
+
+Three access levels:
+  - Public (no auth): read published version only (SSR-friendly)
+  - Owner (auth, createdBy match): read/write, create versions
+  - Superadmin (auth, admin allowlist): read/write, publish/unpublish any version
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
-from hephae_api.lib.auth import verify_request, optional_firebase_user
+from hephae_api.lib.auth import verify_request, optional_firebase_user, verify_firebase_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+COLLECTION = "business_profiles"
+
+
+def _is_admin(uid: str) -> bool:
+    """Check if user is a superadmin."""
+    import os
+    allowlist = os.getenv("ADMIN_EMAIL_ALLOWLIST", "")
+    # We check by uid here but the allowlist is emails — need to check via firebase_user email
+    return False  # Caller should pass the full user dict
+
+
+def _is_admin_user(firebase_user: dict | None) -> bool:
+    """Check if firebase user is in admin allowlist."""
+    if not firebase_user:
+        return False
+    import os
+    email = firebase_user.get("email", "")
+    allowlist = [e.strip().lower() for e in os.getenv("ADMIN_EMAIL_ALLOWLIST", "").split(",") if e.strip()]
+    return email.lower() in allowlist
+
+
+# ---------------------------------------------------------------------------
+# POST /api/b/save — save snapshot + auto-create version
+# ---------------------------------------------------------------------------
 
 @router.post("/b/save", dependencies=[Depends(verify_request)])
 async def save_business_profile(
     request: Request,
     firebase_user: dict | None = Depends(optional_firebase_user),
 ):
-    """Save a business identity under a slug for shareable URL."""
+    """Save a business profile. Auto-creates a new version on each save."""
     try:
         body = await request.json()
         slug = body.get("slug")
         identity = body.get("identity")
-        snapshot = body.get("snapshot")       # full snapshot (from overview save)
-        snapshot_update = body.get("snapshotUpdate")  # partial update (from capability save)
+        snapshot = body.get("snapshot")
+        snapshot_update = body.get("snapshotUpdate")
 
         if not slug or not identity:
             return JSONResponse({"error": "slug and identity required"}, status_code=400)
 
         from hephae_common.firebase import get_db
         db = get_db()
-        doc_ref = db.collection("business_profiles").document(slug)
+        doc_ref = db.collection(COLLECTION).document(slug)
+        uid = firebase_user.get("uid") if firebase_user else None
+        now = datetime.now(timezone.utc).isoformat()
+
+        # Read existing doc to get current snapshot for merging
+        existing = doc_ref.get()
+        existing_data = existing.to_dict() if existing.exists else {}
+        current_snapshot = existing_data.get("snapshot", {})
 
         if snapshot_update:
-            # Merge only the new capability key into the existing snapshot
-            update_payload = {f"snapshot.{k}": v for k, v in snapshot_update.items()}
-            update_payload["updatedAt"] = datetime.utcnow().isoformat()
-            # Ensure doc exists first
+            # Merge update into current snapshot
+            merged = {**current_snapshot, **{k: v for k, v in snapshot_update.items()}}
             doc_ref.set({
                 "slug": slug,
                 "identity": identity,
                 "name": identity.get("name", ""),
                 "address": identity.get("address", ""),
+                "snapshot": merged,
+                "updatedAt": now,
+                **({"createdBy": uid} if uid and not existing_data.get("createdBy") else {}),
             }, merge=True)
-            doc_ref.update(update_payload)
+            final_snapshot = merged
         else:
             doc_ref.set({
                 "slug": slug,
                 "identity": identity,
-                "savedAt": datetime.utcnow().isoformat(),
+                "savedAt": now,
+                "updatedAt": now,
                 "name": identity.get("name", ""),
                 "address": identity.get("address", ""),
                 **({"snapshot": snapshot} if snapshot else {}),
+                **({"createdBy": uid} if uid and not existing_data.get("createdBy") else {}),
             }, merge=True)
+            final_snapshot = snapshot or current_snapshot
 
-        logger.info(f"[BusinessProfile] Saved: {slug}")
+        # Auto-create a version on each save (if we have a snapshot)
+        version_id = None
+        if final_snapshot and uid:
+            version_id = f"v{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+            doc_ref.collection("versions").document(version_id).set({
+                "snapshot": final_snapshot,
+                "createdAt": now,
+                "createdBy": uid,
+                "label": f"Auto-save",
+            })
+            doc_ref.update({"latestVersionId": version_id})
 
-        # Persist a memory summary for authenticated users
-        uid = firebase_user.get("uid") if firebase_user else None
-        if uid and (snapshot or snapshot_update):
-            asyncio.create_task(_save_business_memory(uid, slug, identity, snapshot, snapshot_update))
+        logger.info(f"[BusinessProfile] Saved: {slug} (version: {version_id})")
 
-        return JSONResponse({"slug": slug, "url": f"/b/{slug}"})
+        # Persist memory for authenticated users
+        if uid and final_snapshot:
+            asyncio.create_task(_save_business_memory(uid, slug, identity, final_snapshot))
+
+        return JSONResponse({"slug": slug, "url": f"/b/{slug}", "versionId": version_id})
 
     except Exception as e:
         logger.error(f"[BusinessProfile] Save failed: {e}")
         return JSONResponse({"error": "save failed"}, status_code=500)
 
 
-async def _save_business_memory(
-    uid: str,
-    slug: str,
-    identity: dict,
-    snapshot: dict | None,
-    snapshot_update: dict | None,
-) -> None:
-    """Save a compact memory entry summarizing what we know about this business.
+# ---------------------------------------------------------------------------
+# GET /api/b/{slug} — fetch profile (with auth: full data; without: published only)
+# ---------------------------------------------------------------------------
 
-    This feeds into the chat agent's long-term memory so it can reference
-    past analysis when the user returns via /b/{slug}.
+@router.get("/b/{slug}", dependencies=[Depends(verify_request)])
+async def get_business_profile(
+    slug: str,
+    firebase_user: dict | None = Depends(optional_firebase_user),
+):
+    """Fetch a business profile.
+
+    Authenticated owner/admin: returns full profile with all versions.
+    Unauthenticated: returns published version only (for public pages).
     """
+    try:
+        from hephae_common.firebase import get_db
+        db = get_db()
+        doc = db.collection(COLLECTION).document(slug).get()
+
+        if not doc.exists:
+            return JSONResponse({"error": "not found"}, status_code=404)
+
+        data = doc.to_dict()
+        uid = firebase_user.get("uid") if firebase_user else None
+        is_owner = uid and data.get("createdBy") == uid
+        is_admin = _is_admin_user(firebase_user)
+
+        if is_owner or is_admin:
+            # Full access — include version list
+            versions_ref = db.collection(COLLECTION).document(slug).collection("versions")
+            versions = versions_ref.order_by("createdAt", direction="DESCENDING").limit(20).get()
+            data["versions"] = [
+                {"id": v.id, **{k: v.to_dict()[k] for k in ("createdAt", "createdBy", "label") if k in v.to_dict()}}
+                for v in versions
+            ]
+            data["isOwner"] = bool(is_owner)
+            data["isAdmin"] = bool(is_admin)
+            return JSONResponse(data)
+
+        # Public access — only return published version
+        published_id = data.get("publishedVersionId")
+        if not published_id:
+            return JSONResponse({"error": "not found"}, status_code=404)
+
+        version_doc = db.collection(COLLECTION).document(slug).collection("versions").document(published_id).get()
+        if not version_doc.exists:
+            return JSONResponse({"error": "not found"}, status_code=404)
+
+        version_data = version_doc.to_dict()
+        return JSONResponse({
+            "slug": slug,
+            "identity": data.get("identity"),
+            "name": data.get("name"),
+            "address": data.get("address"),
+            "snapshot": version_data.get("snapshot"),
+            "publishedAt": version_data.get("createdAt"),
+            "published": True,
+        })
+
+    except Exception as e:
+        logger.error(f"[BusinessProfile] Fetch failed for {slug}: {e}")
+        return JSONResponse({"error": "fetch failed"}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/b/{slug}/public — always returns published version (no auth needed)
+# ---------------------------------------------------------------------------
+
+@router.get("/b/{slug}/public")
+async def get_public_profile(slug: str):
+    """Fetch the published version of a business profile. No auth required."""
+    try:
+        from hephae_common.firebase import get_db
+        db = get_db()
+        doc = db.collection(COLLECTION).document(slug).get()
+
+        if not doc.exists:
+            return JSONResponse({"error": "not found"}, status_code=404)
+
+        data = doc.to_dict()
+        published_id = data.get("publishedVersionId")
+        if not published_id:
+            return JSONResponse({"error": "not published"}, status_code=404)
+
+        version_doc = db.collection(COLLECTION).document(slug).collection("versions").document(published_id).get()
+        if not version_doc.exists:
+            return JSONResponse({"error": "version not found"}, status_code=404)
+
+        version_data = version_doc.to_dict()
+        return JSONResponse({
+            "slug": slug,
+            "identity": data.get("identity"),
+            "name": data.get("name"),
+            "address": data.get("address"),
+            "snapshot": version_data.get("snapshot"),
+            "publishedAt": version_data.get("createdAt"),
+            "publishedVersionId": published_id,
+        })
+
+    except Exception as e:
+        logger.error(f"[BusinessProfile] Public fetch failed for {slug}: {e}")
+        return JSONResponse({"error": "fetch failed"}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
+# POST /api/b/{slug}/publish — publish a specific version (owner or admin)
+# ---------------------------------------------------------------------------
+
+@router.post("/b/{slug}/publish")
+async def publish_version(slug: str, request: Request, firebase_user: dict = Depends(verify_firebase_token)):
+    """Publish a specific version as the public page."""
+    try:
+        body = await request.json()
+        version_id = body.get("versionId")
+        if not version_id:
+            return JSONResponse({"error": "versionId required"}, status_code=400)
+
+        from hephae_common.firebase import get_db
+        db = get_db()
+        doc_ref = db.collection(COLLECTION).document(slug)
+        doc = doc_ref.get()
+
+        if not doc.exists:
+            return JSONResponse({"error": "not found"}, status_code=404)
+
+        data = doc.to_dict()
+        uid = firebase_user.get("uid")
+        is_owner = uid == data.get("createdBy")
+        is_admin = _is_admin_user(firebase_user)
+
+        if not is_owner and not is_admin:
+            return JSONResponse({"error": "Not authorized"}, status_code=403)
+
+        # Verify version exists
+        version_doc = doc_ref.collection("versions").document(version_id).get()
+        if not version_doc.exists:
+            return JSONResponse({"error": f"Version {version_id} not found"}, status_code=404)
+
+        doc_ref.update({
+            "publishedVersionId": version_id,
+            "publishedAt": datetime.now(timezone.utc).isoformat(),
+            "publishedBy": uid,
+        })
+
+        logger.info(f"[BusinessProfile] Published {slug} version {version_id} by {uid}")
+        return JSONResponse({"slug": slug, "publishedVersionId": version_id, "url": f"/b/{slug}"})
+
+    except Exception as e:
+        logger.error(f"[BusinessProfile] Publish failed: {e}")
+        return JSONResponse({"error": "publish failed"}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
+# POST /api/b/{slug}/unpublish — remove from public (owner or admin)
+# ---------------------------------------------------------------------------
+
+@router.post("/b/{slug}/unpublish")
+async def unpublish_profile(slug: str, firebase_user: dict = Depends(verify_firebase_token)):
+    """Remove the public version. Profile becomes private."""
+    try:
+        from hephae_common.firebase import get_db
+        db = get_db()
+        doc_ref = db.collection(COLLECTION).document(slug)
+        doc = doc_ref.get()
+
+        if not doc.exists:
+            return JSONResponse({"error": "not found"}, status_code=404)
+
+        data = doc.to_dict()
+        uid = firebase_user.get("uid")
+        if uid != data.get("createdBy") and not _is_admin_user(firebase_user):
+            return JSONResponse({"error": "Not authorized"}, status_code=403)
+
+        doc_ref.update({"publishedVersionId": None, "publishedAt": None, "publishedBy": None})
+        logger.info(f"[BusinessProfile] Unpublished {slug} by {uid}")
+        return JSONResponse({"slug": slug, "published": False})
+
+    except Exception as e:
+        logger.error(f"[BusinessProfile] Unpublish failed: {e}")
+        return JSONResponse({"error": "unpublish failed"}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/b/{slug}/versions — list all versions (owner or admin)
+# ---------------------------------------------------------------------------
+
+@router.get("/b/{slug}/versions")
+async def list_versions(slug: str, firebase_user: dict = Depends(verify_firebase_token)):
+    """List all versions for a business profile."""
+    try:
+        from hephae_common.firebase import get_db
+        db = get_db()
+        doc = db.collection(COLLECTION).document(slug).get()
+
+        if not doc.exists:
+            return JSONResponse({"error": "not found"}, status_code=404)
+
+        data = doc.to_dict()
+        uid = firebase_user.get("uid")
+        if uid != data.get("createdBy") and not _is_admin_user(firebase_user):
+            return JSONResponse({"error": "Not authorized"}, status_code=403)
+
+        versions = db.collection(COLLECTION).document(slug).collection("versions") \
+            .order_by("createdAt", direction="DESCENDING").limit(50).get()
+
+        return JSONResponse({
+            "slug": slug,
+            "publishedVersionId": data.get("publishedVersionId"),
+            "versions": [
+                {"id": v.id, **v.to_dict()}
+                for v in versions
+            ],
+        })
+
+    except Exception as e:
+        logger.error(f"[BusinessProfile] List versions failed: {e}")
+        return JSONResponse({"error": "list failed"}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
+# Memory persistence (unchanged)
+# ---------------------------------------------------------------------------
+
+async def _save_business_memory(
+    uid: str, slug: str, identity: dict, snapshot: dict,
+) -> None:
+    """Save a compact memory entry for the chat agent."""
     try:
         from hephae_db.memory.firestore_memory_service import FirestoreMemoryService
         from google.adk.memory.memory_entry import MemoryEntry
@@ -95,75 +366,33 @@ async def _save_business_memory(
 
         name = identity.get("name", "unknown")
         address = identity.get("address", "")
-
-        # Build a compact summary of what's been discovered/analyzed
         parts = [f"Business: {name} at {address} (slug: {slug})"]
 
-        data = snapshot or {}
-        if snapshot_update:
-            data = {**data, **snapshot_update}
-
-        ov = data.get("overview", {})
+        ov = snapshot.get("overview", {})
         if ov:
             bs = ov.get("businessSnapshot", {})
             if bs.get("rating"):
                 parts.append(f"Rating: {bs['rating']}/5 ({bs.get('reviewCount', '?')} reviews)")
             mp = ov.get("marketPosition", {})
             if mp.get("competitorCount"):
-                parts.append(f"Market: {mp['competitorCount']} competitors, {mp.get('saturationLevel', '?')} saturation")
-            opps = ov.get("keyOpportunities", [])
-            if opps:
-                parts.append("Opportunities: " + "; ".join(o.get("title", "") for o in opps[:3]))
+                parts.append(f"Market: {mp['competitorCount']} competitors")
             dash = ov.get("dashboard", {})
             if dash.get("topInsights"):
                 parts.append("Insights: " + "; ".join(i.get("title", "") for i in dash["topInsights"][:3]))
 
-        if data.get("margin", {}).get("data"):
-            m = data["margin"]["data"]
-            parts.append(f"Margin analysis: score {m.get('overall_score', '?')}/100")
-        if data.get("seo", {}).get("data"):
-            s = data["seo"]["data"]
-            parts.append(f"SEO audit: score {s.get('overallScore', '?')}/100")
-        if data.get("traffic", {}).get("data"):
-            parts.append("Traffic forecast: completed")
-        if data.get("competitive", {}).get("data"):
-            parts.append("Competitive analysis: completed")
-        if data.get("marketing", {}).get("data"):
-            parts.append("Social media audit: completed")
+        for cap, label in [("margin", "Margin"), ("seo", "SEO"), ("traffic", "Traffic"), ("competitive", "Competitive"), ("marketing", "Social")]:
+            if snapshot.get(cap, {}).get("data"):
+                score = snapshot[cap]["data"].get("overall_score") or snapshot[cap]["data"].get("overallScore")
+                parts.append(f"{label}: {'score ' + str(score) + '/100' if score else 'completed'}")
 
         if len(parts) <= 1:
-            return  # Nothing meaningful to save
-
-        summary = "\n".join(parts)
+            return
 
         ms = FirestoreMemoryService()
         await ms.add_memory(
-            app_name="hephae-chat",
-            user_id=uid,
-            memories=[MemoryEntry(
-                content=Content(role="model", parts=[Part.from_text(text=summary)]),
-            )],
+            app_name="hephae-chat", user_id=uid,
+            memories=[MemoryEntry(content=Content(role="model", parts=[Part.from_text(text="\n".join(parts))]))],
         )
-        logger.info(f"[BusinessProfile] Memory saved for {uid}/{slug}: {len(parts)} facts")
-
+        logger.info(f"[BusinessProfile] Memory saved for {uid}/{slug}")
     except Exception as e:
         logger.warning(f"[BusinessProfile] Memory save failed: {e}")
-
-
-@router.get("/b/{slug}", dependencies=[Depends(verify_request)])
-async def get_business_profile(slug: str):
-    """Fetch a saved business profile by slug."""
-    try:
-        from hephae_common.firebase import get_db
-        db = get_db()
-        doc = db.collection("business_profiles").document(slug).get()
-
-        if not doc.exists:
-            return JSONResponse({"error": "not found"}, status_code=404)
-
-        data = doc.to_dict()
-        return JSONResponse(data)
-
-    except Exception as e:
-        logger.error(f"[BusinessProfile] Fetch failed for {slug}: {e}")
-        return JSONResponse({"error": "fetch failed"}, status_code=500)

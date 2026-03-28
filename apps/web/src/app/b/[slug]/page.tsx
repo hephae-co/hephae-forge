@@ -1,71 +1,66 @@
-'use client';
+import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import BusinessProfileClient from './client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
-// This page loads a saved business profile and redirects to the forge
-// with the business pre-populated. It acts as a shareable profile URL.
-export default function BusinessProfilePage() {
-    const params = useParams();
-    const slug = params?.slug as string;
-    const [status, setStatus] = useState<'loading' | 'found' | 'notfound'>('loading');
-    const [businessName, setBusinessName] = useState('');
+async function fetchProfile(slug: string) {
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/b/${slug}/public`, {
+            cache: 'no-store',
+        });
+        if (!res.ok) return null;
+        return res.json();
+    } catch {
+        return null;
+    }
+}
 
-    useEffect(() => {
-        if (!slug) return;
-        fetch(`/api/b/${slug}`)
-            .then(r => r.json())
-            .then(data => {
-                if (data?.identity?.name) {
-                    setBusinessName(data.identity.name);
-                    setStatus('found');
-                    // Store identity + full snapshot in sessionStorage for the forge page
-                    sessionStorage.setItem('forge_preload_slug', slug);
-                    sessionStorage.setItem('forge_preload_identity', JSON.stringify(data.identity));
-                    if (data.snapshot) {
-                        sessionStorage.setItem('forge_preload_snapshot', JSON.stringify(data.snapshot));
-                    }
-                    // Redirect to forge home — must use / since this app is
-                    // mounted at hephae.co/ via nginx reverse proxy
-                    window.location.href = '/';
-                } else {
-                    setStatus('notfound');
-                }
-            })
-            .catch(() => setStatus('notfound'));
-    }, [slug]);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+    const { slug } = await params;
+    const profile = await fetchProfile(slug);
 
-    if (status === 'loading') {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-slate-400 text-sm">Loading business profile…</p>
-                </div>
-            </div>
-        );
+    if (!profile) {
+        return { title: 'Business Profile | Hephae' };
     }
 
-    if (status === 'notfound') {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="text-center max-w-sm">
-                    <p className="text-white font-bold text-lg mb-2">Profile not found</p>
-                    <p className="text-slate-400 text-sm mb-6">This business profile link may have expired or been removed.</p>
-                    <a href="/" className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors">
-                        Search for a business
-                    </a>
-                </div>
-            </div>
-        );
-    }
+    const name = profile.name || 'Business';
+    const address = profile.address || '';
+    const snapshot = profile.snapshot || {};
+    const overview = snapshot.overview || {};
+    const bs = overview.businessSnapshot || {};
+    const dash = overview.dashboard || {};
 
-    return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-            <div className="text-center">
-                <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-slate-400 text-sm">Loading {businessName}…</p>
-            </div>
-        </div>
-    );
+    const ratingText = bs.rating ? `${bs.rating}/5 (${bs.reviewCount || '?'} reviews)` : '';
+    const competitorText = dash.stats?.competitorCount ? `${dash.stats.competitorCount} competitors nearby` : '';
+    const description = [
+        `AI-powered business intelligence for ${name}${address ? ` in ${address}` : ''}.`,
+        ratingText,
+        competitorText,
+        dash.topInsights?.[0]?.title || '',
+    ].filter(Boolean).join(' · ');
+
+    return {
+        title: `${name} — Business Intelligence | Hephae`,
+        description,
+        openGraph: {
+            title: `${name} — AI Business Intelligence`,
+            description,
+            type: 'article',
+            url: `https://hephae.co/b/${slug}`,
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: `${name} — AI Business Intelligence`,
+            description,
+        },
+    };
+}
+
+export default async function BusinessProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
+    const profile = await fetchProfile(slug);
+
+    // Pass to client component which handles both public view and authenticated redirect
+    return <BusinessProfileClient slug={slug} publicProfile={profile} />;
 }

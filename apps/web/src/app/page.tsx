@@ -68,7 +68,7 @@ export default function Home() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { apiFetch } = useApiClient();
 
-  // Admin check — matches ADMIN_EMAIL_ALLOWLIST on the backend
+  // Admin check — NEXT_PUBLIC_ADMIN_EMAILS must be set in .env.local
   const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
   const isAdmin = !!user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
   const router = useRouter();

@@ -194,6 +194,20 @@ async def test_margin_surgeon_evaluator():
 
 
 # ---------------------------------------------------------------------------
+# Social content agents (marketing swarm)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_marketing_swarm():
+    """Evaluate MarketingPipeline — 3-stage content pipeline (creative → platform → copy)."""
+    await AgentEvaluator.evaluate(
+        agent_module="tests.evals.marketing_swarm.agent",
+        eval_dataset_file_path_or_dir=str(EVALS_DIR / "marketing_swarm"),
+        num_runs=1,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Outreach agents (multi-channel content generation)
 # ---------------------------------------------------------------------------
 

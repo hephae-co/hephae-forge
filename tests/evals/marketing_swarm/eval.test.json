@@ -1,0 +1,81 @@
+{
+  "eval_set_id": "marketing_swarm_eval",
+  "name": "Marketing Swarm Pipeline Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "restaurant_instagram_campaign",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Business: The Bosphorus\nLocation: 10 Main St, Nutley, NJ 07110\nWebsite: https://bosphorusnutley.com\nPersona: Authentic Turkish restaurant with warm hospitality and traditional recipes\nSocial: {\"instagram\": \"https://instagram.com/bosphorusnutley\", \"facebook\": \"https://facebook.com/bosphorusnutley\"}\n\nCreate a marketing content strategy and draft post for this business."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "Platform: Instagram. Creative direction focused on authentic Turkish flavors and warm hospitality. Draft content highlighting traditional dishes and the restaurant's unique story."}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "test",
+        "user_id": "test_user",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "bakery_blog_strategy",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Business: Mike's Pastry\nLocation: 300 Hanover St, Boston, MA 02113\nWebsite: https://mikespastry.com\nPersona: Iconic Boston Italian bakery famous for cannoli since 1946\nSocial: {\"instagram\": \"https://instagram.com/mikespastry\"}\n\nCreate a marketing content strategy and draft post for this business."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "Platform: Instagram. Creative direction celebrating Boston's iconic bakery heritage and the legendary cannoli. Content strategy emphasizing tradition, craftsmanship, and local pride."}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "test",
+        "user_id": "test_user",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "bookstore_social_strategy",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Business: Strand Bookstore\nLocation: 828 Broadway, New York, NY 10003\nWebsite: https://strandbooks.com\nPersona: Legendary independent NYC bookstore with 18 miles of books since 1927\nSocial: {\"instagram\": \"https://instagram.com/strandbooks\", \"twitter\": \"https://twitter.com/strandbookstore\"}\n\nCreate a marketing content strategy and draft post for this business."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "Platform: Instagram. Creative direction celebrating literary culture, book discovery, and the Strand's unique New York City identity. Content highlights staff picks, rare finds, and the store's 18 miles of books."}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "test",
+        "user_id": "test_user",
+        "state": {}
+      }
+    }
+  ]
+}

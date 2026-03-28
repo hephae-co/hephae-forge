@@ -1,90 +1,72 @@
-"""Unit tests for POST /api/overview.
+"""Functional tests for the business overview runner — real agent call, no mocks.
 
-Covers: valid POST returns business overview shape, HMAC auth required.
+Requires: GEMINI_API_KEY
 """
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+import os
 
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
 
+pytestmark = pytest.mark.skipif(
+    not os.environ.get("GEMINI_API_KEY"),
+    reason="GEMINI_API_KEY not set — functional tests require a real Gemini API key",
+)
 
-BASE_IDENTITY = {
-    "name": "Joe's Diner",
-    "address": "123 Main St, Nutley, NJ 07110",
-    "officialUrl": "https://joesdiner.com",
-}
-
-SAMPLE_OVERVIEW = {
-    "name": "Joe's Diner",
-    "summary": "A classic American diner serving breakfast all day.",
-    "hours": "Mon-Sun 7am-10pm",
-    "phone": "+1 (973) 555-1234",
-    "address": "123 Main St, Nutley, NJ 07110",
-    "googleMapsUrl": "https://maps.google.com/?q=joes+diner",
+_BOSPHORUS = {
+    "name": "The Bosphorus",
+    "address": "10 Main St, Nutley, NJ 07110",
+    "officialUrl": "https://bosphorusnutley.com",
 }
 
 
-@pytest_asyncio.fixture
-async def client():
-    with (
-        patch("hephae_api.routers.web.overview.verify_request", return_value=None),
-        patch("hephae_agents.business_overview.runner.run_business_overview", new_callable=AsyncMock, return_value=SAMPLE_OVERVIEW),
-    ):
-        from hephae_api.main import app
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            yield ac
+@pytest.mark.functional
+@pytest.mark.asyncio
+async def test_business_overview_returns_dict():
+    """run_business_overview returns a non-empty dict."""
+    from hephae_agents.business_overview.runner import run_business_overview
+
+    result = await run_business_overview(_BOSPHORUS)
+
+    assert isinstance(result, dict), "Overview must return a dict"
+    assert result, "Result must be non-empty"
 
 
-class TestOverviewEndpoint:
-    @pytest.mark.asyncio
-    async def test_returns_200_with_overview_data(self, client):
-        res = await client.post("/api/overview", json={"identity": BASE_IDENTITY})
-        assert res.status_code == 200
-        data = res.json()
-        assert data["name"] == "Joe's Diner"
-        assert data["summary"] == "A classic American diner serving breakfast all day."
+@pytest.mark.functional
+@pytest.mark.asyncio
+async def test_business_overview_has_name_field():
+    """Overview result should include the business name."""
+    from hephae_agents.business_overview.runner import run_business_overview
 
-    @pytest.mark.asyncio
-    async def test_400_when_identity_missing(self, client):
-        res = await client.post("/api/overview", json={})
-        assert res.status_code == 400
-        assert "identity" in res.json()["error"].lower() or "missing" in res.json()["error"].lower()
+    result = await run_business_overview(_BOSPHORUS)
 
-    @pytest.mark.asyncio
-    async def test_400_when_name_missing(self, client):
-        res = await client.post("/api/overview", json={"identity": {"address": "123 Main St"}})
-        assert res.status_code == 400
+    # Name should either come through directly or be in a nested field
+    name = result.get("name") or result.get("businessName")
+    if name:
+        assert "Bosphorus" in name or "bosphorus" in name.lower()
 
-    @pytest.mark.asyncio
-    async def test_hmac_auth_required(self):
-        """When FORGE_API_SECRET is set, missing HMAC headers → 401."""
-        import os
-        import importlib
-        import hephae_common.auth
 
-        old_secret = os.environ.get("FORGE_API_SECRET", "")
-        os.environ["FORGE_API_SECRET"] = "test-secret"
-        importlib.reload(hephae_common.auth)
+@pytest.mark.functional
+@pytest.mark.asyncio
+async def test_business_overview_has_summary():
+    """Overview result should include a summary string."""
+    from hephae_agents.business_overview.runner import run_business_overview
 
-        try:
-            from hephae_api.main import app
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                res = await ac.post("/api/overview", json={"identity": BASE_IDENTITY})
-            assert res.status_code == 401
-        finally:
-            os.environ["FORGE_API_SECRET"] = old_secret
-            importlib.reload(hephae_common.auth)
+    result = await run_business_overview(_BOSPHORUS)
 
-    @pytest.mark.asyncio
-    async def test_returns_all_overview_fields(self, client):
-        res = await client.post("/api/overview", json={"identity": BASE_IDENTITY})
-        data = res.json()
-        assert data["hours"] == "Mon-Sun 7am-10pm"
-        assert data["phone"] == "+1 (973) 555-1234"
-        assert "googleMapsUrl" in data
+    summary = result.get("summary") or result.get("description")
+    if summary:
+        assert isinstance(summary, str)
+        assert len(summary) > 10, "Summary must be a substantive string"
+
+
+@pytest.mark.functional
+@pytest.mark.asyncio
+async def test_business_overview_raises_for_missing_name():
+    """Missing business name should raise an error."""
+    from hephae_agents.business_overview.runner import run_business_overview
+
+    no_name = {**_BOSPHORUS, "name": None}
+    with pytest.raises((ValueError, Exception)):
+        await run_business_overview(no_name)

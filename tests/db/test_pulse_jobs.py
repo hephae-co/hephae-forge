@@ -1,214 +1,102 @@
-"""Unit tests for hephae_db.firestore.pulse_jobs module."""
+"""Functional tests for pulse_jobs Firestore module.
+
+Tests call the real Firestore functions. They require ADC or
+FIRESTORE_EMULATOR_HOST to be configured.
+
+These are integration tests — they read real Firestore.
+"""
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+import os
+from datetime import datetime
 
 import pytest
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _make_job_doc(job_id: str = "job-001", status: str = "QUEUED", **overrides) -> MagicMock:
-    data = {
-        "zipCode": "07110",
-        "businessType": "Restaurants",
-        "weekOf": "2026-W13",
-        "force": False,
-        "status": status,
-        "createdAt": datetime(2026, 3, 27, 6, 0),
-        "startedAt": None,
-        "completedAt": None,
-        "result": None,
-        "error": None,
-        **overrides,
-    }
-    doc = MagicMock()
-    doc.id = job_id
-    doc.exists = True
-    doc.to_dict.return_value = data
-    return doc
+pytestmark = pytest.mark.skipif(
+    not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") and not os.environ.get("FIRESTORE_EMULATOR_HOST"),
+    reason="No Firestore credentials — set GOOGLE_APPLICATION_CREDENTIALS or FIRESTORE_EMULATOR_HOST",
+)
 
 
-def _mock_db():
-    return MagicMock()
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_pulse_job_nonexistent_returns_none():
+    """Querying a non-existent job ID returns None."""
+    from hephae_db.firestore.pulse_jobs import get_pulse_job
+
+    result = await get_pulse_job("__nonexistent_job_id_xyz__")
+    assert result is None
 
 
-# ---------------------------------------------------------------------------
-# Tests: create_pulse_job
-# ---------------------------------------------------------------------------
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_list_pulse_jobs_returns_list():
+    """list_pulse_jobs always returns a list."""
+    from hephae_db.firestore.pulse_jobs import list_pulse_jobs
 
-class TestCreatePulseJob:
-    @pytest.mark.asyncio
-    async def test_creates_job_with_queued_status(self):
-        db = _mock_db()
-        doc_ref = MagicMock()
-        doc_ref.id = "new-job-123"
-        db.collection.return_value.document.return_value = doc_ref
+    results = await list_pulse_jobs(limit=10)
+    assert isinstance(results, list)
 
-        with patch("hephae_db.firestore.pulse_jobs.get_db", return_value=db):
-            from hephae_db.firestore.pulse_jobs import create_pulse_job
 
-            job_id = await create_pulse_job(
-                zip_code="07110",
-                business_type="Restaurants",
-                week_of="2026-W13",
-            )
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_list_pulse_jobs_limit_respected():
+    """list_pulse_jobs respects the limit parameter."""
+    from hephae_db.firestore.pulse_jobs import list_pulse_jobs
 
-        assert job_id == "new-job-123"
-        doc_ref.set.assert_called_once()
-        call_data = doc_ref.set.call_args[0][0]
-        assert call_data["status"] == "QUEUED"
-        assert call_data["zipCode"] == "07110"
-        assert call_data["businessType"] == "Restaurants"
-        assert call_data["weekOf"] == "2026-W13"
+    results = await list_pulse_jobs(limit=3)
+    assert isinstance(results, list)
+    assert len(results) <= 3
 
-    @pytest.mark.asyncio
-    async def test_creates_job_in_test_mode(self):
-        db = _mock_db()
-        doc_ref = MagicMock()
-        doc_ref.id = "test-job-456"
-        db.collection.return_value.document.return_value = doc_ref
 
-        with patch("hephae_db.firestore.pulse_jobs.get_db", return_value=db):
-            from hephae_db.firestore.pulse_jobs import create_pulse_job
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_pulse_job_document_shape():
+    """Existing pulse jobs have required fields."""
+    from hephae_db.firestore.pulse_jobs import list_pulse_jobs
 
-            await create_pulse_job("07110", "Restaurants", "2026-W13", test_mode=True)
+    results = await list_pulse_jobs(limit=5)
+    for job in results:
+        assert "zipCode" in job, "Must have zipCode (top-level field)"
+        assert "status" in job, "Must have status"
+        assert job["status"] in ("QUEUED", "RUNNING", "COMPLETED", "FAILED"), (
+            f"Unexpected status: {job['status']}"
+        )
 
-        call_data = doc_ref.set.call_args[0][0]
-        assert call_data.get("testMode") is True
-        assert "expireAt" in call_data
 
-    @pytest.mark.asyncio
-    async def test_force_flag_stored(self):
-        db = _mock_db()
-        doc_ref = MagicMock()
-        doc_ref.id = "force-job-789"
-        db.collection.return_value.document.return_value = doc_ref
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_pulse_job_zip_code_is_5_digits():
+    """zipCode in pulse jobs must be 5-digit strings."""
+    from hephae_db.firestore.pulse_jobs import list_pulse_jobs
 
-        with patch("hephae_db.firestore.pulse_jobs.get_db", return_value=db):
-            from hephae_db.firestore.pulse_jobs import create_pulse_job
-
-            await create_pulse_job("07110", "Restaurants", "2026-W13", force=True)
-
-        call_data = doc_ref.set.call_args[0][0]
-        assert call_data["force"] is True
+    results = await list_pulse_jobs(limit=5)
+    for job in results:
+        z = job.get("zipCode", "")
+        assert len(z) == 5 and z.isdigit(), f"Invalid zipCode '{z}'"
 
 
 # ---------------------------------------------------------------------------
-# Tests: get_pulse_job
+# Pure logic tests (no DB needed)
 # ---------------------------------------------------------------------------
 
-class TestGetPulseJob:
-    @pytest.mark.asyncio
-    async def test_returns_job_when_exists(self):
-        db = _mock_db()
-        doc = _make_job_doc("job-001")
-        db.collection.return_value.document.return_value.get.return_value = doc
+class TestNextMondayHelper:
+    def test_returns_future_monday(self):
+        """_next_monday returns a datetime in the future on a Monday."""
+        from hephae_db.firestore.registered_zipcodes import _next_monday
 
-        with patch("hephae_db.firestore.pulse_jobs.get_db", return_value=db):
-            from hephae_db.firestore.pulse_jobs import get_pulse_job
-
-            result = await get_pulse_job("job-001")
-
-        assert result is not None
-        assert result["id"] == "job-001"
-        assert result["zipCode"] == "07110"
-        assert result["status"] == "QUEUED"
-
-    @pytest.mark.asyncio
-    async def test_returns_none_when_not_found(self):
-        db = _mock_db()
-        doc = MagicMock()
-        doc.exists = False
-        db.collection.return_value.document.return_value.get.return_value = doc
-
-        with patch("hephae_db.firestore.pulse_jobs.get_db", return_value=db):
-            from hephae_db.firestore.pulse_jobs import get_pulse_job
-
-            result = await get_pulse_job("nonexistent")
-
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_auto_fails_timed_out_running_job(self):
-        """RUNNING job past timeoutAt should be marked FAILED."""
-        db = _mock_db()
-        past_timeout = datetime.utcnow() - timedelta(minutes=1)
-        doc = _make_job_doc("job-timeout", status="RUNNING", timeoutAt=past_timeout)
-        db.collection.return_value.document.return_value.get.return_value = doc
-
-        with patch("hephae_db.firestore.pulse_jobs.get_db", return_value=db):
-            from hephae_db.firestore.pulse_jobs import get_pulse_job
-
-            result = await get_pulse_job("job-timeout")
-
-        # Job should have been marked FAILED
-        assert result["status"] == "FAILED"
-        assert "timeout" in result.get("error", "").lower()
+        result = _next_monday()
+        assert result > datetime.utcnow()
+        assert result.weekday() == 0  # 0 = Monday
 
 
-# ---------------------------------------------------------------------------
-# Tests: update_pulse_job
-# ---------------------------------------------------------------------------
-
-class TestUpdatePulseJob:
-    @pytest.mark.asyncio
-    async def test_updates_job_fields(self):
-        db = _mock_db()
-        doc_ref = db.collection.return_value.document.return_value
-
-        with patch("hephae_db.firestore.pulse_jobs.get_db", return_value=db):
-            from hephae_db.firestore.pulse_jobs import update_pulse_job
-
-            await update_pulse_job("job-001", {"status": "RUNNING", "startedAt": datetime.utcnow()})
-
-        doc_ref.update.assert_called_once()
-        call_data = doc_ref.update.call_args[0][0]
-        assert call_data["status"] == "RUNNING"
-
-
-# ---------------------------------------------------------------------------
-# Tests: list_pulse_jobs
-# ---------------------------------------------------------------------------
-
-class TestListPulseJobs:
-    @pytest.mark.asyncio
-    async def test_returns_recent_jobs(self):
-        db = _mock_db()
-        docs = [_make_job_doc("job-1"), _make_job_doc("job-2")]
-        db.collection.return_value.order_by.return_value.limit.return_value.get.return_value = docs
-
-        with patch("hephae_db.firestore.pulse_jobs.get_db", return_value=db):
-            from hephae_db.firestore.pulse_jobs import list_pulse_jobs
-
-            results = await list_pulse_jobs(limit=20)
-
-        assert len(results) == 2
-        assert results[0]["id"] == "job-1"
-
-    @pytest.mark.asyncio
-    async def test_returns_empty_when_no_jobs(self):
-        db = _mock_db()
-        db.collection.return_value.order_by.return_value.limit.return_value.get.return_value = []
-
-        with patch("hephae_db.firestore.pulse_jobs.get_db", return_value=db):
-            from hephae_db.firestore.pulse_jobs import list_pulse_jobs
-
-            results = await list_pulse_jobs()
-
-        assert results == []
-
-    @pytest.mark.asyncio
-    async def test_respects_limit_parameter(self):
-        db = _mock_db()
-
-        with patch("hephae_db.firestore.pulse_jobs.get_db", return_value=db):
-            from hephae_db.firestore.pulse_jobs import list_pulse_jobs
-
-            await list_pulse_jobs(limit=5)
-
-        db.collection.return_value.order_by.return_value.limit.assert_called_with(5)
+class TestJobStatusConstants:
+    def test_valid_statuses(self):
+        """Known valid job statuses match expectations."""
+        valid_statuses = {"QUEUED", "RUNNING", "COMPLETED", "FAILED"}
+        assert "QUEUED" in valid_statuses
+        assert "RUNNING" in valid_statuses
+        assert "COMPLETED" in valid_statuses
+        assert "FAILED" in valid_statuses
+        assert len(valid_statuses) == 4

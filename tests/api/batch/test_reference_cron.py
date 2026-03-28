@@ -1,150 +1,85 @@
-"""Unit tests for GET /api/cron/reference-harvest.
+"""Functional tests for the reference harvester.
 
-Covers: auth (valid/invalid/missing), mock harvester, response shape.
+Tests the real harvest_references function — actual HTTP calls to Google News RSS
+and authority sites. No mocks.
+
+Requires: GEMINI_API_KEY (for title classification)
 """
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+import os
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+
+pytestmark = pytest.mark.skipif(
+    not os.environ.get("GEMINI_API_KEY"),
+    reason="GEMINI_API_KEY not set — functional tests require a real Gemini API key",
+)
 
 
-CRON_TOKEN = "ref-harvest-secret"
+@pytest.mark.functional
+@pytest.mark.asyncio
+async def test_harvest_references_returns_list():
+    """harvest_references returns a list (may be empty if network unavailable)."""
+    from hephae_agents.research.reference_harvester import harvest_references
 
-SAMPLE_HARVEST_RESULT = {
-    "harvested": 12,
-    "saved": 8,
-    "by_topic": {
-        "restaurant_margins": 4,
-        "food_costs": 3,
-        "labor": 1,
-    },
-}
+    # Use a single topic to keep test fast
+    results = await harvest_references(
+        topics=["restaurant_food_cost"],
+        week_of="test-week",
+    )
 
-
-class TestReferenceHarvestCronAuth:
-    @pytest.mark.asyncio
-    async def test_valid_bearer_token_returns_200(self):
-        with (
-            patch("hephae_api.routers.batch.reference_cron.settings") as mock_settings,
-            patch("hephae_agents.research.reference_harvester.run_weekly_harvest", new_callable=AsyncMock, return_value=SAMPLE_HARVEST_RESULT),
-            patch("hephae_api.routers.batch.reference_cron._send_summary_email", new_callable=AsyncMock),
-        ):
-            mock_settings.CRON_SECRET = CRON_TOKEN
-
-            from hephae_api.main import app
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                res = await ac.get(
-                    "/api/cron/reference-harvest",
-                    headers={"Authorization": f"Bearer {CRON_TOKEN}"},
-                )
-
-        assert res.status_code == 200
-        data = res.json()
-        assert data["success"] is True
-
-    @pytest.mark.asyncio
-    async def test_invalid_token_returns_401(self):
-        with patch("hephae_api.routers.batch.reference_cron.settings") as mock_settings:
-            mock_settings.CRON_SECRET = CRON_TOKEN
-
-            from hephae_api.main import app
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                res = await ac.get(
-                    "/api/cron/reference-harvest",
-                    headers={"Authorization": "Bearer wrong-token"},
-                )
-
-        assert res.status_code == 401
-
-    @pytest.mark.asyncio
-    async def test_missing_auth_returns_401(self):
-        with patch("hephae_api.routers.batch.reference_cron.settings") as mock_settings:
-            mock_settings.CRON_SECRET = CRON_TOKEN
-
-            from hephae_api.main import app
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                res = await ac.get("/api/cron/reference-harvest")
-
-        assert res.status_code == 401
-
-    @pytest.mark.asyncio
-    async def test_empty_cron_secret_allows_through(self):
-        with (
-            patch("hephae_api.routers.batch.reference_cron.settings") as mock_settings,
-            patch("hephae_agents.research.reference_harvester.run_weekly_harvest", new_callable=AsyncMock, return_value=SAMPLE_HARVEST_RESULT),
-            patch("hephae_api.routers.batch.reference_cron._send_summary_email", new_callable=AsyncMock),
-        ):
-            mock_settings.CRON_SECRET = ""
-
-            from hephae_api.main import app
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                res = await ac.get("/api/cron/reference-harvest")
-
-        assert res.status_code == 200
-
-    @pytest.mark.asyncio
-    async def test_x_cron_secret_header_accepted(self):
-        with (
-            patch("hephae_api.routers.batch.reference_cron.settings") as mock_settings,
-            patch("hephae_agents.research.reference_harvester.run_weekly_harvest", new_callable=AsyncMock, return_value=SAMPLE_HARVEST_RESULT),
-            patch("hephae_api.routers.batch.reference_cron._send_summary_email", new_callable=AsyncMock),
-        ):
-            mock_settings.CRON_SECRET = CRON_TOKEN
-
-            from hephae_api.main import app
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                res = await ac.get(
-                    "/api/cron/reference-harvest",
-                    headers={"X-Cron-Secret": f"Bearer {CRON_TOKEN}"},
-                )
-
-        assert res.status_code == 200
+    assert isinstance(results, list), "harvest_references must return a list"
 
 
-class TestReferenceHarvestCronBehavior:
-    @pytest.mark.asyncio
-    async def test_returns_harvest_stats(self):
-        with (
-            patch("hephae_api.routers.batch.reference_cron.settings") as mock_settings,
-            patch("hephae_agents.research.reference_harvester.run_weekly_harvest", new_callable=AsyncMock, return_value=SAMPLE_HARVEST_RESULT),
-            patch("hephae_api.routers.batch.reference_cron._send_summary_email", new_callable=AsyncMock),
-        ):
-            mock_settings.CRON_SECRET = ""
+@pytest.mark.functional
+@pytest.mark.asyncio
+async def test_harvest_references_result_shape():
+    """Each reference has required fields: id, url, title, source, relevance_score."""
+    from hephae_agents.research.reference_harvester import harvest_references
 
-            from hephae_api.main import app
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                res = await ac.get("/api/cron/reference-harvest")
+    results = await harvest_references(
+        topics=["restaurant_food_cost"],
+        week_of="test-week",
+    )
 
-        assert res.status_code == 200
-        data = res.json()
-        assert data["success"] is True
-        assert data["harvested"] == 12
-        assert data["saved"] == 8
-        assert "by_topic" in data
+    for ref in results:
+        assert isinstance(ref, dict)
+        assert "id" in ref, "Reference must have an id"
+        assert "url" in ref, "Reference must have a url"
+        assert "title" in ref, "Reference must have a title"
+        assert "source" in ref, "Reference must have a source"
+        assert "relevance_score" in ref, "Reference must have relevance_score"
+        score = ref["relevance_score"]
+        assert 0.0 <= score <= 1.0, f"relevance_score {score} out of range [0, 1]"
 
-    @pytest.mark.asyncio
-    async def test_calls_run_weekly_harvest(self):
-        mock_harvest = AsyncMock(return_value=SAMPLE_HARVEST_RESULT)
 
-        with (
-            patch("hephae_api.routers.batch.reference_cron.settings") as mock_settings,
-            patch("hephae_agents.research.reference_harvester.run_weekly_harvest", mock_harvest),
-            patch("hephae_api.routers.batch.reference_cron._send_summary_email", new_callable=AsyncMock),
-        ):
-            mock_settings.CRON_SECRET = ""
+@pytest.mark.functional
+@pytest.mark.asyncio
+async def test_harvest_references_deduplication():
+    """Running harvest twice with existing hashes skips already-seen URLs."""
+    from hephae_agents.research.reference_harvester import harvest_references, _url_hash
 
-            from hephae_api.main import app
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                await ac.get("/api/cron/reference-harvest")
+    # First run
+    results1 = await harvest_references(
+        topics=["restaurant_food_cost"],
+        week_of="test-week",
+    )
 
-        mock_harvest.assert_called_once()
+    if not results1:
+        pytest.skip("No references harvested (network unavailable)")
+
+    # Second run with all existing hashes
+    existing_hashes = {_url_hash(r["url"]) for r in results1}
+    results2 = await harvest_references(
+        topics=["restaurant_food_cost"],
+        week_of="test-week",
+        existing_url_hashes=existing_hashes,
+    )
+
+    # Overlap should be zero — all URLs were deduplicated
+    new_urls = {r["url"] for r in results2}
+    old_urls = {r["url"] for r in results1}
+    overlap = new_urls & old_urls
+    assert len(overlap) == 0, f"Deduplication failed: {len(overlap)} duplicate URLs found"

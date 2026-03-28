@@ -1,96 +1,45 @@
 """
-Shared pytest fixtures for backend tests.
+Shared pytest configuration for backend tests.
 
-Provides an async HTTPX test client that calls the FastAPI app in-process,
-plus common mock fixtures for ADK, GCS, Firestore, and BigQuery.
+Registers custom markers used across the test suite:
+  - functional: tests that invoke real Gemini agents (require GEMINI_API_KEY)
+  - integration: tests that require live Firestore / network / browser
+  - needs_browser: tests requiring Playwright/crawl4ai (skip on Cloud Run)
 """
 
 from __future__ import annotations
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+import os
 
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
 
 
-@pytest_asyncio.fixture
-async def client():
-    """Async test client that speaks directly to the FastAPI app."""
-    from hephae_api.main import app
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "functional: real runner calls that invoke Gemini agents (requires GEMINI_API_KEY)",
+    )
+    config.addinivalue_line(
+        "markers",
+        "integration: real API integration tests (requires GEMINI_API_KEY and live DB)",
+    )
+    config.addinivalue_line(
+        "markers",
+        "needs_browser: tests that need Playwright/crawl4ai (skip on Cloud Run)",
+    )
 
 
-@pytest.fixture
-def mock_runner():
-    """Mock the ADK Runner so no Gemini calls are made."""
+def pytest_collection_modifyitems(config, items):
+    if not os.environ.get("GEMINI_API_KEY"):
+        skip_gemini = pytest.mark.skip(reason="GEMINI_API_KEY not set")
+        for item in items:
+            if "functional" in item.keywords or "integration" in item.keywords:
+                item.add_marker(skip_gemini)
 
-    async def _empty_stream(*args, **kwargs):
-        return
-        yield  # make it an async generator
-
-    runner_instance = MagicMock()
-    runner_instance.run_async = MagicMock(side_effect=_empty_stream)
-
-    with patch("google.adk.runners.Runner", return_value=runner_instance) as mock_cls:
-        mock_cls._instance = runner_instance
-        yield runner_instance
-
-
-@pytest.fixture
-def mock_session_service():
-    """Mock the ADK InMemorySessionService."""
-    svc = MagicMock()
-    svc.create_session = AsyncMock(return_value=None)
-    svc.get_session = AsyncMock(return_value=MagicMock(state={}))
-
-    with patch("google.adk.sessions.InMemorySessionService", return_value=svc) as mock_cls:
-        mock_cls._instance = svc
-        yield svc
-
-
-@pytest.fixture
-def mock_storage():
-    """Mock report storage (GCS upload) and slug generation."""
-    with (
-        patch(
-            "hephae_common.report_storage.generate_slug",
-            side_effect=lambda name: name.lower().replace(" ", "-"),
-        ) as mock_slug,
-        patch(
-            "hephae_common.report_storage.upload_report",
-            new_callable=AsyncMock,
-            return_value="https://storage.googleapis.com/test/report.html",
-        ) as mock_upload,
-    ):
-        yield {"generate_slug": mock_slug, "upload_report": mock_upload}
-
-
-@pytest.fixture
-def mock_db():
-    """Mock all DB write functions."""
-    with (
-        patch(
-            "hephae_db.firestore.agent_results.write_agent_result",
-            new_callable=AsyncMock,
-            return_value=None,
-        ) as mock_war,
-        patch(
-            "hephae_db.firestore.discovery.write_discovery",
-            new_callable=AsyncMock,
-            return_value=None,
-        ) as mock_wd,
-        patch(
-            "hephae_db.firestore.interactions.write_interaction",
-            new_callable=AsyncMock,
-            return_value=None,
-        ) as mock_wi,
-    ):
-        yield {
-            "write_agent_result": mock_war,
-            "write_discovery": mock_wd,
-            "write_interaction": mock_wi,
-        }
+    if bool(os.environ.get("K_SERVICE")):
+        skip_browser = pytest.mark.skip(
+            reason="Cloud Run Service: no Playwright browser — use Cloud Run Job instead"
+        )
+        for item in items:
+            if "needs_browser" in item.keywords:
+                item.add_marker(skip_browser)

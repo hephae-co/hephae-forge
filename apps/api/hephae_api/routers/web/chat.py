@@ -26,8 +26,18 @@ router = APIRouter()
 
 APP_NAME = "hephae-chat"
 
-# Singleton session service — shares Firestore client across requests
+# Singleton services — shared across requests
 _session_service = FirestoreSessionService()
+_memory_service = None  # lazy init
+
+
+def _get_memory_service():
+    """Lazy-init Firestore memory service (for authenticated users)."""
+    global _memory_service
+    if _memory_service is None:
+        from hephae_db.memory.firestore_memory_service import FirestoreMemoryService
+        _memory_service = FirestoreMemoryService()
+    return _memory_service
 
 SYSTEM_INSTRUCTION = (
     "You are Hephae, an intelligent assistant for business owners. "
@@ -188,11 +198,13 @@ async def chat(request: Request, firebase_user: dict | None = Depends(optional_f
                     )
                     await _session_service.append_event(session, event)
 
-        # Run the agent
+        # Run the agent — with long-term memory for authenticated users
+        is_authenticated = user_id != "anonymous"
         runner = Runner(
             app_name=APP_NAME,
             agent=agent,
             session_service=_session_service,
+            memory_service=_get_memory_service() if is_authenticated else None,
         )
 
         response_text = ""

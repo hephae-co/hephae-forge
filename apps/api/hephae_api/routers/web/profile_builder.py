@@ -171,11 +171,15 @@ async def build_profile(request: Request, firebase_user: dict = Depends(verify_f
                     )
                     await _session_service.append_event(session, event)
 
-        # Run the agent
+        # Run the agent — with long-term memory for the authenticated user
+        from hephae_db.memory.firestore_memory_service import FirestoreMemoryService
+        _memory = FirestoreMemoryService()
+
         runner = Runner(
             app_name=APP_NAME,
             agent=agent,
             session_service=_session_service,
+            memory_service=_memory,
         )
 
         response_text = ""

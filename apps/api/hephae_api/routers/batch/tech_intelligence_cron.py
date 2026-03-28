@@ -1,12 +1,13 @@
 """Tech Intelligence cron — generates technology landscape profiles for all registered industries.
 
 GET /api/cron/tech-intelligence — Triggered by Cloud Scheduler Sunday 1 AM ET.
-Runs TechScout pipeline for each registered industry in sequence (not parallel,
-to avoid Google Search rate limits).
+Runs TechScout pipeline for each registered industry with bounded concurrency
+(semaphore=5) to stay within Cloud Run timeout while respecting Search rate limits.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime
 
@@ -33,36 +34,29 @@ async def tech_intelligence_cron(
     from hephae_api.workflows.orchestrators.tech_intelligence import generate_tech_intelligence
 
     industries = all_industries()
-    results = []
-    failed = 0
+    sem = asyncio.Semaphore(5)
 
-    for industry in industries:
-        try:
-            logger.info(f"[TechIntelCron] Running tech scout for {industry.id}")
-            result = await generate_tech_intelligence(industry.id)
-            if result.get("error"):
-                failed += 1
-                results.append({
-                    "vertical": industry.id,
-                    "status": "failed",
-                    "error": result["error"],
-                })
-            else:
-                results.append({
+    async def _run_one(industry):
+        async with sem:
+            try:
+                logger.info(f"[TechIntelCron] Running tech scout for {industry.id}")
+                result = await generate_tech_intelligence(industry.id)
+                if result.get("error"):
+                    return {"vertical": industry.id, "status": "failed", "error": result["error"]}
+                return {
                     "vertical": industry.id,
                     "status": "generated",
                     "aiOpportunities": len(result.get("aiOpportunities", [])),
                     "platforms": len(result.get("platforms", {})),
                     "weeklyHighlight": result.get("weeklyHighlight", {}).get("title", ""),
-                })
-        except Exception as e:
-            logger.error(f"[TechIntelCron] Failed for {industry.id}: {e}")
-            failed += 1
-            results.append({
-                "vertical": industry.id,
-                "status": "failed",
-                "error": str(e),
-            })
+                }
+            except Exception as e:
+                logger.error(f"[TechIntelCron] Failed for {industry.id}: {e}")
+                return {"vertical": industry.id, "status": "failed", "error": str(e)}
+
+    results = await asyncio.gather(*[_run_one(ind) for ind in industries])
+    results = list(results)
+    failed = sum(1 for r in results if r["status"] == "failed")
 
     generated = len(results) - failed
     logger.info(f"[TechIntelCron] Complete: {generated} succeeded, {failed} failed")

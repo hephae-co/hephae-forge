@@ -2,12 +2,14 @@
 
 GET /api/cron/ai-tool-discovery — Triggered by Cloud Scheduler Tuesday 7 AM ET.
 Runs after Tech Intelligence (Sun 1 AM) and Industry Pulse (Sun 3 AM).
-Runs sequentially (not parallel) to avoid Google Search rate limits.
-Idempotent — skips verticals that already have a run for the current ISO week.
+Uses bounded concurrency (semaphore=5) to stay within Cloud Run timeout while
+respecting Search rate limits. Idempotent — skips verticals that already have
+a run for the current ISO week.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Header, HTTPException
@@ -33,43 +35,31 @@ async def ai_tool_discovery_cron(
     from hephae_api.workflows.orchestrators.ai_tool_discovery import generate_ai_tool_discovery
 
     industries = all_industries()
-    results = []
-    failed = 0
+    sem = asyncio.Semaphore(5)
 
-    for industry in industries:
-        try:
-            logger.info(f"[AiToolDiscoveryCron] Running for {industry.id}")
-            result = await generate_ai_tool_discovery(industry.id, force=False)
-            if result.get("error"):
-                failed += 1
-                results.append({
-                    "vertical": industry.id,
-                    "status": "failed",
-                    "error": result["error"],
-                })
-            elif result.get("skipped"):
-                results.append({
-                    "vertical": industry.id,
-                    "status": "skipped",
-                    "reason": "already_exists_this_week",
-                })
-            else:
-                results.append({
+    async def _run_one(industry):
+        async with sem:
+            try:
+                logger.info(f"[AiToolDiscoveryCron] Running for {industry.id}")
+                result = await generate_ai_tool_discovery(industry.id, force=False)
+                if result.get("error"):
+                    return {"vertical": industry.id, "status": "failed", "error": result["error"]}
+                if result.get("skipped"):
+                    return {"vertical": industry.id, "status": "skipped", "reason": "already_exists_this_week"}
+                return {
                     "vertical": industry.id,
                     "status": "generated",
                     "totalToolsFound": result.get("totalToolsFound", 0),
                     "newToolsCount": result.get("newToolsCount", 0),
                     "freeToolsCount": result.get("freeToolsCount", 0),
                     "weeklyHighlight": result.get("weeklyHighlight", {}).get("title", ""),
-                })
-        except Exception as e:
-            logger.error(f"[AiToolDiscoveryCron] Failed for {industry.id}: {e}")
-            failed += 1
-            results.append({
-                "vertical": industry.id,
-                "status": "failed",
-                "error": str(e),
-            })
+                }
+            except Exception as e:
+                logger.error(f"[AiToolDiscoveryCron] Failed for {industry.id}: {e}")
+                return {"vertical": industry.id, "status": "failed", "error": str(e)}
+
+    results = list(await asyncio.gather(*[_run_one(ind) for ind in industries]))
+    failed = sum(1 for r in results if r["status"] == "failed")
 
     generated = len([r for r in results if r.get("status") == "generated"])
     skipped = len([r for r in results if r.get("status") == "skipped"])

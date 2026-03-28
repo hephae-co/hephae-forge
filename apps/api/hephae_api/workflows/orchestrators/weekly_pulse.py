@@ -101,7 +101,9 @@ async def generate_pulse(
     external_references: list[dict] = []
     try:
         from hephae_db.firestore.research_references import get_references_for_blog
-        ref_topics = ["restaurant_industry_trends", "restaurant_food_cost", "commodity_inflation", "small_business_margins"]
+        from hephae_api.workflows.orchestrators.industries import resolve as resolve_industry
+        industry_cfg = resolve_industry(business_type)
+        ref_topics = industry_cfg.reference_topics
         external_references = await get_references_for_blog(ref_topics, limit=4)
     except Exception:
         pass  # Non-critical — pulse runs fine without references

@@ -47,6 +47,10 @@ class IndustryConfig:
     critique_persona: str = "local business owner with 15 years experience"
     social_search_terms: list[str] = field(default_factory=list)
 
+    # Topics used to fetch external research references for economist context.
+    # Must match keys in reference_harvester.TOPIC_CLUSTERS.
+    reference_topics: list[str] = field(default_factory=lambda: ["small_business_margins"])
+
 
 # ── Restaurant ──────────────────────────────────────────────────
 
@@ -175,6 +179,11 @@ RESTAURANT = IndustryConfig(
         "restaurant owner costs", "food cost inflation restaurant",
         "restaurant supply chain 2026", "restaurant margins operator",
         "menu price increase strategy", "restaurant labor minimum wage NJ",
+    ],
+    reference_topics=[
+        "restaurant_industry_trends", "restaurant_food_cost",
+        "commodity_inflation", "small_business_margins",
+        "menu_pricing_strategy", "restaurant_technology",
     ],
 )
 
@@ -315,6 +324,10 @@ BAKERY = IndustryConfig(
         "bakery supply chain 2026", "bakery labor wages",
         "baked goods CPI", "artisan bakery overhead",
     ],
+    reference_topics=[
+        "restaurant_food_cost", "commodity_inflation",
+        "small_business_margins", "menu_pricing_strategy",
+    ],
 )
 
 
@@ -440,6 +453,10 @@ BARBER = IndustryConfig(
         "barber shop rent increase", "men's grooming service pricing",
         "barbershop booth rental rates", "barber licensing NJ",
     ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
+        "restaurant_technology",
+    ],
 )
 
 
@@ -535,6 +552,11 @@ COFFEE_SHOP = IndustryConfig(
         "coffee shop owner costs 2026", "independent cafe vs starbucks",
         "coffee shop milk cost dairy price", "cafe owner profit margin",
         "specialty coffee business overhead", "coffee shop pricing strategy",
+    ],
+    reference_topics=[
+        "restaurant_food_cost", "commodity_inflation",
+        "small_business_margins", "menu_pricing_strategy",
+        "restaurant_technology",
     ],
 )
 
@@ -640,6 +662,11 @@ PIZZA_FAST_CASUAL = IndustryConfig(
         "fast casual restaurant margins", "pizza delivery app fees DoorDash",
         "quick service restaurant supply chain", "pizza business overhead NJ",
     ],
+    reference_topics=[
+        "restaurant_industry_trends", "restaurant_food_cost",
+        "commodity_inflation", "small_business_margins",
+        "menu_pricing_strategy",
+    ],
 )
 
 
@@ -727,6 +754,10 @@ FOOD_TRUCK = IndustryConfig(
         "food truck owner costs 2026", "food truck gas fuel prices",
         "food truck permit NJ", "mobile food business margins",
         "food truck event catering revenue", "food truck commissary kitchen cost",
+    ],
+    reference_topics=[
+        "restaurant_food_cost", "commodity_inflation",
+        "small_business_margins", "menu_pricing_strategy",
     ],
 )
 
@@ -823,6 +854,9 @@ NAIL_SALON = IndustryConfig(
         "nail salon owner costs 2026", "nail salon supply prices",
         "nail salon pricing strategy", "nail tech commission rates",
         "nail salon business overhead NJ", "beauty service CPI inflation",
+    ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
     ],
 )
 
@@ -923,6 +957,9 @@ HAIR_SALON = IndustryConfig(
         "hair salon booth rental rates NJ", "beauty salon business overhead",
         "hair salon pricing increase", "cosmetology business margins",
     ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
+    ],
 )
 
 
@@ -1022,6 +1059,9 @@ SPA_MASSAGE = IndustryConfig(
         "spa membership model revenue", "day spa pricing strategy",
         "esthetician business costs NJ", "wellness spa profit margin",
     ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
+    ],
 )
 
 
@@ -1118,6 +1158,9 @@ TATTOO_STUDIO = IndustryConfig(
         "tattoo shop owner business costs", "tattoo studio overhead 2026",
         "tattoo supply prices inflation", "tattoo artist booth rental rates",
         "tattoo business NJ regulations", "body art studio profit margin",
+    ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
     ],
 )
 
@@ -1218,6 +1261,10 @@ AUTO_REPAIR = IndustryConfig(
         "automotive parts prices inflation", "auto repair labor rate increase",
         "independent shop vs dealership", "car repair business margins",
     ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
+        "commodity_inflation",
+    ],
 )
 
 
@@ -1316,6 +1363,9 @@ RESIDENTIAL_CLEANING = IndustryConfig(
         "cleaning business owner costs 2026", "house cleaning service pricing NJ",
         "residential cleaning business overhead", "cleaning company labor wages",
         "maid service fuel surcharge", "cleaning business profit margin",
+    ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
     ],
 )
 
@@ -1422,6 +1472,10 @@ PLUMBING_HVAC = IndustryConfig(
         "plumbing contractor pricing", "HVAC technician labor shortage",
         "home services business margin", "contractor parts prices inflation",
     ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
+        "commodity_inflation",
+    ],
 )
 
 
@@ -1522,6 +1576,10 @@ GYM_FITNESS = IndustryConfig(
         "gym membership pricing strategy", "crossfit gym profit margin",
         "fitness studio energy costs NJ", "personal training business model",
     ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
+        "restaurant_technology",
+    ],
 )
 
 
@@ -1621,6 +1679,10 @@ YOGA_PILATES = IndustryConfig(
         "yoga studio owner costs 2026", "pilates studio business overhead",
         "yoga studio pricing strategy", "pilates reformer studio margin",
         "barre studio business model", "wellness studio NJ competition",
+    ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
+        "restaurant_technology",
     ],
 )
 
@@ -1723,6 +1785,9 @@ DENTAL = IndustryConfig(
         "dental fee schedule increase", "dental practice insurance reimbursement",
         "dental office profit margin", "DSO vs independent practice",
     ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
+    ],
 )
 
 
@@ -1824,6 +1889,9 @@ FLORIST = IndustryConfig(
         "wholesale flower prices 2026", "wedding florist profit margin",
         "florist Valentine's Day prep", "flower shop delivery costs",
     ],
+    reference_topics=[
+        "small_business_margins", "commodity_inflation",
+    ],
 )
 
 
@@ -1924,6 +1992,9 @@ DRY_CLEANER = IndustryConfig(
         "dry cleaner business costs 2026", "laundry service overhead NJ",
         "dry cleaning energy costs", "dry cleaner pricing strategy",
         "laundry service business margin", "dry cleaning chemical costs",
+    ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
     ],
 )
 
@@ -2028,6 +2099,9 @@ PET_GROOMING = IndustryConfig(
         "pet groomer business costs 2026", "dog grooming pricing NJ",
         "pet grooming business overhead", "mobile groomer fuel costs",
         "pet grooming supply prices", "dog groomer business margin",
+    ],
+    reference_topics=[
+        "small_business_margins", "labor_costs_restaurants",
     ],
 )
 

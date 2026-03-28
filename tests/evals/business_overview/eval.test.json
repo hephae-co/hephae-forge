@@ -1,0 +1,142 @@
+{
+  "eval_set_id": "business_overview_eval",
+  "name": "Business Overview Synthesizer Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "bosphorus_nutley_nj",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Synthesize a business overview for The Bosphorus, a Turkish restaurant in Nutley, NJ 07110."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"businessSnapshot\": {\"name\": \"The Bosphorus\", \"category\": \"Turkish Restaurant\", \"rating\": null, \"reviewCount\": null, \"website\": null}, \"marketPosition\": {\"competitorCount\": null, \"saturationLevel\": \"moderate\", \"ranking\": null, \"topCompetitors\": []}, \"localEconomy\": {\"medianIncome\": null, \"population\": null, \"keyFact\": \"Nutley NJ is a dense suburban market with strong dining demand\"}, \"localBuzz\": {\"headline\": null, \"events\": [], \"trend\": \"Turkish cuisine gaining popularity in NJ dining scene\"}, \"keyOpportunities\": [{\"title\": \"Expand online presence\", \"detail\": \"Turkish cuisine is underrepresented in Nutley online directories\", \"dataPoint\": \"Limited Google search visibility for Turkish restaurants in 07110\"}], \"capabilityTeasers\": {\"margin\": null, \"traffic\": \"Foot traffic patterns for Turkish cuisine restaurants in Essex County NJ\", \"seo\": \"Low competition keywords available for Turkish restaurant Nutley NJ\", \"competitive\": null, \"social\": null}}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "business_overview",
+        "user_id": "eval",
+        "state": {
+          "businessName": "The Bosphorus",
+          "businessAddress": "Nutley, NJ 07110",
+          "zipCode": "07110",
+          "businessType": "Restaurants",
+          "searchResults": "{\"businessSummary\": \"The Bosphorus is a Turkish restaurant in Nutley, NJ offering authentic Mediterranean cuisine including kebabs, mezes, and baklava.\", \"onlinePresence\": \"Limited online presence — Google Business Profile exists but website not found\", \"recentNews\": [], \"localTrends\": \"Turkish and Mediterranean cuisine trending in northern NJ suburbs\", \"rating\": 4.3, \"reviewCount\": 87, \"website\": null}",
+          "mapsData": "{\"totalNearby\": 8, \"topCompetitors\": [{\"name\": \"Nutley Diner\", \"rating\": 3.9, \"userRatingCount\": 312}, {\"name\": \"Pizza Palace\", \"rating\": 4.1, \"userRatingCount\": 204}], \"saturationLevel\": \"low\", \"competitiveSummary\": \"Turkish cuisine is underrepresented in Nutley — The Bosphorus faces minimal direct competition\"}",
+          "zipcodeContext": {},
+          "zipcodeProfile": null,
+          "latestPulse": null
+        }
+      }
+    },
+    {
+      "eval_id": "mikes_pastry_boston",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Synthesize a business overview for Mike's Pastry, an Italian bakery in Boston, MA 02113."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"businessSnapshot\": {\"name\": \"Mike's Pastry\", \"category\": \"Italian Bakery\", \"rating\": 4.5, \"reviewCount\": 5000, \"website\": \"https://www.mikespastry.com\"}, \"marketPosition\": {\"competitorCount\": 12, \"saturationLevel\": \"high\", \"ranking\": \"Rated 4.5 vs area average of 4.1 — North End bakery icon\", \"topCompetitors\": [{\"name\": \"Modern Pastry\", \"rating\": 4.4}]}, \"localEconomy\": {\"medianIncome\": \"$78,000\", \"population\": \"670,000\", \"keyFact\": \"Boston North End is a high-foot-traffic tourist and local destination\"}, \"localBuzz\": {\"headline\": null, \"events\": [], \"trend\": \"Boston North End tourism driving bakery demand\"}, \"keyOpportunities\": [{\"title\": \"Leverage tourist traffic\", \"detail\": \"North End draws 3M+ visitors annually — high visibility for cannoli brand\", \"dataPoint\": \"4.5 star rating with 5000+ reviews signals strong brand equity\"}], \"capabilityTeasers\": {\"margin\": \"Cannoli at $4.50 — pricing vs ingredient cost analysis could unlock 8-12% margin\", \"traffic\": \"Peak hours analysis for Boston North End foot traffic patterns\", \"seo\": \"Domain authority assessment for mikespastry.com vs competitors\", \"competitive\": \"Modern Pastry rated 4.4 vs your 4.5 — maintain your edge\", \"social\": \"Instagram food photography opportunity for iconic cannoli content\"}}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "business_overview",
+        "user_id": "eval",
+        "state": {
+          "businessName": "Mike's Pastry",
+          "businessAddress": "300 Hanover St, Boston, MA 02113",
+          "zipCode": "02113",
+          "businessType": "Bakeries",
+          "searchResults": "{\"businessSummary\": \"Mike's Pastry is a legendary Italian bakery in Boston's North End, famous for cannoli, lobster tails, and traditional Italian pastries since 1946.\", \"onlinePresence\": \"Strong online presence with official website, active social media, and thousands of Google reviews\", \"recentNews\": [\"Featured in Boston Magazine's top bakeries 2025\", \"Expanded seating area in 2024\"], \"localTrends\": \"North End bakery tourism remains strong; cannoli competition growing\", \"rating\": 4.5, \"reviewCount\": 5412, \"website\": \"https://www.mikespastry.com\"}",
+          "mapsData": "{\"totalNearby\": 12, \"topCompetitors\": [{\"name\": \"Modern Pastry\", \"rating\": 4.4, \"userRatingCount\": 3201}, {\"name\": \"Bova's Bakery\", \"rating\": 4.2, \"userRatingCount\": 890}], \"saturationLevel\": \"high\", \"competitiveSummary\": \"North End is saturated with Italian bakeries but Mike's holds the top rating and highest review count\"}",
+          "zipcodeContext": {
+            "zipcodeResearch": {
+              "city": "Boston",
+              "state": "MA",
+              "summary": "Boston North End — dense urban neighborhood, tourist magnet, Italian-American heritage"
+            }
+          },
+          "zipcodeProfile": {
+            "city": "Boston",
+            "state": "MA",
+            "confirmedSources": 4,
+            "census": "pop=670,000, income=$78,000"
+          },
+          "latestPulse": null
+        }
+      }
+    },
+    {
+      "eval_id": "strand_bookstore_nyc",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Synthesize a business overview for Strand Bookstore in New York City, NY 10003."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"businessSnapshot\": {\"name\": \"Strand Bookstore\", \"category\": \"Independent Bookstore\", \"rating\": 4.6, \"reviewCount\": 8000, \"website\": \"https://www.strandbooks.com\"}, \"marketPosition\": {\"competitorCount\": 6, \"saturationLevel\": \"moderate\", \"ranking\": \"4.6 stars — NYC's most reviewed independent bookstore\", \"topCompetitors\": [{\"name\": \"Housing Works Bookstore\", \"rating\": 4.5}]}, \"localEconomy\": {\"medianIncome\": \"$95,000\", \"population\": \"200,000\", \"keyFact\": \"Greenwich Village/Union Square — highest density bookstore visitors in NYC\"}, \"localBuzz\": {\"headline\": null, \"events\": [], \"trend\": \"Independent bookstore renaissance driving foot traffic in NYC\"}, \"keyOpportunities\": [{\"title\": \"18 miles of books brand\", \"detail\": \"Iconic positioning drives tourist and local traffic — merchandise and events are margin opportunity\", \"dataPoint\": \"4.6 stars with 8000+ reviews — strongest brand moat among NYC independents\"}], \"capabilityTeasers\": {\"margin\": \"Used vs new book pricing mix — margin analysis could identify optimal inventory balance\", \"traffic\": \"Tourist vs local traffic segmentation for Union Square foot traffic patterns\", \"seo\": \"strandbooks.com authority vs Amazon for 'NYC independent bookstore' keywords\", \"competitive\": \"Housing Works at 4.5 stars — your 4.6 is the moat, but they have event programming advantage\", \"social\": \"TikTok BookTok content opportunity — Strand's aesthetic is viral-ready\"}}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "business_overview",
+        "user_id": "eval",
+        "state": {
+          "businessName": "Strand Bookstore",
+          "businessAddress": "828 Broadway, New York, NY 10003",
+          "zipCode": "10003",
+          "businessType": "Retail",
+          "searchResults": "{\"businessSummary\": \"Strand Bookstore is an iconic independent bookstore in Manhattan's Greenwich Village, famous for '18 Miles of Books' and over 2.5 million new, used, and rare titles since 1927.\", \"onlinePresence\": \"Strong online presence — active website, Instagram, Twitter, and extensive press coverage\", \"recentNews\": [\"Named NYC's best bookstore by Time Out 2025\", \"Expanded rare books section\"], \"localTrends\": \"Independent bookstore revival in NYC; BookTok driving new customer discovery\", \"rating\": 4.6, \"reviewCount\": 8234, \"website\": \"https://www.strandbooks.com\"}",
+          "mapsData": "{\"totalNearby\": 6, \"topCompetitors\": [{\"name\": \"Housing Works Bookstore Cafe\", \"rating\": 4.5, \"userRatingCount\": 2100}, {\"name\": \"McNally Jackson Books\", \"rating\": 4.4, \"userRatingCount\": 1800}], \"saturationLevel\": \"moderate\", \"competitiveSummary\": \"Strand leads NYC independents in reviews and rating — Union Square location provides unmatched foot traffic\"}",
+          "zipcodeContext": {
+            "zipcodeResearch": {
+              "city": "New York",
+              "state": "NY",
+              "summary": "Union Square/Greenwich Village — high-income, culturally active neighborhood with strong retail foot traffic"
+            }
+          },
+          "zipcodeProfile": {
+            "city": "New York",
+            "state": "NY",
+            "confirmedSources": 6,
+            "census": "pop=200,000, income=$95,000"
+          },
+          "latestPulse": {
+            "source": "ultralocal",
+            "headline": "BookTok trend driving 40% increase in independent bookstore visits across NYC",
+            "weekOf": "2026-03-24",
+            "topInsights": [
+              {"title": "BookTok opportunity", "recommendation": "Create short-form video content featuring rare book finds"}
+            ],
+            "events": [{"what": "Author signing event", "when": "Saturday"}],
+            "communityBuzz": "Union Square spring market returning — expect increased foot traffic"
+          }
+        }
+      }
+    }
+  ]
+}

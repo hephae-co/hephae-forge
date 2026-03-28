@@ -6,6 +6,8 @@ Tests cover:
 - DiscoveryJobConfig.from_firestore: minimal and full data
 - cancel_job: only cancels pending, returns False for non-pending
 - complete_job: sets status + completedAt
+
+NOTE: This file still uses heavy mocks — mock cleanup needed.
 """
 
 from __future__ import annotations
@@ -13,6 +15,8 @@ from __future__ import annotations
 import pytest
 from datetime import datetime
 from unittest.mock import patch, MagicMock, AsyncMock
+
+pytestmark = pytest.mark.integration
 
 
 class TestDeserialize:

@@ -17,6 +17,8 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+pytestmark = pytest.mark.functional
+
 
 # ---------------------------------------------------------------------------
 # Test data

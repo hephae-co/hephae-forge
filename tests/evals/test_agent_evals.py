@@ -229,3 +229,37 @@ async def test_contact_form():
         eval_dataset_file_path_or_dir=str(EVALS_DIR / "contact_form"),
         num_runs=1,
     )
+
+
+# ---------------------------------------------------------------------------
+# Business intelligence agents (overview, profile builder)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_business_overview():
+    """Evaluate BusinessOverviewSynthesizer — search + maps + pulse synthesis."""
+    await AgentEvaluator.evaluate(
+        agent_module="tests.evals.business_overview.agent",
+        eval_dataset_file_path_or_dir=str(EVALS_DIR / "business_overview"),
+        num_runs=1,
+    )
+
+
+@pytest.mark.asyncio
+async def test_profile_builder():
+    """Evaluate ProfileBuilderAgent — guided multi-turn profile collection flow."""
+    await AgentEvaluator.evaluate(
+        agent_module="tests.evals.profile_builder.agent",
+        eval_dataset_file_path_or_dir=str(EVALS_DIR / "profile_builder"),
+        num_runs=1,
+    )
+
+
+@pytest.mark.asyncio
+async def test_social_post_generator():
+    """Evaluate SocialPostParallel — 5-channel parallel outreach content generation."""
+    await AgentEvaluator.evaluate(
+        agent_module="tests.evals.social_post_generator.agent",
+        eval_dataset_file_path_or_dir=str(EVALS_DIR / "social_post_generator"),
+        num_runs=1,
+    )

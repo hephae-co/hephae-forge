@@ -10,6 +10,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 from hephae_db.context.admin_data import get_zipcode_report, get_area_research_for_zip
 
 

@@ -1,4 +1,7 @@
-"""Unit tests for hephae_db.firestore.heartbeats module."""
+"""Unit tests for hephae_db.firestore.heartbeats module.
+
+NOTE: This file still uses heavy mocks — mock cleanup needed.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +10,8 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+pytestmark = pytest.mark.integration
 
 
 # ---------------------------------------------------------------------------

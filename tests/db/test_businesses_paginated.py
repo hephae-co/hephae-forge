@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 from unittest.mock import patch, MagicMock
 
+pytestmark = pytest.mark.integration
+
 
 def _make_doc(name: str, zip_code: str = "07110", email: str = "", category: str = "",
               status: str = "scanned") -> MagicMock:

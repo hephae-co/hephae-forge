@@ -6,6 +6,8 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock, AsyncMock
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def mock_db():

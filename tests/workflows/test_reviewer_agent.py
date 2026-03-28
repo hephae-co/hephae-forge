@@ -13,6 +13,8 @@ from __future__ import annotations
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 
+pytestmark = pytest.mark.functional
+
 
 class TestBuildReviewerPrompt:
     """_build_reviewer_prompt includes expected sections."""

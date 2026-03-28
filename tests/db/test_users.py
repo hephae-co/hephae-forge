@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 
 # ---------------------------------------------------------------------------
 # Helper: build a mock Firestore doc

@@ -1,0 +1,111 @@
+{
+  "eval_set_id": "profile_builder_eval",
+  "name": "Profile Builder Agent Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "pizza_restaurant_full_profile",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Hi, I want to set up my business profile. I run Mario's Pizza in Nutley NJ."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "Great, Mario's Pizza! Let me collect a few details. Which social media platforms are important for your business? (Instagram, TikTok, Facebook, X/Twitter, Yelp, Google Business Profile)"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        },
+        {
+          "invocation_id": "turn_2",
+          "user_content": {
+            "parts": [{"text": "We're on Instagram @mariospizza_nj and we have a Facebook page at facebook.com/mariospizzanutley"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "Got it — Instagram @mariospizza_nj and Facebook at facebook.com/mariospizzanutley. Do you use any delivery platforms? (DoorDash, UberEats, Grubhub, etc.)"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        },
+        {
+          "invocation_id": "turn_3",
+          "user_content": {
+            "parts": [{"text": "Yes, DoorDash and UberEats. And here's our menu: https://mariospizza.com/menu"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "DoorDash and UberEats noted, and menu URL https://mariospizza.com/menu saved. Which analyses would you like to run? You can pick multiple: Price analysis, Foot traffic forecast, SEO audit, Competitor breakdown, Social media audit."}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "hephae-profile-builder",
+        "user_id": "eval",
+        "state": {
+          "businessName": "Mario's Pizza",
+          "address": "123 Main St, Nutley, NJ 07110",
+          "zipCode": "07110",
+          "websiteUrl": "https://mariospizza.com"
+        }
+      }
+    },
+    {
+      "eval_id": "salon_skip_delivery",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "I want to set up my profile. I own Glow Salon in Montclair NJ."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "Welcome! Let's set up Glow Salon's profile. Which social media platforms are important for your business? (Instagram, TikTok, Facebook, X/Twitter, Yelp, Google Business Profile)"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        },
+        {
+          "invocation_id": "turn_2",
+          "user_content": {
+            "parts": [{"text": "Just Instagram @glowsalonnj. Skip delivery — we're a salon. No menu either."}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "Got it — Instagram @glowsalonnj, no delivery platforms, no menu URL. Is https://glowsalon.com your current website?"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "hephae-profile-builder",
+        "user_id": "eval",
+        "state": {
+          "businessName": "Glow Salon",
+          "address": "456 Oak Ave, Montclair, NJ 07042",
+          "zipCode": "07042",
+          "websiteUrl": "https://glowsalon.com"
+        }
+      }
+    }
+  ]
+}

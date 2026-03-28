@@ -3,11 +3,16 @@ Unit tests for backend/lib/business_context.py
 
 Covers: BusinessContext dataclass, build_business_context orchestrator,
 in-memory cache, market data accessors, zip code parsing.
+
+NOTE: This file still uses heavy mocks — mock cleanup needed.
 """
 
 from __future__ import annotations
 
 import time
+import pytest
+
+pytestmark = pytest.mark.integration
 from unittest.mock import patch, MagicMock, AsyncMock
 
 import pytest

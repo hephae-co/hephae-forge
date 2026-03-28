@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock, patch
 from hephae_common.models import OutreachResponse
 from hephae_agents.social.outreach_generator.runner import run_social_outreach_generation
 
+pytestmark = pytest.mark.functional
+
 SAMPLE_BIZ_DATA = {
     "name": "Mama's Pizza",
     "city": "Nutley",

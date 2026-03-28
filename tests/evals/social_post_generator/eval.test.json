@@ -1,0 +1,82 @@
+{
+  "eval_set_id": "social_post_generator_eval",
+  "name": "Social Post Generator Evaluation",
+  "eval_cases": [
+    {
+      "eval_id": "mikes_pastry_margin_posts",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Business: Mike's Pastry\nInstagram Handle: @mikespastry\nReport Type: Margin Surgery\nKey Finding / Summary: Cannoli priced at $4.50 with 35% food cost — repricing to $5.50 could recover $2,400/mo in lost margin across 1,200 daily units.\nHephae Website: https://hephae.co\n\n## REPORT LINKS (MUST include at least one in your output)\n- Margin Surgery: https://cdn.hephae.co/reports/mikes-pastry-margin-2026.pdf"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"instagramPost\": {\"caption\": \"@mikespastry is leaving $2,400/mo on the table 🍮 Cannoli at $4.50 when they should be $5.50. 1,200 units/day = serious money. Hephae's Margin Surgery caught it. Full report at hephae.co #Hephae #MarginSurgeon #Cannoli #BostonFood #NorthEnd\", \"reportLink\": \"https://cdn.hephae.co/reports/mikes-pastry-margin-2026.pdf\", \"imageUrl\": \"\"}, \"facebookPost\": {\"post\": \"Mike's Pastry is Boston's best cannoli — but Hephae found $2,400/mo in pricing opportunity. With 1,200 daily units at $4.50, raising to $5.50 recovers real margin without losing customers. See the full Margin Surgery: https://cdn.hephae.co/reports/mikes-pastry-margin-2026.pdf | hephae.co\", \"reportLink\": \"https://cdn.hephae.co/reports/mikes-pastry-margin-2026.pdf\", \"imageUrl\": \"\"}, \"twitterPost\": {\"tweet\": \"Mike's Pastry: $2,400/mo margin opportunity found. Cannoli underpriced by $1.00. Hephae's analysis. #Hephae\", \"reportLink\": \"https://cdn.hephae.co/reports/mikes-pastry-margin-2026.pdf\", \"imageUrl\": \"\"}, \"emailOutreach\": {\"subject\": \"Mike's Pastry: $2,400/mo pricing opportunity found by Hephae\", \"body\": \"Hi Mike's Pastry team,\\n\\nHephae ran a Margin Surgery on your business and found that your cannoli are underpriced by $1.00 per unit. With 1,200 daily units, that's $2,400/mo in recoverable margin.\\n\\nSee the full analysis: https://cdn.hephae.co/reports/mikes-pastry-margin-2026.pdf\\n\\nBest,\\nThe Hephae Team | hephae.co\"}, \"contactFormDraft\": {\"message\": \"Hi Mike's Pastry, Hephae here. We ran a Margin Surgery on your business and found $2,400/mo in pricing opportunity — your cannoli are underpriced at $4.50. Check our full analysis at hephae.co\"}}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "hephae-hub",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "strand_bookstore_seo_posts",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Business: Strand Bookstore\nInstagram Handle: @strandbookstore\nFacebook Page: StrandBookstoreNYC\nTwitter/X Handle: @strandbooks\nReport Type: SEO Audit\nKey Finding / Summary: SEO score 71/100 — strong domain authority (DA 52) but missing structured data and slow mobile load at 3.8 seconds. Keywords for 'NYC bookstore' ranking page 2 could move to page 1 with technical fixes.\nHephae Website: https://hephae.co\n\n## REPORT LINKS (MUST include at least one in your output)\n- SEO Audit: https://cdn.hephae.co/reports/strand-seo-2026.pdf"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"instagramPost\": {\"caption\": \"@strandbookstore has DA 52 but 3.8s mobile load is burying you on page 2 for 'NYC bookstore' 📚 That's tourists going to competitors. Hephae's SEO audit found the fix. Full report at hephae.co #Hephae #SEOAudit #Bookstore #NYC #StrandBooks\", \"reportLink\": \"https://cdn.hephae.co/reports/strand-seo-2026.pdf\", \"imageUrl\": \"\"}, \"facebookPost\": {\"post\": \"Strand Bookstore scored 71/100 on Hephae's SEO audit — solid DA 52, but a 3.8-second mobile load time is pushing you to page 2 for 'NYC bookstore' searches. Structured data fixes and speed optimization could move you to page 1. Full SEO audit: https://cdn.hephae.co/reports/strand-seo-2026.pdf | hephae.co\", \"reportLink\": \"https://cdn.hephae.co/reports/strand-seo-2026.pdf\", \"imageUrl\": \"\"}, \"twitterPost\": {\"tweet\": \"@strandbooks SEO score 71/100. 3.8s mobile load keeping you on page 2 for 'NYC bookstore'. Easy wins available. Hephae's full audit: https://cdn.hephae.co/reports/strand-seo-2026.pdf #Hephae\", \"reportLink\": \"https://cdn.hephae.co/reports/strand-seo-2026.pdf\", \"imageUrl\": \"\"}, \"emailOutreach\": {\"subject\": \"Strand Bookstore SEO audit: page 2 for 'NYC bookstore' — here's the fix\", \"body\": \"Hi Strand Bookstore team,\\n\\nHephae completed an SEO audit and found you're ranking page 2 for 'NYC bookstore' due to a 3.8-second mobile load time. With DA 52, you have the authority — the technical fixes are straightforward.\\n\\nFull audit: https://cdn.hephae.co/reports/strand-seo-2026.pdf\\n\\nBest,\\nThe Hephae Team | hephae.co\"}, \"contactFormDraft\": {\"message\": \"Hi Strand Bookstore, Hephae here. We ran an SEO audit and found you're stuck on page 2 for 'NYC bookstore' — 3.8s mobile load is the culprit. Your DA 52 means page 1 is achievable with technical fixes. Check our full analysis at hephae.co\"}}"}],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "hephae-hub",
+        "user_id": "eval",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "bosphorus_nutley_traffic_posts",
+      "conversation": [
+        {
+          "invocation_id": "turn_1",
+          "user_content": {
+            "parts": [{"text": "Business: The Bosphorus\nReport Type: Foot Traffic Forecast\nKey Finding / Summary: Peak hours 12-2pm and 6-9pm with Wednesday-Thursday underperforming by 40% vs weekend. Targeted lunch specials on slow days could capture 25-30 additional covers/week.\nHephae Website: https://hephae.co\n\n## REPORT LINKS (MUST include at least one in your output)\n- Foot Traffic Forecast: https://cdn.hephae.co/reports/bosphorus-traffic-2026.pdf"}],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [{"text": "{\"instagramPost\": {\"caption\": \"The Bosphorus is packed Fri-Sat but losing 40% of mid-week covers 📊 Hephae's traffic forecast says Wednesday lunch specials = 25-30 extra covers/week. That's real revenue. Full report at hephae.co #Hephae #TrafficForecast #TurkishFood #NutleyNJ #RestaurantData\", \"reportLink\": \"https://cdn.hephae.co/reports/bosphorus-traffic-2026.pdf\", \"imageUrl\": \"\"}, \"facebookPost\": {\"post\": \"The Bosphorus has strong weekend traffic but Wednesday-Thursday are 40% slower. Hephae's foot traffic forecast identified a 25-30 cover opportunity with targeted mid-week lunch specials. Full forecast: https://cdn.hephae.co/reports/bosphorus-traffic-2026.pdf | hephae.co\", \"reportLink\": \"https://cdn.hephae.co/reports/bosphorus-traffic-2026.pdf\", \"imageUrl\": \"\"}, \"twitterPost\": {\"tweet\": \"The Bosphorus (Nutley NJ): 40% mid-week traffic gap = 25-30 covers/week opportunity. Hephae's forecast has the fix. #Hephae\", \"reportLink\": \"https://cdn.hephae.co/reports/bosphorus-traffic-2026.pdf\", \"imageUrl\": \"\"}, \"emailOutreach\": {\"subject\": \"The Bosphorus: 40% mid-week traffic gap — Hephae found the opportunity\", \"body\": \"Hi Bosphorus team,\\n\\nHephae ran a foot traffic forecast and found Wednesday-Thursday are running 40% below your weekend average. A targeted lunch special strategy could add 25-30 covers per week.\\n\\nFull forecast: https://cdn.hephae.co/reports/bosphorus-traffic-2026.pdf\\n\\nBest,\\nThe Hephae Team | hephae.co\"}, \"contactFormDraft\": {\"message\": \"Hi The Bosphorus, Hephae here. We ran a foot traffic forecast and found your mid-week covers are 40% below weekend pace — a 25-30 cover/week opportunity. Check our full analysis at hephae.co\"}}"
+            }],
+            "role": "model"
+          },
+          "intermediate_data": {
+            "tool_uses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "hephae-hub",
+        "user_id": "eval",
+        "state": {}
+      }
+    }
+  ]
+}

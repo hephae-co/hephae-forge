@@ -21,6 +21,8 @@ from unittest.mock import AsyncMock, MagicMock, patch, call
 
 import pytest
 
+pytestmark = pytest.mark.functional
+
 from hephae_api.types import (
     BusinessPhase,
     BusinessWorkflowState,

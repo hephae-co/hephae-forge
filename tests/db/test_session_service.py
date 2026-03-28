@@ -5,6 +5,8 @@ from unittest.mock import patch, MagicMock
 from datetime import datetime, timedelta
 from hephae_db.firestore.session_service import FirestoreSessionService
 
+pytestmark = pytest.mark.integration
+
 @pytest.mark.asyncio
 async def test_create_session_guest():
     """Verify guest sessions have short TTL and correct flags."""

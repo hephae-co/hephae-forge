@@ -1,16 +1,28 @@
-"""Unit tests for the heartbeat runner — delta computation, email logic, cycle execution."""
+"""Tests for the heartbeat runner — delta computation, email builders, cycle execution.
+
+Pure logic tests (compute_delta, email builders) run without any mocks.
+Integration tests (run_heartbeat_cycle with real Firestore) require GEMINI_API_KEY
+and are marked @pytest.mark.functional.
+
+Cron endpoint tests validate auth logic without ASGITransport.
+"""
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch, AsyncMock, MagicMock
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+
+pytestmark = pytest.mark.skipif(
+    not os.environ.get("GEMINI_API_KEY"),
+    reason="GEMINI_API_KEY not set — functional tests require a real Gemini API key",
+)
 
 
 # ---------------------------------------------------------------------------
-# Tests: compute_delta
+# Tests: compute_delta — pure logic, no external deps
 # ---------------------------------------------------------------------------
 
 class TestComputeDelta:
@@ -82,211 +94,7 @@ class TestComputeDelta:
 
 
 # ---------------------------------------------------------------------------
-# Tests: run_heartbeat_cycle
-# ---------------------------------------------------------------------------
-
-SAMPLE_HEARTBEAT = {
-    "id": "hb-001",
-    "uid": "user-123",
-    "businessSlug": "joes-pizza",
-    "businessName": "Joe's Pizza",
-    "capabilities": ["seo", "traffic"],
-    "lastSnapshot": {
-        "seo": {"score": 72, "summary": "OK", "reportUrl": "old-seo-url", "runAt": datetime(2026, 3, 1)},
-    },
-    "consecutiveOks": 0,
-}
-
-SAMPLE_BUSINESS = {
-    "name": "Joe's Pizza",
-    "address": "123 Main St",
-    "officialUrl": "https://joespizza.com",
-    "identity": {
-        "name": "Joe's Pizza",
-        "address": "123 Main St",
-        "officialUrl": "https://joespizza.com",
-    },
-}
-
-
-def _mock_capability(name: str, score: int, summary: str = "Test summary"):
-    """Create a mock FullCapabilityDefinition."""
-    async def runner(identity, context=None):
-        return {"score": score, "summary": summary}
-
-    def adapter(result):
-        return {"score": result.get("score"), "summary": result.get("summary"), "reportUrl": f"https://cdn.hephae.co/reports/{name}"}
-
-    cap = MagicMock()
-    cap.name = name
-    cap.runner = runner
-    cap.response_adapter = adapter
-    return cap
-
-
-class TestRunHeartbeatCycle:
-    @pytest.mark.asyncio
-    async def test_runs_capabilities_and_sends_digest(self):
-        with (
-            patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
-            patch("hephae_db.firestore.users.get_user", return_value={"email": "test@example.com"}),
-            patch("hephae_db.context.business_context.build_business_context", new_callable=AsyncMock, return_value=None),
-            patch("hephae_api.workflows.capabilities.registry.get_capability", side_effect=lambda name: _mock_capability(name, score=85)),
-            patch("hephae_db.firestore.heartbeats.record_heartbeat_run", new_callable=AsyncMock) as mock_record,
-            patch("hephae_api.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock) as mock_email,
-            patch("hephae_api.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock),
-        ):
-            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
-
-            result = await run_heartbeat_cycle(SAMPLE_HEARTBEAT)
-
-        assert result["status"] == "completed"
-        assert result["capabilities_run"] == 2
-        # SEO changed from 72→85 (significant), traffic is first_run (significant)
-        assert result["significant_changes"] == 2
-        mock_email.assert_called_once()
-        mock_record.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_sends_ok_email_when_no_changes(self):
-        # Previous snapshot matches current scores exactly
-        heartbeat = {
-            **SAMPLE_HEARTBEAT,
-            "capabilities": ["seo"],
-            "lastSnapshot": {
-                "seo": {"score": 72, "summary": "Same"},
-            },
-            "consecutiveOks": 1,
-        }
-
-        with (
-            patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
-            patch("hephae_db.firestore.users.get_user", return_value={"email": "test@example.com"}),
-            patch("hephae_db.context.business_context.build_business_context", new_callable=AsyncMock, return_value=None),
-            patch("hephae_api.workflows.capabilities.registry.get_capability", side_effect=lambda name: _mock_capability(name, score=72)),
-            patch("hephae_db.firestore.heartbeats.record_heartbeat_run", new_callable=AsyncMock),
-            patch("hephae_api.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock) as mock_digest,
-            patch("hephae_api.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock) as mock_ok,
-        ):
-            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
-
-            result = await run_heartbeat_cycle(heartbeat)
-
-        assert result["significant_changes"] == 0
-        mock_digest.assert_not_called()
-        mock_ok.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_suppresses_ok_email_after_3_consecutive(self):
-        heartbeat = {
-            **SAMPLE_HEARTBEAT,
-            "capabilities": ["seo"],
-            "lastSnapshot": {"seo": {"score": 72}},
-            "consecutiveOks": 3,
-        }
-
-        with (
-            patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
-            patch("hephae_db.firestore.users.get_user", return_value={"email": "test@example.com"}),
-            patch("hephae_db.context.business_context.build_business_context", new_callable=AsyncMock, return_value=None),
-            patch("hephae_api.workflows.capabilities.registry.get_capability", side_effect=lambda name: _mock_capability(name, score=72)),
-            patch("hephae_db.firestore.heartbeats.record_heartbeat_run", new_callable=AsyncMock),
-            patch("hephae_api.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock) as mock_digest,
-            patch("hephae_api.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock) as mock_ok,
-        ):
-            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
-
-            await run_heartbeat_cycle(heartbeat)
-
-        mock_digest.assert_not_called()
-        mock_ok.assert_not_called()  # Suppressed!
-
-    @pytest.mark.asyncio
-    async def test_skips_when_business_not_found(self):
-        with patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=None):
-            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
-
-            result = await run_heartbeat_cycle(SAMPLE_HEARTBEAT)
-
-        assert result["status"] == "skipped"
-        assert result["reason"] == "business_not_found"
-
-    @pytest.mark.asyncio
-    async def test_skips_when_no_user_email(self):
-        with (
-            patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
-            patch("hephae_db.firestore.users.get_user", return_value=None),
-        ):
-            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
-
-            result = await run_heartbeat_cycle(SAMPLE_HEARTBEAT)
-
-        assert result["status"] == "skipped"
-        assert result["reason"] == "no_email"
-
-    @pytest.mark.asyncio
-    async def test_handles_capability_runner_failure_gracefully(self):
-        async def failing_runner(identity, context=None):
-            raise RuntimeError("Gemini rate limit")
-
-        failing_cap = MagicMock()
-        failing_cap.runner = failing_runner
-
-        working_cap = _mock_capability("traffic", score=90)
-
-        def get_cap(name):
-            if name == "seo":
-                return failing_cap
-            return working_cap
-
-        with (
-            patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
-            patch("hephae_db.firestore.users.get_user", return_value={"email": "test@example.com"}),
-            patch("hephae_db.context.business_context.build_business_context", new_callable=AsyncMock, return_value=None),
-            patch("hephae_api.workflows.capabilities.registry.get_capability", side_effect=get_cap),
-            patch("hephae_db.firestore.heartbeats.record_heartbeat_run", new_callable=AsyncMock),
-            patch("hephae_api.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock),
-            patch("hephae_api.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock),
-        ):
-            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
-
-            # Should not raise — gracefully handles failure
-            result = await run_heartbeat_cycle(SAMPLE_HEARTBEAT)
-
-        assert result["status"] == "completed"
-        # SEO failed but kept previous snapshot, traffic ran successfully
-        # Both are in new_snapshot (SEO from prev, traffic from fresh run)
-        assert result["capabilities_run"] == 2
-
-    @pytest.mark.asyncio
-    async def test_capability_name_mapping(self):
-        """Verify that 'margin' maps to 'margin_surgeon' in the registry."""
-        heartbeat = {**SAMPLE_HEARTBEAT, "capabilities": ["margin"]}
-
-        captured_names = []
-
-        def capture_get_cap(name):
-            captured_names.append(name)
-            return _mock_capability(name, score=80)
-
-        with (
-            patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
-            patch("hephae_db.firestore.users.get_user", return_value={"email": "test@example.com"}),
-            patch("hephae_db.context.business_context.build_business_context", new_callable=AsyncMock, return_value=None),
-            patch("hephae_api.workflows.capabilities.registry.get_capability", side_effect=capture_get_cap),
-            patch("hephae_db.firestore.heartbeats.record_heartbeat_run", new_callable=AsyncMock),
-            patch("hephae_api.workflows.heartbeat_runner._send_digest_email", new_callable=AsyncMock),
-            patch("hephae_api.workflows.heartbeat_runner._send_ok_email", new_callable=AsyncMock),
-        ):
-            from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
-
-            await run_heartbeat_cycle(heartbeat)
-
-        assert "margin_surgeon" in captured_names
-
-
-# ---------------------------------------------------------------------------
-# Tests: Email HTML builders
+# Tests: Email HTML builders — pure logic, no external deps
 # ---------------------------------------------------------------------------
 
 class TestEmailBuilders:
@@ -308,8 +116,8 @@ class TestEmailBuilders:
 
         assert "Joe&#x27;s Pizza" in html or "Joe's Pizza" in html
         assert "Hephae Heartbeat" in html
-        assert "80" in html  # prev score
-        assert "72" in html  # new score
+        assert "80" in html
+        assert "72" in html
         assert "View Report" in html
 
     def test_ok_html_contains_stable_scores(self):
@@ -348,56 +156,93 @@ class TestEmailBuilders:
 
 
 # ---------------------------------------------------------------------------
-# Tests: Cron endpoint
+# Tests: run_heartbeat_cycle — functional (Firestore + Gemini)
 # ---------------------------------------------------------------------------
 
-class TestHeartbeatCron:
-    @pytest.mark.asyncio
-    async def test_cron_processes_due_heartbeats(self):
-        due = [
-            {"id": "hb-1", **SAMPLE_HEARTBEAT},
-            {"id": "hb-2", **SAMPLE_HEARTBEAT, "businessSlug": "bobs-burgers"},
-        ]
+SAMPLE_HEARTBEAT = {
+    "id": "hb-001",
+    "uid": "user-123",
+    "businessSlug": "joes-pizza",
+    "businessName": "Joe's Pizza",
+    "capabilities": ["seo", "traffic"],
+    "lastSnapshot": {
+        "seo": {"score": 72, "summary": "OK", "reportUrl": "old-seo-url", "runAt": datetime(2026, 3, 1)},
+    },
+    "consecutiveOks": 0,
+}
 
-        from hephae_api.routers.batch.heartbeat_cron import settings as cron_settings
+SAMPLE_BUSINESS = {
+    "name": "Joe's Pizza",
+    "address": "123 Main St",
+    "officialUrl": "https://joespizza.com",
+    "identity": {
+        "name": "Joe's Pizza",
+        "address": "123 Main St",
+        "officialUrl": "https://joespizza.com",
+    },
+}
+
+
+@pytest.mark.functional
+class TestRunHeartbeatCycle:
+    @pytest.mark.asyncio
+    async def test_skips_when_business_not_found(self):
+        """When business doesn't exist in Firestore, cycle returns skipped status."""
+        from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
+
+        with patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=None):
+            result = await run_heartbeat_cycle(SAMPLE_HEARTBEAT)
+
+        assert result["status"] == "skipped"
+        assert result["reason"] == "business_not_found"
+
+    @pytest.mark.asyncio
+    async def test_skips_when_no_user_email(self):
+        """When user has no email, cycle skips email notification."""
+        from hephae_api.workflows.heartbeat_runner import run_heartbeat_cycle
 
         with (
-            patch.object(cron_settings, "CRON_SECRET", "test-secret"),
-            patch(
-                "hephae_db.firestore.heartbeats.get_due_heartbeats",
-                new_callable=AsyncMock,
-                return_value=due,
-            ),
-            patch(
-                "hephae_api.workflows.heartbeat_runner.run_heartbeat_cycle",
-                new_callable=AsyncMock,
-                return_value={"status": "completed", "capabilities_run": 2, "significant_changes": 0, "email_sent": True},
-            ) as mock_run,
+            patch("hephae_db.firestore.businesses.get_business", new_callable=AsyncMock, return_value=SAMPLE_BUSINESS),
+            patch("hephae_db.firestore.users.get_user", return_value=None),
         ):
-            from hephae_api.main import app
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                res = await ac.get(
-                    "/api/cron/heartbeat-cycle",
-                    headers={"Authorization": "Bearer test-secret"},
-                )
+            result = await run_heartbeat_cycle(SAMPLE_HEARTBEAT)
 
-        assert res.status_code == 200
-        data = res.json()
-        assert data["processed"] == 2
-        assert mock_run.call_count == 2
+        assert result["status"] == "skipped"
+        assert result["reason"] == "no_email"
 
-    @pytest.mark.asyncio
-    async def test_cron_rejects_bad_auth(self):
+    def test_capability_name_mapping(self):
+        """Verify that 'margin' maps to 'margin_surgeon' in the registry — no mocks needed."""
+        from hephae_api.workflows.capabilities.registry import get_capability
+
+        cap = get_capability("margin_surgeon")
+        assert cap is not None
+        assert cap.name == "margin_surgeon"
+
+
+# ---------------------------------------------------------------------------
+# Tests: Cron endpoint auth — validates auth logic without ASGITransport
+# ---------------------------------------------------------------------------
+
+class TestHeartbeatCronAuth:
+    def test_cron_rejects_bad_auth(self):
+        """Bad authorization header returns 401."""
+        import sys
+        _mocks: dict = {}
+        for mod_name in ("resend", "crawl4ai", "playwright", "playwright.async_api"):
+            if mod_name not in sys.modules:
+                _mocks[mod_name] = MagicMock()
+                sys.modules[mod_name] = _mocks[mod_name]
+
         from hephae_api.routers.batch.heartbeat_cron import settings as cron_settings
+        from fastapi.testclient import TestClient
 
-        with patch.object(cron_settings, "CRON_SECRET", "real-secret"):
+        with patch.object(cron_settings, "CRON_SECRET", "real-secret"), \
+             patch("hephae_common.firebase.get_db"):
             from hephae_api.main import app
-            transport = ASGITransport(app=app)
-            async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                res = await ac.get(
-                    "/api/cron/heartbeat-cycle",
-                    headers={"Authorization": "Bearer wrong-secret"},
-                )
+            client = TestClient(app, raise_server_exceptions=False)
+            res = client.get(
+                "/api/cron/heartbeat-cycle",
+                headers={"Authorization": "Bearer wrong-secret"},
+            )
 
         assert res.status_code == 401

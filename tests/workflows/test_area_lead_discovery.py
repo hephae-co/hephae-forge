@@ -4,6 +4,8 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime
 
+pytestmark = pytest.mark.functional
+
 from hephae_agents.research.local_catalyst import research_local_catalysts
 from hephae_agents.discovery.municipal_hubs import find_municipal_hub
 from hephae_agents.discovery.directory_parser import parse_directory_content

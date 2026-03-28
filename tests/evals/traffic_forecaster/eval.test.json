@@ -28,7 +28,13 @@
       "session_input": {
         "app_name": "traffic_forecaster",
         "user_id": "eval",
-        "state": {}
+        "state": {
+          "businessName": "Mario's Pizzeria",
+          "businessAddress": "123 Main St, Nutley, NJ 07110",
+          "lat": 40.8218,
+          "lng": -74.1554,
+          "dateString": "Monday, March 10, 2026"
+        }
       }
     },
     {
@@ -57,7 +63,13 @@
       "session_input": {
         "app_name": "traffic_forecaster",
         "user_id": "eval",
-        "state": {}
+        "state": {
+          "businessName": "Glow Salon & Spa",
+          "businessAddress": "456 Oak Ave, Montclair, NJ 07042",
+          "lat": 40.8259,
+          "lng": -74.2090,
+          "dateString": "Wednesday, March 12, 2026"
+        }
       }
     }
   ]

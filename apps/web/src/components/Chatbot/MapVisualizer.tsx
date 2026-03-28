@@ -171,11 +171,11 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
     const hasCompetitors = isDiscovering || !!(profile?.competitors?.length);
     const hasOverview = isDiscovering || !!(profile?.aiOverview?.summary);
 
+    // Profile + Contact tabs removed — address/website shown in header,
+    // contact/social/menu discovered via ProfileBuilder buttons
     const ALL_TABS: { id: ActiveTab; label: string; hasData: boolean }[] = [
         { id: 'overview', label: 'Overview', hasData: hasOverview },
-        { id: 'profile', label: 'Profile', hasData: true },
         { id: 'theme', label: 'Theme', hasData: hasTheme },
-        { id: 'contact', label: 'Contact', hasData: hasContact },
         { id: 'social', label: 'Social', hasData: hasSocial },
         { id: 'menu', label: 'Menu', hasData: hasMenu },
         { id: 'competitors', label: 'Rivals', hasData: hasCompetitors },
@@ -401,14 +401,14 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                             </div>
                         )}
 
-                        {/* AUTHENTICATED: Profile tabs */}
-                        {isAuthenticated && (
-                            <div className={`flex gap-0.5 p-0.5 bg-black/40 rounded-lg overflow-x-auto scrollbar-hide transition-all duration-300 ${profileCollapsed ? 'max-h-0 opacity-0 overflow-hidden mt-0 p-0' : 'max-h-10 opacity-100 mt-2'}`}>
+                        {/* AUTHENTICATED: Profile tabs — compact pills */}
+                        {isAuthenticated && TABS.length > 0 && (
+                            <div className={`flex flex-wrap gap-1 transition-all duration-300 ${profileCollapsed ? 'max-h-0 opacity-0 overflow-hidden mt-0' : 'opacity-100 mt-2'}`}>
                                 {TABS.map(tab => (
                                     <button
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
-                                        className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-colors leading-tight flex-shrink-0 ${activeTab === tab.id ? 'bg-indigo-500 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                                        className={`px-2 py-0.5 text-[10px] font-bold rounded-full transition-colors ${activeTab === tab.id ? 'bg-indigo-500 text-white' : 'bg-white/5 text-slate-500 hover:text-white hover:bg-white/10'}`}
                                     >
                                         {tab.label}
                                     </button>

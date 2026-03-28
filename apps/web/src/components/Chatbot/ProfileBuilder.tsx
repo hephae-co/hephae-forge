@@ -245,9 +245,12 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
 
     return (
         <div className="px-3 py-2 space-y-2">
-            <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Build Profile</span>
-                {error && <span className="text-[9px] text-red-400">{error}</span>}
+            <div>
+                <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Build Profile</span>
+                    {error && <span className="text-[9px] text-red-400">{error}</span>}
+                </div>
+                <p className="text-[9px] text-slate-600 mt-0.5">We'll auto-discover what we can. Click a section to start, or paste details manually.</p>
             </div>
 
             {/* Idle sections as a compact row of pills */}

@@ -6,7 +6,7 @@ import { BaseIdentity } from '@/types/api';
 import { useApiClient } from '@/hooks/useApiClient';
 
 type Section = 'menu' | 'social' | 'competitors' | 'theme' | 'contact';
-type SectionStatus = 'idle' | 'discovering' | 'found' | 'confirmed' | 'editing';
+type SectionStatus = 'idle' | 'discovering' | 'found' | 'not_found' | 'confirmed' | 'editing';
 
 interface SectionState {
     status: SectionStatus;
@@ -14,12 +14,12 @@ interface SectionState {
     editValue: string;
 }
 
-const SECTIONS: { id: Section; label: string; icon: React.ReactNode; description: string }[] = [
-    { id: 'menu', label: 'Menu', icon: <UtensilsCrossed className="w-3.5 h-3.5" />, description: 'Find menu & delivery links' },
-    { id: 'social', label: 'Social', icon: <Search className="w-3.5 h-3.5" />, description: 'Find social media profiles' },
-    { id: 'competitors', label: 'Rivals', icon: <Users className="w-3.5 h-3.5" />, description: 'Discover nearby competitors' },
-    { id: 'theme', label: 'Brand', icon: <Palette className="w-3.5 h-3.5" />, description: 'Detect logo & brand colors' },
-    { id: 'contact', label: 'Contact', icon: <Phone className="w-3.5 h-3.5" />, description: 'Find email, phone & hours' },
+const SECTIONS: { id: Section; label: string; icon: React.ReactNode; description: string; placeholder: string }[] = [
+    { id: 'menu', label: 'Menu', icon: <UtensilsCrossed className="w-3.5 h-3.5" />, description: 'Find menu & delivery links', placeholder: 'Paste menu URL...' },
+    { id: 'social', label: 'Social', icon: <Search className="w-3.5 h-3.5" />, description: 'Find social media profiles', placeholder: 'Paste Instagram or Facebook URL...' },
+    { id: 'competitors', label: 'Rivals', icon: <Users className="w-3.5 h-3.5" />, description: 'Discover nearby competitors', placeholder: 'Name a competitor...' },
+    { id: 'theme', label: 'Brand', icon: <Palette className="w-3.5 h-3.5" />, description: 'Detect logo & brand colors', placeholder: 'Paste logo URL...' },
+    { id: 'contact', label: 'Contact', icon: <Phone className="w-3.5 h-3.5" />, description: 'Find email, phone & hours', placeholder: 'Enter email or phone...' },
 ];
 
 function formatUrl(url: string): string {
@@ -150,9 +150,16 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
             });
             if (res.ok) {
                 const result = await res.json();
+                const data = result.data || {};
+                // Check if we actually found anything useful
+                const hasData = Object.values(data).some(v =>
+                    v && v !== '' && !(Array.isArray(v) && v.length === 0)
+                );
                 setSections(prev => ({
                     ...prev,
-                    [sectionId]: { status: 'found', data: result.data, editValue: '' },
+                    [sectionId]: hasData
+                        ? { status: 'found', data, editValue: '' }
+                        : { status: 'not_found', data: null, editValue: '' },
                 }));
             } else {
                 const errText = await res.text().catch(() => res.statusText);
@@ -230,7 +237,7 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
             )}
 
             <div className="grid grid-cols-2 gap-1.5">
-                {SECTIONS.map(({ id, label, icon, description }) => {
+                {SECTIONS.map(({ id, label, icon, description, placeholder }) => {
                     const s = sections[id];
 
                     // Discovering state
@@ -268,6 +275,37 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
                         );
                     }
 
+                    // Not found — ask user to provide data
+                    if (s.status === 'not_found') {
+                        return (
+                            <div key={id} className="col-span-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-400/20 space-y-1.5">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-bold text-amber-300">{label}</span>
+                                    <span className="text-[10px] text-slate-500">— not found automatically</span>
+                                </div>
+                                <div className="flex gap-1.5">
+                                    <input
+                                        type="text"
+                                        value={s.editValue}
+                                        onChange={e => setSections(prev => ({ ...prev, [id]: { ...prev[id], editValue: e.target.value } }))}
+                                        placeholder={placeholder}
+                                        className="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/50"
+                                        onKeyDown={e => e.key === 'Enter' && submitOverride(id)}
+                                        autoFocus
+                                    />
+                                    <button onClick={() => submitOverride(id)} disabled={!s.editValue.trim()}
+                                        className="px-2 py-1 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 disabled:opacity-30">
+                                        Save
+                                    </button>
+                                    <button onClick={() => setSections(prev => ({ ...prev, [id]: { status: 'idle', data: null, editValue: '' } }))}
+                                        className="px-1 py-1 rounded text-[10px] bg-white/5 text-slate-400 hover:bg-white/10">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    }
+
                     // Confirmed state
                     if (s.status === 'confirmed') {
                         return (
@@ -288,7 +326,7 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
                                         type="text"
                                         value={s.editValue}
                                         onChange={e => setSections(prev => ({ ...prev, [id]: { ...prev[id], editValue: e.target.value } }))}
-                                        placeholder={id === 'menu' ? 'Menu URL...' : id === 'social' ? 'Instagram URL...' : 'Enter details...'}
+                                        placeholder={placeholder}
                                         className="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400/50"
                                         onKeyDown={e => e.key === 'Enter' && submitOverride(id)}
                                     />

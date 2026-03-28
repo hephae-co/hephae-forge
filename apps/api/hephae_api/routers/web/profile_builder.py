@@ -329,20 +329,99 @@ def _build_override_data(section: str, value: str) -> dict[str, Any]:
 
 
 async def _run_section_discovery(section: str, identity: dict[str, Any]) -> dict[str, Any]:
-    """Run a single discovery agent for the requested section."""
+    """Discover a profile section using deterministic fetch first, LLM only if needed.
+
+    Strategy: try cheap deterministic approaches (URL patterns, HTTP HEAD)
+    before falling back to an LLM agent. This saves cost and time.
+    """
+    name = identity.get("name", "")
+    url = identity.get("officialUrl", "")
+    address = identity.get("address", "")
+
+    # --- Pass 1: Deterministic discovery (no LLM, no cost) ---
+    deterministic = await _deterministic_discover(section, name, url, address)
+    if deterministic:
+        logger.info(f"[ProfileDiscover] {section} resolved deterministically for {name}")
+        return deterministic
+
+    # --- Pass 2: Single LLM call via google_search (cheap, 1 call) ---
+    return await _llm_discover(section, identity)
+
+
+async def _deterministic_discover(
+    section: str, name: str, url: str, address: str,
+) -> dict[str, Any] | None:
+    """Try to discover section data without any LLM calls."""
+    import httpx
+    import re
+    import urllib.parse
+
+    async def _check_url(test_url: str) -> str | None:
+        """Return the URL if it responds with 200, else None."""
+        try:
+            async with httpx.AsyncClient(timeout=5, follow_redirects=True) as client:
+                r = await client.head(test_url)
+                return test_url if r.status_code == 200 else None
+        except Exception:
+            return None
+
+    slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+
+    if section == "menu" and url:
+        # Try common menu URL patterns
+        base = url.rstrip('/')
+        candidates = [f"{base}/menu", f"{base}/food-menu", f"{base}/our-menu"]
+        for c in candidates:
+            if await _check_url(c):
+                return {"menuUrl": c}
+
+        # Try delivery platform URL patterns
+        result: dict[str, Any] = {}
+        delivery_checks = [
+            ("grubhub", f"https://www.grubhub.com/restaurant/{slug}"),
+            ("doordash", f"https://www.doordash.com/store/{slug}"),
+            ("ubereats", f"https://www.ubereats.com/store/{slug}"),
+        ]
+        for platform, purl in delivery_checks:
+            if await _check_url(purl):
+                result[platform] = purl
+        if result:
+            return result
+
+    elif section == "social":
+        # Try deterministic social URL patterns
+        result = {}
+        social_checks = [
+            ("yelp", f"https://www.yelp.com/biz/{slug}"),
+            ("facebook", f"https://www.facebook.com/{slug.replace('-', '')}"),
+        ]
+        for platform, surl in social_checks:
+            if await _check_url(surl):
+                result[platform] = surl
+        # Even partial results are useful — LLM can fill gaps
+        if result:
+            return result
+
+    elif section == "contact" and url:
+        # Try to find contact page
+        base = url.rstrip('/')
+        for path in ["/contact", "/contact-us", "/about"]:
+            if await _check_url(base + path):
+                return {"contactFormUrl": base + path}
+
+    # No deterministic result — fall through to LLM
+    return None
+
+
+async def _llm_discover(section: str, identity: dict[str, Any]) -> dict[str, Any]:
+    """Single LLM call via google_search to discover section data."""
     import uuid
     from google.adk.runners import Runner, RunConfig
     from google.adk.sessions import InMemorySessionService
 
-    name = identity.get("name", "")
-    url = identity.get("officialUrl", "")
-    address = identity.get("address", "")
-    zip_code = identity.get("zipCode", "")
-
     session_service = InMemorySessionService()
     session_id = f"discover-{section}-{uuid.uuid4().hex[:8]}"
 
-    # Build section-specific agent and prompt
     agent, prompt, initial_state = _build_section_agent(section, identity)
 
     session = await session_service.create_session(
@@ -358,8 +437,8 @@ async def _run_section_discovery(section: str, identity: dict[str, Any]) -> dict
         session_service=session_service,
     )
 
-    # Menu/theme need more calls (crawl → follow links → extract)
-    max_calls = 15 if section in ("menu", "theme") else 8
+    # Tight budget: 3 calls for search-only agents, 8 for crawl agents
+    max_calls = 8 if section in ("menu", "theme") else 3
 
     last_text = ""
     async for event in runner.run_async(
@@ -373,7 +452,7 @@ async def _run_section_discovery(section: str, identity: dict[str, Any]) -> dict
                 if getattr(part, "text", None):
                     last_text = part.text
 
-    # Also check session state for output_key results
+    # Check session state for output_key results
     final_session = await session_service.get_session(
         app_name="profile-discover",
         user_id="system",
@@ -381,12 +460,11 @@ async def _run_section_discovery(section: str, identity: dict[str, Any]) -> dict
     )
     state = dict(final_session.state) if final_session and final_session.state else {}
 
-    # Extract the relevant output
     output_key = {
         "menu": "menuData",
         "social": "socialData",
         "competitors": "competitorData",
-        "theme": "themeData",
+        "theme": "rawSiteData",
         "contact": "contactData",
     }.get(section, section + "Data")
 
@@ -399,7 +477,6 @@ async def _run_section_discovery(section: str, identity: dict[str, Any]) -> dict
                 return {"raw": result}
         return result
 
-    # Fallback: try parsing last_text as JSON
     if last_text:
         try:
             return json.loads(last_text)

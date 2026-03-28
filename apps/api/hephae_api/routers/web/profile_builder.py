@@ -429,19 +429,25 @@ def _build_section_agent(section: str, identity: dict[str, Any]) -> tuple:
     url = identity.get("officialUrl", "")
     address = identity.get("address", "")
 
+    # google_search (built-in server-side tool) CANNOT be mixed with custom
+    # function tools in the same agent — current SDK doesn't support
+    # include_server_side_tool_invocations. Use one type per agent.
+
     if section == "menu":
+        # Crawl tools only — search the business website + delivery platforms
         agent = LlmAgent(
             name="menu_discover",
             model=AgentModels.PRIMARY_MODEL,
             instruction=MENU_AGENT_INSTRUCTION,
-            tools=[google_search, playwright_tool, crawl4ai_advanced_tool],
+            tools=[playwright_tool, crawl4ai_advanced_tool],
             output_key="menuData",
             on_model_error_callback=fallback_on_error,
         )
-        prompt = f"Find the menu with prices for: {name}\nWebsite: {url}\nAddress: {address}\nSearch delivery platforms too (DoorDash, Grubhub, UberEats)."
+        prompt = f"Find the menu with prices for: {name}\nWebsite: {url}\nAddress: {address}\nAlso check delivery platforms (DoorDash, Grubhub, UberEats)."
         return agent, prompt, {}
 
     elif section == "social":
+        # google_search only
         agent = LlmAgent(
             name="social_discover",
             model=AgentModels.PRIMARY_MODEL,
@@ -454,25 +460,25 @@ def _build_section_agent(section: str, identity: dict[str, Any]) -> tuple:
         return agent, prompt, {}
 
     elif section == "competitors":
-        from hephae_common.model_config import ThinkingPresets
+        # google_search only — find competitors via search
         agent = LlmAgent(
             name="competitor_discover",
             model=AgentModels.PRIMARY_MODEL,
-            generate_content_config=ThinkingPresets.HIGH,
             instruction=COMPETITOR_AGENT_INSTRUCTION,
-            tools=[google_search, crawl4ai_tool, crawl4ai_advanced_tool],
+            tools=[google_search],
             output_key="competitorData",
             on_model_error_callback=fallback_on_error,
         )
-        prompt = f"Find 3 direct competitors for: {name}\nAddress: {address}\nVerify each has a working website."
+        prompt = f"Find 3 direct competitors for: {name}\nAddress: {address}\nFor each, provide name, website URL, and why they compete."
         return agent, prompt, {}
 
     elif section == "theme":
+        # Crawl tools only
         agent = LlmAgent(
             name="theme_discover",
             model=AgentModels.PRIMARY_MODEL,
             instruction=SITE_CRAWLER_INSTRUCTION,
-            tools=[playwright_tool, crawl4ai_tool, crawl4ai_advanced_tool, crawl4ai_deep_tool],
+            tools=[playwright_tool, crawl4ai_tool, crawl4ai_advanced_tool],
             output_key="rawSiteData",
             on_model_error_callback=fallback_on_error,
         )
@@ -480,11 +486,12 @@ def _build_section_agent(section: str, identity: dict[str, Any]) -> tuple:
         return agent, prompt, {}
 
     elif section == "contact":
+        # google_search only — find contact info from listings
         agent = LlmAgent(
             name="contact_discover",
             model=AgentModels.PRIMARY_MODEL,
             instruction=CONTACT_AGENT_INSTRUCTION,
-            tools=[google_search, playwright_tool],
+            tools=[google_search],
             output_key="contactData",
             on_model_error_callback=fallback_on_error,
         )

@@ -22,20 +22,99 @@ const SECTIONS: { id: Section; label: string; icon: React.ReactNode; description
     { id: 'contact', label: 'Contact', icon: <Phone className="w-3.5 h-3.5" />, description: 'Find email, phone & hours' },
 ];
 
-function summarizeData(section: Section, data: Record<string, any>): string {
-    if (!data) return '';
-    if (section === 'menu') return data.menuUrl || data.grubhub || data.doordash || 'No menu found';
-    if (section === 'social') {
-        const found = ['instagram', 'facebook', 'tiktok', 'yelp', 'twitter'].filter(k => data[k]);
-        return found.length ? `${found.length} profiles found` : 'None found';
+function formatUrl(url: string): string {
+    return url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+}
+
+function renderSectionData(section: Section, data: Record<string, any>): React.ReactNode {
+    if (!data) return <span className="text-slate-500">Nothing found</span>;
+
+    if (section === 'menu') {
+        const links = [
+            data.menuUrl && { label: 'Menu', url: data.menuUrl },
+            data.grubhub && { label: 'Grubhub', url: data.grubhub },
+            data.doordash && { label: 'DoorDash', url: data.doordash },
+            data.ubereats && { label: 'UberEats', url: data.ubereats },
+            data.seamless && { label: 'Seamless', url: data.seamless },
+            data.toasttab && { label: 'Toast', url: data.toasttab },
+        ].filter(Boolean) as { label: string; url: string }[];
+        if (!links.length) return <span className="text-slate-500">No menu found</span>;
+        return (
+            <div className="space-y-1">
+                {links.map(l => (
+                    <div key={l.label} className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-slate-500 w-14 shrink-0">{l.label}</span>
+                        <a href={l.url} target="_blank" rel="noreferrer" className="text-[11px] text-indigo-400 hover:text-indigo-300 truncate">{formatUrl(l.url)}</a>
+                    </div>
+                ))}
+            </div>
+        );
     }
+
+    if (section === 'social') {
+        const platforms = ['instagram', 'facebook', 'tiktok', 'yelp', 'twitter'].filter(k => data[k]);
+        if (!platforms.length) return <span className="text-slate-500">None found</span>;
+        return (
+            <div className="space-y-1">
+                {platforms.map(p => (
+                    <div key={p} className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-slate-500 w-14 shrink-0 capitalize">{p}</span>
+                        <a href={data[p]} target="_blank" rel="noreferrer" className="text-[11px] text-indigo-400 hover:text-indigo-300 truncate">{formatUrl(data[p])}</a>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
     if (section === 'competitors') {
         const comps = data.competitors || (Array.isArray(data) ? data : []);
-        return comps.length ? `${comps.length} rivals found` : 'None found';
+        if (!comps.length) return <span className="text-slate-500">None found</span>;
+        return (
+            <div className="space-y-1">
+                {comps.slice(0, 5).map((c: any, i: number) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-semibold text-white">{c.name}</span>
+                        {c.url && <a href={c.url} target="_blank" rel="noreferrer" className="text-[10px] text-indigo-400 hover:text-indigo-300 truncate">↗</a>}
+                    </div>
+                ))}
+            </div>
+        );
     }
-    if (section === 'theme') return data.logoUrl ? 'Logo & colors detected' : data.primaryColor ? 'Colors detected' : 'No theme found';
-    if (section === 'contact') return data.email || data.phone || 'No contact found';
-    return JSON.stringify(data).slice(0, 50);
+
+    if (section === 'theme') {
+        return (
+            <div className="flex items-center gap-2 flex-wrap">
+                {data.logoUrl && <span className="text-[10px] text-slate-400">Logo ✓</span>}
+                {data.favicon && <img src={data.favicon} className="w-4 h-4 rounded" alt="favicon" />}
+                {data.primaryColor && <span className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: data.primaryColor }} />}
+                {data.secondaryColor && <span className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: data.secondaryColor }} />}
+                {data.persona && <span className="text-[10px] text-indigo-300 bg-indigo-500/20 px-1.5 py-0.5 rounded">{data.persona}</span>}
+                {!data.logoUrl && !data.primaryColor && !data.persona && <span className="text-slate-500 text-[10px]">No theme found</span>}
+            </div>
+        );
+    }
+
+    if (section === 'contact') {
+        const items = [
+            data.email && { label: 'Email', value: data.email },
+            data.phone && { label: 'Phone', value: data.phone },
+            data.hours && { label: 'Hours', value: typeof data.hours === 'string' ? data.hours : JSON.stringify(data.hours) },
+            data.contactFormUrl && { label: 'Form', value: data.contactFormUrl },
+        ].filter(Boolean) as { label: string; value: string }[];
+        if (!items.length) return <span className="text-slate-500">No contact found</span>;
+        return (
+            <div className="space-y-1">
+                {items.map(item => (
+                    <div key={item.label} className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-slate-500 w-10 shrink-0">{item.label}</span>
+                        <span className="text-[11px] text-slate-300 truncate">{item.value}</span>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    return <span className="text-[10px] text-slate-400 truncate">{JSON.stringify(data).slice(0, 80)}</span>;
 }
 
 interface ProfileBuilderProps {
@@ -167,7 +246,7 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
                     // Found — show result with confirm/edit/dismiss
                     if (s.status === 'found' && s.data) {
                         return (
-                            <div key={id} className="col-span-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-400/20 space-y-1.5">
+                            <div key={id} className="col-span-2 px-3 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-400/20 space-y-2">
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs font-bold text-emerald-300">{label}</span>
                                     <div className="flex gap-1">
@@ -184,7 +263,7 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
                                         </button>
                                     </div>
                                 </div>
-                                <p className="text-[11px] text-slate-400 truncate">{summarizeData(id, s.data)}</p>
+                                <div className="text-[11px]">{renderSectionData(id, s.data)}</div>
                             </div>
                         );
                     }

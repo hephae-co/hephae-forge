@@ -9,7 +9,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from hephae_api.config import AgentModels
-from hephae_agents.shared_tools import crawl4ai_advanced_tool, crawl4ai_deep_tool, google_search_tool
+from google.adk.tools import google_search
+from hephae_agents.shared_tools import crawl4ai_advanced_tool, crawl4ai_deep_tool
 from hephae_agents.discovery.agent import (
     discovery_pipeline,
     discovery_fan_out,
@@ -23,8 +24,8 @@ from hephae_agents.discovery.agent import (
 
 class TestSocialProfilerAgentConfig:
     def test_agent_has_google_search_tool(self):
-        assert google_search_tool in social_profiler_agent.tools, \
-            "SocialProfilerAgent must have google_search_tool as primary tool"
+        assert google_search in social_profiler_agent.tools, \
+            "SocialProfilerAgent must have google_search (ADK native) as primary tool"
 
     def test_agent_has_crawl4ai_advanced_tool(self):
         assert crawl4ai_advanced_tool in social_profiler_agent.tools, \

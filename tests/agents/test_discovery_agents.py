@@ -8,7 +8,8 @@ from types import SimpleNamespace
 import pytest
 
 from hephae_api.config import AgentModels
-from hephae_agents.shared_tools import google_search_tool, validate_url_tool
+from google.adk.tools import google_search
+from hephae_agents.shared_tools import validate_url_tool
 from hephae_agents.discovery.agent import (
     discovery_pipeline,
     discovery_fan_out,
@@ -37,7 +38,7 @@ class TestNewsAgentConfig:
         assert news_agent.output_key == "newsData"
 
     def test_agent_has_google_search_tool(self):
-        assert google_search_tool in news_agent.tools
+        assert google_search in news_agent.tools
 
 
 # ============================================================================
@@ -58,7 +59,7 @@ class TestDiscoveryReviewerAgentConfig:
         assert validate_url_tool in discovery_reviewer_agent.tools
 
     def test_agent_has_google_search_tool(self):
-        assert google_search_tool in discovery_reviewer_agent.tools
+        assert google_search in discovery_reviewer_agent.tools
 
 
 # ============================================================================
@@ -129,7 +130,7 @@ class TestChallengesAgentConfig:
         assert challenges_agent.output_key == "challengesData"
 
     def test_agent_has_google_search_tool(self):
-        assert google_search_tool in challenges_agent.tools
+        assert google_search in challenges_agent.tools
 
 
 # ============================================================================
@@ -147,7 +148,7 @@ class TestBusinessOverviewAgentConfig:
         assert business_overview_agent.output_key == "aiOverview"
 
     def test_agent_has_google_search_tool(self):
-        assert google_search_tool in business_overview_agent.tools
+        assert google_search in business_overview_agent.tools
 
     def test_agent_has_one_tool(self):
         assert len(business_overview_agent.tools) == 1

@@ -50,7 +50,10 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
         return init as Record<Section, SectionState>;
     });
 
+    const [error, setError] = useState<string | null>(null);
+
     const discover = async (sectionId: Section) => {
+        setError(null);
         setSections(prev => ({ ...prev, [sectionId]: { ...prev[sectionId], status: 'discovering' } }));
         try {
             const res = await apiFetch('/api/profile/discover', {
@@ -73,9 +76,14 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
                     [sectionId]: { status: 'found', data: result.data, editValue: '' },
                 }));
             } else {
+                const errText = await res.text().catch(() => res.statusText);
+                console.error(`[ProfileBuilder] ${sectionId} failed: ${res.status}`, errText);
+                setError(`${sectionId} discovery failed (${res.status})`);
                 setSections(prev => ({ ...prev, [sectionId]: { ...prev[sectionId], status: 'idle' } }));
             }
-        } catch {
+        } catch (e) {
+            console.error(`[ProfileBuilder] ${sectionId} error:`, e);
+            setError(`${sectionId} discovery failed`);
             setSections(prev => ({ ...prev, [sectionId]: { ...prev[sectionId], status: 'idle' } }));
         }
     };
@@ -138,6 +146,9 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
             <div className="flex items-center gap-1.5 mb-1">
                 <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider">Build Profile</span>
             </div>
+            {error && (
+                <p className="text-[10px] text-red-400 bg-red-500/10 px-2 py-1 rounded">{error}</p>
+            )}
 
             <div className="grid grid-cols-2 gap-1.5">
                 {SECTIONS.map(({ id, label, icon, description }) => {

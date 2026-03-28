@@ -247,10 +247,13 @@ export default function ProfileBuilder({ business }: ProfileBuilderProps) {
         <div className="px-3 py-2 space-y-2">
             <div>
                 <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Build Profile</span>
+                    <span className="text-[11px] font-bold text-indigo-400">Build Profile</span>
                     {error && <span className="text-[9px] text-red-400">{error}</span>}
                 </div>
-                <p className="text-[9px] text-slate-600 mt-0.5">We'll auto-discover what we can. Click a section to start, or paste details manually.</p>
+                <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
+                    Complete your business profile to unlock personalized insights.
+                    We'll auto-discover what we can — you can correct or add details.
+                </p>
             </div>
 
             {/* Idle sections as a compact row of pills */}

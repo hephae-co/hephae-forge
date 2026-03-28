@@ -171,11 +171,11 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
     const hasCompetitors = isDiscovering || !!(profile?.competitors?.length);
     const hasOverview = isDiscovering || !!(profile?.aiOverview?.summary);
 
-    // Profile + Contact tabs removed — address/website shown in header,
-    // contact/social/menu discovered via ProfileBuilder buttons
     const ALL_TABS: { id: ActiveTab; label: string; hasData: boolean }[] = [
         { id: 'overview', label: 'Overview', hasData: hasOverview },
+        { id: 'profile', label: 'Details', hasData: true },
         { id: 'theme', label: 'Theme', hasData: hasTheme },
+        { id: 'contact', label: 'Contact', hasData: hasContact },
         { id: 'social', label: 'Social', hasData: hasSocial },
         { id: 'menu', label: 'Menu', hasData: hasMenu },
         { id: 'competitors', label: 'Rivals', hasData: hasCompetitors },
@@ -327,19 +327,17 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
             {business && (
                 <div className="bg-slate-900 animate-fade-in-up">
 
-                    {/* HEADER — tight single row */}
-                    <div className={`px-3 py-2 ${!isAuthenticated || profileCollapsed ? '' : 'border-b border-white/10'}`}>
+                    {/* HEADER */}
+                    <div className={`px-3 py-2.5 ${!isAuthenticated || profileCollapsed ? '' : 'border-b border-white/10'}`}>
                         <div className="flex items-center gap-2">
                             <div className="min-w-0 flex-1">
-                                <h2 className="text-white font-bold text-[13px] leading-tight truncate">{business.name}</h2>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    <p className="text-slate-500 text-[10px] leading-tight truncate">{business.address}</p>
-                                    {business.officialUrl && (
-                                        <a href={business.officialUrl} target="_blank" rel="noreferrer" className="text-[10px] text-indigo-400 hover:text-indigo-300 truncate shrink-0">
-                                            {business.officialUrl.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
-                                        </a>
-                                    )}
-                                </div>
+                                <h2 className="text-white font-bold text-sm leading-tight truncate">{business.name}</h2>
+                                <p className="text-slate-400 text-[11px] leading-tight mt-0.5 truncate">{business.address}</p>
+                                {business.officialUrl && (
+                                    <a href={business.officialUrl} target="_blank" rel="noreferrer" className="text-[10px] text-indigo-400 hover:text-indigo-300 truncate block mt-0.5">
+                                        {business.officialUrl.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+                                    </a>
+                                )}
                             </div>
                             {isAdmin && businessSlug && onPublish && (
                                 <button

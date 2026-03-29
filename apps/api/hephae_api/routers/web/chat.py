@@ -248,9 +248,19 @@ async def chat(request: Request, firebase_user: dict | None = Depends(optional_f
         # Check if locate_business was called via the closure
         located_business = locate_result.get("identity")
 
-        # Fallback if agent produced no text
+        # Fallback if agent produced no text — hint at what data exists
         if not response_text:
-            response_text = "I don't have enough data to answer that yet. Try running one of the analyses below — they'll give me real numbers to work with."
+            available = []
+            if context:
+                if context.get("seoReport"): available.append("SEO audit")
+                if context.get("marginReport"): available.append("margin analysis")
+                if context.get("trafficForecast"): available.append("traffic forecast")
+                if context.get("competitiveReport"): available.append("competitive analysis")
+                if context.get("overview"): available.append("business overview")
+            if available:
+                response_text = f"I have your {', '.join(available)} data but had trouble generating a response. Could you rephrase your question? For example, try asking about specific scores, recommendations, or comparisons."
+            else:
+                response_text = "I don't have analysis data yet. Run one of the analyses from the dashboard — SEO Health, Margin Analysis, Foot Traffic, or Competitive Intel — then ask me about the results."
 
         result: dict[str, Any] = {
             "role": "model",

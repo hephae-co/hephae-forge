@@ -102,6 +102,60 @@ async def _load_zipcode_profile(zip_code: str) -> dict[str, Any] | None:
         return None
 
 
+async def _load_local_signals(zip_code: str) -> dict[str, Any]:
+    """Load rich cached signals (IRS, weather, CDC, census) + research key_facts."""
+    signals: dict[str, Any] = {}
+    if not zip_code:
+        return signals
+
+    try:
+        from hephae_common.firebase import get_db
+        import asyncio
+
+        db = get_db()
+
+        # Load cached API data
+        cache_keys = [f"irs:{zip_code}", f"weather:{zip_code}", f"cdcPlaces:{zip_code}", f"census:{zip_code}"]
+        for key in cache_keys:
+            try:
+                doc = await asyncio.to_thread(db.collection("data_cache").document(key).get)
+                if doc.exists:
+                    data = doc.to_dict().get("data", {})
+                    source = key.split(":")[0]
+                    signals[source] = data
+            except Exception:
+                pass
+
+        # Load research key_facts — the specific, surprising insights
+        try:
+            rdoc = await asyncio.to_thread(db.collection("zipcode_research").document(zip_code).get)
+            if not rdoc.exists:
+                # Try with timestamp suffix
+                from google.cloud.firestore_v1.base_query import FieldFilter
+                results = await asyncio.to_thread(
+                    lambda: list(db.collection("zipcode_research").where(filter=FieldFilter("zipCode", "==", zip_code)).limit(1).get())
+                )
+                if results:
+                    rdoc = results[0]
+            if rdoc and rdoc.exists:
+                report = rdoc.to_dict().get("report", {})
+                sections = report.get("sections", {})
+                key_facts: list[str] = []
+                for section_key in ["business_landscape", "consumer_market", "economic_indicators", "trending"]:
+                    sec = sections.get(section_key, {})
+                    if isinstance(sec, dict):
+                        facts = sec.get("key_facts", [])
+                        key_facts.extend(facts[:2])  # max 2 per section
+                signals["researchFacts"] = key_facts[:6]
+        except Exception:
+            pass
+
+    except Exception as e:
+        logger.warning(f"[BusinessOverview] Local signals load failed: {e}")
+
+    return signals
+
+
 async def _load_osm_competitors(latitude: float, longitude: float, business_type: str) -> list[dict[str, Any]]:
     """Load nearby competitors from OSM via BigQuery (with lat/lng for map pins)."""
     if not latitude or not longitude:
@@ -224,6 +278,7 @@ def _build_dashboard(
     latitude: float,
     longitude: float,
     tech_intel: dict[str, Any] | None = None,
+    local_signals: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build compact dashboard payload for the frontend map + stat cards."""
     dashboard: dict[str, Any] = {
@@ -240,7 +295,6 @@ def _build_dashboard(
     if zipcode_profile:
         dashboard["confirmedSources"] = zipcode_profile.get("confirmedSources", 0)
         census_note = zipcode_profile.get("census", "")
-        # Parse "pop=28428, income=$95,259" from census note
         if census_note:
             import re
             pop_match = re.search(r'pop=([0-9,]+)', census_note)
@@ -254,6 +308,47 @@ def _build_dashboard(
         dashboard["stats"]["patchUrl"] = zipcode_profile.get("patchUrl")
 
     dashboard["stats"]["competitorCount"] = len(osm_competitors)
+
+    # Enrich with local signals from data_cache
+    signals = local_signals or {}
+    irs = signals.get("irs", {})
+    weather = signals.get("weather", {})
+    census_full = signals.get("census", {})
+
+    # Build specific, surprising facts — not generic labels
+    local_facts: list[str] = []
+    if irs.get("avgAGI"):
+        local_facts.append(f"Avg household income ${int(irs['avgAGI']):,} (IRS)")
+    if irs.get("selfEmploymentRate") and float(irs["selfEmploymentRate"]) > 10:
+        local_facts.append(f"{irs['selfEmploymentRate']}% are self-employed — fellow business owners")
+    if census_full.get("medianRent"):
+        local_facts.append(f"Median rent ${census_full['medianRent']:,}")
+    if census_full.get("medianHomeValue"):
+        local_facts.append(f"Median home value ${census_full['medianHomeValue']:,}")
+    if census_full.get("vacancyRate"):
+        vr = census_full["vacancyRate"]
+        label = "very tight market" if vr < 5 else "moderate availability" if vr < 10 else "high vacancy"
+        local_facts.append(f"{vr}% vacancy rate — {label}")
+    if weather.get("outdoorFavorability"):
+        fav = weather["outdoorFavorability"]
+        if fav.lower() in ("high", "very high"):
+            local_facts.append("Great outdoor conditions this week — expect foot traffic boost")
+        elif fav.lower() in ("low", "very low"):
+            local_facts.append("Poor outdoor conditions — expect lower walk-in traffic")
+
+    # Add research key_facts (from zipcode_research)
+    research_facts = signals.get("researchFacts", [])
+    for fact in research_facts:
+        if fact and fact not in local_facts:
+            local_facts.append(fact)
+
+    dashboard["localFacts"] = local_facts[:6]
+
+    # Also include the localIntel summary fields for the card pills
+    local_intel: dict[str, str] = {}
+    if irs.get("spendingPower"): local_intel["spendingPower"] = irs["spendingPower"]
+    if census_full.get("priceSensitivity"): local_intel["priceSensitivity"] = census_full["priceSensitivity"]
+    dashboard["localIntel"] = local_intel
 
     if pulse_data:
         dashboard["pulseHeadline"] = pulse_data.get("headline")
@@ -295,24 +390,25 @@ async def run_business_overview(identity: dict[str, Any], light: bool = False) -
 
     logger.info(f"[BusinessOverview] Starting overview for: {name} ({zip_code})")
 
-    # Load all data sources in parallel (including tech intel)
-    zipcode_context, zipcode_profile, pulse_data, osm_competitors, tech_intel = await asyncio.gather(
+    # Load all data sources in parallel (including tech intel + local signals)
+    zipcode_context, zipcode_profile, pulse_data, osm_competitors, tech_intel, local_signals = await asyncio.gather(
         _load_zipcode_context(zip_code),
         _load_zipcode_profile(zip_code),
         _load_latest_pulse(zip_code, business_type),
         _load_osm_competitors(latitude, longitude, business_type),
         _load_tech_intelligence(business_type),
+        _load_local_signals(zip_code),
     )
 
     logger.info(
         f"[BusinessOverview] Data loaded — context: {bool(zipcode_context)}, "
         f"profile: {bool(zipcode_profile)}, pulse: {bool(pulse_data)}, "
-        f"tech: {bool(tech_intel)}, light: {light}"
+        f"tech: {bool(tech_intel)}, signals: {list(local_signals.keys())}, light: {light}"
     )
 
     # Light mode: skip LLM pipeline, return dashboard from pre-existing data only
     if light:
-        dashboard = _build_dashboard(zipcode_profile, pulse_data, osm_competitors, latitude, longitude, tech_intel)
+        dashboard = _build_dashboard(zipcode_profile, pulse_data, osm_competitors, latitude, longitude, tech_intel, local_signals)
         return {"dashboard": dashboard, "light": True}
 
     # --- Build ADK agents ---
@@ -426,7 +522,7 @@ Search for this business and its competitors in the area."""
         # Build curated dashboard payload (compact, for frontend map + stats)
         dashboard = _build_dashboard(
             zipcode_profile, pulse_data, osm_competitors,
-            latitude, longitude, tech_intel,
+            latitude, longitude, tech_intel, local_signals,
         )
 
         # Parse JSON from the last text output

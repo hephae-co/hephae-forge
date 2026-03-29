@@ -14,7 +14,7 @@ from google.genai import types
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
-from hephae_api.lib.auth import verify_firebase_token
+from hephae_api.lib.auth import verify_firebase_token, optional_firebase_user
 from hephae_agents.profile_builder.agent import PROFILE_BUILDER_INSTRUCTION
 from hephae_common.adk_helpers import user_msg
 from hephae_common.model_config import AgentModels
@@ -115,14 +115,14 @@ def _build_profile_agent(
 
 
 @router.post("/profile/build")
-async def build_profile(request: Request, firebase_user: dict = Depends(verify_firebase_token)):
-    """Multi-turn profile building chat. Requires Firebase authentication."""
+async def build_profile(request: Request, firebase_user: dict | None = Depends(optional_firebase_user)):
+    """Multi-turn profile building chat. Works for authenticated and anonymous users."""
     try:
         body = await request.json()
         messages = body.get("messages", [])
         business_identity = body.get("businessIdentity", {})
         session_id = body.get("sessionId")
-        user_id = firebase_user.get("uid", "anonymous")
+        user_id = (firebase_user or {}).get("uid", "anonymous")
 
         if not messages or not isinstance(messages, list):
             return JSONResponse({"error": "Invalid messages array"}, status_code=400)
@@ -231,7 +231,7 @@ async def build_profile(request: Request, firebase_user: dict = Depends(verify_f
 
 
 @router.post("/profile/discover")
-async def discover_section(request: Request, firebase_user: dict = Depends(verify_firebase_token)):
+async def discover_section(request: Request, firebase_user: dict | None = Depends(optional_firebase_user)):
     """Run a targeted crawl for a single profile section.
 
     Body: { "section": "menu"|"social"|"competitors"|"theme"|"contact",
@@ -278,7 +278,7 @@ async def discover_section(request: Request, firebase_user: dict = Depends(verif
 
 
 @router.post("/profile/confirm")
-async def confirm_section(request: Request, firebase_user: dict = Depends(verify_firebase_token)):
+async def confirm_section(request: Request, firebase_user: dict | None = Depends(optional_firebase_user)):
     """Save user-confirmed or user-edited profile data for a section.
 
     Body: { "section": "menu"|"social"|..., "identity": {...}, "data": {...} }
@@ -288,7 +288,7 @@ async def confirm_section(request: Request, firebase_user: dict = Depends(verify
         section = body.get("section", "")
         identity = body.get("identity", {})
         data = body.get("data", {})
-        uid = firebase_user.get("uid", "anonymous")
+        uid = (firebase_user or {}).get("uid", "anonymous")
 
         if not section or not identity.get("name"):
             return JSONResponse({"error": "Missing section or identity"}, status_code=400)

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2, Zap, Shield, Eye, MessageCircle, Map, Sparkles, Calendar, LogIn, LogOut } from 'lucide-react';
+import { Search as SearchIcon, MapPin, Building2, Store, Loader2, ArrowRight, Activity, Percent, DollarSign, TrendingUp, AlertTriangle, Scale, Target, Swords, X, Download, BarChart3, Users, Search, Share2, Zap, Shield, Eye, MessageCircle, Map, Sparkles, Calendar, LogIn, LogOut, Lock, Globe, Flame } from 'lucide-react';
 import { SurgicalReport } from '@/types/api';
 import { SuggestionChip } from '@/components/Chatbot/types';
 import { computeSuggestionChips, ACTION_CHIP_MAP } from '@/lib/suggestionChips';
@@ -62,6 +62,14 @@ import { useApiClient } from '@/hooks/useApiClient';
 import { SeoReport } from '@/types/api';
 import LoadingOverlay from '@/components/Chatbot/LoadingExperience';
 import SocialSharePanel from '@/components/Chatbot/SocialSharePanel';
+import {
+  TopNav, LeftSidebar, WeeklyPulseCard, MarketPositionCard, MarginCard,
+  AiToolsCard, WeekCalendarCard, BuzzCard, SeoCard, MapCard, FootTrafficCard,
+  CompetitorsStrip, IntelligenceBanner, LockedAnalysisCard, Card, Label,
+  RunningAnalysisCard, ProfileDiscoveryCard, LocalIntelPage,
+  toDashboardData, toMarginCardData, toSeoCardData, toTrafficCardData, toBusiness,
+} from '@/components/Dashboard';
+import type { ActiveSection } from '@/components/Dashboard';
 
 export default function Home() {
   const { user, signInWithGoogle, signOut } = useAuth();
@@ -271,14 +279,12 @@ export default function Home() {
       });
 
       if (!res.ok) {
-        let errMsg = "Analysis Failed";
-        try { const err = await res.json(); errMsg = err.error || errMsg; } catch { errMsg = `Server error (${res.status})`; }
-        throw new Error(errMsg);
+        throw new Error('menu_not_found');
       }
 
       const data = await res.json();
       if (data.menuNotFound) {
-        setMessages(prev => [...prev, msg('model', "I still couldn't extract menu items from that URL. Make sure it's a direct link to the menu page with prices listed.")]);
+        setMessages(prev => [...prev, msg('model', "I couldn't extract menu items from that URL. Make sure it's a direct link to a page listing your items with prices.")]);
         setAwaitingMenuUrl(true);
         return;
       }
@@ -300,10 +306,10 @@ export default function Home() {
   };
 
   const sendMessage = async (text: string) => {
-    // Intercept: if in profile building mode, route to profile builder
-    if (isProfileBuilding) {
+    // Intercept: if in profile building mode, handle locally (step-by-step)
+    if (isProfileBuilding && profileStep) {
       setMessages(prev => [...prev, msg('user', text)]);
-      sendProfileMessage(text);
+      handleProfileInput(text);
       return;
     }
 
@@ -314,7 +320,21 @@ export default function Home() {
       return;
     }
 
-    // Intercept: if we're waiting for a menu URL from the user, retry surgery
+    // Intercept: user provided a URL for a pending capability (SEO needs website, etc.)
+    if (pendingCapForUrl && locatedBusiness && (/^https?:\/\//i.test(text.trim()) || /\w+\.\w+/.test(text.trim()))) {
+      const url = /^https?:\/\//i.test(text.trim()) ? text.trim() : `https://${text.trim()}`;
+      const capToRun = pendingCapForUrl;
+      setPendingCapForUrl(null);
+      setMessages(prev => [...prev, msg('user', text)]);
+      // Save URL to the business profile
+      setLocatedBusiness(prev => prev ? { ...prev, officialUrl: url } as any : prev);
+      setMessages(prev => [...prev, msg('model', `Got it — saved **${url}** as your website. Starting the analysis...`)]);
+      // Small delay for state to update, then run
+      setTimeout(() => executeCapability(capToRun), 200);
+      return;
+    }
+
+    // Intercept: if we're waiting for a menu URL from the user, retry margin analysis
     if (awaitingMenuUrl && locatedBusiness && /^https?:\/\//i.test(text.trim())) {
       setAwaitingMenuUrl(false);
       setMessages(prev => [...prev, msg('user', text)]);
@@ -381,7 +401,7 @@ export default function Home() {
                 techPlatforms: businessOverview.dashboard.techPlatforms,
               } : undefined,
             } : undefined,
-            seoReport: seoReport ? { overallScore: seoReport.overallScore, sections: seoReport.sections?.map((s: any) => ({ name: s.name, score: s.score, recommendations: s.recommendations })), summary: seoReport.summary } : undefined,
+            seoReport: seoReport ? { overallScore: seoReport.overallScore, sections: seoReport.sections?.map((s: any) => ({ title: s.title || s.id, score: s.score, findings: s.recommendations?.slice(0, 3)?.map((r: any) => `[${r.severity}] ${r.title}: ${r.description}`) })), summary: seoReport.summary } : undefined,
             marginReport: report ? { overall_score: report.overall_score, menu_items: report.menu_items?.slice(0, 10), strategic_advice: report.strategic_advice } : undefined,
             trafficForecast: forecast ? { summary: forecast.summary, forecast: forecast.forecast?.slice(0, 5) } : undefined,
             competitiveReport: competitiveReport ? { market_summary: competitiveReport.market_summary, competitors: competitiveReport.competitors, recommendations: competitiveReport.recommendations } : undefined,
@@ -429,12 +449,260 @@ export default function Home() {
 
   // --- Profile Building Mode ---
 
-  const startProfileBuilding = () => {
+  // Profile building: auto-discover → ask user for gaps → done
+  const [profileStep, setProfileStep] = useState<'menu' | 'social' | 'done' | null>(null);
+
+  const startProfileBuilding = async () => {
+    const enriched = locatedBusiness as any;
     setIsProfileBuilding(true);
-    setProfileSessionId(null);
-    setMessages(prev => [...prev, msg('model', "Great, you're signed in! Let me set up your business profile so I can run the right analyses for you.")]);
-    // Send initial message to profile builder
-    sendProfileMessage("Let's get started setting up my profile.");
+
+    setMessages(prev => [...prev, msg('model',
+      `Building profile for **${locatedBusiness?.name}**... Searching the web for your business details.`
+    )]);
+
+    // Track what we discover to show a summary
+    const discovered: string[] = [];
+    const discoveredData: Record<string, any> = {};
+
+    // --- Already known ---
+    if (enriched?.officialUrl) discovered.push(`Website: [${enriched.officialUrl}](${enriched.officialUrl})`);
+
+    // --- Auto-discover menu ---
+    let foundMenu = !!enriched?.menuUrl;
+    if (foundMenu) {
+      discovered.push(`Menu: [${enriched.menuUrl}](${enriched.menuUrl})`);
+    } else {
+      try {
+        const res = await apiFetch('/api/profile/discover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ section: 'menu', identity: locatedBusiness }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // Collect all discovered URLs (could be multiple delivery platforms)
+          const urls: Record<string, string> = {};
+          for (const [key, val] of Object.entries(data.data || {})) {
+            if (typeof val === 'string' && val.startsWith('http')) urls[key] = val;
+          }
+          const firstUrl = Object.values(urls)[0];
+          if (firstUrl) {
+            foundMenu = true;
+            setLocatedBusiness(prev => prev ? { ...prev, menuUrl: firstUrl, deliveryLinks: urls } as any : prev);
+            discoveredData.menu = urls;
+            for (const [platform, url] of Object.entries(urls)) {
+              const label = platform === 'menuUrl' ? 'Menu' : platform.charAt(0).toUpperCase() + platform.slice(1);
+              discovered.push(`${label}: [${url}](${url})`);
+            }
+          }
+        }
+      } catch { /* will ask user */ }
+    }
+
+    // --- Auto-discover social ---
+    let foundSocial = !!(enriched?.socialLinks && Object.values(enriched.socialLinks || {}).some((v: any) => v));
+    if (foundSocial) {
+      for (const [platform, url] of Object.entries(enriched.socialLinks || {})) {
+        if (url) discovered.push(`${platform.charAt(0).toUpperCase() + platform.slice(1)}: [${url}](${url as string})`);
+      }
+    } else {
+      try {
+        const res = await apiFetch('/api/profile/discover', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ section: 'social', identity: locatedBusiness }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data && Object.keys(data.data).length > 0) {
+            foundSocial = true;
+            setLocatedBusiness(prev => prev ? { ...prev, socialLinks: data.data } as any : prev);
+            discoveredData.social = data.data;
+            for (const [platform, url] of Object.entries(data.data)) {
+              if (typeof url === 'string' && url) {
+                discovered.push(`${platform.charAt(0).toUpperCase() + platform.slice(1)}: [${url}](${url})`);
+              }
+            }
+          }
+        }
+      } catch { /* will ask user */ }
+    }
+
+    // --- Show discovery summary ---
+    if (discovered.length > 0) {
+      setMessages(prev => [...prev, msg('model',
+        `**Here's what I found:**\n${discovered.map(d => `• ${d}`).join('\n')}`
+      )]);
+    }
+
+    // --- Now ask for gaps, one at a time ---
+    if (!foundMenu) {
+      setProfileStep('menu');
+      setMessages(prev => [...prev, msg('model',
+        `I couldn't find a menu page. Select a platform below or paste your menu link directly.`
+      )]);
+      return;
+    }
+
+    if (!foundSocial) {
+      setProfileStep('social');
+      setMessages(prev => [...prev, msg('model',
+        `I couldn't find social profiles. Select a platform below or paste a link.`
+      )]);
+      return;
+    }
+
+    // Everything found — offer to add more
+    setProfileStep('social'); // reuse social step for "add more"
+    setMessages(prev => [...prev, msg('model',
+      `Want to add any additional links? (More delivery apps, social profiles, etc.) Select below or type "done" to finish.`
+    )]);
+  };
+
+  const handleProfileInput = (text: string) => {
+    const trimmed = text.trim();
+    const isDone = /^(done|finish profile|that's it|no more)$/i.test(trimmed);
+    const isSkip = /^skip$/i.test(trimmed);
+    const isUrl = /^https?:\/\//i.test(trimmed);
+    const isHandle = /^@\w/i.test(trimmed);
+
+    // "Finish profile" chip or "done" from any step
+    if (isDone) { finishProfileBuilding(); return; }
+
+    if (profileStep === 'menu') {
+      if (trimmed === 'menu_link') {
+        setMessages(prev => [...prev, msg('model', `Paste your menu page URL.`)]);
+        return;
+      }
+      const appMatch = trimmed.match(/^(delivery|booking):(\w+)$/);
+      if (appMatch) {
+        const platform = appMatch[2].charAt(0).toUpperCase() + appMatch[2].slice(1);
+        setMessages(prev => [...prev, msg('model', `What's your ${platform} page link or store name?`)]);
+        setLocatedBusiness(prev => prev ? { ...prev, _pendingApp: appMatch[2] } as any : prev);
+        return;
+      }
+      if (isSkip) { advanceToSocial(); return; }
+      if (isUrl || /\w+\.\w+/.test(trimmed)) {
+        const url = isUrl ? trimmed : `https://${trimmed}`;
+        const pending = (locatedBusiness as any)?._pendingApp;
+        if (pending) {
+          setLocatedBusiness(prev => {
+            const dl = (prev as any)?.deliveryLinks || {};
+            return prev ? { ...prev, deliveryLinks: { ...dl, [pending]: url }, _pendingApp: undefined } as any : prev;
+          });
+          setMessages(prev => [...prev, msg('model', `Saved ${pending}! Add more, paste your menu link, or "Skip".`)]);
+        } else {
+          setLocatedBusiness(prev => prev ? { ...prev, menuUrl: url } as any : prev);
+          setMessages(prev => [...prev, msg('model', `Saved menu. **Margin Analysis** unlocked! Add ${appLabel.toLowerCase()} or "Skip".`)]);
+        }
+        return;
+      }
+      const pending = (locatedBusiness as any)?._pendingApp;
+      if (pending && trimmed.length > 1) {
+        setLocatedBusiness(prev => {
+          const dl = (prev as any)?.deliveryLinks || {};
+          return prev ? { ...prev, deliveryLinks: { ...dl, [pending]: trimmed }, _pendingApp: undefined } as any : prev;
+        });
+        setMessages(prev => [...prev, msg('model', `Saved ${pending}. Add more or "Skip".`)]);
+        return;
+      }
+      setMessages(prev => [...prev, msg('model', `Paste a URL or select a platform above.`)]);
+
+    } else if (profileStep === 'social') {
+      const socialMatch = trimmed.match(/^social:(\w+)$/);
+      if (socialMatch) {
+        const p = socialMatch[1];
+        const label = p === 'google' ? 'Google Business' : p.charAt(0).toUpperCase() + p.slice(1);
+        setMessages(prev => [...prev, msg('model', `What's your ${label} URL or handle?`)]);
+        setLocatedBusiness(prev => prev ? { ...prev, _pendingSocial: p } as any : prev);
+        return;
+      }
+      if (isSkip) { finishProfileBuilding(); return; }
+      if (isUrl || isHandle) {
+        const pending = (locatedBusiness as any)?._pendingSocial;
+        const platform = pending
+          || (/instagram/i.test(trimmed) ? 'instagram' : /facebook/i.test(trimmed) ? 'facebook'
+            : /yelp/i.test(trimmed) ? 'yelp' : /google/i.test(trimmed) ? 'googleBusiness'
+            : /tiktok/i.test(trimmed) ? 'tiktok' : 'other');
+        setLocatedBusiness(prev => {
+          const sl = (prev as any)?.socialLinks || {};
+          return prev ? { ...prev, socialLinks: { ...sl, [platform]: trimmed }, _pendingSocial: undefined } as any : prev;
+        });
+        setMessages(prev => [...prev, msg('model', `Saved ${platform}! Add another or "Done".`)]);
+        return;
+      }
+      const pending = (locatedBusiness as any)?._pendingSocial;
+      if (pending && trimmed.length > 1) {
+        setLocatedBusiness(prev => {
+          const sl = (prev as any)?.socialLinks || {};
+          return prev ? { ...prev, socialLinks: { ...sl, [pending]: trimmed }, _pendingSocial: undefined } as any : prev;
+        });
+        setMessages(prev => [...prev, msg('model', `Saved ${pending}. Add another or "Done".`)]);
+        return;
+      }
+      setMessages(prev => [...prev, msg('model', `Select a platform above or paste a link.`)]);
+    }
+  };
+
+  const advanceToSocial = () => {
+    setProfileStep('social');
+    setLocatedBusiness(prev => {
+      const enriched = prev as any;
+      const hasSocial = enriched?.socialLinks && Object.values(enriched.socialLinks || {}).some((v: any) => v);
+      setTimeout(() => {
+        setMessages(p => [...p, msg('model',
+          hasSocial ? `Any more social profiles? Select below or "Done".` : `Any social media? Select a platform or "Skip".`
+        )]);
+      }, 300);
+      return prev;
+    });
+  };
+
+  const finishProfileBuilding = () => {
+    setIsProfileBuilding(false);
+    setProfileStep(null);
+    setProfileHasBeenBuilt(true);
+
+    // Build a full summary of everything in the profile
+    setLocatedBusiness(prev => {
+      const enriched = prev as any;
+      const profileLines: string[] = [];
+
+      if (enriched?.officialUrl) profileLines.push(`**Website:** ${enriched.officialUrl}`);
+      if (enriched?.menuUrl) profileLines.push(`**Menu:** ${enriched.menuUrl}`);
+      if (enriched?.deliveryLinks) {
+        for (const [platform, url] of Object.entries(enriched.deliveryLinks)) {
+          if (typeof url === 'string' && url && platform !== 'menuUrl') {
+            profileLines.push(`**${platform.charAt(0).toUpperCase() + platform.slice(1)}:** ${url}`);
+          }
+        }
+      }
+      if (enriched?.socialLinks) {
+        for (const [platform, url] of Object.entries(enriched.socialLinks)) {
+          if (url) profileLines.push(`**${platform.charAt(0).toUpperCase() + platform.slice(1)}:** ${url}`);
+        }
+      }
+
+      const unlocked: string[] = [];
+      if (enriched?.menuUrl) unlocked.push('Margin Analysis');
+      if (enriched?.officialUrl) unlocked.push('SEO Audit');
+      unlocked.push('Foot Traffic', 'Competitive Intel');
+
+      const summary = profileLines.length > 0
+        ? `**Your profile:**\n${profileLines.map(l => `• ${l}`).join('\n')}\n\n`
+        : '';
+
+      setMessages(p => [...p, msg('model',
+        `${summary}Profile complete! Analyses unlocked: **${unlocked.join(', ')}**.\n\nRun any analysis from the dashboard. You can always add more links later by clicking "Build my profile" again.`
+      )]);
+
+      // Persist profile data to Firestore
+      if (businessSlug && prev) {
+        saveCapabilitySnapshot(businessSlug, prev, {});
+      }
+
+      return prev;
+    });
   };
 
   const sendProfileMessage = async (text: string) => {
@@ -453,7 +721,15 @@ export default function Home() {
         }),
       });
 
-      if (!res.ok) throw new Error("Profile builder request failed");
+      if (!res.ok) {
+        const status = res.status;
+        let errBody = '';
+        try { errBody = await res.text(); } catch { /* ignore */ }
+        console.error(`Profile builder returned ${status}: ${errBody}`);
+        // Fall through to chat-based fallback below
+        throw new Error(`Profile builder returned ${status}`);
+      }
+
       const data = await res.json();
 
       if (data.sessionId && data.sessionId !== profileSessionId) {
@@ -467,21 +743,34 @@ export default function Home() {
         setIsProfileBuilding(false);
         const selectedCaps = data.selectedCapabilities || [];
 
-        // Update locatedBusiness with profile data
         if (data.profile) {
           setLocatedBusiness(prev => prev ? { ...prev, ...data.profile } : prev);
         }
 
-        // Auto-run selected capabilities
         for (const capId of selectedCaps) {
-          // Normalize capability IDs
           const normalizedId = capId === 'margin' ? 'surgery' : capId === 'social' ? 'marketing' : capId;
           executeCapability(normalizedId);
         }
       }
     } catch (e: any) {
-      console.error("Profile building failed", e);
-      setMessages(prev => [...prev, msg('model', "Something went wrong. Let me try again.")]);
+      console.error("Profile building failed, switching to chat-based collection:", e.message);
+      // Switch to collecting profile data through the regular chat interface
+      setIsProfileBuilding(false);
+      const enriched = locatedBusiness as any;
+      const gaps: string[] = [];
+      if (!enriched?.menuUrl) gaps.push("**Menu URL** — a link to your online menu with prices (your website, DoorDash, Grubhub, etc.)");
+      if (!enriched?.officialUrl) gaps.push("**Website URL** — your business website");
+      if (!enriched?.socialLinks || !Object.values(enriched.socialLinks || {}).some((v: any) => v)) gaps.push("**Social media** — Instagram handle, Facebook page, or Google Business Profile link");
+
+      if (gaps.length > 0) {
+        setMessages(prev => [...prev, msg('model',
+          `I'll collect your profile info right here in the chat. To unlock the full suite of analyses, I need:\n\n${gaps.map((g, i) => `${i + 1}. ${g}`).join('\n')}\n\nJust paste a link or type your answer — we'll go one at a time. What's your menu URL?`
+        )]);
+        // Stay in a mode where we intercept URLs and save them
+        setAwaitingMenuUrl(true);
+      } else {
+        setMessages(prev => [...prev, msg('model', "Your profile looks good! Try running one of the analyses from the dashboard.")]);
+      }
     } finally {
       setIsTyping(false);
     }
@@ -504,10 +793,19 @@ export default function Home() {
   ) => {
     if (!slug || !identity) return;
     try {
+      // Include enriched profile fields (menuUrl, socialLinks, etc.) in the identity
+      // so they're persisted alongside the capability data
+      const enriched = identity as any;
+      const enrichedIdentity = {
+        ...identity,
+        ...(enriched.menuUrl ? { menuUrl: enriched.menuUrl } : {}),
+        ...(enriched.socialLinks ? { socialLinks: enriched.socialLinks } : {}),
+        ...(enriched.deliveryLinks ? { deliveryLinks: enriched.deliveryLinks } : {}),
+      };
       await apiFetch('/api/b/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, identity, snapshotUpdate }),
+        body: JSON.stringify({ slug, identity: enrichedIdentity, snapshotUpdate }),
       });
     } catch { /* non-critical */ }
   };
@@ -605,16 +903,13 @@ export default function Home() {
         // Generate slug and save business profile for shareable URL
         const slug = makeBusinessSlug(identity);
         setBusinessSlug(slug);
-        try {
-          await apiFetch('/api/b/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug, identity, snapshot: { overview } }),
-          });
-          window.history.replaceState(null, '', '/b/' + slug);
-        } catch {
-          // Non-critical — URL update is best-effort
-        }
+        window.history.replaceState(null, '', '/b/' + slug);
+        // Save in background — non-critical
+        apiFetch('/api/b/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug, identity, snapshot: { overview } }),
+        }).catch(() => { /* non-critical */ });
 
         // Build conversational insight message with real numbers
         const parts: string[] = [];
@@ -764,7 +1059,7 @@ export default function Home() {
       ),
     ]);
 
-    // Reset and set located business
+    // Reset state
     setLocatedBusiness(identity);
     setReport(null);
     setForecast(null);
@@ -778,8 +1073,41 @@ export default function Home() {
     setSeoReportUrl(null);
     setCompetitiveReportUrl(null);
     setMarketingReportUrl(null);
+    setProfileHasBeenBuilt(false);
 
-    // Trigger overview (will auto-select ultralocal or national pulse)
+    // --- Check if we already have a saved profile for this business ---
+    const slug = makeBusinessSlug(identity);
+    setBusinessSlug(slug);
+    try {
+      const savedRes = await apiFetch(`/api/b/${slug}/public`);
+      if (savedRes.ok) {
+        const saved = await savedRes.json();
+        if (saved.snapshot) {
+          // Restore saved data instantly
+          const snap = saved.snapshot;
+          const savedIdentity = saved.identity || identity;
+          setLocatedBusiness({ ...identity, ...savedIdentity });
+          if (snap.overview) setBusinessOverview(snap.overview);
+          if (snap.margin?.data) { setReport(snap.margin.data); setMarginReportUrl(snap.margin.reportUrl || null); }
+          if (snap.traffic?.data) { setForecast(snap.traffic.data); setTrafficReportUrl(snap.traffic.reportUrl || null); }
+          if (snap.seo?.data) { setSeoReport(snap.seo.data); setSeoReportUrl(snap.seo.reportUrl || null); }
+          if (snap.competitive?.data) { setCompetitiveReport(snap.competitive.data); setCompetitiveReportUrl(snap.competitive.reportUrl || null); }
+          if (snap.marketing?.data) { setSocialAuditReport(snap.marketing.data); setMarketingReportUrl(snap.marketing.reportUrl || null); }
+          if (saved.identity?.menuUrl || saved.identity?.socialLinks) setProfileHasBeenBuilt(true);
+          window.history.replaceState(null, '', '/b/' + slug);
+
+          setMessages(prev => [...prev, msg('model',
+            `Welcome back! I've restored your saved analysis for **${identity.name}**. All previously discovered insights are loaded.`
+          )]);
+
+          // Still refresh the overview in background for latest pulse data
+          triggerBusinessOverview(identity, { ultralocal, zipCode, coverageCity });
+          return;
+        }
+      }
+    } catch { /* No saved profile — run fresh discovery */ }
+
+    // No saved profile — trigger fresh overview
     triggerBusinessOverview(identity, { ultralocal, zipCode, coverageCity });
   };
 
@@ -815,25 +1143,61 @@ export default function Home() {
     }).catch((err) => console.error('[Email] Fire-and-forget failed:', err));
   };
 
+  // State for collecting missing data before running a capability
+  const [pendingCapForUrl, setPendingCapForUrl] = useState<string | null>(null);
+
   const executeCapability = async (capId: string) => {
     if (!locatedBusiness) return;
 
-    // Clear all previous reports so the loading overlay shows cleanly
-    // and the new report renders correctly (no ternary priority conflict).
-    setReport(null);
-    setForecast(null);
-    setSeoReport(null);
-    setCompetitiveReport(null);
-    setSelectedDay(null);
-    setSelectedSlot(null);
+    // ── Concurrency guard: only one analysis at a time ──────────────
+    if (activeCapability) {
+      const capLabels: Record<string, string> = { surgery: 'Margin Analysis', seo: 'SEO Audit', traffic: 'Traffic Forecast', competitive: 'Competitive Intel', marketing: 'Social Audit' };
+      const running = capLabels[activeCapability] || activeCapability;
+      setMessages(prev => [...prev, msg('model',
+        `**${running}** is still running. I'll start this one when it finishes — or wait a moment and try again.`
+      )]);
+      return;
+    }
 
-    // Track which capability is running for the loading experience
+    const enriched = locatedBusiness as any;
+
+    // ── Pre-flight checks: prompt user for missing data ──────────────
+    if (capId === 'seo' && !enriched.officialUrl) {
+      setPendingCapForUrl('seo');
+      setMessages(prev => [...prev, msg('model',
+        `I need a **website URL** to run the SEO audit. Paste the URL for **${locatedBusiness.name}** and I'll start the analysis.`
+      )]);
+      return;
+    }
+    if (capId === 'surgery' && !enriched.officialUrl && !enriched.menuUrl) {
+      setPendingCapForUrl('surgery');
+      setMessages(prev => [...prev, msg('model',
+        `I need a **menu URL** or **website URL** to run the margin analysis. Paste a link (your website, DoorDash, Grubhub — anything with prices).`
+      )]);
+      return;
+    }
+    if (capId === 'competitive' && !enriched.officialUrl && !enriched.address) {
+      setPendingCapForUrl('competitive');
+      setMessages(prev => [...prev, msg('model',
+        `I need at least a **website** or **address** to run competitive analysis. Paste your website URL.`
+      )]);
+      return;
+    }
+
+    // Only clear the specific report being re-run (keep others for reference)
+    if (capId === 'surgery') setReport(null);
+    if (capId === 'seo') setSeoReport(null);
+    if (capId === 'traffic') { setForecast(null); setSelectedDay(null); setSelectedSlot(null); }
+    if (capId === 'competitive') setCompetitiveReport(null);
+
+    // Track which capability is running
     setActiveCapability(capId);
     setCapabilityStartTime(Date.now());
 
-    // Strip large binary fields before sending to capability APIs.
-    // menuScreenshotBase64 can be 2-5 MB as base64, which exceeds Next.js's
-    // default request body size limit and causes a 422 response.
+    // Switch to the capability's section so user sees the loading state
+    const sectionMap: Record<string, ActiveSection> = { surgery: 'margin', seo: 'seo', traffic: 'traffic', competitive: 'competitive' };
+    if (sectionMap[capId]) setActiveSection(sectionMap[capId]);
+
     const { menuScreenshotBase64: _stripped, ...identityForApi } = locatedBusiness as any;
 
     if (capId === 'surgery') {
@@ -842,9 +1206,11 @@ export default function Home() {
 
       try {
         // Pass the enriched profile (without base64) so /api/analyze can skip the Crawler
+        const enrichedForApi = locatedBusiness as any;
         const payload = {
-          url: locatedBusiness.officialUrl,
+          url: enrichedForApi.officialUrl || enrichedForApi.menuUrl || '',
           enrichedProfile: identityForApi,
+          menuUrl: enrichedForApi.menuUrl || undefined,
           advancedMode: false
         };
         const res = await apiFetch('/api/analyze', {
@@ -854,9 +1220,8 @@ export default function Home() {
         });
 
         if (!res.ok) {
-          let errMsg = "Analysis Failed";
-          try { const err = await res.json(); errMsg = err.error || errMsg; } catch { errMsg = `Server error (${res.status})`; }
-          throw new Error(errMsg);
+          // Don't expose raw server errors — frame as a menu discovery issue
+          throw new Error('menu_not_found');
         }
 
         const data = await res.json();
@@ -869,6 +1234,7 @@ export default function Home() {
         }
 
         setReport(data);
+        setActiveSection('margin');
         if (data.reportUrl) {
           setMarginReportUrl(data.reportUrl);
           const totalLeakage = data.menu_items?.reduce((s: number, i: { price_leakage: number }) => s + i.price_leakage, 0) || 0;
@@ -879,7 +1245,17 @@ export default function Home() {
         maybeShowAuthWall();
 
       } catch (e: any) {
-        setMessages(prev => [...prev, msg('model', `Price analysis couldn't complete: ${e.message}\n\nThis can happen if the business website doesn't have a public menu page. Try one of the other analyses instead!`)]);
+        console.error('[Margin] Analysis failed:', e.message);
+        // Frame missing menu as a finding, not an error
+        setLocatedBusiness(prev => prev ? { ...prev, profileFindings: { ...(prev as any).profileFindings, noMenuOnline: true } } as any : prev);
+        setMessages(prev => [...prev, msg('model',
+          `**Finding:** Your menu isn't easily discoverable online. This is a common gap — **68% of customers check prices online before visiting**.\n\n` +
+          `To run the full Margin Analysis, I need a direct link to your menu with prices. Paste one below:\n` +
+          `• Your website's menu page\n` +
+          `• DoorDash, Grubhub, or UberEats store page\n` +
+          `• Any page listing your items with prices`
+        )]);
+        setAwaitingMenuUrl(true);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
@@ -898,12 +1274,13 @@ export default function Home() {
 
         if (!res.ok) {
           let errMsg = "Analysis Failed";
-          try { const err = await res.json(); errMsg = err.error || errMsg; } catch { errMsg = `Server error (${res.status})`; }
+          try { const err = await res.json(); errMsg = err.error || errMsg; } catch { /* suppress raw errors */ }
           throw new Error(errMsg);
         }
 
         const data = await res.json();
         setForecast(data);
+        setActiveSection('traffic');
         if (data.reportUrl) {
           setTrafficReportUrl(data.reportUrl);
           sendReportEmailAsync('traffic', data.reportUrl, locatedBusiness!.name, data.summary || 'Your 3-day foot traffic forecast is ready.');
@@ -920,7 +1297,8 @@ export default function Home() {
         maybeShowAuthWall();
 
       } catch (e: any) {
-        setMessages(prev => [...prev, msg('model', `Failed to execute Foot Traffic Forecast: ${e.message}`)]);
+        console.error('[Traffic] Forecast failed:', e.message);
+        setMessages(prev => [...prev, msg('model', `The foot traffic forecast couldn't complete right now. This can happen if local event data isn't available yet. Try again in a moment.`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
@@ -939,7 +1317,7 @@ export default function Home() {
 
         if (!res.ok) {
           let errMsg = "Analysis Failed";
-          try { const err = await res.json(); errMsg = err.error || errMsg; } catch { errMsg = `Server error (${res.status})`; }
+          try { const err = await res.json(); errMsg = err.error || errMsg; } catch { /* suppress raw errors */ }
           throw new Error(errMsg);
         }
 
@@ -956,6 +1334,7 @@ export default function Home() {
           ]);
         } else {
           setSeoReport(data);
+          setActiveSection('seo');
           if (data.reportUrl) {
             setSeoReportUrl(data.reportUrl);
             sendReportEmailAsync('seo', data.reportUrl, locatedBusiness!.name, `SEO score: ${data.overallScore ?? 'N/A'}/100. ${sectionCount} categories analyzed. ${data.summary || ''}`);
@@ -966,7 +1345,8 @@ export default function Home() {
         }
 
       } catch (e: any) {
-        setMessages(prev => [...prev, msg('model', `Google presence check failed: ${e.message}`)]);
+        console.error('[SEO] Audit failed:', e.message);
+        setMessages(prev => [...prev, msg('model', `The SEO audit ran into an issue. This can happen with complex websites. Try again in a moment, or ask me a specific question about your online presence.`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
@@ -985,7 +1365,7 @@ export default function Home() {
 
         if (!res.ok) {
           let errMsg = "Social media check failed";
-          try { const err = await res.json(); errMsg = err.error || errMsg; } catch { errMsg = `Server error (${res.status})`; }
+          try { const err = await res.json(); errMsg = err.error || errMsg; } catch { /* suppress raw errors */ }
           throw new Error(errMsg);
         }
 
@@ -1002,31 +1382,48 @@ export default function Home() {
         maybeShowAuthWall();
 
       } catch (e: any) {
-        setMessages(prev => [...prev, msg('model', `Social media check failed: ${e.message}`)]);
+        console.error('[Social] Audit failed:', e.message);
+        setMessages(prev => [...prev, msg('model', `The social media audit couldn't complete right now. Try again in a moment.`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
         setCapabilityStartTime(null);
       }
     } else if (capId === 'competitive') {
+      // Competitive analysis needs competitors from the overview
+      const competitors = businessOverview?.dashboard?.competitors;
+      if (!competitors?.length) {
+        setMessages(prev => [...prev, msg('model',
+          `I need competitor data to run competitive analysis. This comes from the business overview — let me refresh it first.`
+        )]);
+        setActiveCapability(null);
+        setCapabilityStartTime(null);
+        // Re-trigger overview which will populate competitors
+        triggerBusinessOverview(locatedBusiness);
+        return;
+      }
+
       setMessages(prev => [...prev, msg('model', "Analyzing how you stack up against your closest local competitors... ⏱️")]);
       setIsTyping(true);
 
       try {
+        // Include competitors from the overview dashboard in the identity
+        const identityWithCompetitors = { ...identityForApi, competitors };
         const res = await apiFetch('/api/capabilities/competitive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identity: identityForApi }),
+          body: JSON.stringify({ identity: identityWithCompetitors }),
         });
 
         if (!res.ok) {
           let errMsg = "Analysis Failed";
-          try { const err = await res.json(); errMsg = err.error || errMsg; } catch { errMsg = `Server error (${res.status})`; }
+          try { const err = await res.json(); errMsg = err.error || errMsg; } catch { /* suppress raw errors */ }
           throw new Error(errMsg);
         }
 
         const data = await res.json();
         setCompetitiveReport(data);
+        setActiveSection('competitive');
         if (data.reportUrl) {
           setCompetitiveReportUrl(data.reportUrl);
           sendReportEmailAsync('competitive', data.reportUrl, locatedBusiness!.name, data.market_summary || 'Your competitive strategy report is ready.');
@@ -1036,7 +1433,8 @@ export default function Home() {
         maybeShowAuthWall();
 
       } catch (e: any) {
-        setMessages(prev => [...prev, msg('model', `Competitive analysis failed: ${e.message}`)]);
+        console.error('[Competitive] Analysis failed:', e.message);
+        setMessages(prev => [...prev, msg('model', `The competitive analysis couldn't complete. This usually means we need more competitor data. Try running it again after the overview refreshes.`)]);
       } finally {
         setIsTyping(false);
         setActiveCapability(null);
@@ -1131,7 +1529,8 @@ export default function Home() {
 
   const renderSurgeonReport = () => {
     if (!report) return null;
-    const { identity, menu_items, strategic_advice, overall_score } = report;
+    const { identity, menu_items, overall_score } = report;
+    const strategic_advice = Array.isArray(report.strategic_advice) ? report.strategic_advice : typeof report.strategic_advice === 'string' ? [report.strategic_advice] : [];
     const totalLeakage = menu_items.reduce((s, i) => s + i.price_leakage, 0);
     const topLeaks = menu_items.filter(i => i.price_leakage > 0).sort((a, b) => b.price_leakage - a.price_leakage);
 
@@ -1717,7 +2116,156 @@ export default function Home() {
   const isCentered = !locatedBusiness && !report && !forecast && !seoReport && !competitiveReport && !socialAuditReport;
 
   // Dynamic follow-up chips — split into insights (about current results) and actions (new capabilities)
+  // ── Content-only report renderers (for Amethyst layout — no full-page wrapper) ──
+
+  const renderSurgeonReportContent = () => {
+    if (!report) return null;
+    const { identity, menu_items, overall_score } = report;
+    const strategic_advice = Array.isArray(report.strategic_advice) ? report.strategic_advice : typeof report.strategic_advice === 'string' ? [report.strategic_advice] : [];
+    const totalLeakage = menu_items.reduce((s, i) => s + i.price_leakage, 0);
+    const topLeaks = menu_items.filter(i => i.price_leakage > 0).sort((a, b) => b.price_leakage - a.price_leakage);
+    const leakageChartData = topLeaks.slice(0, 8).map(item => ({
+      name: item.item_name.length > 14 ? item.item_name.slice(0, 14) + '…' : item.item_name,
+      leakage: item.price_leakage,
+    }));
+    const leakageColors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#ec4899', '#8b5cf6', '#6366f1', '#3b82f6'];
+
+    return (
+      <>
+        <header className="mb-6 p-5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 shadow-xl">
+          <h1 className="text-xl font-bold text-white">{identity.name} — Price Optimization</h1>
+          <p className="text-indigo-100 text-sm">Score: {overall_score}/100 · ${totalLeakage.toLocaleString()} profit leakage detected</p>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="p-6 rounded-2xl bg-white border border-indigo-100 shadow-sm flex flex-col items-center justify-center">
+            <RadialScoreChart score={overall_score} size={140} label="Health" color="#6366f1" />
+            <p className="text-xs text-gray-500 mt-2 font-semibold uppercase tracking-wider">Surgical Score</p>
+          </div>
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-red-50 to-orange-50 border border-red-200 shadow-sm flex flex-col justify-center">
+            <h3 className="text-red-600 font-semibold mb-1 flex items-center gap-2 text-sm"><AlertTriangle size={16} /> PROFIT LEAKAGE</h3>
+            <div className="text-4xl font-black text-red-600">${totalLeakage.toLocaleString()}</div>
+            <p className="text-sm text-red-400 mt-1">per cycle</p>
+          </div>
+        </div>
+
+        <div className="mb-6 p-6 rounded-2xl bg-white border border-gray-100 shadow-sm">
+          <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-indigo-500" /> Leakage by Item</h3>
+          <RechartsBarChart data={leakageChartData} barKey="leakage" nameKey="name" colors={leakageColors} layout="vertical" height={Math.max(180, leakageChartData.length * 35)} />
+        </div>
+
+        <div className="rounded-2xl border border-indigo-100 bg-white shadow-sm overflow-hidden mb-6">
+          <div className="p-5 border-b border-indigo-50 bg-gradient-to-r from-indigo-50 to-purple-50">
+            <h3 className="font-bold text-lg text-indigo-900 flex items-center gap-2"><Scale size={18} /> Surgical Breakdown</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm min-w-[540px]">
+              <thead className="bg-indigo-50/50 text-xs uppercase tracking-wider text-indigo-400">
+                <tr><th className="p-3">Item</th><th className="p-3">Benchmark</th><th className="p-3">Price</th><th className="p-3 text-emerald-600">Rec.</th><th className="p-3 text-right text-red-500">Leakage</th></tr>
+              </thead>
+              <tbody className="divide-y divide-indigo-50">
+                {topLeaks.map((item, i) => (
+                  <tr key={i} className="hover:bg-indigo-50/40 transition-colors">
+                    <td className="p-3 text-gray-900 font-medium">{item.item_name}</td>
+                    <td className="p-3 text-gray-500">${item.competitor_benchmark.toFixed(2)}</td>
+                    <td className="p-3 text-gray-500">${item.current_price.toFixed(2)}</td>
+                    <td className="p-3 font-bold text-emerald-600">${item.recommended_price.toFixed(2)}</td>
+                    <td className="p-3 text-right"><span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-mono text-xs font-bold">+${item.price_leakage.toFixed(2)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 shadow-sm">
+          <h3 className="text-indigo-700 font-bold mb-4 flex items-center gap-2"><Zap size={18} /> STRATEGIC ADVICE</h3>
+          <div className="space-y-3">
+            {strategic_advice.map((tip, i) => (
+              <div key={i} className="p-4 rounded-xl bg-white border border-indigo-100 text-sm text-gray-700 leading-relaxed flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+                <span>{tip}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
+    );
+  };
+
+  const renderTrafficForecastContent = () => {
+    if (!forecast) return null;
+    const bizName = (forecast as any).businessName || (forecast as any).business?.name || locatedBusiness?.name;
+    return (
+      <>
+        <header className="mb-6 p-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 shadow-xl">
+          <h1 className="text-xl font-bold text-white">{bizName} — Foot Traffic Forecast</h1>
+          {forecast.summary && <p className="text-emerald-100 text-sm mt-1">{forecast.summary}</p>}
+        </header>
+
+        {trafficCardData && <FootTrafficCard traffic={trafficCardData} />}
+
+        {forecast.forecast?.length > 0 && (
+          <div className="mt-6">
+            <HeatmapGrid
+              forecast={forecast.forecast}
+              selectedSlot={selectedSlot && selectedDay ? { dayStr: selectedDay.dayOfWeek, slotLabel: selectedSlot.label ?? '' } : null}
+              onSlotClick={(day, slot) => { setSelectedDay(day); setSelectedSlot(slot); }}
+            />
+          </div>
+        )}
+        {selectedDay && selectedSlot && (
+          <div className="mt-4">
+            <DetailPanel day={selectedDay} slot={selectedSlot} onAskAI={(q: string) => sendMessage(q)} />
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const renderCompetitiveReportContent = () => {
+    if (!competitiveReport) return null;
+    return (
+      <>
+        <header className="mb-6 p-5 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 shadow-xl">
+          <h1 className="text-xl font-bold text-white">{locatedBusiness?.name} — Competitive Analysis</h1>
+          {competitiveReport.market_summary && <p className="text-orange-100 text-sm mt-1">{competitiveReport.market_summary}</p>}
+        </header>
+
+        {competitiveReport.competitors?.length > 0 && (
+          <div className="space-y-4 mb-6">
+            {competitiveReport.competitors.map((comp: any, i: number) => (
+              <div key={i} className="p-5 rounded-2xl bg-white border border-orange-100 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-gray-900">{comp.name || `Competitor ${i + 1}`}</h3>
+                  {comp.threat_level && <span className={`text-xs font-bold px-2 py-1 rounded-full ${comp.threat_level === 'high' ? 'bg-red-100 text-red-700' : comp.threat_level === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{comp.threat_level}</span>}
+                </div>
+                {comp.strengths && <p className="text-sm text-gray-600">{typeof comp.strengths === 'string' ? comp.strengths : JSON.stringify(comp.strengths)}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {competitiveReport.recommendations?.length > 0 && (
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 shadow-sm">
+            <h3 className="text-indigo-700 font-bold mb-4 flex items-center gap-2"><Zap size={18} /> Strategic Recommendations</h3>
+            <div className="space-y-3">
+              {competitiveReport.recommendations.map((rec: any, i: number) => (
+                <div key={i} className="p-4 rounded-xl bg-white border border-indigo-100 text-sm text-gray-700 leading-relaxed flex items-start gap-3">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold text-xs flex items-center justify-center shadow-sm">{i + 1}</span>
+                  <span>{typeof rec === 'string' ? rec : rec.recommendation || rec.title || JSON.stringify(rec)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
   const dynamicChips = useMemo((): SuggestionChip[] => {
+    // Suppress regular chips during profile building — profile chips take over
+    if (isProfileBuilding) return [];
     return computeSuggestionChips({
       isCentered,
       isDiscovering,
@@ -1730,32 +2278,96 @@ export default function Home() {
       hasSocialAuditReport: !!socialAuditReport,
       hasCapabilities: !!locatedBusiness,
     });
-  }, [isCentered, isDiscovering, isTyping, locatedBusiness, report, seoReport, forecast, competitiveReport, socialAuditReport, capabilities]);
+  }, [isCentered, isDiscovering, isTyping, isProfileBuilding, locatedBusiness, report, seoReport, forecast, competitiveReport, socialAuditReport, capabilities]);
 
-  return (
-    <main className={`flex flex-col md:flex-row h-screen w-screen overflow-hidden relative transition-colors duration-700 ${isCentered ? 'bg-white' : 'bg-gray-50'}`}>
+  // ─── Amethyst bento grid data ─────────────────────────────────────────
+  const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
+  const [dismissedInsight, setDismissedInsight] = useState(false);
 
-      {/* BACKGROUND ANIMATION — blob at z-0 (decorative), neural canvas at z-10 (interactive) */}
-      {isCentered && (
-        <>
-          <BlobBackground className="z-0 opacity-70" />
-          <div className="absolute inset-0 z-10 opacity-70">
-            <NeuralBackground />
-          </div>
-        </>
-      )}
+  const dashBusiness = useMemo(() => toBusiness(locatedBusiness, businessOverview), [locatedBusiness, businessOverview]);
+  const dashboardData = useMemo(() => toDashboardData(businessOverview), [businessOverview]);
+  const marginCardData = useMemo(() => toMarginCardData(report), [report]);
+  const seoCardData = useMemo(() => toSeoCardData(seoReport), [seoReport]);
+  const trafficCardData = useMemo(() => toTrafficCardData(forecast), [forecast]);
 
-      {/* Search animation moved into ChatInterface to avoid overlapping the chat panel */}
+  const topInsight = !dismissedInsight ? (dashboardData?.topInsights?.[0] ?? null) : null;
 
-      {/* Global Hephae logo — visible on home screen and during panel transition */}
-      {(isCentered || (!report && !forecast && !seoReport && !competitiveReport && !socialAuditReport && !isDiscovering && !isTyping)) && (
+  const isNationalCoverage = dashboardData?.isNational ?? false;
+
+  // Profile completeness — drives the ProfileDiscoveryCard
+  const profileStatus = useMemo(() => {
+    const enriched = locatedBusiness as any;
+    return {
+      hasWebsite: !!(enriched?.officialUrl),
+      hasMenu: !!(enriched?.menuUrl),
+      hasSocial: !!(enriched?.socialLinks && Object.values(enriched.socialLinks).some((v: any) => v)),
+      hasHours: !!(enriched?.hours || enriched?.operatingHours),
+    };
+  }, [locatedBusiness]);
+
+  // Profile is "complete" if user ran the build flow OR has all 4 fields
+  const [profileHasBeenBuilt, setProfileHasBeenBuilt] = useState(false);
+  const profileDataComplete = profileStatus.hasWebsite && profileStatus.hasMenu && profileStatus.hasSocial && profileStatus.hasHours;
+  const profileIncomplete = locatedBusiness && !profileHasBeenBuilt && !profileDataComplete;
+
+  // Profile building chips — context-aware based on current step
+  // Detect if business is food/restaurant to adapt labels
+  const isRestaurant = useMemo(() => {
+    const biz = locatedBusiness as any;
+    const indicators = [biz?.businessType, biz?.category, biz?.persona, biz?.name].join(' ').toLowerCase();
+    return /restaurant|food|pizza|burger|grill|cafe|bakery|donut|diner|bistro|kitchen|bbq|taco|sushi|bar & grill/i.test(indicators);
+  }, [locatedBusiness]);
+  const appLabel = isRestaurant ? 'Delivery apps' : 'Booking apps';
+
+  const profileChips = useMemo(() => {
+    if (!isProfileBuilding || !profileStep) return [];
+    const finish = { label: '✅ Finish profile', value: 'done' };
+
+    if (profileStep === 'menu') {
+      return [
+        { label: '🔗 My menu page', value: 'menu_link' },
+        ...(isRestaurant ? [
+          { label: '🍕 DoorDash', value: 'delivery:doordash' },
+          { label: '🍔 Grubhub', value: 'delivery:grubhub' },
+          { label: '🥡 UberEats', value: 'delivery:ubereats' },
+          { label: '🍽️ Slice', value: 'delivery:slice' },
+        ] : [
+          { label: '📅 Booksy', value: 'booking:booksy' },
+          { label: '💇 Vagaro', value: 'booking:vagaro' },
+          { label: '📋 Square Appointments', value: 'booking:square' },
+        ]),
+        { label: '⏭️ Skip', value: 'skip' },
+        finish,
+      ];
+    }
+    if (profileStep === 'social') {
+      return [
+        { label: '📸 Instagram', value: 'social:instagram' },
+        { label: '📘 Facebook', value: 'social:facebook' },
+        { label: '⭐ Yelp', value: 'social:yelp' },
+        { label: '📍 Google Business', value: 'social:google' },
+        { label: '🎵 TikTok', value: 'social:tiktok' },
+        { label: '⏭️ Skip', value: 'skip' },
+        finish,
+      ];
+    }
+    return [finish];
+  }, [isProfileBuilding, profileStep, isRestaurant]);
+
+  // ─── CENTERED (home screen) — original search experience, untouched ────
+  if (isCentered) {
+    return (
+      <main className="flex flex-col md:flex-row h-screen w-screen overflow-hidden relative bg-[#f8f9ff]">
+        <BlobBackground className="z-0 opacity-40" />
+        <div className="absolute inset-0 z-10 opacity-40">
+          <NeuralBackground />
+        </div>
+
         <div className="fixed top-4 left-4 z-[100] animate-fade-in pointer-events-none">
           <HephaeLogo size="sm" variant="color" />
         </div>
-      )}
 
-      {/* Auth button — only shown centered (home screen); when chat active it lives in the ChatInterface header */}
-      <div className={`fixed top-4 right-4 z-[100] transition-all duration-300 ${isCentered ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className="fixed top-4 right-4 z-[100] opacity-100 pointer-events-auto">
           {user ? (
             <div className="relative">
               <button
@@ -1782,14 +2394,10 @@ export default function Home() {
                       <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
                     </div>
                     <button
-                      onClick={async () => {
-                        setShowUserMenu(false);
-                        await signOut();
-                      }}
+                      onClick={async () => { setShowUserMenu(false); await signOut(); }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
                     >
-                      <LogOut className="w-3.5 h-3.5" />
-                      Sign out
+                      <LogOut className="w-3.5 h-3.5" /> Sign out
                     </button>
                   </div>
                 </>
@@ -1797,201 +2405,100 @@ export default function Home() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 hidden sm:inline">
-                Free weekly business monitoring
-              </span>
-              <button
-                onClick={signInWithGoogle}
-                className="px-3 py-1.5 rounded-full border border-gray-200/80 bg-white/90 backdrop-blur-md shadow-md hover:shadow-lg hover:bg-white transition-all text-xs font-medium text-gray-600"
-              >
-                Sign in
-              </button>
-              <button
-                onClick={signInWithGoogle}
-                className="px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 shadow-md hover:shadow-lg hover:from-indigo-400 hover:to-violet-500 transition-all text-xs font-medium text-white"
-              >
-                Register
-              </button>
+              <span className="text-xs text-gray-500 hidden sm:inline">Free weekly business monitoring</span>
+              <button onClick={signInWithGoogle} className="px-3 py-1.5 rounded-full border border-gray-200/80 bg-white/90 backdrop-blur-md shadow-md hover:shadow-lg hover:bg-white transition-all text-xs font-medium text-gray-600">Sign in</button>
+              <button onClick={signInWithGoogle} className="px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 shadow-md hover:shadow-lg hover:from-indigo-400 hover:to-violet-500 transition-all text-xs font-medium text-white">Register</button>
             </div>
           )}
         </div>
 
-      {/* LEFT VISUALIZER PANEL - Hidden when centered, fills remaining space when active */}
-      <div className={`relative z-10 transition-all duration-500 ease-in-out flex-col ${isCentered ? 'w-0 opacity-0 overflow-hidden hidden md:flex' : isChatCollapsed ? 'md:w-[calc(100%-56px)] w-full opacity-100' : `md:w-[55%] w-full opacity-100 ${mobilePanel === 'chat' ? 'hidden md:flex' : 'flex'}`} ${!isCentered ? 'h-full' : ''}`}>
-        {!isCentered && (
-          <>
-            {(isTyping || isDiscovering) && <BlobBackground className="z-0 opacity-30" />}
-            {/* Copy-link toast */}
-            {copyToast && (
-              <div className="fixed bottom-28 md:bottom-20 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-xl border border-white/10 animate-fade-in-up pointer-events-none">
-                Link copied!
-              </div>
-            )}
+        {/* Full-width chat when centered */}
+        <div className="relative z-20 w-full max-w-none pointer-events-none h-full">
+          <ChatInterface
+            messages={messages}
+            onSendMessage={sendMessage}
+            onPlaceSelect={handlePlaceSelect}
+            isTyping={isTyping}
+            isDiscovering={isDiscovering}
+            onReset={() => {
+              setMessages([{ id: '1', role: 'model', text: 'Hi! I am Hephae.\nSearch for your business to get started.', createdAt: Date.now() }]);
+              setLocatedBusiness(null); setReport(null); setForecast(null); setSeoReport(null); setCompetitiveReport(null); setSocialAuditReport(null); setProfileHasBeenBuilt(false);
+              setCapabilities([]); setIsDiscovering(false); setProfileReportUrl(null); setMarginReportUrl(null); setTrafficReportUrl(null);
+              setSeoReportUrl(null); setCompetitiveReportUrl(null); setMarketingReportUrl(null); setIsChatCollapsed(false); setAddMyAreaCity(null); setBusinessSlug(null);
+              window.history.replaceState(null, '', '/');
+            }}
+            capabilities={capabilities}
+            onSelectCapability={handleSelectCapability}
+            capabilitiesLocked={!user && capabilities.length > 0}
+            isCentered={true}
+            followUpChips={dynamicChips}
+            isCollapsed={false}
+            onToggleCollapse={() => {}}
+            addMyAreaCity={addMyAreaCity}
+            onAddMyArea={submitUltralocalInterest}
+            authUser={user}
+            onSignIn={signInWithGoogle}
+            onSignOut={signOut}
+          />
+        </div>
 
-            {/* Hephae logo badge — persistent branding on left panel when no report is displayed */}
-            {!report && !forecast && !seoReport && !competitiveReport && !socialAuditReport && !isDiscovering && !isTyping && (
-              <div className="absolute top-4 right-4 z-50 animate-fade-in">
-                <HephaeLogo size="sm" variant="color" />
-              </div>
-            )}
+        <AuthWall
+          isOpen={showAuthWall}
+          onGoogleSignIn={async () => { await signInWithGoogle(); setShowAuthWall(false); setHasProvidedEmail(true); }}
+          onEmailSubmit={async (email) => { await handleEmailSubmit(email); setShowAuthWall(false); }}
+          onDismiss={() => setShowAuthWall(false)}
+        />
 
-            {/* Business identity pill — only in empty fallback (no map), so it doesn't overlap MapVisualizer */}
-            {!report && !forecast && !seoReport && !competitiveReport && !isTyping && !isDiscovering && locatedBusiness && !locatedBusiness.coordinates && (
-              <div className="absolute top-4 left-4 z-50 flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl shadow-lg border border-gray-200/80 max-w-xs">
-                {((locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon) ? (
-                  <img
-                    src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon}
-                    alt="Logo"
-                    className="w-9 h-9 rounded-full object-cover border border-gray-200 flex-shrink-0"
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                  />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="w-4 h-4 text-indigo-600" />
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <div
-                    className="text-sm font-bold leading-tight truncate"
-                    style={{ color: (locatedBusiness as any).primaryColor || '#1e293b' }}
-                  >
-                    {locatedBusiness.name}
-                  </div>
-                  {(locatedBusiness.address || (locatedBusiness as any).persona) && (
-                    <div className="text-xs text-gray-500 leading-tight truncate">
-                      {(locatedBusiness as any).persona || locatedBusiness.address}
-                    </div>
-                  )}
-                </div>
-                {isDiscovering && <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />}
-              </div>
-            )}
+      </main>
+    );
+  }
 
-            {/* Full-panel loading overlay — covers entire left panel for capability runs (not discovery — that uses full-screen) */}
-            {isTyping && activeCapability && activeCapability !== 'discovery' && (
-              <LoadingOverlay
-                capabilityId={activeCapability}
-                startTime={capabilityStartTime}
-                businessName={locatedBusiness?.name}
-                businessLogo={(locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon}
-              />
-            )}
-
-            {report ? (
-              renderSurgeonReport()
-            ) : forecast ? (
-              renderTrafficForecast()
-            ) : competitiveReport ? (
-              renderCompetitiveReport()
-            ) : socialAuditReport ? (
-              renderSocialAuditReport()
-            ) : seoReport ? (
-              <div className="w-full h-full overflow-y-auto pb-20 animate-fade-in relative" style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 40%, #e0e7ff 100%)', color: '#1e293b' }}>
-                <BlobBackground className="opacity-25 fixed" />
-                <div className="absolute inset-0 pointer-events-none opacity-[0.25]">
-                  <NeuralBackground />
-                </div>
-                <div className="relative z-10 p-4 md:p-8">
-                  {/* Gradient Header */}
-                  <header className="mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-500 to-indigo-500 shadow-xl animate-fade-in-up">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                        {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) ? (
-                          <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover border-2 border-white/30 shadow-lg flex-shrink-0" alt="Logo" />
-                        ) : (
-                          <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
-                            <SearchIcon className="w-5 h-5 md:w-6 md:h-6 text-white" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <h1 className="text-lg md:text-xl font-bold text-white truncate">{locatedBusiness?.name || 'Business'}</h1>
-                          <p className="text-purple-100 text-sm">Google Presence Check</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-                        <span className="hidden md:block"><HephaeLogo size="sm" variant="white" /></span>
-                        <button onClick={() => setSeoReport(null)} className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Close SEO Report">
-                          <X size={20} />
-                        </button>
-                      </div>
-                    </div>
-                  </header>
-                  <div className="animate-fade-in-up stagger-1">
-                    <ResultsDashboard report={seoReport} groundingChunks={(seoReport as any).groundingChunks || []} />
-                  </div>
-                </div>
-              </div>
-            ) : locatedBusiness && locatedBusiness.coordinates ? (
-              <MapVisualizer lat={locatedBusiness.coordinates.lat} lng={locatedBusiness.coordinates.lng} businessName={locatedBusiness.name} business={locatedBusiness} isDiscovering={isDiscovering} dashboard={businessOverview?.dashboard} isAuthenticated={!!user} isAdmin={isAdmin} businessSlug={businessSlug} onSignIn={signInWithGoogle} onPublish={publishProfile}
-                ctaSlot={!isDiscovering && (
-                  <>
-                    <a
-                      href="https://hephae.co/schedule"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-md group whitespace-nowrap"
-                    >
-                      <Calendar className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                      Schedule Call
-                    </a>
-                    {activeReportUrl && (
-                      <button
-                        onClick={() => setShowSharePanel(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-md group whitespace-nowrap"
-                      >
-                        <Share2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                        Share Report
-                      </button>
-                    )}
-                    {businessSlug && (
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(window.location.origin + '/b/' + businessSlug);
-                          setCopyToast(true);
-                          setTimeout(() => setCopyToast(false), 2000);
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-slate-700 hover:bg-slate-600 transition-all shadow-md group whitespace-nowrap"
-                        title="Copy shareable link"
-                      >
-                        <svg className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                        Share Profile
-                      </button>
-                    )}
-                    {user && !activeHeartbeatId && (
-                      <button
-                        onClick={() => setShowHeartbeatSetup(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-md group whitespace-nowrap"
-                      >
-                        <Activity className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                        Monitor Weekly
-                      </button>
-                    )}
-                    {activeHeartbeatId && (
-                      <HeartbeatBadge onClick={() => setShowHeartbeatSetup(true)} />
-                    )}
-                  </>
-                )}
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-transparent gap-4 p-8">
-                {((locatedBusiness as any)?.logoUrl || (locatedBusiness as any)?.favicon) && (
-                  <img src={(locatedBusiness as any).logoUrl || (locatedBusiness as any).favicon} className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 shadow-sm" alt="" />
-                )}
-                {locatedBusiness && (
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-gray-700">{locatedBusiness.name}</div>
-                    <div className="text-sm text-gray-400 mt-1">Gathering location data...</div>
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
+  // ─── AMETHYST 3-COLUMN LAYOUT — after a business is located ──────────
+  return (
+    <div className="min-h-screen bg-[#f8f9ff] text-slate-900 relative">
+      {/* Signature neural background — subtle on the dashboard, non-interactive */}
+      <div className="fixed inset-0 z-0 opacity-[0.12] pointer-events-none [&_canvas]:!pointer-events-none">
+        <NeuralBackground />
       </div>
 
-      {/* RIGHT CHATBOT PANEL - Full screen when centered, floating card when active */}
-      {/* When centered: pointer-events-none on wrapper so neural background is interactive; children re-enable pointer-events-auto on inputs/buttons */}
-      <div className={`relative z-20 flex-shrink-0 transition-all duration-700 ease-in-out h-full ${isCentered ? 'w-full max-w-none pointer-events-none' : isChatCollapsed ? 'md:w-14 hidden md:block' : `md:w-[45%] w-full ${mobilePanel === 'visualizer' ? 'hidden md:block' : 'block'}`}`}>
+      <TopNav
+        business={dashBusiness}
+        user={user}
+        onSignIn={signInWithGoogle}
+        onSignOut={signOut}
+        onRunAnalysis={() => {
+          if (!locatedBusiness) return;
+          if (!user) { setShowAuthWall(true); return; }
+          const next = !report ? 'surgery' : !seoReport ? 'seo' : !forecast ? 'traffic' : !competitiveReport ? 'competitive' : null;
+          if (next) handleSelectCapability(next);
+        }}
+        nextAnalysisLabel={
+          !report ? 'Margin Analysis' : !seoReport ? 'SEO Audit' : !forecast ? 'Traffic Forecast' : !competitiveReport ? 'Competitive Intel' : null
+        }
+      />
+      <LeftSidebar
+        active={activeSection}
+        onSelect={setActiveSection}
+        onSearch={(q) => sendMessage(q)}
+        showNominateZip={isNationalCoverage}
+        onNominateZip={() => submitUltralocalInterest()}
+        isLoggedIn={!!user}
+        availableReports={{
+          margin: !!report,
+          seo: !!seoReport,
+          traffic: !!forecast,
+          competitive: !!competitiveReport,
+        }}
+        capabilityReady={{
+          seo: !!(locatedBusiness as any)?.officialUrl,
+          margin: !!((locatedBusiness as any)?.officialUrl || (locatedBusiness as any)?.menuUrl),
+          traffic: !!locatedBusiness, // just needs the business location
+          competitive: !!(locatedBusiness?.address || businessOverview?.dashboard?.competitors?.length),
+        }}
+      />
+
+      {/* RIGHT CHATBOT RAIL */}
+      <aside className="fixed right-0 top-16 h-[calc(100vh-64px)] w-[420px] z-40 border-l border-purple-100/60 flex flex-col">
         <ChatInterface
           messages={messages}
           onSendMessage={sendMessage}
@@ -2000,53 +2507,302 @@ export default function Home() {
           isDiscovering={isDiscovering}
           onReset={() => {
             setMessages([{ id: '1', role: 'model', text: 'Hi! I am Hephae.\nSearch for your business to get started.', createdAt: Date.now() }]);
-            setLocatedBusiness(null);
-            setReport(null);
-            setForecast(null);
-            setSeoReport(null);
-            setCompetitiveReport(null);
-            setSocialAuditReport(null);
-            setCapabilities([]);
-            setIsDiscovering(false);
-            setProfileReportUrl(null);
-            setMarginReportUrl(null);
-            setTrafficReportUrl(null);
-            setSeoReportUrl(null);
-            setCompetitiveReportUrl(null);
-            setMarketingReportUrl(null);
-            setIsChatCollapsed(false);
-            setAddMyAreaCity(null);
-            setBusinessSlug(null);
+            setLocatedBusiness(null); setReport(null); setForecast(null); setSeoReport(null); setCompetitiveReport(null); setSocialAuditReport(null); setProfileHasBeenBuilt(false);
+            setCapabilities([]); setIsDiscovering(false); setProfileReportUrl(null); setMarginReportUrl(null); setTrafficReportUrl(null);
+            setSeoReportUrl(null); setCompetitiveReportUrl(null); setMarketingReportUrl(null); setIsChatCollapsed(false); setAddMyAreaCity(null); setBusinessSlug(null);
             window.history.replaceState(null, '', '/');
           }}
           capabilities={capabilities}
           onSelectCapability={handleSelectCapability}
           capabilitiesLocked={!user && capabilities.length > 0}
-          isCentered={isCentered}
+          isCentered={false}
           followUpChips={dynamicChips}
-          isCollapsed={isChatCollapsed}
-          onToggleCollapse={() => setIsChatCollapsed(v => !v)}
+          isCollapsed={false}
+          onToggleCollapse={() => {}}
           addMyAreaCity={addMyAreaCity}
           onAddMyArea={submitUltralocalInterest}
           authUser={user}
           onSignIn={signInWithGoogle}
           onSignOut={signOut}
+          lightMode
+          profileBuildingMode={isProfileBuilding}
+          profileChips={profileChips}
         />
-      </div>
+      </aside>
 
-      {/* Mobile panel toggle button */}
-      {!isCentered && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[70] flex md:hidden">
-          <button
-            onClick={() => setMobilePanel(mobilePanel === 'chat' ? 'visualizer' : 'chat')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white/95 backdrop-blur-md rounded-full shadow-2xl border border-gray-200 text-sm font-bold text-gray-700 active:scale-95 transition-transform"
-          >
-            {mobilePanel === 'chat' ? (
-              <><Map className="w-4 h-4 text-indigo-500" /> View Report / Map</>
+      {/* MAIN CONTENT AREA — bento grid (overview) or full report view */}
+      <main className="ml-56 mr-[420px] pt-24 pb-28 px-8 min-h-screen relative z-10">
+
+        {/* ── Report views OR empty capability pages ───────────────────── */}
+        {activeSection !== 'overview' ? (
+          <div className="animate-fade-in">
+            <div className="flex items-center gap-3 mb-6">
+              <button onClick={() => setActiveSection('overview')} className="text-xs text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1">
+                ← Back to Overview
+              </button>
+              <span className="text-xs text-slate-300">|</span>
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">
+                {activeSection === 'seo' ? 'SEO Health' : activeSection === 'margin' ? 'Margin Analysis' : activeSection === 'traffic' ? 'Foot Traffic' : activeSection === 'competitive' ? 'Competitive Intel' : activeSection === 'local-intel' ? 'Local Intelligence' : activeSection}
+              </span>
+            </div>
+
+            {/* Local Intel page */}
+            {activeSection === 'local-intel' ? (
+              <LocalIntelPage
+                dashboard={dashboardData}
+                businessName={locatedBusiness?.name}
+                zipCode={(locatedBusiness as any)?.zipCode}
+              />
+            ) : activeSection === 'seo' && seoReport ? (
+              <ResultsDashboard report={seoReport} groundingChunks={(seoReport as any).groundingChunks || []} />
+            ) : activeSection === 'margin' && report ? (
+              renderSurgeonReportContent()
+            ) : activeSection === 'traffic' && forecast ? (
+              renderTrafficForecastContent()
+            ) : activeSection === 'competitive' && competitiveReport ? (
+              renderCompetitiveReportContent()
+            ) : activeCapability ? (
+              /* Currently running */
+              <RunningAnalysisCard capabilityId={activeCapability} startTime={capabilityStartTime} />
             ) : (
-              <><MessageCircle className="w-4 h-4 text-indigo-500" /> Back to Chat</>
+              /* Empty state — invite user to run the analysis */
+              <div className="flex flex-col items-center justify-center py-20 gap-6">
+                <div className="w-20 h-20 rounded-2xl bg-purple-50 flex items-center justify-center">
+                  {activeSection === 'seo' ? <Globe className="w-8 h-8 text-purple-400" /> :
+                   activeSection === 'margin' ? <DollarSign className="w-8 h-8 text-purple-400" /> :
+                   activeSection === 'traffic' ? <TrendingUp className="w-8 h-8 text-purple-400" /> :
+                   <Flame className="w-8 h-8 text-purple-400" />}
+                </div>
+                <div className="text-center max-w-md">
+                  <h2 className="text-2xl font-black text-slate-900">
+                    {activeSection === 'seo' ? 'SEO Health Check' :
+                     activeSection === 'margin' ? 'Margin Analysis' :
+                     activeSection === 'traffic' ? 'Foot Traffic Forecast' :
+                     'Competitive Intelligence'}
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                    {activeSection === 'seo' ? 'Audit your Google presence — search rankings, website speed, schema markup, and mobile optimization.' :
+                     activeSection === 'margin' ? 'Analyze your menu prices against commodity costs and local competitors to find profit leakage.' :
+                     activeSection === 'traffic' ? 'Predict foot traffic patterns using local events, weather forecasts, and historical data.' :
+                     'See how you stack up against nearby competitors — pricing, ratings, strengths, and vulnerabilities.'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const capMap: Record<string, string> = { seo: 'seo', margin: 'surgery', traffic: 'traffic', competitive: 'competitive' };
+                    handleSelectCapability(capMap[activeSection] || activeSection);
+                  }}
+                  disabled={!!activeCapability}
+                  className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl text-sm font-bold shadow-lg shadow-purple-900/20 transition-all hover:scale-[1.02] active:scale-95"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {activeCapability ? 'Analysis running...' : `Run ${activeSection === 'seo' ? 'SEO Audit' : activeSection === 'margin' ? 'Margin Analysis' : activeSection === 'traffic' ? 'Traffic Forecast' : 'Competitive Analysis'}`}
+                </button>
+                <p className="text-[10px] text-slate-400">{activeCapability ? 'Wait for the current analysis to finish' : 'Takes 30–60 seconds · Results appear here'}</p>
+              </div>
             )}
-          </button>
+          </div>
+        ) : (
+        /* ── Overview (bento grid) ─────────────────────────────── */
+        <>
+        <header className="mb-8">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-purple-700">Business Intelligence</p>
+          <h1 className="text-4xl font-black tracking-tighter text-slate-900 mt-1">{dashBusiness?.name ?? 'Dashboard'}</h1>
+          {dashBusiness?.persona && <p className="text-slate-500 text-sm mt-1">{dashBusiness.persona}</p>}
+
+          {isNationalCoverage && (
+            <div className="mt-4 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm">
+              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+              </div>
+              <div className="flex-1">
+                <span className="font-bold text-amber-800">Zip not monitored</span>
+                <span className="text-amber-600 ml-2">— showing national benchmarks. Run on-demand analyses, or </span>
+                <button onClick={() => submitUltralocalInterest()} className="font-bold text-amber-800 underline underline-offset-2 hover:text-amber-900">nominate this zip</button>
+                <span className="text-amber-600"> for weekly coverage.</span>
+              </div>
+            </div>
+          )}
+
+          {!user && (
+            <div className="mt-4 flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 text-sm">
+              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                <LogIn className="w-4 h-4 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <span className="font-bold text-purple-800">Sign in to unlock analyses</span>
+                <span className="text-purple-600 ml-2">— Margin, SEO, Foot Traffic, and Competitive reports require a free account.</span>
+              </div>
+              <button onClick={signInWithGoogle} className="flex items-center gap-1.5 bg-purple-700 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-purple-800 transition-colors flex-shrink-0">
+                <LogIn className="w-3.5 h-3.5" /> Sign in
+              </button>
+            </div>
+          )}
+        </header>
+
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-12 md:col-span-5" style={{ minHeight: 280 }}><MapCard business={dashBusiness} /></div>
+          <div className="col-span-12 md:col-span-7" style={{ minHeight: 280 }}>
+            <WeeklyPulseCard dashboard={dashboardData} onNominateZip={isNationalCoverage ? () => submitUltralocalInterest() : undefined} />
+          </div>
+
+          <div className="col-span-12"><MarketPositionCard dashboard={dashboardData} onNominateZip={isNationalCoverage ? () => submitUltralocalInterest() : undefined} /></div>
+
+          {/* Profile card — invitation, building progress, or saved profile summary */}
+          <div className="col-span-12 md:col-span-6 flex flex-col">
+            <ProfileDiscoveryCard
+              status={profileStatus}
+              profileData={{
+                officialUrl: (locatedBusiness as any)?.officialUrl,
+                menuUrl: (locatedBusiness as any)?.menuUrl,
+                socialLinks: (locatedBusiness as any)?.socialLinks,
+                deliveryLinks: (locatedBusiness as any)?.deliveryLinks,
+              }}
+              isBuilding={isProfileBuilding}
+              isBuilt={profileHasBeenBuilt || profileDataComplete}
+              onStartBuild={startProfileBuilding}
+              onSignIn={signInWithGoogle}
+              onEditProfile={() => {
+                setProfileHasBeenBuilt(false); // re-show the build invitation
+                startProfileBuilding();
+              }}
+              isSignedIn={!!user}
+            />
+          </div>
+
+          <div className="col-span-12 md:col-span-6 flex flex-col"><AiToolsCard tools={dashboardData?.aiTools} /></div>
+
+          <div className={`col-span-12 ${profileIncomplete ? 'md:col-span-4' : 'md:col-span-4'}`}><WeekCalendarCard events={dashboardData?.events} /></div>
+          <div className="col-span-12 md:col-span-8">
+            {dashboardData?.competitors?.length ? (
+              <Card className="p-5 h-full flex flex-col justify-center">
+                <Label>Nearby Rivals</Label>
+                <div className="mt-3"><CompetitorsStrip competitors={dashboardData.competitors} /></div>
+              </Card>
+            ) : null}
+          </div>
+
+          {!user && (
+            <div className="col-span-12 flex items-center gap-4 py-2">
+              <div className="flex-1 h-px bg-slate-200" />
+              <div className="flex items-center gap-2 bg-purple-50 border border-purple-100 rounded-full px-4 py-1.5 flex-shrink-0">
+                <Lock className="w-3 h-3 text-purple-500" />
+                <span className="text-xs font-semibold text-purple-600">Sign in to unlock these analyses</span>
+              </div>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+          )}
+
+          <div className="col-span-12 md:col-span-6 flex flex-col">
+            {activeCapability === 'surgery' ? (
+              <RunningAnalysisCard capabilityId="surgery" startTime={capabilityStartTime} />
+            ) : !user ? (
+              <LockedAnalysisCard title="Margin Analysis" subtitle="Sign in to see your full food cost breakdown and profit leakage" onSignIn={signInWithGoogle}>
+                <MarginCard margin={marginCardData} />
+              </LockedAnalysisCard>
+            ) : (
+              <MarginCard margin={marginCardData} onRun={() => handleSelectCapability('surgery')} onExpand={report ? () => setActiveSection('margin') : undefined} />
+            )}
+          </div>
+          <div className="col-span-12 md:col-span-6 flex flex-col">
+            {activeCapability === 'seo' ? (
+              <RunningAnalysisCard capabilityId="seo" startTime={capabilityStartTime} />
+            ) : !user ? (
+              <LockedAnalysisCard title="SEO Health" subtitle="Sign in to audit your Google presence score" onSignIn={signInWithGoogle}>
+                <SeoCard seo={seoCardData} />
+              </LockedAnalysisCard>
+            ) : (
+              <SeoCard seo={seoCardData} onRun={() => handleSelectCapability('seo')} onExpand={seoReport ? () => setActiveSection('seo') : undefined} />
+            )}
+          </div>
+
+          {/* Traffic + Competitive — show when data available OR when running */}
+          {(trafficCardData || activeCapability === 'traffic') && (
+            <div className="col-span-12 md:col-span-8 flex flex-col">
+              {activeCapability === 'traffic' ? (
+                <RunningAnalysisCard capabilityId="traffic" startTime={capabilityStartTime} />
+              ) : trafficCardData ? (
+                <FootTrafficCard traffic={trafficCardData} onExpand={() => setActiveSection('traffic')} />
+              ) : null}
+            </div>
+          )}
+          {(trafficCardData || activeCapability === 'competitive') && (
+            <div className="col-span-12 md:col-span-4 flex flex-col">
+              {activeCapability === 'competitive' ? (
+                <RunningAnalysisCard capabilityId="competitive" startTime={capabilityStartTime} />
+              ) : competitiveReport ? (
+                <Card className="p-6 border-l-4 border-orange-500 h-full flex flex-col">
+                  <Label>Competitive Intel</Label>
+                  <h3 className="text-lg font-bold tracking-tight text-slate-900 mt-1">Market Position</h3>
+                  <p className="text-xs text-slate-500 mt-2 leading-relaxed">{competitiveReport.market_summary}</p>
+                  <p className="text-[10px] font-bold text-orange-600 mt-3">{competitiveReport.competitors?.length ?? 0} competitors analyzed</p>
+                </Card>
+              ) : (
+                <LockedAnalysisCard title="Competitive Intel" subtitle="Run the competitive report to see how you rank vs nearby rivals" onSignIn={signInWithGoogle}>
+                  <BuzzCard buzz={dashboardData?.communityBuzz} insights={dashboardData?.topInsights} />
+                </LockedAnalysisCard>
+              )}
+            </div>
+          )}
+        </div>
+        </>
+        )}
+      </main>
+
+      <IntelligenceBanner
+        insight={topInsight}
+        onApply={() => { if (topInsight) sendMessage(topInsight.recommendation); }}
+        onDismiss={() => setDismissedInsight(true)}
+      />
+
+      {/* Floating action buttons — Schedule Call, Share Report, Weekly Pulse */}
+      {locatedBusiness && (
+        <div className="fixed bottom-6 left-56 z-30 flex items-center gap-2 px-4">
+          <a
+            href="https://hephae.co/schedule"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg transition-all"
+          >
+            <Calendar className="w-3.5 h-3.5" /> Schedule Call
+          </a>
+          {activeReportUrl && (
+            <button
+              onClick={() => setShowSharePanel(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg transition-all"
+            >
+              <Share2 className="w-3.5 h-3.5" /> Share Report
+            </button>
+          )}
+          {businessSlug && (
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.origin + '/b/' + businessSlug);
+                setCopyToast(true);
+                setTimeout(() => setCopyToast(false), 2000);
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold text-white bg-slate-700 hover:bg-slate-600 shadow-lg transition-all"
+            >
+              <Share2 className="w-3.5 h-3.5" /> Copy Link
+            </button>
+          )}
+          {user && !activeHeartbeatId && (
+            <button
+              onClick={() => setShowHeartbeatSetup(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg transition-all"
+            >
+              <Activity className="w-3.5 h-3.5" /> Weekly Pulse
+            </button>
+          )}
+          {activeHeartbeatId && (
+            <HeartbeatBadge onClick={() => setShowHeartbeatSetup(true)} />
+          )}
+        </div>
+      )}
+
+      {copyToast && (
+        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-xl border border-white/10 animate-fade-in-up pointer-events-none">
+          Link copied!
         </div>
       )}
 
@@ -2056,10 +2812,7 @@ export default function Home() {
           await signInWithGoogle();
           setShowAuthWall(false);
           setHasProvidedEmail(true);
-          // Start profile building if a business is located
-          if (locatedBusiness) {
-            startProfileBuilding();
-          }
+          // Profile building now happens via ProfileDiscoveryCard — user clicks "Build my profile"
         }}
         onEmailSubmit={async (email) => {
           await handleEmailSubmit(email);
@@ -2108,9 +2861,9 @@ export default function Home() {
         />
       )}
 
-      {/* Full-screen discovery overlay — renders independently of panel transitions */}
+      {/* Full-screen loading overlay ONLY for initial discovery — capability runs use inline indicators */}
       {isDiscovering && (
-        <div className="fixed inset-0 z-[55] bg-white animate-fade-in">
+        <div className="fixed inset-0 z-[55] bg-white/95 backdrop-blur-sm animate-fade-in">
           <LoadingOverlay
             capabilityId={activeCapability}
             startTime={capabilityStartTime}
@@ -2120,6 +2873,6 @@ export default function Home() {
         </div>
       )}
 
-    </main>
+    </div>
   );
 }

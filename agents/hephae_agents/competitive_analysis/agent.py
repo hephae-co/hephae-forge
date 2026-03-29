@@ -7,8 +7,6 @@ Pipeline: CompetitorProfiler → MarketPositioning (via session state).
 import json
 
 from google.adk.agents import LlmAgent, SequentialAgent
-from google.adk.tools import google_search
-from google.adk.tools.load_memory_tool import load_memory_tool
 
 from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
@@ -17,6 +15,7 @@ from hephae_agents.competitive_analysis.prompts import (
     COMPETITOR_PROFILER_INSTRUCTION,
     MARKET_POSITIONING_INSTRUCTION,
 )
+from hephae_agents.shared_tools.google_search import google_search as google_search_tool
 from hephae_db.schemas.agent_outputs import CompetitiveAnalysisOutput
 
 
@@ -51,7 +50,9 @@ competitor_profiler_agent = LlmAgent(
     description="Researches and profiles named competitors from web search sources.",
     instruction=_profiler_instruction,
     output_key="competitorBrief",
-    tools=[google_search, load_memory_tool],
+    tools=[google_search_tool],
+    # Note: ADK built-in google_search cannot be mixed with custom function tools.
+    # load_memory_tool removed — competitor data comes via session state.
     on_model_error_callback=fallback_on_error,
 )
 

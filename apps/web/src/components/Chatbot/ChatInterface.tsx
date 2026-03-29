@@ -35,10 +35,13 @@ interface ChatInterfaceProps {
     authUser?: { displayName?: string | null; email?: string | null; photoURL?: string | null } | null;
     onSignIn?: () => void;
     onSignOut?: () => void;
+    lightMode?: boolean;
+    profileBuildingMode?: boolean;
+    profileChips?: { label: string; value: string }[];
 }
 
 // Skip autocomplete for inputs that are clearly chat messages
-const CHAT_PREFIXES = /^(what|how|why|can |tell|show|run |analyze|help|which|when|where|is |are |do |does|explain|compare|generate|create|my |the |a |an |i |we |it |this |hey|hi |hello|thank|please|ok |yes|no |sure|give)/i;
+const CHAT_PREFIXES = /^(what|how|why|can |tell|show|run |analyze|help|which|when|where|is |are |do |does|explain|compare|generate|create|my |the |a |an |i |we |it |this |hey|hi |hello|thank|please|ok |yes|no |none|nope|nah|sure|give|skip|done|finish|don't|i don't|n\/a)/i;
 
 const shouldAutocomplete = (text: string): boolean => {
     const trimmed = text.trim();
@@ -122,6 +125,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     authUser = null,
     onSignIn,
     onSignOut,
+    lightMode = false,
+    profileBuildingMode = false,
+    profileChips = [],
 }) => {
     const [input, setInput] = useState('');
     const [isExplainerOpen, setIsExplainerOpen] = useState(false);
@@ -179,6 +185,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     // Debounced Places Autocomplete (client-side Google Maps JS API)
     useEffect(() => {
+        // Disable autocomplete entirely during profile building
+        if (profileBuildingMode) {
+            clearPredictions();
+            setShowDropdown(false);
+            return;
+        }
+
         const shouldFetch = isCentered
             ? input.trim().length >= 3
             : shouldAutocomplete(input);
@@ -314,11 +327,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
 
     return (
-        <div className={`flex flex-col h-full relative z-30 transition-all duration-700 w-full ${!isCentered ? 'bg-white border-l border-gray-200/60' : 'bg-transparent justify-center items-center pointer-events-none'}`}>
+        <div className={`flex flex-col h-full relative z-30 transition-all duration-700 w-full ${!isCentered ? (lightMode ? 'bg-[#f0eef8]' : 'bg-slate-900 border-l border-white/8') : 'bg-transparent justify-center items-center pointer-events-none'}`}>
 
             {/* Header - Hidden when centered */}
             {!isCentered && (
-                <div className="px-4 py-3 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 flex justify-between items-center z-10 flex-shrink-0">
+                <div className={`px-4 py-3 flex justify-between items-center z-10 flex-shrink-0 ${lightMode ? 'bg-white/80 backdrop-blur-sm border-b border-purple-100/60' : 'bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900'}`}>
                     <div className="flex items-center gap-2">
                         {onToggleCollapse && (
                             <button
@@ -331,14 +344,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         )}
                         <button
                             onClick={onReset}
-                            className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                            className={`p-1.5 rounded-lg transition-colors ${lightMode ? 'text-slate-400 hover:text-slate-700 hover:bg-purple-50' : 'text-white/50 hover:text-white hover:bg-white/10'}`}
                             title="Start Over"
                         >
                             <RefreshCcw className="w-4 h-4" />
                         </button>
-                        <span className="w-px h-4 bg-white/15 block" />
-                        <HephaeLogo size="sm" variant="white" />
-                        <p className="text-[10px] text-white/40 font-semibold tracking-wider uppercase hidden md:block">The Hephae Forge</p>
+                        <span className={`w-px h-4 block ${lightMode ? 'bg-purple-200' : 'bg-white/15'}`} />
+                        <HephaeLogo size="sm" variant={lightMode ? "color" : "white"} />
+                        <p className={`text-[10px] font-semibold tracking-wider uppercase hidden md:block ${lightMode ? 'text-purple-400' : 'text-white/40'}`}>AI Concierge</p>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5">
@@ -396,7 +409,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className={`relative overflow-y-auto p-4 flex flex-col w-full ${isCentered ? 'items-center max-w-3xl flex-none space-y-6 pointer-events-none' : 'flex-grow bg-gradient-to-b from-gray-50/60 via-white to-white space-y-4 pointer-events-auto'}`}
+                className={`relative overflow-y-auto p-4 flex flex-col w-full ${isCentered ? 'items-center max-w-3xl flex-none space-y-6 pointer-events-none' : `flex-grow space-y-4 pointer-events-auto ${lightMode ? 'bg-transparent' : 'bg-slate-900'}`}`}
             >
                 {!isCentered && <BlobBackground className="opacity-15" />}
                 {!isCentered && (isDiscovering || isTyping) && (
@@ -406,11 +419,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 )}
                 <div className={`w-full ${isCentered ? 'space-y-8' : 'space-y-5'}`}>
 
-                    {/* Home screen: Hephae logo + tagline — stays visible throughout centered state */}
+                    {/* Home screen: Hephae logo + tagline + intro text */}
                     {isCentered && (
                         <div className="flex flex-col items-center gap-3 pt-8 pb-2 animate-fade-in-up">
                             <HephaeLogo size="lg" variant="color" />
-                            <p className="text-gray-400 text-sm font-medium tracking-wide mt-1">Big AI for small businesses</p>
+                            <p className="text-slate-500 text-sm font-medium tracking-wide mt-1">Big AI for small businesses</p>
+                            <p className="text-slate-400 text-sm text-center max-w-md leading-relaxed mt-2">
+                                Free weekly intelligence for local businesses. Search for your business below — we&apos;ll analyze your market, pricing, foot traffic, and competitive landscape using 12+ verified data sources.
+                            </p>
                         </div>
                     )}
 
@@ -426,19 +442,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
                             {/* Bot avatar for AI messages */}
                             {msg.role === 'model' && !isCentered && (
-                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center flex-shrink-0 mb-0.5 border border-indigo-200/60 shadow-sm">
-                                    <Bot className="w-3.5 h-3.5 text-indigo-600" />
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5 shadow-sm ${lightMode ? 'bg-gradient-to-br from-purple-100 to-violet-100 border border-purple-200/60' : 'bg-gradient-to-br from-indigo-900/50 to-violet-900/50 border border-indigo-500/25'}`}>
+                                    <Bot className={`w-3.5 h-3.5 ${lightMode ? 'text-purple-600' : 'text-indigo-400'}`} />
                                 </div>
                             )}
 
                             <div className="flex flex-col">
-                                <div className={`group relative
-                                    p-3.5 rounded-2xl
-                                    ${msg.role === 'user'
-                                        ? 'max-w-[82%] bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-br-md shadow-md shadow-indigo-200/40'
-                                        : 'max-w-[88%] bg-white text-gray-800 border border-gray-100 rounded-bl-md shadow-sm'}
-                                    ${isWelcome ? 'text-2xl font-light text-center p-6 !bg-transparent !border-none !shadow-none !ring-0 text-gray-800 max-w-full' : ''}
-                                `}>
+                                <div style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }} className={`group relative p-3.5 rounded-2xl ${
+                                    isWelcome
+                                        ? 'text-2xl font-light text-center p-6 bg-transparent border-none shadow-none ring-0 text-slate-700 max-w-full'
+                                        : msg.role === 'user'
+                                            ? `max-w-[82%] rounded-br-md shadow-md ${lightMode ? 'bg-purple-600 text-white shadow-purple-200/40' : 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-indigo-200/40'}`
+                                            : `max-w-[88%] rounded-bl-md shadow-sm ${lightMode ? 'bg-white text-slate-700 border border-purple-100/60 shadow-purple-900/5' : 'bg-slate-800/80 text-white/88 border border-white/8'}`
+                                }`}>
                                     {isWelcome ? (
                                         <TypewriterText text={msg.text} />
                                     ) : msg.role === 'model' ? (
@@ -455,7 +471,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                                 setCopiedId(msg.id);
                                                 setTimeout(() => setCopiedId(null), 2000);
                                             }}
-                                            className="absolute -bottom-2 right-2 opacity-60 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-2 md:p-1.5 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 text-gray-400 hover:text-gray-600"
+                                            className="absolute -bottom-2 right-2 opacity-60 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-2 md:p-1.5 bg-slate-700 border border-white/10 rounded-lg shadow-sm hover:bg-slate-600 text-white/40 hover:text-white/70"
                                             title="Copy message"
                                         >
                                             {copiedId === msg.id
@@ -468,7 +484,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
                                 {/* Timestamp */}
                                 {!isWelcome && msg.createdAt && !isCentered && (
-                                    <div className={`text-[10px] text-gray-400 mt-1 px-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                                    <div className={`text-[10px] text-white/30 mt-1 px-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                 )}
@@ -480,7 +496,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     {isCentered && messages.length === 1 && (
                         <div className="w-full mt-12 mb-8 animate-fade-in-up">
                             <div className="text-center mb-6">
-                                <h2 className="text-xl font-black text-gray-900 tracking-tight">What We Can Do For You</h2>
+                                <h2 className="text-xl font-black text-slate-800 tracking-tight">What We Can Do For You</h2>
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
                                 {([
@@ -491,11 +507,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                     { icon: <Share2 className="w-3.5 h-3.5" />, label: "Audit My Social Media", cls: "bg-pink-50 text-pink-600" },
                                 ] as const).map(({ icon, label, cls }) => (
                                     <div key={label}
-                                        className="bg-white/80 border border-gray-100 px-3 py-2.5 rounded-xl shadow-sm backdrop-blur-xl flex items-center gap-2.5 text-left">
+                                        className="bg-white/80 border border-purple-100 px-3 py-2.5 rounded-xl shadow-sm shadow-purple-900/5 backdrop-blur-xl flex items-center gap-2.5 text-left hover:shadow-md hover:border-purple-200 transition-all">
                                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${cls}`}>
                                             {icon}
                                         </div>
-                                        <span className="text-xs font-semibold text-gray-800 leading-tight">{label}</span>
+                                        <span className="text-xs font-semibold text-slate-700 leading-tight">{label}</span>
                                     </div>
                                 ))}
                             </div>
@@ -509,11 +525,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                 <div className="flex items-center justify-between px-1 mb-1">
                                     <div className="flex items-center gap-1.5">
                                         <Sparkles className="w-3 h-3 text-indigo-500" />
-                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">What to explore next</p>
+                                        <p className="text-xs font-bold text-white/40 uppercase tracking-wider">What to explore next</p>
                                     </div>
                                     <button
                                         onClick={() => setIsExplainerOpen(true)}
-                                        className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md hover:bg-indigo-100 transition-colors"
+                                        className="flex items-center gap-1 text-[10px] font-bold text-indigo-400 bg-indigo-500/15 px-2 py-1 rounded-md hover:bg-indigo-500/25 transition-colors"
                                     >
                                         <Info className="w-3 h-3" />
                                         How this works
@@ -524,9 +540,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                         key={cap.id}
                                         onClick={() => onSelectCapability && onSelectCapability(cap.id)}
                                         className={`flex items-center gap-3 px-4 py-3.5 border shadow-sm rounded-2xl text-sm font-semibold text-left animate-fade-in-up transition-all ${
-                                            capabilitiesLocked
-                                                ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-pointer hover:bg-gray-100'
-                                                : 'bg-white border-indigo-100 shadow-indigo-50 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-indigo-100/50'
+                                            lightMode
+                                                ? (capabilitiesLocked
+                                                    ? 'bg-white border-slate-200 text-slate-400 cursor-pointer hover:bg-purple-50'
+                                                    : 'bg-white border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300 hover:-translate-y-0.5 hover:shadow-md hover:shadow-purple-200/50')
+                                                : (capabilitiesLocked
+                                                    ? 'bg-slate-800 border-white/8 text-white/30 cursor-pointer hover:bg-slate-700'
+                                                    : 'bg-slate-800 border-indigo-500/20 text-indigo-300 hover:bg-indigo-500/10 hover:border-indigo-400/30 hover:-translate-y-0.5 hover:shadow-md hover:shadow-indigo-900/50')
                                         }`}
                                         style={{ animationDelay: `${0.06 + i * 0.07}s` }}
                                     >
@@ -545,8 +565,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center flex-shrink-0 mb-0.5 border border-indigo-200/60 shadow-sm">
                                 <Bot className="w-3.5 h-3.5 text-indigo-600" />
                             </div>
-                            <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl rounded-bl-md shadow-sm">
-                                <p className="text-sm text-gray-700 font-medium">Deep discovery in progress — watch the map for live updates.</p>
+                            <div className="bg-slate-800 border border-white/8 px-4 py-3 rounded-2xl rounded-bl-md shadow-sm">
+                                <p className="text-sm text-white/80 font-medium">Deep discovery in progress — watch the map for live updates.</p>
                             </div>
                         </div>
                     )}
@@ -554,8 +574,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     {/* Loading indicator — centered card on home, bot bubble in chat */}
                     {isTyping && isCentered && (
                         <div className="flex justify-center pointer-events-auto animate-fade-in-up">
-                            <div className="bg-white/90 backdrop-blur-md rounded-2xl px-6 py-5 shadow-xl border border-gray-200/60 max-w-sm">
-                                <p className="text-sm font-bold text-gray-800 mb-3">Locating your business...</p>
+                            <div className="bg-white/90 backdrop-blur-md rounded-2xl px-6 py-5 shadow-xl shadow-purple-900/10 border border-purple-100 max-w-sm">
+                                <p className="text-sm font-bold text-slate-800 mb-3">Locating your business...</p>
                                 <div className="space-y-2">
                                     {[
                                         { icon: "🔍", text: "7 AI agents mapping your digital presence" },
@@ -564,27 +584,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                     ].map((step, i) => (
                                         <div key={i} className="flex items-center gap-2.5 animate-fade-in-up" style={{ animationDelay: `${0.3 + i * 0.25}s` }}>
                                             <span className="text-base">{step.icon}</span>
-                                            <span className="text-xs text-gray-600">{step.text}</span>
+                                            <span className="text-xs text-slate-500">{step.text}</span>
                                         </div>
                                     ))}
                                 </div>
                                 <div className="flex gap-1.5 mt-3">
-                                    <span className="w-1.5 h-1.5 bg-[#0052CC] rounded-full animate-bounce" />
-                                    <span className="w-1.5 h-1.5 bg-[#0052CC] rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
-                                    <span className="w-1.5 h-1.5 bg-[#0052CC] rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
+                                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" />
+                                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
+                                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
                                 </div>
                             </div>
                         </div>
                     )}
                     {isTyping && !isCentered && (
                         <div className="flex justify-start items-end gap-2">
-                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center flex-shrink-0 mb-0.5 border border-indigo-200/60 shadow-sm">
-                                <Bot className="w-3.5 h-3.5 text-indigo-600" />
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5 shadow-sm ${lightMode ? 'bg-gradient-to-br from-purple-100 to-violet-100 border border-purple-200/60' : 'bg-gradient-to-br from-indigo-100 to-violet-100 border border-indigo-200/60'}`}>
+                                <Bot className={`w-3.5 h-3.5 ${lightMode ? 'text-purple-600' : 'text-indigo-600'}`} />
                             </div>
-                            <div className="bg-white border border-gray-100 px-4 py-3.5 rounded-2xl rounded-bl-md shadow-sm max-w-[82%]">
+                            <div className={`px-4 py-3.5 rounded-2xl rounded-bl-md shadow-sm max-w-[82%] ${lightMode ? 'bg-white border border-purple-100/60' : 'bg-slate-800 border border-white/8'}`}>
                                 <div className="flex items-center gap-1.5 mb-2.5">
-                                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></span>
-                                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></span>
+                                    <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${lightMode ? 'bg-purple-400' : 'bg-indigo-400'}`}></span>
+                                    <span className={`w-1.5 h-1.5 rounded-full animate-bounce ${lightMode ? 'bg-purple-400' : 'bg-indigo-400'}`} style={{ animationDelay: '0.15s' }}></span>
                                     <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></span>
                                 </div>
                                 <p
@@ -603,7 +623,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 {showScrollBtn && !isCentered && (
                     <button
                         onClick={scrollToBottom}
-                        className="absolute bottom-4 right-4 z-20 w-8 h-8 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-indigo-100/50 transition-all animate-scale-in"
+                        className="absolute bottom-4 right-4 z-20 w-8 h-8 rounded-full bg-slate-800 shadow-lg border border-white/10 flex items-center justify-center text-white/50 hover:text-indigo-400 hover:border-indigo-500/30 hover:shadow-indigo-900/50 transition-all animate-scale-in"
                         title="Scroll to bottom"
                     >
                         <ChevronDown className="w-4 h-4" />
@@ -612,7 +632,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </div>
 
             {/* Input Area */}
-            <div className={`flex flex-col flex-shrink-0 pointer-events-auto ${isCentered ? 'p-4 items-center mb-10 bg-transparent border-none w-full' : 'px-4 pt-3 pb-4 bg-white/80 backdrop-blur-sm border-t border-gray-100/80'}`}>
+            <div className={`flex flex-col flex-shrink-0 pointer-events-auto ${isCentered ? 'p-4 items-center mb-10 bg-transparent border-none w-full' : `px-4 pt-3 pb-4 backdrop-blur-sm ${lightMode ? 'bg-white/80 border-t border-purple-100/60' : 'bg-slate-900/95 border-t border-white/8'}`}`}>
                 <div className={`w-full ${isCentered ? 'max-w-3xl' : ''}`}>
                     {/* Centered mode: search example chips */}
                     {followUpChips.length > 0 && isCentered && (
@@ -625,9 +645,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                         inputRef.current?.focus();
                                     }}
                                     disabled={isInputDisabled}
-                                    className="text-xs font-medium px-4 py-1.5 rounded-full whitespace-nowrap transition-all disabled:opacity-50 shadow-sm flex items-center gap-1.5 bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-600"
+                                    className="text-xs font-medium px-4 py-1.5 rounded-full whitespace-nowrap transition-all disabled:opacity-50 shadow-sm flex items-center gap-1.5 bg-white/80 border border-purple-100 hover:bg-purple-50 hover:border-purple-200 text-slate-600"
                                 >
-                                    <MapPin className="w-3 h-3" />
+                                    <MapPin className="w-3 h-3 text-purple-400" />
                                     {chip.text}
                                 </button>
                             ))}
@@ -656,16 +676,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             <div className="flex flex-col gap-2.5 mb-3">
                                 {insightChips.length > 0 && (
                                     <div>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 px-1">Ask about results</p>
+                                        <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 px-1 ${lightMode ? 'text-slate-400' : 'text-white/35'}`}>Ask about results</p>
                                         <div className="flex flex-wrap gap-2">
                                             {insightChips.map(chip => (
                                                 <button
                                                     key={chip.text}
                                                     onClick={() => onSendMessage(chip.text)}
                                                     disabled={isInputDisabled}
-                                                    className="text-xs font-medium px-3.5 py-1.5 rounded-full whitespace-nowrap transition-all disabled:opacity-50 shadow-sm flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 text-gray-600"
+                                                    className={`text-xs font-medium px-3.5 py-1.5 rounded-full whitespace-nowrap transition-all disabled:opacity-50 shadow-sm flex items-center gap-1.5 ${
+                                                        lightMode
+                                                            ? 'bg-white border border-slate-200 hover:bg-amber-50 hover:border-amber-200 text-slate-600'
+                                                            : 'bg-slate-800 border border-white/10 hover:bg-slate-700 hover:border-white/20 text-white/60'
+                                                    }`}
                                                 >
-                                                    <Lightbulb className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                                                    <Lightbulb className={`w-3 h-3 flex-shrink-0 ${lightMode ? 'text-amber-500' : 'text-amber-500'}`} />
                                                     {chip.text}
                                                 </button>
                                             ))}
@@ -674,16 +698,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                                 )}
                                 {actionChips.length > 0 && (
                                     <div>
-                                        <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-1.5 px-1">Try next</p>
+                                        <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 px-1 ${lightMode ? 'text-purple-500' : 'text-indigo-400'}`}>Try next</p>
                                         <div className="flex flex-wrap gap-2">
                                             {actionChips.map(chip => (
                                                 <button
                                                     key={chip.text}
                                                     onClick={() => onSendMessage(chip.text)}
                                                     disabled={isInputDisabled}
-                                                    className="text-xs font-semibold px-3.5 py-1.5 rounded-full whitespace-nowrap transition-all disabled:opacity-50 shadow-sm flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 text-indigo-700"
+                                                    className={`text-xs font-semibold px-3.5 py-1.5 rounded-full whitespace-nowrap transition-all disabled:opacity-50 shadow-sm flex items-center gap-1.5 ${
+                                                        lightMode
+                                                            ? 'bg-purple-50 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 text-purple-700'
+                                                            : 'bg-indigo-500/15 border border-indigo-500/25 hover:bg-indigo-500/25 hover:border-indigo-400/40 text-indigo-300'
+                                                    }`}
                                                 >
-                                                    <ArrowRight className="w-3 h-3 flex-shrink-0" />
+                                                    <ArrowRight className={`w-3 h-3 flex-shrink-0 ${lightMode ? 'text-purple-500' : ''}`} />
                                                     {chip.text}
                                                 </button>
                                             ))}
@@ -694,34 +722,59 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         );
                     })()}
 
+                    {/* Profile building quick-select chips */}
+                    {profileBuildingMode && profileChips.length > 0 && !isTyping && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {profileChips.map(chip => (
+                                <button
+                                    key={chip.value}
+                                    onClick={() => onSendMessage(chip.value)}
+                                    className={`text-xs font-semibold px-3.5 py-2 rounded-xl whitespace-nowrap transition-all shadow-sm flex items-center gap-1.5 ${
+                                        lightMode
+                                            ? 'bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300'
+                                            : 'bg-indigo-500/15 border border-indigo-500/25 hover:bg-indigo-500/25 text-indigo-300'
+                                    }`}
+                                >
+                                    {chip.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="relative" ref={dropdownRef}>
                         {/* Places Autocomplete Dropdown — appears above the input */}
                         {showDropdown && predictions.length > 0 && (
-                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in">
-                                <div className="px-3 py-1.5 border-b border-gray-100 bg-gray-50/80">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Matching businesses</span>
+                            <div className={`absolute bottom-full left-0 right-0 mb-2 rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in ${isCentered ? 'bg-white border border-purple-100 shadow-purple-900/10' : 'bg-slate-900 border border-white/10'}`}>
+                                <div className={`px-3 py-1.5 border-b ${isCentered ? 'border-purple-100 bg-purple-50/60' : 'border-white/8 bg-slate-800/80'}`}>
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isCentered ? 'text-purple-500' : 'text-white/40'}`}>Matching businesses</span>
                                 </div>
                                 {predictions.map((pred, idx) => (
                                     <button
                                         key={pred.placeId}
                                         type="button"
                                         onClick={() => handlePredictionSelect(pred)}
-                                        className={`w-full px-3 py-2.5 text-left flex items-center gap-3 transition-colors border-b border-gray-50 last:border-b-0 ${
-                                            idx === selectedIdx
-                                                ? 'bg-indigo-50 border-l-2 border-l-indigo-500'
-                                                : 'hover:bg-gray-50 border-l-2 border-l-transparent'
+                                        className={`w-full px-3 py-2.5 text-left flex items-center gap-3 transition-colors border-b last:border-b-0 ${isCentered
+                                            ? `border-purple-50 ${idx === selectedIdx ? 'bg-purple-50 border-l-2 border-l-purple-500' : 'hover:bg-purple-50/60 border-l-2 border-l-transparent'}`
+                                            : `border-gray-50 ${idx === selectedIdx ? 'bg-indigo-500/15 border-l-2 border-l-indigo-500' : 'hover:bg-slate-800 border-l-2 border-l-transparent'}`
                                         }`}
                                     >
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                            idx === selectedIdx ? 'bg-indigo-100' : 'bg-gray-100'
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isCentered
+                                            ? (idx === selectedIdx ? 'bg-purple-100' : 'bg-slate-100')
+                                            : (idx === selectedIdx ? 'bg-indigo-500/20' : 'bg-slate-700')
                                         }`}>
-                                            <MapPin className={`w-4 h-4 ${idx === selectedIdx ? 'text-indigo-600' : 'text-gray-400'}`} />
+                                            <MapPin className={`w-4 h-4 ${isCentered
+                                                ? (idx === selectedIdx ? 'text-purple-600' : 'text-slate-400')
+                                                : (idx === selectedIdx ? 'text-indigo-400' : 'text-white/30')
+                                            }`} />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <div className={`text-sm font-semibold truncate ${idx === selectedIdx ? 'text-indigo-900' : 'text-gray-900'}`}>
+                                            <div className={`text-sm font-semibold truncate ${isCentered
+                                                ? (idx === selectedIdx ? 'text-slate-900' : 'text-slate-700')
+                                                : (idx === selectedIdx ? 'text-white' : 'text-white/80')
+                                            }`}>
                                                 {pred.mainText}
                                             </div>
-                                            <div className="text-xs text-gray-500 truncate">{pred.secondaryText}</div>
+                                            <div className={`text-xs truncate ${isCentered ? 'text-slate-400' : 'text-white/40'}`}>{pred.secondaryText}</div>
                                         </div>
                                         {idx === selectedIdx && (
                                             <span className="text-[10px] text-indigo-400 font-medium shrink-0">Enter</span>
@@ -733,16 +786,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
                         {/* Resolving indicator */}
                         {isResolving && (
-                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-indigo-200 rounded-xl shadow-xl z-50 px-4 py-3 flex items-center gap-3 animate-fade-in">
-                                <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
-                                <span className="text-sm text-indigo-700 font-medium">Resolving location...</span>
+                            <div className={`absolute bottom-full left-0 right-0 mb-2 rounded-xl shadow-xl z-50 px-4 py-3 flex items-center gap-3 animate-fade-in ${isCentered ? 'bg-white border border-purple-200 shadow-purple-900/10' : 'bg-slate-900 border border-indigo-500/30'}`}>
+                                <Loader2 className={`w-4 h-4 animate-spin ${isCentered ? 'text-purple-500' : 'text-indigo-400'}`} />
+                                <span className={`text-sm font-medium ${isCentered ? 'text-purple-700' : 'text-indigo-300'}`}>Resolving location...</span>
                             </div>
                         )}
 
                         <input
                             ref={inputRef}
                             type="text"
-                            className={`w-full pl-5 pr-14 ${isCentered ? 'py-5 text-lg' : 'py-3.5 text-base md:text-sm'} rounded-full border text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200/60 focus:border-indigo-300 transition-all outline-none shadow-sm ${isDiscovering ? 'bg-gray-50 border-amber-200/60' : 'bg-gray-50/80 border-gray-200 focus:bg-white'}`}
+                            className={`w-full pl-5 pr-14 rounded-full border transition-all outline-none focus:ring-2 ${
+                                isCentered
+                                    ? 'py-5 text-lg bg-white/90 border-purple-200 text-slate-800 placeholder-slate-400 focus:ring-purple-400/30 focus:border-purple-400 shadow-lg shadow-purple-900/10'
+                                    : lightMode
+                                        ? `py-3.5 text-base md:text-sm text-slate-800 placeholder-slate-400 focus:ring-purple-400/30 focus:border-purple-300 shadow-sm ${isDiscovering ? 'bg-white border-amber-300' : 'bg-white border-purple-200/60 focus:bg-white'}`
+                                        : `py-3.5 text-base md:text-sm text-white/90 placeholder-white/30 focus:ring-indigo-500/30 focus:border-indigo-500/40 shadow-sm ${isDiscovering ? 'bg-slate-800 border-amber-500/30' : 'bg-slate-800 border-white/10 focus:bg-slate-800'}`
+                            }`}
                             placeholder={isDiscovering ? "Discovery in progress — chat unlocks when done..." : isCentered ? "Search for a business by name or city..." : "Ask anything about this business..."}
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
@@ -758,7 +817,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isInputDisabled}
-                                className={`absolute right-2 top-3 p-2.5 text-gray-400 hover:text-indigo-600 rounded-xl hover:bg-indigo-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all`}
+                                className={`absolute right-2 top-3 p-2.5 text-purple-400 hover:text-purple-600 rounded-xl hover:bg-purple-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all`}
                             >
                                 <SearchIcon className="w-5 h-5" />
                             </button>

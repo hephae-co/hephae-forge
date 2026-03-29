@@ -202,7 +202,13 @@ async def get_business_profile(
 
 @router.get("/b/{slug}/public")
 async def get_public_profile(slug: str):
-    """Fetch the published version of a business profile. No auth required."""
+    """Fetch a business profile for public display. No auth required.
+
+    Resolution order:
+    1. Explicitly published version (publishedVersionId)
+    2. Latest auto-saved version (latestVersionId)
+    3. Raw snapshot on the document (no versioning)
+    """
     try:
         from hephae_common.firebase import get_db
         db = get_db()
@@ -212,23 +218,35 @@ async def get_public_profile(slug: str):
             return JSONResponse({"error": "not found"}, status_code=404)
 
         data = doc.to_dict()
-        published_id = data.get("publishedVersionId")
-        if not published_id:
-            return JSONResponse({"error": "not published"}, status_code=404)
 
-        version_doc = db.collection(COLLECTION).document(slug).collection("versions").document(published_id).get()
-        if not version_doc.exists:
-            return JSONResponse({"error": "version not found"}, status_code=404)
+        # Try published version first, then latest version
+        version_id = data.get("publishedVersionId") or data.get("latestVersionId")
+        snapshot = None
+        published_at = None
 
-        version_data = version_doc.to_dict()
+        if version_id:
+            version_doc = db.collection(COLLECTION).document(slug).collection("versions").document(version_id).get()
+            if version_doc.exists:
+                version_data = version_doc.to_dict()
+                snapshot = version_data.get("snapshot")
+                published_at = version_data.get("createdAt")
+
+        # Fallback: use the raw snapshot on the document
+        if not snapshot:
+            snapshot = data.get("snapshot")
+            published_at = data.get("updatedAt") or data.get("savedAt")
+
+        if not snapshot and not data.get("identity"):
+            return JSONResponse({"error": "no profile data"}, status_code=404)
+
         return JSONResponse({
             "slug": slug,
             "identity": data.get("identity"),
             "name": data.get("name"),
             "address": data.get("address"),
-            "snapshot": version_data.get("snapshot"),
-            "publishedAt": version_data.get("createdAt"),
-            "publishedVersionId": published_id,
+            "snapshot": snapshot,
+            "publishedAt": published_at,
+            "publishedVersionId": data.get("publishedVersionId"),
         })
 
     except Exception as e:

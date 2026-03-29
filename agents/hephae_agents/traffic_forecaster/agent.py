@@ -20,7 +20,7 @@ from google.adk.sessions import InMemorySessionService
 
 from hephae_common.model_config import AgentModels, ThinkingPresets
 from hephae_common.model_fallback import fallback_on_error
-from google.adk.tools import google_search
+from hephae_agents.shared_tools.google_search import google_search as google_search_tool
 from hephae_agents.traffic_forecaster.prompts import (
     POI_GATHERER_INSTRUCTION,
     WEATHER_GATHERER_INSTRUCTION,
@@ -37,7 +37,7 @@ poi_gatherer = LlmAgent(
     name="PoiGatherer",
     model=AgentModels.PRIMARY_MODEL,
     instruction=POI_GATHERER_INSTRUCTION,
-    tools=[google_search],
+    tools=[google_search_tool],
     output_key="poiDetails",
     on_model_error_callback=fallback_on_error,
 )
@@ -46,7 +46,7 @@ weather_gatherer = LlmAgent(
     name="WeatherGatherer",
     model=AgentModels.PRIMARY_MODEL,
     instruction=WEATHER_GATHERER_INSTRUCTION,
-    tools=[weather_tool, google_search],
+    tools=[weather_tool, google_search_tool],
     output_key="weatherData",
     on_model_error_callback=fallback_on_error,
 )
@@ -55,7 +55,7 @@ events_gatherer = LlmAgent(
     name="EventsGatherer",
     model=AgentModels.PRIMARY_MODEL,
     instruction=EVENTS_GATHERER_INSTRUCTION,
-    tools=[google_search],
+    tools=[google_search_tool],
     output_key="eventsData",
     on_model_error_callback=fallback_on_error,
 )

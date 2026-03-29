@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BaseIdentity, EnrichedProfile, SocialPlatformMetrics } from '@/types/api';
 import DiscoveryProgress from './DiscoveryProgress';
 import ProfileBuilder from './ProfileBuilder';
+import FeedbackButton from '@/components/Feedback/FeedbackButton';
 
 // Data intelligence sources powering the pulse analysis
 const INTELLIGENCE_SOURCES = [
@@ -88,7 +89,7 @@ interface DashboardData {
     coverage?: string;
     keyMetrics?: Record<string, number>;
     techHighlight?: string | null;
-    aiTools?: string[];
+    aiTools?: { tool: string; capability: string; url?: string | null; actionForOwner?: string }[];
     techPlatforms?: Record<string, string>;
 }
 
@@ -103,6 +104,8 @@ interface MapVisualizerProps {
     isAuthenticated?: boolean;
     isAdmin?: boolean;
     businessSlug?: string | null;
+    zipCode?: string;
+    vertical?: string;
     onSignIn?: () => void;
     onPublish?: () => void;
 }
@@ -114,14 +117,12 @@ function humanize(s: string): string {
     return s.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-export default function MapVisualizer({ lat, lng, businessName, business, isDiscovering = false, dashboard, ctaSlot, isAuthenticated = false, isAdmin = false, businessSlug, onSignIn, onPublish }: MapVisualizerProps) {
+export default function MapVisualizer({ lat, lng, businessName, business, isDiscovering = false, dashboard, ctaSlot, isAuthenticated = false, isAdmin = false, businessSlug, zipCode, vertical, onSignIn, onPublish }: MapVisualizerProps) {
     const [zoomLevel, setZoomLevel] = useState<number>(15);
     const [resetKey, setResetKey] = useState(0);
     const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
     const [logoError, setLogoError] = useState(false);
     const [profileCollapsed, setProfileCollapsed] = useState(false);
-    const [carouselIdx, setCarouselIdx] = useState(0);
-    const [carouselExpanded, setCarouselExpanded] = useState(true);
     const [showSourcesPopover, setShowSourcesPopover] = useState(false);
 
     const getUrl = () => {
@@ -194,86 +195,6 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDiscovering]);
 
-    // Build carousel items from dashboard data — each can carry source links
-    type CarouselItem = { label: string; text: string; links?: { label: string; url: string }[] };
-    const carouselItems: CarouselItem[] = [];
-    if (dashboard) {
-        if (dashboard.pulseHeadline) carouselItems.push({
-            label: 'This Week',
-            text: dashboard.pulseHeadline,
-            links: [
-                { label: 'BLS CPI', url: 'https://www.bls.gov/cpi/' },
-                { label: 'USDA ERS', url: 'https://www.ers.usda.gov/data-products/food-price-outlook/' },
-                { label: 'NWS Forecast', url: 'https://www.weather.gov/' },
-            ],
-        });
-        (dashboard.topInsights || []).slice(0, 2).forEach(i =>
-            carouselItems.push({
-                label: 'Intelligence',
-                text: `${humanize(i.title)} — ${i.recommendation}`,
-                links: [
-                    { label: 'BLS Data', url: 'https://www.bls.gov/cpi/' },
-                    { label: 'USDA Prices', url: 'https://www.ers.usda.gov/' },
-                    { label: 'SBA Loans', url: 'https://www.sba.gov/funding-programs/loans' },
-                ],
-            })
-        );
-        (dashboard.events || []).slice(0, 2).forEach(e =>
-            carouselItems.push({
-                label: 'Local Event',
-                text: e.what + (e.when ? ` · ${e.when}` : ''),
-                links: dashboard.stats?.patchUrl
-                    ? [{ label: 'Patch News', url: dashboard.stats.patchUrl }]
-                    : [{ label: 'Google Events', url: 'https://www.google.com/search?q=local+events+near+me' }],
-            })
-        );
-        if (dashboard.communityBuzz) carouselItems.push({
-            label: 'Community',
-            text: dashboard.communityBuzz,
-            links: dashboard.stats?.patchUrl
-                ? [{ label: 'Patch', url: dashboard.stats.patchUrl }]
-                : [{ label: 'Local News', url: 'https://patch.com/' }],
-        });
-        // Tech intelligence highlight
-        if (dashboard.techHighlight) carouselItems.push({
-            label: 'Technology',
-            text: dashboard.techHighlight,
-            links: [{ label: 'AI Tools', url: 'https://hephae.co' }],
-        });
-        // AI tool recommendations
-        if (dashboard.aiTools?.length) {
-            carouselItems.push({
-                label: 'AI Tools',
-                text: dashboard.aiTools.join(' · '),
-                links: [{ label: 'Explore', url: 'https://hephae.co' }],
-            });
-        }
-        // Key metrics summary (from national pulse)
-        if (dashboard.keyMetrics) {
-            const metrics = Object.entries(dashboard.keyMetrics)
-                .filter(([, v]) => v !== 0)
-                .slice(0, 4)
-                .map(([k, v]) => `${humanize(k)}: ${typeof v === 'number' && v > 0 ? '+' : ''}${typeof v === 'number' ? v.toFixed(1) : v}%`)
-                .join(' · ');
-            if (metrics) carouselItems.push({
-                label: 'Market Data',
-                text: metrics,
-                links: [
-                    { label: 'BLS CPI', url: 'https://www.bls.gov/cpi/' },
-                    { label: 'USDA', url: 'https://www.ers.usda.gov/' },
-                ],
-            });
-        }
-    }
-
-    // Auto-advance carousel every 5 seconds
-    useEffect(() => {
-        if (carouselItems.length <= 1) return;
-        const timer = setInterval(() => setCarouselIdx(i => (i + 1) % carouselItems.length), 5000);
-        return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [carouselItems.length]);
-
     return (
         <div className="relative flex flex-col w-full h-full bg-slate-900 overflow-hidden">
 
@@ -320,6 +241,7 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
             </div>
             </div>
 
+
             {/* ── SCROLLABLE CONTENT PANEL ─────────────────────────────────── */}
             <div className="flex-1 overflow-y-auto scrollbar-hide divide-y divide-white/5">
 
@@ -339,14 +261,15 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                                     </a>
                                 )}
                             </div>
-                            {isAdmin && businessSlug && onPublish && (
+                            {isAdmin && onPublish && (
                                 <button
                                     onClick={onPublish}
-                                    className="px-2 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all shrink-0 flex items-center gap-1"
-                                    title="Publish as public case study"
+                                    disabled={!businessSlug}
+                                    className={`px-3 py-1.5 rounded-lg border transition-all shrink-0 flex items-center gap-1.5 text-xs font-semibold ${businessSlug ? 'bg-emerald-500/25 border-emerald-400/40 hover:bg-emerald-500/40 text-emerald-300 hover:text-emerald-200 cursor-pointer' : 'bg-white/5 border-white/10 text-white/25 cursor-not-allowed'}`}
+                                    title={businessSlug ? 'Publish as public case study' : 'Run analysis first to enable publish'}
                                 >
-                                    <svg className="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
-                                    <span className="text-[9px] font-bold text-emerald-300">Publish</span>
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Publish
                                 </button>
                             )}
                             {isAuthenticated && (
@@ -823,9 +746,9 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
 
             {/* MARKET INTELLIGENCE — inline in scroll section */}
             {dashboard && !isDiscovering && (
-                <div className="p-3 space-y-2.5">
+                <div className="p-3 space-y-3">
 
-                    {/* ── Intelligence Sources Popover (absolute overlay) ── */}
+                    {/* ── Sources Popover (keep as-is, absolute overlay) ── */}
                     {showSourcesPopover && (
                         <>
                             <div className="absolute inset-0 z-50" onClick={() => setShowSourcesPopover(false)} />
@@ -857,123 +780,160 @@ export default function MapVisualizer({ lat, lng, businessName, business, isDisc
                         </>
                     )}
 
-                    {/* ── Intelligence Carousel (expandable) ───────────── */}
-                        {carouselItems.length > 0 && (() => {
-                            const item = carouselItems[carouselIdx];
-                            return (
-                                <div className={`rounded-xl border backdrop-blur-sm transition-all duration-300 ${carouselExpanded ? 'bg-indigo-500/15 border-indigo-400/30' : 'bg-indigo-500/8 border-indigo-400/15'}`}>
-                                    {/* Header row */}
-                                    <div
-                                        className="flex items-center justify-between px-3 pt-2.5 pb-1.5 cursor-pointer select-none"
-                                        onClick={() => setCarouselExpanded(v => !v)}
-                                    >
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse shrink-0" />
-                                            <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider">{item?.label}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {carouselItems.length > 1 && (
-                                                <div className="flex gap-0.5">
-                                                    {carouselItems.map((_, i) => (
-                                                        <span key={i} className={`w-1 h-1 rounded-full transition-colors ${i === carouselIdx ? 'bg-indigo-400' : 'bg-white/20'}`} />
-                                                    ))}
-                                                </div>
-                                            )}
-                                            <svg className={`w-3 h-3 text-indigo-400/60 transition-transform duration-200 ${carouselExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
-                                        </div>
-                                    </div>
-
-                                    {/* Text */}
-                                    <p className={`text-[13px] text-white/85 leading-relaxed px-3 pb-2 ${carouselExpanded ? '' : 'line-clamp-2'}`}>
-                                        {item?.text}
-                                    </p>
-
-                                    {/* Expanded: source links + prev/next nav */}
-                                    {carouselExpanded && item?.links && item.links.length > 0 && (
-                                        <div className="flex items-center justify-between px-3 pb-2.5 pt-1 border-t border-white/5">
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {item.links.map(link => (
-                                                    <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer"
-                                                        className="flex items-center gap-1 text-[10px] font-semibold text-indigo-300 hover:text-indigo-200 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/25 px-2 py-0.5 rounded-full transition-all"
-                                                        onClick={e => e.stopPropagation()}>
-                                                        {link.label}
-                                                        <svg className="w-2.5 h-2.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                                    </a>
-                                                ))}
+                    {/* ── Market Pulse: key metric deltas ── */}
+                    {dashboard.keyMetrics && Object.entries(dashboard.keyMetrics).filter(([, v]) => v !== 0).length > 0 && (
+                        <div>
+                            <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider mb-1.5">Market Pulse</p>
+                            <div className="grid grid-cols-2 gap-1">
+                                {Object.entries(dashboard.keyMetrics).filter(([, v]) => v !== 0).slice(0, 6).map(([k, v]) => {
+                                    const isPos = v > 0;
+                                    const barW = Math.min(Math.abs(v) * 12, 100);
+                                    return (
+                                        <div key={k} className={`flex flex-col gap-0.5 p-2 rounded-xl border ${isPos ? 'bg-emerald-500/8 border-emerald-500/20' : 'bg-red-500/8 border-red-500/20'}`}>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[9px] font-semibold text-white/50 truncate">{humanize(k)}</span>
+                                                <span className={`text-[10px] font-bold ${isPos ? 'text-emerald-400' : 'text-red-400'}`}>{isPos ? '▲' : '▼'} {Math.abs(v).toFixed(1)}%</span>
                                             </div>
-                                            {carouselItems.length > 1 && (
-                                                <div className="flex gap-1 shrink-0 ml-2">
-                                                    <button onClick={e => { e.stopPropagation(); setCarouselIdx(i => (i - 1 + carouselItems.length) % carouselItems.length); }}
-                                                        className="w-5 h-5 rounded-full bg-white/8 hover:bg-white/15 flex items-center justify-center transition-colors">
-                                                        <svg className="w-2.5 h-2.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
-                                                    </button>
-                                                    <button onClick={e => { e.stopPropagation(); setCarouselIdx(i => (i + 1) % carouselItems.length); }}
-                                                        className="w-5 h-5 rounded-full bg-white/8 hover:bg-white/15 flex items-center justify-center transition-colors">
-                                                        <svg className="w-2.5 h-2.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })()}
-
-                        {/* ── Nearby Competitors ───────────────────────────── */}
-                        {(() => {
-                            const filtered = filterRelevantCompetitors(dashboard.competitors, (business as any)?.businessType || businessName);
-                            if (!filtered?.length) return null;
-                            return (
-                                <div>
-                                    <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider mb-1.5">Nearby Businesses</p>
-                                    <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
-                                        {filtered.slice(0, 6).map((c, i) => (
-                                            <div key={i} className="flex-shrink-0 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm">
-                                                <div className="text-[11px] font-semibold text-white/90 whitespace-nowrap">{c.name}</div>
-                                                <div className="text-[9px] text-white/45 mt-0.5">{(c.cuisine || c.category || '').replace(/_/g, ' ')} · {c.distanceM < 1000 ? `${c.distanceM}m` : `${(c.distanceM / 1000).toFixed(1)}km`}</div>
+                                            <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                                                <div className={`h-full rounded-full ${isPos ? 'bg-emerald-400' : 'bg-red-400'}`} style={{ width: `${barW}%` }} />
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        })()}
-
-                        {/* ── Stat pills + sources icon ─────────────────────── */}
-                        <div className="flex items-center justify-between gap-2">
-                            <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
-                                {dashboard.stats?.city && (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/8 text-white/55 font-medium border border-white/8">
-                                        📍 {dashboard.stats.city}{dashboard.stats.state ? `, ${dashboard.stats.state}` : ''}
-                                    </span>
-                                )}
-                                {dashboard.stats?.medianIncome && (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300/75 font-medium border border-emerald-500/15">
-                                        {dashboard.stats.medianIncome} income
-                                    </span>
-                                )}
-                                {dashboard.stats?.population && (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/8 text-white/55 font-medium border border-white/8">
-                                        {dashboard.stats.population} residents
-                                    </span>
-                                )}
-                                {dashboard.stats?.competitorCount !== undefined && (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-300/75 font-medium border border-red-500/15">
-                                        {dashboard.stats.competitorCount} rivals nearby
-                                    </span>
-                                )}
+                                        </div>
+                                    );
+                                })}
                             </div>
-                            {/* Sources toggle icon */}
-                            <button
-                                onClick={() => setShowSourcesPopover(v => !v)}
-                                title="View intelligence data sources"
-                                className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-full border transition-all ${showSourcesPopover ? 'bg-indigo-500/20 border-indigo-400/40 text-indigo-300' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60 hover:bg-white/10'}`}
-                            >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                <span className="text-[9px] font-bold uppercase tracking-wider">Sources</span>
-                            </button>
                         </div>
+                    )}
 
+                    {/* ── Pulse headline ── */}
+                    {dashboard.pulseHeadline && (
+                        <div className="flex gap-2 items-start p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                            <span className="text-indigo-400 shrink-0 mt-0.5">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </span>
+                            <p className="text-[11px] text-indigo-200/80 leading-snug">{dashboard.pulseHeadline}</p>
+                        </div>
+                    )}
+
+                    {/* ── This Week: events calendar ── */}
+                    {(dashboard.events?.length ?? 0) > 0 && (
+                        <div>
+                            <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider mb-1.5">📅 This Week</p>
+                            <WeekCalendar events={dashboard.events!} />
+                        </div>
+                    )}
+
+                    {/* ── Intelligence cards: insights + community buzz ── */}
+                    {((dashboard.topInsights?.length ?? 0) > 0 || dashboard.communityBuzz) && (
+                        <div className="space-y-1.5">
+                            <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Intelligence</p>
+                            {dashboard.communityBuzz && (
+                                <div className="flex gap-2 p-2.5 rounded-xl bg-amber-500/8 border border-amber-500/20">
+                                    <span className="text-amber-400 shrink-0 text-sm">💬</span>
+                                    <p className="text-[11px] text-amber-200/80 leading-snug">{dashboard.communityBuzz}</p>
+                                </div>
+                            )}
+                            {dashboard.topInsights?.slice(0, 2).map((ins, i) => (
+                                <div key={i} className="flex gap-2 p-2.5 rounded-xl bg-violet-500/8 border border-violet-500/15">
+                                    <span className="text-violet-400 shrink-0 text-sm">📊</span>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-violet-300 leading-tight">{humanize(ins.title)}</p>
+                                        <p className="text-[10px] text-white/50 leading-snug mt-0.5">{ins.recommendation}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* ── AI Tools grid ── */}
+                    {(dashboard.aiTools?.length ?? 0) > 0 && (
+                        <div>
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                                <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider">⚡ AI Tools</p>
+                                {dashboard.techHighlight && <span className="text-[9px] text-violet-400/70 truncate flex-1">{dashboard.techHighlight.split('—')[0]?.trim()}</span>}
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                {dashboard.aiTools!.slice(0, 4).map((t, i) => {
+                                    const faviconUrl = t.url ? (() => { try { return `${new URL(t.url).origin}/favicon.ico`; } catch { return null; } })() : null;
+                                    return (
+                                        <a key={i}
+                                            href={t.url || undefined}
+                                            target={t.url ? '_blank' : undefined}
+                                            rel="noopener noreferrer"
+                                            onClick={!t.url ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+                                            className={`group flex flex-col gap-1 p-2 rounded-xl border bg-violet-500/8 border-violet-500/20 hover:bg-violet-500/15 hover:border-violet-400/35 transition-all ${t.url ? 'cursor-pointer' : 'cursor-default'}`}
+                                        >
+                                            <div className="flex items-center gap-1.5">
+                                                {faviconUrl ? (
+                                                    <img src={faviconUrl} alt="" className="w-3.5 h-3.5 rounded-sm object-contain opacity-80 shrink-0"
+                                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                ) : (
+                                                    <svg className="w-3.5 h-3.5 text-violet-400/60 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                                )}
+                                                <span className="text-[10px] font-bold text-violet-200 leading-tight line-clamp-1 group-hover:text-violet-100 min-w-0 flex-1">{t.tool}</span>
+                                                {t.url && <svg className="w-2.5 h-2.5 text-violet-400/50 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>}
+                                            </div>
+                                            <p className="text-[9px] text-white/45 leading-snug line-clamp-2">{t.capability}</p>
+                                        </a>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Nearby Competitors ── */}
+                    {(() => {
+                        const filtered = filterRelevantCompetitors(dashboard.competitors, (business as any)?.businessType || businessName);
+                        if (!filtered?.length) return null;
+                        return (
+                            <div>
+                                <p className="text-[10px] font-bold text-white/35 uppercase tracking-wider mb-1.5">Nearby Businesses</p>
+                                <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+                                    {filtered.slice(0, 6).map((c, i) => (
+                                        <div key={i} className="flex-shrink-0 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm">
+                                            <div className="text-[11px] font-semibold text-white/90 whitespace-nowrap">{c.name}</div>
+                                            <div className="text-[9px] text-white/45 mt-0.5">{(c.cuisine || c.category || '').replace(/_/g, ' ')} · {c.distanceM < 1000 ? `${c.distanceM}m` : `${(c.distanceM / 1000).toFixed(1)}km`}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* ── Stat pills + sources toggle ── */}
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+                            {dashboard.stats?.city && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/8 text-white/55 font-medium border border-white/8">
+                                    📍 {dashboard.stats.city}{dashboard.stats.state ? `, ${dashboard.stats.state}` : ''}
+                                </span>
+                            )}
+                            {dashboard.stats?.medianIncome && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300/75 font-medium border border-emerald-500/15">
+                                    {dashboard.stats.medianIncome} income
+                                </span>
+                            )}
+                            {dashboard.stats?.population && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/8 text-white/55 font-medium border border-white/8">
+                                    {dashboard.stats.population} residents
+                                </span>
+                            )}
+                            {dashboard.stats?.competitorCount !== undefined && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-300/75 font-medium border border-red-500/15">
+                                    {dashboard.stats.competitorCount} rivals nearby
+                                </span>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => setShowSourcesPopover(v => !v)}
+                            title="View intelligence data sources"
+                            className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-full border transition-all ${showSourcesPopover ? 'bg-indigo-500/20 border-indigo-400/40 text-indigo-300' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60 hover:bg-white/10'}`}
+                        >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <span className="text-[9px] font-bold uppercase tracking-wider">Sources</span>
+                        </button>
                     </div>
+
+                </div>
             )}
 
 
@@ -1021,6 +981,83 @@ function TruncatedText({ text }: { text: string }) {
                     </svg>
                 </button>
             )}
+        </div>
+    );
+}
+
+function WeekCalendar({ events }: { events: { what: string; when?: string }[] }) {
+    const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const todayJs = new Date().getDay(); // 0=Sun
+    const todayIdx = todayJs === 0 ? 6 : todayJs - 1; // Mon=0
+
+    const DAY_KEYWORDS: Record<string, number> = {
+        monday: 0, mon: 0,
+        tuesday: 1, tue: 1,
+        wednesday: 2, wed: 2,
+        thursday: 3, thu: 3,
+        friday: 4, fri: 4,
+        saturday: 5, sat: 5, weekend: 5,
+        sunday: 6, sun: 6,
+        today: todayIdx, tonight: todayIdx,
+        tomorrow: (todayIdx + 1) % 7,
+    };
+
+    const slotted: { what: string; when?: string }[][] = DAYS.map(() => []);
+    const unslotted: { what: string; when?: string }[] = [];
+
+    events.forEach(ev => {
+        const w = (ev.when || '').toLowerCase();
+        let placed = false;
+        for (const [kw, idx] of Object.entries(DAY_KEYWORDS)) {
+            if (w.includes(kw)) { slotted[idx].push(ev); placed = true; break; }
+        }
+        if (!placed) unslotted.push(ev);
+    });
+
+    // Distribute unslotted events across days that are empty, starting from today
+    let fill = todayIdx;
+    unslotted.forEach(ev => {
+        slotted[fill % 7].push(ev);
+        fill++;
+    });
+
+    const DOT_COLORS = ['bg-indigo-400', 'bg-violet-400', 'bg-amber-400', 'bg-emerald-400', 'bg-rose-400'];
+
+    return (
+        <div className="space-y-2">
+            {/* 7-day strip */}
+            <div className="grid grid-cols-7 gap-0.5">
+                {DAYS.map((day, i) => {
+                    const isToday = i === todayIdx;
+                    const isPast = i < todayIdx;
+                    const evs = slotted[i];
+                    return (
+                        <div key={day} className={`flex flex-col items-center gap-1 py-1.5 px-0.5 rounded-lg border transition-colors ${isToday ? 'bg-indigo-500/20 border-indigo-400/35' : isPast ? 'bg-white/2 border-white/5 opacity-50' : 'bg-white/4 border-white/8'}`}>
+                            <span className={`text-[8px] font-bold uppercase ${isToday ? 'text-indigo-300' : 'text-white/35'}`}>{day}</span>
+                            <div className="flex flex-col gap-0.5 w-full px-0.5">
+                                {evs.length > 0 ? evs.slice(0, 3).map((_, j) => (
+                                    <div key={j} className={`h-1 rounded-full ${DOT_COLORS[j % DOT_COLORS.length]}`} />
+                                )) : (
+                                    <div className="h-1 rounded-full bg-white/8" />
+                                )}
+                            </div>
+                            {evs.length > 0 && <span className="text-[8px] font-bold text-white/40">{evs.length}</span>}
+                        </div>
+                    );
+                })}
+            </div>
+            {/* Event list */}
+            <div className="space-y-1">
+                {events.slice(0, 4).map((ev, i) => (
+                    <div key={i} className="flex items-start gap-1.5 py-0.5">
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1 ${DOT_COLORS[i % DOT_COLORS.length]}`} />
+                        <div className="min-w-0 flex-1">
+                            <span className="text-[10px] text-white/75 leading-snug">{ev.what}</span>
+                            {ev.when && <span className="text-[9px] text-white/35 ml-1">· {ev.when}</span>}
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }

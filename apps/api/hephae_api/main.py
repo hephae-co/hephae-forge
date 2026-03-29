@@ -127,6 +127,7 @@ def _register_routers() -> None:
         pulse_public,
         unsubscribe,
         business_profile,
+        feedback,
     )
 
     app.include_router(auth.router, prefix="/api")
@@ -146,6 +147,7 @@ def _register_routers() -> None:
     app.include_router(pulse_public.router, prefix="/api")
     app.include_router(unsubscribe.router, prefix="/api")
     app.include_router(business_profile.router, prefix="/api")
+    app.include_router(feedback.router, prefix="/api")
 
     # --- V1 backward-compat routers ---
     from hephae_api.routers.v1 import (
@@ -202,6 +204,8 @@ def _register_routers() -> None:
     app.include_router(registered_industries.router)
     from hephae_api.routers.admin import ai_tool_discovery as ai_tool_discovery_admin
     app.include_router(ai_tool_discovery_admin.router)
+    from hephae_api.routers.admin import feedback as admin_feedback
+    app.include_router(admin_feedback.router)
 
     # --- Batch / Cron routers ---
     from hephae_api.routers.batch import cron, heartbeat_cron, pulse_batch, pulse_cron, industry_pulse_cron, tech_intelligence_cron, ai_tool_discovery_cron, reference_cron

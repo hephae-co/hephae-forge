@@ -2,16 +2,21 @@
 
 import { Radio, TrendingUp, Users, Newspaper, FileText, Calendar, MapPin, Activity, Building2 } from 'lucide-react';
 import { Card, Label } from './Card';
+import FeedbackButton from '@/components/Feedback/FeedbackButton';
 import type { DashboardData, DashEvent, Insight } from './types';
 
 export function LocalIntelPage({
   dashboard,
   businessName,
   zipCode,
+  businessSlug,
+  vertical,
 }: {
   dashboard: DashboardData | null;
   businessName?: string;
   zipCode?: string;
+  businessSlug?: string;
+  vertical?: string;
 }) {
   const stats = dashboard?.stats;
   const events = dashboard?.events;
@@ -56,6 +61,17 @@ export function LocalIntelPage({
             <div className="flex items-center gap-2 mb-3">
               <Newspaper className="w-4 h-4 text-purple-400" />
               <Label>Community Buzz</Label>
+              {businessSlug && (
+                <FeedbackButton
+                  businessSlug={businessSlug}
+                  dataType="community_buzz"
+                  itemId="community_buzz"
+                  itemLabel="Community Buzz"
+                  zipCode={zipCode}
+                  vertical={vertical}
+                  className="ml-auto"
+                />
+              )}
             </div>
             <Card className="p-5 h-full">
               <p className="text-sm text-slate-600 leading-relaxed">{buzz}</p>
@@ -74,10 +90,20 @@ export function LocalIntelPage({
                 {events.map((ev, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full bg-violet-400 mt-1.5 flex-shrink-0" />
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-800">{ev.what}</p>
                       {ev.when && <p className="text-xs text-slate-400 mt-0.5">{ev.when}</p>}
                     </div>
+                    {businessSlug && (
+                      <FeedbackButton
+                        businessSlug={businessSlug}
+                        dataType="event"
+                        itemId={`event-${i}`}
+                        itemLabel={ev.what}
+                        zipCode={zipCode}
+                        vertical={vertical}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
@@ -96,7 +122,20 @@ export function LocalIntelPage({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {insights.map((ins, i) => (
               <Card key={i} className="p-5 border-l-4 border-violet-400">
-                <h3 className="text-sm font-bold text-slate-800">{ins.title}</h3>
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-sm font-bold text-slate-800">{ins.title}</h3>
+                  {businessSlug && (
+                    <FeedbackButton
+                      businessSlug={businessSlug}
+                      dataType="pulse_insight"
+                      itemId={`insight-${i}`}
+                      itemLabel={ins.title}
+                      zipCode={zipCode}
+                      vertical={vertical}
+                      className="flex-shrink-0 mt-0.5"
+                    />
+                  )}
+                </div>
                 <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{ins.recommendation}</p>
               </Card>
             ))}

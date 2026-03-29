@@ -2552,6 +2552,8 @@ export default function Home() {
                 dashboard={dashboardData}
                 businessName={locatedBusiness?.name}
                 zipCode={(locatedBusiness as any)?.zipCode}
+                businessSlug={businessSlug ?? undefined}
+                vertical={(locatedBusiness as any)?.businessType}
               />
             ) : activeSection === 'seo' && seoReport ? (
               <ResultsDashboard report={seoReport} groundingChunks={(seoReport as any).groundingChunks || []} />
@@ -2670,7 +2672,7 @@ export default function Home() {
             />
           </div>
 
-          <div className="col-span-12 md:col-span-6 flex flex-col"><AiToolsCard tools={dashboardData?.aiTools} /></div>
+          <div className="col-span-12 md:col-span-6 flex flex-col"><AiToolsCard tools={dashboardData?.aiTools} businessSlug={businessSlug ?? undefined} zipCode={(locatedBusiness as any)?.zipCode} vertical={(locatedBusiness as any)?.businessType} /></div>
 
           <div className={`col-span-12 ${profileIncomplete ? 'md:col-span-4' : 'md:col-span-4'}`}><WeekCalendarCard events={dashboardData?.events} /></div>
           <div className="col-span-12 md:col-span-8">

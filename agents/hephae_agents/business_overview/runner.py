@@ -134,8 +134,14 @@ async def _load_tech_intelligence(business_type: str) -> dict[str, Any] | None:
             return {
                 "highlight": highlight.get("title", "") + " — " + highlight.get("detail", "") if highlight else None,
                 "aiTools": [
-                    f"{o.get('tool', '')}: {o.get('capability', '')}"
-                    for o in (ai_opps or [])[:3]
+                    {
+                        "tool": o.get("tool", ""),
+                        "capability": o.get("capability", ""),
+                        "url": o.get("url") or None,
+                        "actionForOwner": o.get("actionForOwner", ""),
+                    }
+                    for o in (ai_opps or [])[:5]
+                    if o.get("tool")
                 ],
                 "platforms": {k: v for k, v in (platforms or {}).items() if v},
             }

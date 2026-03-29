@@ -1,5 +1,5 @@
 # BigQuery Schema
-> Auto-generated from codebase on 2026-03-22. Do not edit manually.
+> Auto-generated from codebase on 2026-03-28. Do not edit manually.
 
 **Dataset:** `{GCP_PROJECT_ID}.hephae`
 **Project ID:** Set via `BIGQUERY_PROJECT_ID` or `GCP_PROJECT_ID` or `GOOGLE_CLOUD_PROJECT` env var
@@ -8,7 +8,84 @@
 
 ---
 
+## Table Naming Convention
+
+| Prefix | Domain | Examples |
+|--------|--------|---------|
+| *(none)* | Core operational events | `discoveries`, `analyses`, `interactions`, `agent_feedback` |
+| `ai_tool_` | AI tool discovery | `ai_tools`, `ai_tool_runs` |
+| `pulse_` | Weekly pulse pipeline | *(future: `pulse_signals`, `pulse_insights`)* |
+| `research_` | Research & references | *(future: `research_references`)* |
+
+New tables always use a domain prefix. Existing un-prefixed tables keep their names (renaming is a breaking change).
+
+---
+
 ## Tables
+
+### `hephae.ai_tools`
+
+Denormalized AI tool records — one row per tool × vertical × assessed week. No Firestore mirror.
+
+Popularity = `COUNT(DISTINCT assessed_week)` per `tool_id + vertical` (derived, not stored).
+First seen = `MIN(assessed_week)` per `tool_id + vertical` (derived, not stored).
+
+| Column | Type | Notes |
+|---|---|---|
+| `tool_id` | `STRING` | Stable 12-char ID: SHA-1 of `tool_name\|vendor` (lowercased) |
+| `tool_name` | `STRING` | Exact product name |
+| `vendor` | `STRING` | Company/provider name |
+| `technology_category` | `STRING` | `Gemini AI Studio`, `GPT Store`, `Standalone SaaS`, `POS Integration`, `Booking Platform` |
+| `url` | `STRING` | Product URL |
+| `description` | `STRING` | What it does |
+| `pricing` | `STRING` | Pricing description |
+| `is_free` | `BOOL` | True if meaningful free tier exists |
+| `free_alternative_to` | `STRING` | Paid tool this replaces (nullable) |
+| `ai_capability` | `STRING` | Core AI feature |
+| `reputation_tier` | `STRING` | `ESTABLISHED`, `GROWING`, `NEW` |
+| `source_url` | `STRING` | Where the scout found it |
+| `vertical` | `STRING` | Industry vertical (e.g., `restaurant`, `bakery`) |
+| `relevance_score` | `STRING` | `HIGH`, `MEDIUM`, `LOW` |
+| `category` | `STRING` | AI tool category within this vertical |
+| `action_for_owner` | `STRING` | Concrete next action for the business owner |
+| `assessed_week` | `STRING` | ISO week when this row was written (e.g., `2026-W13`) |
+| `assessed_at` | `TIMESTAMP` | Exact write timestamp |
+| `is_test` | `BOOL` | True for manually triggered test runs |
+
+| Property | Value |
+|---|---|
+| **Written by** | `lib/db/hephae_db/bigquery/ai_tools.py` :: `save_ai_tool_run()` |
+| **Write trigger** | AI tool discovery cron (Tue 7AM ET) or admin manual trigger |
+| **Read by** | `lib/db/hephae_db/bigquery/ai_tools.py` :: `get_ai_tool_run()`, `list_ai_tool_runs()` |
+| **Create DDL** | `from hephae_db.bigquery.ai_tools import create_tables_ddl; print(create_tables_ddl())` |
+
+---
+
+### `hephae.ai_tool_runs`
+
+Weekly run metadata — one row per vertical × week. Stores highlight tool and aggregate counts.
+
+| Column | Type | Notes |
+|---|---|---|
+| `run_id` | `STRING` | Format: `{vertical}-{week_of}` (e.g., `restaurant-2026-W13`) |
+| `vertical` | `STRING` | Industry vertical |
+| `week_of` | `STRING` | ISO week (e.g., `2026-W13`) |
+| `total_tools` | `INT64` | Total tools found |
+| `new_tools_count` | `INT64` | Tools appearing for this vertical for the first time |
+| `high_relevance_count` | `INT64` | Tools with `relevance_score = HIGH` |
+| `highlight_tool_name` | `STRING` | Weekly spotlight tool name (nullable) |
+| `highlight_title` | `STRING` | Spotlight headline (nullable) |
+| `highlight_detail` | `STRING` | Spotlight detail text (nullable) |
+| `highlight_action` | `STRING` | Spotlight recommended action (nullable) |
+| `generated_at` | `TIMESTAMP` | When the run completed |
+| `is_test` | `BOOL` | True for manually triggered test runs |
+
+| Property | Value |
+|---|---|
+| **Written by** | `lib/db/hephae_db/bigquery/ai_tools.py` :: `save_ai_tool_run()` |
+| **Write trigger** | Same as `ai_tools` (one run row per discovery run) |
+
+---
 
 ### `hephae.discoveries`
 

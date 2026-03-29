@@ -376,6 +376,9 @@ export default function Home() {
                 communityBuzz: businessOverview.dashboard.communityBuzz,
                 coverage: businessOverview.dashboard.coverage,
                 stats: businessOverview.dashboard.stats,
+                techHighlight: businessOverview.dashboard.techHighlight,
+                aiTools: businessOverview.dashboard.aiTools?.slice(0, 5),
+                techPlatforms: businessOverview.dashboard.techPlatforms,
               } : undefined,
             } : undefined,
             seoReport: seoReport ? { overallScore: seoReport.overallScore, sections: seoReport.sections?.map((s: any) => ({ name: s.name, score: s.score, recommendations: s.recommendations })), summary: seoReport.summary } : undefined,
@@ -669,6 +672,17 @@ export default function Home() {
         if (overview.keyOpportunities?.length) {
           const opps = overview.keyOpportunities.slice(0, 2).map((o: any) => `• **${humanize(o.title)}** — ${o.detail}`).join('\n');
           parts.push(`**Opportunities:**\n${opps}`);
+        }
+
+        // Tech intelligence — AI tools & platform updates
+        if (dash?.aiTools?.length) {
+          const toolLines = dash.aiTools.map((t: any) => {
+            const label = t.url ? `[**${t.tool}**](${t.url})` : `**${t.tool}**`;
+            return `• ${label} — ${t.capability}`;
+          }).join('\n');
+          parts.push(`**Tech tools your competitors are adopting:**\n${toolLines}`);
+        } else if (dash?.techHighlight) {
+          parts.push(`**Tech highlight:** ${dash.techHighlight}`);
         }
 
         // Data sources badge

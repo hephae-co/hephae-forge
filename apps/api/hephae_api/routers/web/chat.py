@@ -116,6 +116,23 @@ def _build_chat_agent(
                 ov_parts.append("Weekly Intelligence:\n" + "\n".join(f"- {i.get('title', '')}: {i.get('recommendation', '')}" for i in dash["topInsights"][:3]))
             if dash.get("communityBuzz"):
                 ov_parts.append(f"Community: {dash['communityBuzz']}")
+            ai_tools = dash.get("aiTools", [])
+            if ai_tools:
+                tool_lines = []
+                for t in ai_tools[:5]:
+                    if isinstance(t, dict):
+                        line = f"- {t.get('tool', '')}: {t.get('capability', '')}"
+                        if t.get("url"):
+                            line += f" ({t['url']})"
+                        if t.get("actionForOwner"):
+                            line += f" — Action: {t['actionForOwner']}"
+                        tool_lines.append(line)
+                    elif isinstance(t, str):
+                        tool_lines.append(f"- {t}")
+                if tool_lines:
+                    ov_parts.append("AI & Tech Tools Available:\n" + "\n".join(tool_lines))
+            if dash.get("techHighlight") and not ai_tools:
+                ov_parts.append(f"Tech Highlight: {dash['techHighlight']}")
             if ov_parts:
                 parts.append("Business Overview:\n" + "\n".join(ov_parts))
 

@@ -1,7 +1,9 @@
 """AI Tool Discovery runner — generates AI tool profiles per vertical.
 
-Runs the AiToolScout ADK pipeline and saves results to Firestore.
+Runs the AiToolScout ADK pipeline and saves results to BigQuery.
 Called by the AI tool discovery cron (Tuesday 7 AM ET) or manually from admin.
+
+Storage: hephae.ai_tools + hephae.ai_tool_runs (BQ only, no Firestore).
 """
 
 from __future__ import annotations
@@ -10,7 +12,7 @@ import json
 import logging
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from google.adk.runners import RunConfig, Runner
@@ -41,7 +43,7 @@ async def generate_ai_tool_discovery(
     Returns dict with tools[], weeklyHighlight, docId, weekOf, stats.
     """
     from hephae_agents.research.ai_tool_scout import create_ai_tool_scout
-    from hephae_db.firestore.ai_tool_discovery import (
+    from hephae_db.bigquery.ai_tools import (
         get_ai_tool_run,
         save_ai_tool_run,
     )
@@ -137,15 +139,12 @@ async def generate_ai_tool_discovery(
     tools: list[dict[str, Any]] = profile.get("tools", [])
     weekly_highlight: dict[str, str] = profile.get("weeklyHighlight", {})
 
-    expire_at = datetime.utcnow() + timedelta(hours=24) if test_mode else None
-
     doc_id = await save_ai_tool_run(
         vertical=vertical,
         week_of=week_of,
         tools=tools,
         weekly_highlight=weekly_highlight,
         test_mode=test_mode,
-        expire_at=expire_at,
     )
 
     new_count = len([t for t in tools if t.get("isNew")])

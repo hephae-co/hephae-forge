@@ -113,6 +113,7 @@ Return a JSON object with EXACTLY these fields:
       "tool": "specific tool name",
       "capability": "what it does specifically",
       "relevance": "HIGH or MEDIUM",
+      "url": "official product URL (e.g. https://pos.toasttab.com/toast-iq) — required, not the source article URL",
       "actionForOwner": "What should the owner DO? Be specific — 'enable X in settings' or 'sign up for free trial at...'"
     }
   ],

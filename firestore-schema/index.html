@@ -1,0 +1,3743 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal documentation for the Hephae Forge pipeline">
+      
+      
+      
+        <link rel="canonical" href="https://hephae-co.github.io/hephae-forge/firestore-schema/">
+      
+      
+        <link rel="prev" href="../architecture/workflow-pipeline/">
+      
+      
+        <link rel="next" href="../bigquery-schema/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Firestore Schema - Hephae Forge Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#firestore-schema" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Hephae Forge Docs" class="md-header__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hephae Forge Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Firestore Schema
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Hephae Forge Docs" class="md-nav__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Hephae Forge Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/workflow-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firestore Schema
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firestore Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Collections
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Collections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#businesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        businesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        workflows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pulse-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pulse Collections
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pulse Collections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#zipcode_weekly_pulse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        zipcode_weekly_pulse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pulse_jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pulse_jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#industry_pulses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        industry_pulses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registered_industries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        registered_industries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registered_zipcodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        registered_zipcodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pulse_batch_work_items" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pulse_batch_work_items
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pulse_signal_archive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pulse_signal_archive
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data_cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        data_cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zipcode_profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        zipcode_profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#research-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Collections
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Research Collections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#zipcode_research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        zipcode_research
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#area_research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        area_research
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sector_research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sector_research
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combined_contexts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        combined_contexts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other Collections
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Other Collections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#users" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        users
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heartbeats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        heartbeats
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test_fixtures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        test_fixtures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#discovery_jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        discovery_jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#content_posts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        content_posts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#food_price_cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        food_price_cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test_runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        test_runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adk_sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        adk_sessions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#database-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bigquery-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BigQuery Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcs-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-admin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Admin Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/agent-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/prompt-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pipeline Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qualification-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qualification Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../unified-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-ground-truth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eval Ground Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="firestore-schema">Firestore Schema<a class="headerlink" href="#firestore-schema" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Auto-generated from codebase on 2026-03-22. Do not edit manually.</p>
+</blockquote>
+<p>All client access is denied (<code>allow read, write: if false</code>). All reads/writes happen server-side via the <code>hephae-db</code> package.</p>
+<hr />
+<h2 id="core-collections">Core Collections<a class="headerlink" href="#core-collections" title="Permanent link">&para;</a></h2>
+<h3 id="businesses"><code>businesses</code><a class="headerlink" href="#businesses" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>URL slug derived from business name (e.g., <code>joes-pizza</code>)</td>
+</tr>
+<tr>
+<td><strong>Source files</strong></td>
+<td><code>lib/db/hephae_db/firestore/businesses.py</code>, <code>lib/db/hephae_db/firestore/discovery.py</code>, <code>lib/db/hephae_db/firestore/agent_results.py</code>, <code>lib/db/hephae_db/firestore/interactions.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Written by</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Business name</td>
+</tr>
+<tr>
+<td><code>address</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Full street address</td>
+</tr>
+<tr>
+<td><code>officialUrl</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Primary website URL</td>
+</tr>
+<tr>
+<td><code>zipCode</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code>, <code>agent_results.write_agent_result</code></td>
+<td><strong>First-class field</strong> -- always top-level, never derived at query time</td>
+</tr>
+<tr>
+<td><code>coordinates</code></td>
+<td><code>map{lat, lng}</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Latitude/longitude</td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td><code>string</code></td>
+<td>queried by <code>businesses._get_businesses_paginated_sync</code></td>
+<td>Business category (e.g., "restaurant")</td>
+</tr>
+<tr>
+<td><code>businessType</code></td>
+<td><code>string</code></td>
+<td><code>fixtures.save_fixture_from_business</code> (read)</td>
+<td>Alias for category in some contexts</td>
+</tr>
+<tr>
+<td><code>discoveryStatus</code></td>
+<td><code>string</code></td>
+<td>queried by <code>stats</code>, <code>businesses</code></td>
+<td>Values: <code>scanned</code>, <code>discovered</code>, <code>analyzed</code></td>
+</tr>
+<tr>
+<td><code>workflowId</code></td>
+<td><code>string</code></td>
+<td>queried by <code>businesses.get_businesses_for_workflow</code></td>
+<td>Links business to its workflow</td>
+</tr>
+<tr>
+<td><code>phone</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Phone number</td>
+</tr>
+<tr>
+<td><code>email</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Contact email</td>
+</tr>
+<tr>
+<td><code>hours</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Operating hours</td>
+</tr>
+<tr>
+<td><code>googleMapsUrl</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Google Maps link</td>
+</tr>
+<tr>
+<td><code>socialLinks</code></td>
+<td><code>map</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td><code>{instagram, facebook, twitter, yelp, tiktok, ...}</code></td>
+</tr>
+<tr>
+<td><code>logoUrl</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Logo image URL</td>
+</tr>
+<tr>
+<td><code>favicon</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Favicon URL</td>
+</tr>
+<tr>
+<td><code>primaryColor</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Brand primary color</td>
+</tr>
+<tr>
+<td><code>secondaryColor</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Brand secondary color</td>
+</tr>
+<tr>
+<td><code>persona</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>AI-generated brand persona</td>
+</tr>
+<tr>
+<td><code>menuUrl</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Menu page URL</td>
+</tr>
+<tr>
+<td><code>menuScreenshotUrl</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>GCS URL for menu screenshot</td>
+</tr>
+<tr>
+<td><code>menuHtmlUrl</code></td>
+<td><code>string</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>GCS URL for menu HTML</td>
+</tr>
+<tr>
+<td><code>competitors</code></td>
+<td><code>array&lt;map&gt;</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td><code>[{name, url, reason}]</code></td>
+</tr>
+<tr>
+<td><code>socialProfileMetrics</code></td>
+<td><code>map</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Per-platform social metrics</td>
+</tr>
+<tr>
+<td><code>news</code></td>
+<td><code>array&lt;map&gt;</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td><code>[{title, url, source, date, snippet}]</code></td>
+</tr>
+<tr>
+<td><code>aiOverview</code></td>
+<td><code>map</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>AI-generated business summary</td>
+</tr>
+<tr>
+<td><code>validationReport</code></td>
+<td><code>map</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>URL validation stats</td>
+</tr>
+<tr>
+<td><code>identity</code></td>
+<td><code>map</code></td>
+<td><code>discovery.write_discovery</code></td>
+<td>Duplicate of enriched fields (kept for backward compat)</td>
+</tr>
+<tr>
+<td><code>latestOutputs</code></td>
+<td><code>map</code></td>
+<td><code>agent_results.write_agent_result</code></td>
+<td>Keyed by agent name (e.g., <code>latestOutputs.seo_auditor</code>)</td>
+</tr>
+<tr>
+<td><code>latestOutputs.{agent}</code></td>
+<td><code>map</code></td>
+<td><code>agent_results.write_agent_result</code></td>
+<td><code>{score, summary, reportUrl, agentVersion, runAt, ...kpis}</code></td>
+</tr>
+<tr>
+<td><code>crm</code></td>
+<td><code>map</code></td>
+<td><code>interactions.write_interaction</code>, <code>interactions.archive_business</code></td>
+<td>CRM state object</td>
+</tr>
+<tr>
+<td><code>crm.outreachCount</code></td>
+<td><code>integer</code></td>
+<td><code>interactions.write_interaction</code></td>
+<td>Number of outreach attempts</td>
+</tr>
+<tr>
+<td><code>crm.status</code></td>
+<td><code>string</code></td>
+<td><code>interactions.write_interaction</code>, <code>interactions.archive_business</code></td>
+<td>Values: <code>outreached</code>, <code>responded</code>, <code>archived</code></td>
+</tr>
+<tr>
+<td><code>crm.lastOutreachAt</code></td>
+<td><code>timestamp</code></td>
+<td><code>interactions.write_interaction</code></td>
+<td>Last outreach timestamp</td>
+</tr>
+<tr>
+<td><code>crm.lastReportShared</code></td>
+<td><code>string</code></td>
+<td><code>interactions.write_interaction</code></td>
+<td>URL of last shared report</td>
+</tr>
+<tr>
+<td><code>crm.respondedAt</code></td>
+<td><code>timestamp</code></td>
+<td><code>interactions.write_interaction</code></td>
+<td>When business responded</td>
+</tr>
+<tr>
+<td><code>crm.archivedAt</code></td>
+<td><code>timestamp</code></td>
+<td><code>interactions.archive_business</code></td>
+<td>When business was archived</td>
+</tr>
+<tr>
+<td><code>crm.archiveReason</code></td>
+<td><code>string</code></td>
+<td><code>interactions.archive_business</code></td>
+<td>Reason for archiving</td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td><code>discovery.write_discovery</code> (SERVER_TIMESTAMP)</td>
+<td>Document creation time</td>
+</tr>
+<tr>
+<td><code>updatedAt</code></td>
+<td><code>timestamp</code></td>
+<td><code>discovery.write_discovery</code>, <code>agent_results.write_agent_result</code>, <code>interactions.write_interaction</code></td>
+<td>Last modification time</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workflows"><code>workflows</code><a class="headerlink" href="#workflows" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>Auto-generated Firestore ID</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/workflows.py</code></td>
+</tr>
+<tr>
+<td><strong>Pydantic model</strong></td>
+<td><code>WorkflowDocument</code> in <code>lib/common/hephae_common/models.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>string</code></td>
+<td>Same as document ID</td>
+</tr>
+<tr>
+<td><code>zipCode</code></td>
+<td><code>string</code></td>
+<td>Primary zip code</td>
+</tr>
+<tr>
+<td><code>businessType</code></td>
+<td><code>string \| null</code></td>
+<td>Target business type</td>
+</tr>
+<tr>
+<td><code>county</code></td>
+<td><code>string \| null</code></td>
+<td>County name (if resolved from county)</td>
+</tr>
+<tr>
+<td><code>zipCodes</code></td>
+<td><code>array&lt;string&gt; \| null</code></td>
+<td>All zip codes in scope</td>
+</tr>
+<tr>
+<td><code>resolvedFrom</code></td>
+<td><code>"single" \| "county"</code></td>
+<td>How zip codes were determined</td>
+</tr>
+<tr>
+<td><code>phase</code></td>
+<td><code>string</code></td>
+<td><code>WorkflowPhase</code> enum: <code>queued</code>, <code>discovery</code>, <code>qualification</code>, <code>analysis</code>, <code>evaluation</code>, <code>approval</code>, <code>outreach</code>, <code>completed</code>, <code>failed</code></td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Workflow creation time</td>
+</tr>
+<tr>
+<td><code>updatedAt</code></td>
+<td><code>timestamp</code></td>
+<td>Last state change</td>
+</tr>
+<tr>
+<td><code>businesses</code></td>
+<td><code>array&lt;map&gt;</code></td>
+<td>Embedded <code>BusinessWorkflowState</code> objects (see below)</td>
+</tr>
+<tr>
+<td><code>progress</code></td>
+<td><code>map</code></td>
+<td><code>WorkflowProgress</code> counters (see below)</td>
+</tr>
+<tr>
+<td><code>lastError</code></td>
+<td><code>string \| null</code></td>
+<td>Last error message</td>
+</tr>
+<tr>
+<td><code>retryCount</code></td>
+<td><code>integer</code></td>
+<td>Number of retries</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>businesses[]</code> (BusinessWorkflowState):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slug</code></td>
+<td><code>string</code></td>
+<td>Business document ID</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td><code>string</code></td>
+<td>Business name</td>
+</tr>
+<tr>
+<td><code>address</code></td>
+<td><code>string</code></td>
+<td>Address</td>
+</tr>
+<tr>
+<td><code>officialUrl</code></td>
+<td><code>string</code></td>
+<td>Website URL</td>
+</tr>
+<tr>
+<td><code>sourceZipCode</code></td>
+<td><code>string</code></td>
+<td>Originating zip code</td>
+</tr>
+<tr>
+<td><code>businessType</code></td>
+<td><code>string</code></td>
+<td>Category</td>
+</tr>
+<tr>
+<td><code>phase</code></td>
+<td><code>string</code></td>
+<td><code>BusinessPhase</code> enum: <code>pending</code>, <code>enriching</code>, <code>analyzing</code>, <code>analysis_done</code>, <code>evaluating</code>, <code>evaluation_done</code>, <code>approved</code>, <code>rejected</code>, <code>outreaching</code>, <code>outreach_done</code>, <code>outreach_failed</code></td>
+</tr>
+<tr>
+<td><code>capabilitiesCompleted</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>List of completed capability keys</td>
+</tr>
+<tr>
+<td><code>capabilitiesFailed</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>List of failed capability keys</td>
+</tr>
+<tr>
+<td><code>evaluations</code></td>
+<td><code>map&lt;string, EvaluationResult&gt;</code></td>
+<td><code>{score, isHallucinated, issues[]}</code> per capability</td>
+</tr>
+<tr>
+<td><code>qualityPassed</code></td>
+<td><code>boolean</code></td>
+<td>Whether evaluation passed threshold</td>
+</tr>
+<tr>
+<td><code>enrichedProfile</code></td>
+<td><code>map \| null</code></td>
+<td>Cached enriched profile data</td>
+</tr>
+<tr>
+<td><code>insights</code></td>
+<td><code>map \| null</code></td>
+<td><code>{summary, keyFindings[], recommendations[], generatedAt}</code></td>
+</tr>
+<tr>
+<td><code>outreachError</code></td>
+<td><code>string \| null</code></td>
+<td>Outreach failure message</td>
+</tr>
+<tr>
+<td><code>lastError</code></td>
+<td><code>string \| null</code></td>
+<td>Last error for this business</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>progress</code> (WorkflowProgress):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>totalBusinesses</code></td>
+<td><code>integer</code></td>
+<td>Total businesses in workflow</td>
+</tr>
+<tr>
+<td><code>qualificationQualified</code></td>
+<td><code>integer \| null</code></td>
+<td>Businesses that passed qualification</td>
+</tr>
+<tr>
+<td><code>qualificationParked</code></td>
+<td><code>integer \| null</code></td>
+<td>Businesses parked during qualification</td>
+</tr>
+<tr>
+<td><code>qualificationDisqualified</code></td>
+<td><code>integer \| null</code></td>
+<td>Businesses disqualified</td>
+</tr>
+<tr>
+<td><code>analysisComplete</code></td>
+<td><code>integer</code></td>
+<td>Businesses with analysis done</td>
+</tr>
+<tr>
+<td><code>evaluationComplete</code></td>
+<td><code>integer</code></td>
+<td>Businesses with evaluation done</td>
+</tr>
+<tr>
+<td><code>qualityPassed</code></td>
+<td><code>integer</code></td>
+<td>Businesses passing quality threshold</td>
+</tr>
+<tr>
+<td><code>qualityFailed</code></td>
+<td><code>integer</code></td>
+<td>Businesses failing quality threshold</td>
+</tr>
+<tr>
+<td><code>approved</code></td>
+<td><code>integer</code></td>
+<td>Businesses approved for outreach</td>
+</tr>
+<tr>
+<td><code>outreachComplete</code></td>
+<td><code>integer</code></td>
+<td>Businesses with outreach sent</td>
+</tr>
+<tr>
+<td><code>insightsComplete</code></td>
+<td><code>integer \| null</code></td>
+<td>Businesses with insights generated</td>
+</tr>
+<tr>
+<td><code>zipCodesScanned</code></td>
+<td><code>integer \| null</code></td>
+<td>Zip codes scanned so far</td>
+</tr>
+<tr>
+<td><code>zipCodesTotal</code></td>
+<td><code>integer \| null</code></td>
+<td>Total zip codes to scan</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tasks"><code>tasks</code><a class="headerlink" href="#tasks" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>Auto-generated Firestore ID</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/tasks.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>businessId</code></td>
+<td><code>string</code></td>
+<td>Business slug this task targets</td>
+</tr>
+<tr>
+<td><code>actionType</code></td>
+<td><code>string</code></td>
+<td>Action type (e.g., <code>enrich</code>, <code>analyze</code>, <code>outreach</code>)</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>string</code></td>
+<td><code>queued</code>, <code>running</code>, <code>completed</code>, <code>failed</code>, <code>retry_queued</code></td>
+</tr>
+<tr>
+<td><code>progress</code></td>
+<td><code>integer</code></td>
+<td>Progress percentage (0-100)</td>
+</tr>
+<tr>
+<td><code>triggeredBy</code></td>
+<td><code>string</code></td>
+<td>Who triggered the task (default: <code>admin</code>)</td>
+</tr>
+<tr>
+<td><code>priority</code></td>
+<td><code>integer</code></td>
+<td>Task priority (default: 5)</td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Task creation time</td>
+</tr>
+<tr>
+<td><code>startedAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>When task began executing</td>
+</tr>
+<tr>
+<td><code>completedAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>When task finished</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td><code>map</code></td>
+<td>Arbitrary task metadata</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>string \| null</code></td>
+<td>Error message on failure</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="pulse-collections">Pulse Collections<a class="headerlink" href="#pulse-collections" title="Permanent link">&para;</a></h2>
+<h3 id="zipcode_weekly_pulse"><code>zipcode_weekly_pulse</code><a class="headerlink" href="#zipcode_weekly_pulse" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td><code>{zipCode}-{businessTypeSlug}-{YYYYMMDD}-{HHmmss}</code></td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/weekly_pulse.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>zipCode</code></td>
+<td><code>string</code></td>
+<td>5-digit zip code</td>
+</tr>
+<tr>
+<td><code>businessType</code></td>
+<td><code>string</code></td>
+<td>Business type (e.g., "Restaurants")</td>
+</tr>
+<tr>
+<td><code>weekOf</code></td>
+<td><code>string</code></td>
+<td>ISO date string for the week</td>
+</tr>
+<tr>
+<td><code>pulse</code></td>
+<td><code>map</code></td>
+<td>Full pulse briefing object (<code>{headline, insights[], ...}</code>)</td>
+</tr>
+<tr>
+<td><code>signalsUsed</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>List of signal source names used</td>
+</tr>
+<tr>
+<td><code>diagnostics</code></td>
+<td><code>map</code></td>
+<td>Pipeline diagnostics and timing data</td>
+</tr>
+<tr>
+<td><code>pipelineDetails</code></td>
+<td><code>map \| null</code></td>
+<td>Detailed pipeline execution info</td>
+</tr>
+<tr>
+<td><code>testMode</code></td>
+<td><code>boolean \| null</code></td>
+<td>If <code>true</code>, document is test data</td>
+</tr>
+<tr>
+<td><code>expireAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>Firestore TTL -- auto-deletes test docs after 24h</td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Creation time</td>
+</tr>
+<tr>
+<td><code>updatedAt</code></td>
+<td><code>timestamp</code></td>
+<td>Last update time</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pulse_jobs"><code>pulse_jobs</code><a class="headerlink" href="#pulse_jobs" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>Auto-generated Firestore ID</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/pulse_jobs.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>zipCode</code></td>
+<td><code>string</code></td>
+<td>Target zip code</td>
+</tr>
+<tr>
+<td><code>businessType</code></td>
+<td><code>string</code></td>
+<td>Target business type</td>
+</tr>
+<tr>
+<td><code>weekOf</code></td>
+<td><code>string</code></td>
+<td>ISO date for the week</td>
+</tr>
+<tr>
+<td><code>force</code></td>
+<td><code>boolean</code></td>
+<td>Whether to force regeneration</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>string</code></td>
+<td><code>QUEUED</code>, <code>RUNNING</code>, <code>COMPLETED</code>, <code>FAILED</code></td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Job creation time</td>
+</tr>
+<tr>
+<td><code>startedAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>When job began executing</td>
+</tr>
+<tr>
+<td><code>completedAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>When job finished</td>
+</tr>
+<tr>
+<td><code>timeoutAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>Auto-fail deadline (15 min); checked on read</td>
+</tr>
+<tr>
+<td><code>result</code></td>
+<td><code>map \| null</code></td>
+<td>Result data on completion</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>string \| null</code></td>
+<td>Error message on failure</td>
+</tr>
+<tr>
+<td><code>testMode</code></td>
+<td><code>boolean \| null</code></td>
+<td>If <code>true</code>, test mode (24h TTL via <code>expireAt</code>)</td>
+</tr>
+<tr>
+<td><code>expireAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>Firestore TTL for test jobs</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Auto-timeout:</strong> <code>get_pulse_job()</code> checks <code>timeoutAt</code> on RUNNING jobs and marks them FAILED if exceeded.</p>
+<h3 id="industry_pulses"><code>industry_pulses</code><a class="headerlink" href="#industry_pulses" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td><code>{industryKey}-{weekOf}</code> (e.g., <code>bakeries-2026-03-17</code>)</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/industry_pulse.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>industryKey</code></td>
+<td><code>string</code></td>
+<td>Normalized industry identifier (e.g., <code>bakeries</code>)</td>
+</tr>
+<tr>
+<td><code>weekOf</code></td>
+<td><code>string</code></td>
+<td>ISO date for the week</td>
+</tr>
+<tr>
+<td><code>nationalSignals</code></td>
+<td><code>map</code></td>
+<td>National-level signal data</td>
+</tr>
+<tr>
+<td><code>nationalImpact</code></td>
+<td><code>map</code></td>
+<td>Impact assessment at national level</td>
+</tr>
+<tr>
+<td><code>nationalPlaybooks</code></td>
+<td><code>array&lt;map&gt;</code></td>
+<td>Recommended action playbooks</td>
+</tr>
+<tr>
+<td><code>trendSummary</code></td>
+<td><code>string</code></td>
+<td>AI-generated trend narrative</td>
+</tr>
+<tr>
+<td><code>signalsUsed</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>List of signal source names used</td>
+</tr>
+<tr>
+<td><code>diagnostics</code></td>
+<td><code>map</code></td>
+<td>Pipeline diagnostics</td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Creation time</td>
+</tr>
+<tr>
+<td><code>updatedAt</code></td>
+<td><code>timestamp</code></td>
+<td>Last update time</td>
+</tr>
+</tbody>
+</table>
+<h3 id="registered_industries"><code>registered_industries</code><a class="headerlink" href="#registered_industries" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td><code>{industryKey}</code> (e.g., <code>bakeries</code>)</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/registered_industries.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>industryKey</code></td>
+<td><code>string</code></td>
+<td>Normalized industry identifier</td>
+</tr>
+<tr>
+<td><code>displayName</code></td>
+<td><code>string</code></td>
+<td>Human-readable name (e.g., "Bakeries")</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>string</code></td>
+<td><code>active</code> or <code>paused</code></td>
+</tr>
+<tr>
+<td><code>registeredAt</code></td>
+<td><code>timestamp</code></td>
+<td>When the industry was registered</td>
+</tr>
+<tr>
+<td><code>lastPulseAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>Timestamp of last successful pulse</td>
+</tr>
+<tr>
+<td><code>lastPulseId</code></td>
+<td><code>string \| null</code></td>
+<td>Doc ID of last industry pulse</td>
+</tr>
+<tr>
+<td><code>pulseCount</code></td>
+<td><code>integer</code></td>
+<td>Total pulses generated (uses <code>Increment</code>)</td>
+</tr>
+<tr>
+<td><code>createdBy</code></td>
+<td><code>string</code></td>
+<td>Creator (default: <code>admin</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="registered_zipcodes"><code>registered_zipcodes</code><a class="headerlink" href="#registered_zipcodes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td><code>{zipCode}</code> (e.g., <code>07110</code>)</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/registered_zipcodes.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>zipCode</code></td>
+<td><code>string</code></td>
+<td>5-digit zip code</td>
+</tr>
+<tr>
+<td><code>businessTypes</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>Business types to generate pulses for (default: <code>["Restaurants"]</code>). Uses <code>ArrayUnion</code>/<code>ArrayRemove</code>.</td>
+</tr>
+<tr>
+<td><code>city</code></td>
+<td><code>string</code></td>
+<td>City name</td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td><code>string</code></td>
+<td>State code</td>
+</tr>
+<tr>
+<td><code>county</code></td>
+<td><code>string</code></td>
+<td>County name</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>string</code></td>
+<td><code>active</code> or <code>paused</code></td>
+</tr>
+<tr>
+<td><code>onboardingStatus</code></td>
+<td><code>string</code></td>
+<td><code>onboarding</code> or <code>onboarded</code></td>
+</tr>
+<tr>
+<td><code>onboardedAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>When onboarding completed</td>
+</tr>
+<tr>
+<td><code>registeredAt</code></td>
+<td><code>timestamp</code></td>
+<td>Registration time</td>
+</tr>
+<tr>
+<td><code>lastPulseAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>Timestamp of last successful pulse</td>
+</tr>
+<tr>
+<td><code>lastPulseId</code></td>
+<td><code>string \| null</code></td>
+<td>Doc ID of last pulse</td>
+</tr>
+<tr>
+<td><code>lastPulseHeadline</code></td>
+<td><code>string</code></td>
+<td>Headline from last pulse</td>
+</tr>
+<tr>
+<td><code>lastPulseInsightCount</code></td>
+<td><code>integer</code></td>
+<td>Number of insights in last pulse</td>
+</tr>
+<tr>
+<td><code>pulseCount</code></td>
+<td><code>integer</code></td>
+<td>Total pulses generated (uses <code>Increment</code>)</td>
+</tr>
+<tr>
+<td><code>nextScheduledAt</code></td>
+<td><code>timestamp</code></td>
+<td>Next Monday 06:00 ET (11:00 UTC)</td>
+</tr>
+<tr>
+<td><code>createdBy</code></td>
+<td><code>string</code></td>
+<td>Creator (default: <code>admin</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pulse_batch_work_items"><code>pulse_batch_work_items</code><a class="headerlink" href="#pulse_batch_work_items" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td><code>{batchId}:{zipCode}</code> (e.g., <code>pulse-essex-2026-W12:07110</code>)</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/pulse_batch.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>batchId</code></td>
+<td><code>string</code></td>
+<td>Parent batch identifier</td>
+</tr>
+<tr>
+<td><code>zipCode</code></td>
+<td><code>string</code></td>
+<td>Target zip code</td>
+</tr>
+<tr>
+<td><code>businessType</code></td>
+<td><code>string</code></td>
+<td>Target business type</td>
+</tr>
+<tr>
+<td><code>weekOf</code></td>
+<td><code>string</code></td>
+<td>ISO week string</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>string</code></td>
+<td><code>QUEUED</code>, <code>FETCHING</code>, <code>RESEARCH</code>, <code>PRE_SYNTHESIS</code>, <code>SYNTHESIS</code>, <code>CRITIQUE</code>, <code>COMPLETED</code>, <code>FAILED</code></td>
+</tr>
+<tr>
+<td><code>retryCount</code></td>
+<td><code>integer</code></td>
+<td>Number of retries</td>
+</tr>
+<tr>
+<td><code>lastError</code></td>
+<td><code>string \| null</code></td>
+<td>Last error message</td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Creation time</td>
+</tr>
+<tr>
+<td><code>updatedAt</code></td>
+<td><code>timestamp</code></td>
+<td>Last update time</td>
+</tr>
+<tr>
+<td><code>expireAt</code></td>
+<td><code>timestamp</code></td>
+<td>Firestore TTL -- auto-deletes after 14 days</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pulse_signal_archive"><code>pulse_signal_archive</code><a class="headerlink" href="#pulse_signal_archive" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td><code>{zipCode}-{weekOf}</code> (e.g., <code>07110-2026-W12</code>)</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/signal_archive.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>zipCode</code></td>
+<td><code>string</code></td>
+<td>5-digit zip code</td>
+</tr>
+<tr>
+<td><code>weekOf</code></td>
+<td><code>string</code></td>
+<td>ISO week string</td>
+</tr>
+<tr>
+<td><code>collectedAt</code></td>
+<td><code>timestamp</code></td>
+<td>When signals were collected</td>
+</tr>
+<tr>
+<td><code>sources</code></td>
+<td><code>map</code></td>
+<td>Dict of <code>source_name</code> to <code>{raw, fetchedAt, version}</code></td>
+</tr>
+<tr>
+<td><code>preComputedImpact</code></td>
+<td><code>map \| null</code></td>
+<td>Pre-computed impact multipliers</td>
+</tr>
+</tbody>
+</table>
+<h3 id="data_cache"><code>data_cache</code><a class="headerlink" href="#data_cache" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td><code>{source}:{scopeKey}</code> (e.g., <code>census:07110</code>, <code>fda:NJ</code>, <code>qcew:34031-2024-Q1</code>)</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/data_cache.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>source</code></td>
+<td><code>string</code></td>
+<td>Data source name (e.g., <code>census</code>, <code>fda</code>, <code>qcew</code>)</td>
+</tr>
+<tr>
+<td><code>scopeKey</code></td>
+<td><code>string</code></td>
+<td>Scope identifier (zip code, state code, county FIPS)</td>
+</tr>
+<tr>
+<td><code>data</code></td>
+<td><code>map</code></td>
+<td>Cached API response data</td>
+</tr>
+<tr>
+<td><code>fetchedAt</code></td>
+<td><code>timestamp</code></td>
+<td>Cache write time</td>
+</tr>
+<tr>
+<td><code>ttlDays</code></td>
+<td><code>integer</code></td>
+<td>Configured TTL in days</td>
+</tr>
+<tr>
+<td><code>expiresAt</code></td>
+<td><code>timestamp</code></td>
+<td>Computed expiry time (checked on read)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>TTL tiers:</strong> <code>TTL_STATIC</code> = 90d (Census, FHFA, IRS, CDC, OSM), <code>TTL_SHARED</code> = 30d (QCEW, FBI, FDA, EIA, USDA), <code>TTL_WEEKLY</code> = 7d (NWS, news, trends, CPI, SBA), <code>TTL_DAILY</code> = 1d (reserved).</p>
+<h3 id="zipcode_profiles"><code>zipcode_profiles</code><a class="headerlink" href="#zipcode_profiles" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td><code>{zipCode}</code> (e.g., <code>07110</code>)</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/zipcode_profiles.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>zipCode</code></td>
+<td><code>string</code></td>
+<td>5-digit zip code</td>
+</tr>
+<tr>
+<td><code>discoveredAt</code></td>
+<td><code>timestamp</code></td>
+<td>When the profile was discovered</td>
+</tr>
+<tr>
+<td><code>refreshAfter</code></td>
+<td><code>timestamp</code></td>
+<td>When the profile should be re-discovered</td>
+</tr>
+<tr>
+<td><code>...</code></td>
+<td><code>any</code></td>
+<td>Additional fields from the capability registry manifest (sources, capabilities, etc.)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="research-collections">Research Collections<a class="headerlink" href="#research-collections" title="Permanent link">&para;</a></h2>
+<h3 id="zipcode_research"><code>zipcode_research</code><a class="headerlink" href="#zipcode_research" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td><code>{zipCode}-{YYYYMMDDHHmmss}</code> or legacy <code>{zipCode}</code></td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/research.py</code></td>
+</tr>
+<tr>
+<td><strong>Pydantic model</strong></td>
+<td><code>ZipCodeResearchDocument</code> in <code>lib/common/hephae_common/models.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>zipCode</code></td>
+<td><code>string</code></td>
+<td>The researched zip code</td>
+</tr>
+<tr>
+<td><code>report</code></td>
+<td><code>map</code></td>
+<td><code>ZipCodeReport</code> object with <code>summary</code>, <code>sections</code>, <code>sources</code>, etc.</td>
+</tr>
+<tr>
+<td><code>report.summary</code></td>
+<td><code>string</code></td>
+<td>Executive summary</td>
+</tr>
+<tr>
+<td><code>report.sections</code></td>
+<td><code>map</code></td>
+<td><code>{geography, demographics, census_housing, business_landscape, economic_indicators, consumer_market, infrastructure, trending, events, seasonal_weather}</code></td>
+</tr>
+<tr>
+<td><code>report.sources</code></td>
+<td><code>array&lt;map&gt;</code></td>
+<td><code>[{short_id, title, url, domain}]</code></td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Research run time</td>
+</tr>
+<tr>
+<td><code>updatedAt</code></td>
+<td><code>timestamp</code></td>
+<td>Last update time</td>
+</tr>
+</tbody>
+</table>
+<h3 id="area_research"><code>area_research</code><a class="headerlink" href="#area_research" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>Auto-generated Firestore ID</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/research.py</code></td>
+</tr>
+<tr>
+<td><strong>Pydantic model</strong></td>
+<td><code>AreaResearchDocument</code> in <code>lib/common/hephae_common/models.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>string</code></td>
+<td>Same as document ID</td>
+</tr>
+<tr>
+<td><code>area</code></td>
+<td><code>string</code></td>
+<td>Area name (e.g., county name)</td>
+</tr>
+<tr>
+<td><code>businessType</code></td>
+<td><code>string</code></td>
+<td>Target business type</td>
+</tr>
+<tr>
+<td><code>areaKey</code></td>
+<td><code>string</code></td>
+<td>Normalized <code>{area}-{businessType}</code> slug</td>
+</tr>
+<tr>
+<td><code>resolvedCountyName</code></td>
+<td><code>string \| null</code></td>
+<td>Resolved county name</td>
+</tr>
+<tr>
+<td><code>resolvedState</code></td>
+<td><code>string \| null</code></td>
+<td>Resolved state</td>
+</tr>
+<tr>
+<td><code>zipCodes</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>All zip codes in area</td>
+</tr>
+<tr>
+<td><code>completedZipCodes</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>Successfully researched zip codes</td>
+</tr>
+<tr>
+<td><code>failedZipCodes</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>Failed zip codes</td>
+</tr>
+<tr>
+<td><code>phase</code></td>
+<td><code>string</code></td>
+<td><code>AreaResearchPhase</code>: <code>resolving</code>, <code>researching</code>, <code>industry_intel</code>, <code>local_sector_analysis</code>, <code>synthesizing</code>, <code>completed</code>, <code>failed</code></td>
+</tr>
+<tr>
+<td><code>summary</code></td>
+<td><code>map \| null</code></td>
+<td><code>AreaResearchSummary</code> with marketOpportunity, demographicFit, competitiveLandscape, etc.</td>
+</tr>
+<tr>
+<td><code>industryIntel</code></td>
+<td><code>map \| null</code></td>
+<td><code>IndustryIntelligence</code> data</td>
+</tr>
+<tr>
+<td><code>localSectorInsights</code></td>
+<td><code>map \| null</code></td>
+<td>Local sector trend data</td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Creation time</td>
+</tr>
+<tr>
+<td><code>updatedAt</code></td>
+<td><code>timestamp</code></td>
+<td>Last update time</td>
+</tr>
+<tr>
+<td><code>lastError</code></td>
+<td><code>string \| null</code></td>
+<td>Last error message</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sector_research"><code>sector_research</code><a class="headerlink" href="#sector_research" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>Normalized <code>{sector}-{areaName}</code> slug (e.g., <code>restaurants-cook-county</code>)</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/research.py</code></td>
+</tr>
+<tr>
+<td><strong>Pydantic model</strong></td>
+<td><code>SectorResearchDocument</code> in <code>lib/common/hephae_common/models.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>string</code></td>
+<td>Same as document ID</td>
+</tr>
+<tr>
+<td><code>sector</code></td>
+<td><code>string</code></td>
+<td>Industry sector name</td>
+</tr>
+<tr>
+<td><code>zipCodes</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>Zip codes analyzed</td>
+</tr>
+<tr>
+<td><code>areaName</code></td>
+<td><code>string \| null</code></td>
+<td>Geographic area name</td>
+</tr>
+<tr>
+<td><code>phase</code></td>
+<td><code>string</code></td>
+<td><code>SectorResearchPhase</code>: <code>analyzing</code>, <code>local_trends</code>, <code>synthesizing</code>, <code>completed</code>, <code>failed</code></td>
+</tr>
+<tr>
+<td><code>summary</code></td>
+<td><code>map \| null</code></td>
+<td><code>SectorResearchSummary</code> with industryAnalysis, localTrends, synthesis</td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Creation time</td>
+</tr>
+<tr>
+<td><code>updatedAt</code></td>
+<td><code>timestamp</code></td>
+<td>Last update time</td>
+</tr>
+<tr>
+<td><code>lastError</code></td>
+<td><code>string \| null</code></td>
+<td>Last error message</td>
+</tr>
+</tbody>
+</table>
+<h3 id="combined_contexts"><code>combined_contexts</code><a class="headerlink" href="#combined_contexts" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>Auto-generated Firestore ID</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/combined_context.py</code></td>
+</tr>
+<tr>
+<td><strong>Pydantic model</strong></td>
+<td><code>CombinedContext</code> in <code>lib/common/hephae_common/models.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sourceRunIds</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>IDs of zipcode_research runs that were combined</td>
+</tr>
+<tr>
+<td><code>sourceZipCodes</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>Zip codes included</td>
+</tr>
+<tr>
+<td><code>context</code></td>
+<td><code>map</code></td>
+<td><code>CombinedContextData</code>: <code>{summary, keySignals[], demographicHighlights[], marketGaps[], trendingTerms[]}</code></td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Creation time</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="other-collections">Other Collections<a class="headerlink" href="#other-collections" title="Permanent link">&para;</a></h2>
+<h3 id="users"><code>users</code><a class="headerlink" href="#users" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>Firebase Auth UID</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/users.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>email</code></td>
+<td><code>string \| null</code></td>
+<td>User email</td>
+</tr>
+<tr>
+<td><code>displayName</code></td>
+<td><code>string \| null</code></td>
+<td>User display name</td>
+</tr>
+<tr>
+<td><code>photoURL</code></td>
+<td><code>string \| null</code></td>
+<td>Profile photo URL</td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>First login time</td>
+</tr>
+<tr>
+<td><code>lastLoginAt</code></td>
+<td><code>timestamp</code></td>
+<td>Updated on every login</td>
+</tr>
+<tr>
+<td><code>businesses</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>List of business slugs owned by this user (uses <code>ArrayUnion</code> for adds)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="heartbeats"><code>heartbeats</code><a class="headerlink" href="#heartbeats" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>Auto-generated Firestore ID</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/heartbeats.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uid</code></td>
+<td><code>string</code></td>
+<td>Owner user ID</td>
+</tr>
+<tr>
+<td><code>businessSlug</code></td>
+<td><code>string</code></td>
+<td>Watched business slug</td>
+</tr>
+<tr>
+<td><code>businessName</code></td>
+<td><code>string</code></td>
+<td>Business display name</td>
+</tr>
+<tr>
+<td><code>capabilities</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>Capability keys to run (e.g., <code>["seo_auditor", "traffic_forecaster"]</code>)</td>
+</tr>
+<tr>
+<td><code>frequency</code></td>
+<td><code>string</code></td>
+<td>Always <code>"weekly"</code></td>
+</tr>
+<tr>
+<td><code>dayOfWeek</code></td>
+<td><code>integer</code></td>
+<td>0=Mon through 6=Sun</td>
+</tr>
+<tr>
+<td><code>active</code></td>
+<td><code>boolean</code></td>
+<td>Whether heartbeat is enabled</td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Creation time</td>
+</tr>
+<tr>
+<td><code>lastRunAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>Last execution time</td>
+</tr>
+<tr>
+<td><code>nextRunAfter</code></td>
+<td><code>timestamp</code></td>
+<td>When scheduler should next fire</td>
+</tr>
+<tr>
+<td><code>lastSnapshot</code></td>
+<td><code>map</code></td>
+<td>Results from last run (may contain <code>deltas</code> key)</td>
+</tr>
+<tr>
+<td><code>totalRuns</code></td>
+<td><code>integer</code></td>
+<td>Counter (uses <code>Increment</code>)</td>
+</tr>
+<tr>
+<td><code>consecutiveOks</code></td>
+<td><code>integer</code></td>
+<td>Consecutive runs with no deltas (uses <code>Increment</code>, resets to 0 on delta)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Unique constraint:</strong> One heartbeat per <code>uid</code> + <code>businessSlug</code> (enforced in application code).</p>
+<h3 id="test_fixtures"><code>test_fixtures</code><a class="headerlink" href="#test_fixtures" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>Auto-generated Firestore ID</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/fixtures.py</code></td>
+</tr>
+<tr>
+<td><strong>Pydantic model</strong></td>
+<td><code>TestFixture</code> in <code>lib/common/hephae_common/models.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fixtureType</code></td>
+<td><code>string</code></td>
+<td><code>grounding</code> or <code>failure_case</code></td>
+</tr>
+<tr>
+<td><code>isGoldStandard</code></td>
+<td><code>boolean</code></td>
+<td>If true, syncs to Vertex AI Example Store</td>
+</tr>
+<tr>
+<td><code>sourceWorkflowId</code></td>
+<td><code>string</code></td>
+<td>Originating workflow ID</td>
+</tr>
+<tr>
+<td><code>sourceZipCode</code></td>
+<td><code>string \| null</code></td>
+<td>Source zip code</td>
+</tr>
+<tr>
+<td><code>businessType</code></td>
+<td><code>string \| null</code></td>
+<td>Business type</td>
+</tr>
+<tr>
+<td><code>savedAt</code></td>
+<td><code>timestamp</code></td>
+<td>When fixture was saved</td>
+</tr>
+<tr>
+<td><code>notes</code></td>
+<td><code>string \| null</code></td>
+<td>Human notes</td>
+</tr>
+<tr>
+<td><code>businessState</code></td>
+<td><code>map</code></td>
+<td>Snapshot of <code>BusinessWorkflowState</code></td>
+</tr>
+<tr>
+<td><code>identity</code></td>
+<td><code>map</code></td>
+<td><code>{name, address, email, officialUrl, category, socialLinks, competitors, menuData, coordinates, docId}</code></td>
+</tr>
+<tr>
+<td><code>latestOutputs</code></td>
+<td><code>map</code></td>
+<td>Snapshot of all agent outputs</td>
+</tr>
+<tr>
+<td><code>agentKey</code></td>
+<td><code>string \| null</code></td>
+<td>Specific agent this fixture targets</td>
+</tr>
+<tr>
+<td><code>agentOutput</code></td>
+<td><code>map \| null</code></td>
+<td>Output for <code>agentKey</code> if specified</td>
+</tr>
+</tbody>
+</table>
+<h3 id="discovery_jobs"><code>discovery_jobs</code><a class="headerlink" href="#discovery_jobs" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>Auto-generated Firestore ID</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/discovery_jobs.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td><code>string</code></td>
+<td>Human-readable job name</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>string</code></td>
+<td><code>pending</code>, <code>running</code>, <code>review_required</code>, <code>outreach_pending</code>, <code>completed</code>, <code>failed</code>, <code>cancelled</code></td>
+</tr>
+<tr>
+<td><code>targets</code></td>
+<td><code>array&lt;map&gt;</code></td>
+<td>List of target descriptors (zip codes, categories, etc.)</td>
+</tr>
+<tr>
+<td><code>progress</code></td>
+<td><code>map</code></td>
+<td><code>{totalZips, completedZips, totalBusinesses, qualified, skipped, failed}</code></td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Job creation time</td>
+</tr>
+<tr>
+<td><code>startedAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>When job began executing</td>
+</tr>
+<tr>
+<td><code>completedAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>When job finished</td>
+</tr>
+<tr>
+<td><code>createdBy</code></td>
+<td><code>string</code></td>
+<td>Creator (default: <code>admin</code>)</td>
+</tr>
+<tr>
+<td><code>notifyEmail</code></td>
+<td><code>string</code></td>
+<td>Email for completion notification</td>
+</tr>
+<tr>
+<td><code>settings</code></td>
+<td><code>map</code></td>
+<td><code>{freshnessDiscoveryDays, freshnessAnalysisDays, rateLimitSeconds}</code></td>
+</tr>
+<tr>
+<td><code>skipReasons</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>Sampled skip reasons (max 50, uses <code>ArrayUnion</code>)</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>string \| null</code></td>
+<td>Error message on failure</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Transactional claim:</strong> <code>claim_next_pending_job</code> uses a Firestore transaction to atomically set <code>status=running</code>.</p>
+<h3 id="content_posts"><code>content_posts</code><a class="headerlink" href="#content_posts" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>Auto-generated Firestore ID</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/content.py</code></td>
+</tr>
+<tr>
+<td><strong>Pydantic model</strong></td>
+<td><code>ContentPost</code> in <code>lib/common/hephae_common/models.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>string</code></td>
+<td>Same as document ID</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td><code>string</code></td>
+<td><code>social</code> or <code>blog</code></td>
+</tr>
+<tr>
+<td><code>platform</code></td>
+<td><code>string</code></td>
+<td><code>x</code>, <code>instagram</code>, <code>facebook</code>, <code>blog</code></td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>string</code></td>
+<td><code>draft</code>, <code>published</code>, <code>failed</code></td>
+</tr>
+<tr>
+<td><code>sourceType</code></td>
+<td><code>string</code></td>
+<td><code>zipcode_research</code>, <code>area_research</code>, <code>combined_context</code></td>
+</tr>
+<tr>
+<td><code>sourceId</code></td>
+<td><code>string</code></td>
+<td>ID of source research document</td>
+</tr>
+<tr>
+<td><code>sourceLabel</code></td>
+<td><code>string</code></td>
+<td>Human-readable source label</td>
+</tr>
+<tr>
+<td><code>content</code></td>
+<td><code>string</code></td>
+<td>Post body text</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td><code>string \| null</code></td>
+<td>Title (for blog posts)</td>
+</tr>
+<tr>
+<td><code>hashtags</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>Hashtag list</td>
+</tr>
+<tr>
+<td><code>publishedAt</code></td>
+<td><code>timestamp \| null</code></td>
+<td>Publication timestamp</td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Creation time</td>
+</tr>
+<tr>
+<td><code>updatedAt</code></td>
+<td><code>timestamp</code></td>
+<td>Last update time</td>
+</tr>
+<tr>
+<td><code>platformPostId</code></td>
+<td><code>string \| null</code></td>
+<td>ID from the publishing platform</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>string \| null</code></td>
+<td>Publishing error message</td>
+</tr>
+</tbody>
+</table>
+<h3 id="food_price_cache"><code>food_price_cache</code><a class="headerlink" href="#food_price_cache" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td><code>{source}_{industry}</code> or <code>usda_{industry}_{state}</code></td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/food_prices.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>source</code></td>
+<td><code>string</code></td>
+<td>Data source (<code>bls</code> or <code>usda</code>)</td>
+</tr>
+<tr>
+<td><code>industry</code></td>
+<td><code>string</code></td>
+<td>Industry category</td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td><code>string</code></td>
+<td>US state (USDA only)</td>
+</tr>
+<tr>
+<td><code>data</code></td>
+<td><code>map</code></td>
+<td>Cached API response data</td>
+</tr>
+<tr>
+<td><code>fetchedAt</code></td>
+<td><code>timestamp</code></td>
+<td>Cache write time (TTL: 24 hours)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="test_runs"><code>test_runs</code><a class="headerlink" href="#test_runs" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td><code>runId</code> from the test summary</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/test_runs.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>runId</code></td>
+<td><code>string</code></td>
+<td>Test run identifier</td>
+</tr>
+<tr>
+<td><code>createdAt</code></td>
+<td><code>timestamp</code></td>
+<td>Run start time</td>
+</tr>
+<tr>
+<td><code>...</code></td>
+<td><code>any</code></td>
+<td>All fields from the test summary dict are spread into the document</td>
+</tr>
+</tbody>
+</table>
+<p><strong>TTL:</strong> Documents older than 7 days are lazily deleted on list/read.</p>
+<h3 id="adk_sessions"><code>adk_sessions</code><a class="headerlink" href="#adk_sessions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document ID</strong></td>
+<td>UUID (auto-generated or caller-provided)</td>
+</tr>
+<tr>
+<td><strong>Source file</strong></td>
+<td><code>lib/db/hephae_db/firestore/session_service.py</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>appName</code></td>
+<td><code>string</code></td>
+<td>ADK application name</td>
+</tr>
+<tr>
+<td><code>userId</code></td>
+<td><code>string</code></td>
+<td>User identifier</td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td><code>map</code></td>
+<td>Agent session state (arbitrary key-value)</td>
+</tr>
+<tr>
+<td><code>updatedAt</code></td>
+<td><code>timestamp</code></td>
+<td>Last state update</td>
+</tr>
+<tr>
+<td><code>deleteAt</code></td>
+<td><code>timestamp</code></td>
+<td>TTL expiry: 24h for guests, 30d for logged-in users</td>
+</tr>
+<tr>
+<td><code>isPermanent</code></td>
+<td><code>boolean</code></td>
+<td><code>true</code> for logged-in users, <code>false</code> for guests</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Heavy field pruning:</strong> <code>prune_session()</code> removes <code>state.rawSiteData</code>, <code>state.markdown</code>, <code>state.html</code>, <code>state.screenshot_base64</code>, <code>state.gemini_cache_name</code> using <code>DELETE_FIELD</code>.</p>
+<hr />
+<h2 id="database-rules">Database Rules<a class="headerlink" href="#database-rules" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>No blobs in Firestore or BigQuery</strong> -- upload binary assets to GCS, store only the resulting URL. The <code>strip_blobs()</code> function in <code>discovery.py</code> enforces this for menu screenshots.</li>
+<li><strong><code>zipCode</code> is first-class</strong> -- always a top-level field on <code>businesses</code> documents, never derived from address at query time. Both <code>write_discovery</code> and <code>write_agent_result</code> set it.</li>
+<li><strong>No growing arrays in Firestore</strong> -- no <code>reports[]</code>, no <code>analyses[]</code>. Historical agent results go to BigQuery (<code>hephae.analyses</code>). Firestore stores only <code>latestOutputs.{agent}</code> (current state).</li>
+<li><strong>Use <code>update()</code> with dotted paths</strong> for nested fields (e.g., <code>crm.status</code>, <code>latestOutputs.seo_auditor</code>, <code>state.{key}</code>). <code>set({merge:True})</code> is used only for new document creation in <code>discovery.write_discovery</code> and <code>businesses.save_business</code>.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

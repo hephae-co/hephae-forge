@@ -1,0 +1,2444 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal documentation for the Hephae Forge pipeline">
+      
+      
+      
+        <link rel="canonical" href="https://hephae-co.github.io/hephae-forge/unified-pipeline-design/">
+      
+      
+        <link rel="prev" href="../qualification-pipeline-design/">
+      
+      
+        <link rel="next" href="../eval-standards/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Unified Pipeline Design - Hephae Forge Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#unified-pipeline-design-qualification-industry-intelligence" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Hephae Forge Docs" class="md-header__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hephae Forge Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Unified Pipeline Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Hephae Forge Docs" class="md-nav__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Hephae Forge Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/workflow-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../firestore-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firestore Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bigquery-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BigQuery Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcs-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-admin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Admin Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/agent-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/prompt-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pipeline Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qualification-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qualification Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-problem-combined" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The Problem (Combined)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-system-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. System Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-the-industry-intelligence-skill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. The Industry Intelligence Skill
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. The Industry Intelligence Skill">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#one-skill-n-config-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One Skill, N Config Packages
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-it-provides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What It Provides
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#core-design-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Design Principles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-industry-config-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Industry Config Packages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Industry Config Packages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#config-defines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config Defines:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vertical-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vertical Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sequencing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sequencing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-knowledge-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Knowledge System
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Knowledge System">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#knowledge-store-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Knowledge Store Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-knowledge-tools-adk-functiontools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5 Knowledge Tools (ADK FunctionTools)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cross-geographic-transfer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Geographic Transfer
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-qualification-pipeline-tier-2-industry-parameterized" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Qualification Pipeline (Tier 2) — Industry-Parameterized
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Qualification Pipeline (Tier 2) — Industry-Parameterized">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#signal-weight-multipliers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signal Weight Multipliers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#confidence-curve-for-signal-effectiveness-blending" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Confidence Curve for Signal Effectiveness Blending
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#friction-detection-in-qualification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Friction Detection in Qualification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-deep-discovery-tier-3-industry-parameterized" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Deep Discovery (Tier 3) — Industry-Parameterized
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Deep Discovery (Tier 3) — Industry-Parameterized">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#capability-agent-selection-by-vertical" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Capability Agent Selection by Vertical
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-instructions-from-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Instructions from Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-first-agent-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State-First Agent Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-the-compounding-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. The Compounding Loop
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. The Compounding Loop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#calibration-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Calibration Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Infrastructure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Infrastructure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cloud-tasks-fan-out-gcp-native-rate-limiting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloud Tasks Fan-Out (GCP-Native Rate Limiting)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#separate-cloud-run-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Separate Cloud Run Services
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#barrier-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Barrier Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#research-staleness-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Staleness Guard
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-qualification-tool-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Qualification Tool Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Qualification Tool Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#composable-analyzers-single-fetch-multiple-parsers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Composable Analyzers (Single Fetch, Multiple Parsers)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#module-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Module Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shared-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shared Models
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-qualification-tracks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Qualification Tracks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-scoring-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Scoring Summary
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Scoring Summary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hard-gate-before-scoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hard Gate (Before Scoring)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#base-scoring-100-point-scale-adjusted-by-industry-config-multipliers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Base Scoring (100-point scale, adjusted by industry config multipliers)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#market-context-bonuses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Market-Context Bonuses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-threshold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic Threshold
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hybrid-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hybrid Classification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-where-mcp-fits-planned-not-v1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Where MCP Fits (Planned, Not v1)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-success-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Success Criteria
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-deferred-enhancements-v2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Deferred Enhancements (v2+)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-cost-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Cost Model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-verification-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Verification Plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-ground-truth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eval Ground Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="unified-pipeline-design-qualification-industry-intelligence">Unified Pipeline Design — Qualification + Industry Intelligence<a class="headerlink" href="#unified-pipeline-design-qualification-industry-intelligence" title="Permanent link">&para;</a></h1>
+<p><strong>Author</strong>: Hephae Engineering
+<strong>Date</strong>: 2026-03-14
+<strong>Status</strong>: Unified Architecture — Ready for Review
+<strong>Depends On</strong>: <code>qualification-pipeline-design.md</code> (v5), <code>industry-intelligence-skill-design.md</code></p>
+<p>This document unifies the qualification pipeline and industry intelligence skill into a single coherent system architecture. It resolves overlaps, clarifies integration points, and presents the combined system as one design.</p>
+<hr />
+<h2 id="1-the-problem-combined">1. The Problem (Combined)<a class="headerlink" href="#1-the-problem-combined" title="Permanent link">&para;</a></h2>
+<p>The current pipeline has three compounding failures:</p>
+<p><strong>Cost</strong>: Every business gets the same expensive 12-agent deep discovery regardless of viability. The Nutley canary wasted 168 Gemini calls on businesses that failed viability.</p>
+<p><strong>Genericity</strong>: A barber shop, bakery, and restaurant all get the same qualification signals, scoring weights, agent instructions, and outreach pitch. An analytics pixel is strong for restaurants but meaningless for barbers. Instagram is the portfolio platform for barbers but secondary for bakeries.</p>
+<p><strong>Amnesia</strong>: Every workflow starts from zero. Insights from analyzing 50 bakeries in Essex County are unavailable when analyzing bakeries in Hudson County. The system rediscovers patterns that prior runs already revealed.</p>
+<p><strong>Goal</strong>: Build a pipeline that is cheap (qualify before spending), vertical-aware (industry-specific intelligence), and compounding (gets smarter with every run).</p>
+<hr />
+<h2 id="2-system-architecture">2. System Architecture<a class="headerlink" href="#2-system-architecture" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌─────────────────────────────────────────────────────────────────────────┐
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│  INDUSTRY INTELLIGENCE SKILL (single ADK skill, N config packages)     │
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│                                                                         │
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│  Config Loader ──→ loads vertical config (restaurants/barbers/bakeries) │
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│  Knowledge Tools ──→ 4 ADK FunctionTools for accumulated intelligence  │
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│  Friction Detector ──→ deterministic keyword scanner per vertical       │
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│  Calibration Agent ──→ periodic, updates benchmarks from outcomes       │
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│                                                                         │
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│  Provides: signal weights, agent instructions, capability selection,   │
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│            pitch angles, knowledge tools, friction keywords             │
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>└────────────────────────────────┬────────────────────────────────────────┘
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                                 │ parameterizes everything below
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                                 ▼
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>┌────────────────────────────────────────────────────────────────────────┐
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│  TIER 0 + TIER 1 (parallel)                                           │
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│  Research (area + sector + zipcode) + Broad Scan (OSM + ADK + Hub)    │
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│  Both must complete before Tier 2                                      │
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>└────────────────────────────────┬───────────────────────────────────────┘
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                                 │
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>                    ┌────────────┴────────────┐
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>                    │                         │
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>           Has website URL            No website URL
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>                    │                         │
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>                    ▼                         ▼
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>┌──────────────────────────────┐  ┌─────────────────────────────┐
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>│  TIER 2: QUALIFICATION       │  │  Digital Footprint Proxy     │
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>│  Step A: Metadata Scan       │  │  High ratings + reviews?     │
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>│  Step B: Full Probe (if amb.)│  │  On aggregators?             │
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>│  Hybrid Classifier           │  │  Friction keywords detected? │
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>│                              │  │                              │
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>│  Scoring uses:               │  │  → QUALIFIED_ACTION_REQUIRED │
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>│  - Industry config weights   │  │    (&quot;Get a Website&quot; track)   │
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>│  - Market benchmarks (Tier0) │  │  → Or PARKED                 │
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>│  - Signal effectiveness data │  └─────────────────────────────┘
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>│  - Dynamic threshold         │
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>│  - Friction detection        │
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>└──────────────┬───────────────┘
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>               │
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>      ┌────────┼──────────┐
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>      │        │          │
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>  QUALIFIED  PARKED  DISQUALIFIED
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>      │
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>      ▼
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>┌────────────────────────────────────────────────────────────────────────┐
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>│  TIER 3: DEEP DISCOVERY (industry-parameterized)                      │
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>│  Capability agents selected by industry config                        │
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>│  Agent instructions injected from config + knowledge tools registered │
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>│  Probe data from Tier 2 reused (State-First pattern)                  │
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>│  Staggered Cloud Tasks, separate Cloud Run service                    │
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>└────────────────────────────────┬───────────────────────────────────────┘
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>                                 │
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>                                 ▼
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>┌────────────────────────────────────────────────────────────────────────┐
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>│  EVALUATION + OUTCOME RECORDING                                       │
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>│  Record Outcome tool writes to knowledge store per-business           │
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>│  Feeds the compounding loop                                           │
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>└────────────────────────────────┬───────────────────────────────────────┘
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>                                 │
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>                                 ▼
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>┌────────────────────────────────────────────────────────────────────────┐
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>│  OUTREACH (industry-parameterized)                                    │
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>│  Pitch angles from config, evidence from probe + discovery signals    │
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a>│  Exemplars from knowledge store strengthen the pitch                  │
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>└────────────────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<hr />
+<h2 id="3-the-industry-intelligence-skill">3. The Industry Intelligence Skill<a class="headerlink" href="#3-the-industry-intelligence-skill" title="Permanent link">&para;</a></h2>
+<h3 id="one-skill-n-config-packages">One Skill, N Config Packages<a class="headerlink" href="#one-skill-n-config-packages" title="Permanent link">&para;</a></h3>
+<p>A single ADK skill. Restaurants, barbers, bakeries are config packages that parameterize it — not separate skills. Improvements to the knowledge system automatically benefit every vertical.</p>
+<h3 id="what-it-provides">What It Provides<a class="headerlink" href="#what-it-provides" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Config Loader</strong></td>
+<td>Loads industry-specific YAML config: signal weights, platform lists, agent selection, pitch angles, friction keywords</td>
+</tr>
+<tr>
+<td><strong>Knowledge Tools</strong></td>
+<td>4 ADK FunctionTools for on-demand access to accumulated intelligence</td>
+</tr>
+<tr>
+<td><strong>Friction Detector</strong></td>
+<td>Deterministic keyword scanner, parameterized per vertical's friction keywords</td>
+</tr>
+<tr>
+<td><strong>Calibration Agent</strong></td>
+<td>Periodic LlmAgent that reads outcomes, updates benchmarks, curates exemplars</td>
+</tr>
+<tr>
+<td><strong>Hook Registration</strong></td>
+<td>Optional per-vertical pure functions registered as additional FunctionTools</td>
+</tr>
+</tbody>
+</table>
+<h3 id="core-design-principles">Core Design Principles<a class="headerlink" href="#core-design-principles" title="Permanent link">&para;</a></h3>
+<p><strong>Agents query knowledge, Python doesn't pre-render it.</strong> Knowledge is exposed as ADK FunctionTools that agents call on demand. If an SEO agent needs market benchmarks, it calls the benchmark tool. If it doesn't need them, it skips the call. The agent reasons about what it needs.</p>
+<p><strong>Deterministic where possible, agentic where necessary.</strong> HTML parsing, chain detection, pixel detection, scoring arithmetic — all stay as deterministic pure functions. The LLM is involved only where judgment is required: HVT classifier, capability agents, evaluation, calibration.</p>
+<p><strong>Cold start graceful degradation.</strong> When no accumulated knowledge exists, knowledge tools return empty results. Agents rely entirely on static instructions from the industry config. The system works on day one; it just gets better over time.</p>
+<hr />
+<h2 id="4-industry-config-packages">4. Industry Config Packages<a class="headerlink" href="#4-industry-config-packages" title="Permanent link">&para;</a></h2>
+<p>Each config package is a directory containing a YAML config file and an optional hooks file. The config is purely declarative — data that parameterizes the skill, no logic.</p>
+<h3 id="config-defines">Config Defines:<a class="headerlink" href="#config-defines" title="Permanent link">&para;</a></h3>
+<p><strong>Qualification parameters:</strong>
+- Signal weight multipliers (boost Instagram for barbers, boost aggregator escape for restaurants)
+- Platform lists indicating tech adoption for this vertical
+- Aggregator lists where this vertical leaks revenue
+- "Innovation Gap" definition for this vertical
+- Vertical-specific fast-qualify rules
+- Additional chain names beyond the shared national list
+- No-website qualification thresholds
+- Operational friction keywords for the friction detector</p>
+<p><strong>Analysis parameters:</strong>
+- Which capability agents to run and which to skip
+- Industry-specific instruction text for each active agent (static baseline knowledge)
+- For barbers: SEO focuses on local pack + GBP, social focuses on Instagram portfolio, booking agent quantifies no-show costs
+- For restaurants: full suite including menu analysis, margin surgery, aggregator cost analysis</p>
+<p><strong>Outreach parameters:</strong>
+- Primary pain points ranked by severity
+- Pitch angle definitions with required evidence signals</p>
+<p><strong>Research parameters:</strong>
+- Which demographic/economic indicators matter most
+- What "saturation" means in concrete numbers (8 barber shops/zip = saturated; 8 restaurants = moderate)</p>
+<h3 id="vertical-selection">Vertical Selection<a class="headerlink" href="#vertical-selection" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Vertical</th>
+<th>Why</th>
+<th>Config Challenge</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Restaurants</strong></td>
+<td>Pipeline most mature, richest dataset, validates qualification accuracy + knowledge loop</td>
+<td>Most complex config: aggregator escape, menu signals, commodity pricing</td>
+</tr>
+<tr>
+<td><strong>Barbers</strong></td>
+<td>Stress test — fundamentally different signal profile (booking-centric, portfolio-driven, no food chain)</td>
+<td>Must work without pipeline code changes, validates abstraction</td>
+</tr>
+<tr>
+<td><strong>Bakeries</strong></td>
+<td>Bridge between food and non-food, inherits from restaurants with adjustments</td>
+<td>Fastest to build, tests whether similar verticals diverge cleanly via config alone</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sequencing">Sequencing<a class="headerlink" href="#sequencing" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Restaurants first</strong> — battle-test the full system against the richest existing dataset</li>
+<li><strong>Barbers second</strong> — if the barber config requires any pipeline code changes, the abstraction is wrong</li>
+<li><strong>Bakeries third</strong> — should be the fastest vertical, borrowing heavily from restaurant config</li>
+</ol>
+<p>All three config directories exist as skeletons from day one. Only restaurants need full config at initial launch.</p>
+<hr />
+<h2 id="5-knowledge-system">5. Knowledge System<a class="headerlink" href="#5-knowledge-system" title="Permanent link">&para;</a></h2>
+<h3 id="knowledge-store-structure">Knowledge Store Structure<a class="headerlink" href="#knowledge-store-structure" title="Permanent link">&para;</a></h3>
+<p>Organized by industry and geography. Four types of accumulated data:</p>
+<p><strong>Market Benchmarks</strong>: Aggregate statistics for an industry in a county — dominant platforms, median star rating, average qualification score, viability rate, common pain points, sample size, scanned zipcodes. Updated incrementally after each workflow.</p>
+<p><strong>Signal Effectiveness</strong>: Per-signal viability rates — how often each qualification signal (e.g., "has Instagram," "uses Booksy") appeared on businesses that ultimately passed deep discovery as viable. Allows signal weights to be calibrated empirically.</p>
+<p><strong>Exemplars</strong>: Curated top-performing business profiles from prior runs. Each stores: qualification score, platform, signals present, star rating, review count, gaps found, pitch angle used, and demographic context (income bracket, population density tier from Tier 0 research). Agents query exemplars to find comparable businesses.</p>
+<p><strong>Outcomes</strong>: Raw per-business outcome log. For every business completing deep discovery: qualification score, signals present, viability result, failure reason, gaps found. Input data for the calibration agent. Written per-business (not per-workflow) so partial workflow crashes don't lose data.</p>
+<h3 id="5-knowledge-tools-adk-functiontools">5 Knowledge Tools (ADK FunctionTools)<a class="headerlink" href="#5-knowledge-tools-adk-functiontools" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Input</th>
+<th>Returns</th>
+<th>Who Calls It</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Get Market Benchmarks</strong></td>
+<td>industry, county</td>
+<td>Dominant platforms, median ratings, pain points, sample size</td>
+<td>Qualification scorer, capability agents, outreach agent</td>
+</tr>
+<tr>
+<td><strong>Find Similar Exemplars</strong></td>
+<td>industry, county, optional filters</td>
+<td>2-3 anonymized business profiles matching criteria</td>
+<td>Capability agents (pattern matching), outreach agent (pitch angle selection)</td>
+</tr>
+<tr>
+<td><strong>Get Signal Effectiveness</strong></td>
+<td>industry, county</td>
+<td>Per-signal viability correlation data</td>
+<td>Qualification scorer (weight calibration), HVT classifier (ambiguous reasoning)</td>
+</tr>
+<tr>
+<td><strong>Record Outcome</strong></td>
+<td>full business result profile</td>
+<td>Writes to outcomes collection</td>
+<td>Evaluation agent (after each business completes)</td>
+</tr>
+<tr>
+<td><strong>Detect Operational Friction</strong></td>
+<td>text, industry</td>
+<td>Matched friction keywords + sources</td>
+<td>Qualification scorer, outreach agent</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why tools, not pre-injected context</strong>: Not every agent needs benchmarks for every business. A barber shop with obvious signals (Booksy + Instagram + 4.8 stars) doesn't need market comparison. A borderline case does. The agent decides.</p>
+<p><strong>The friction detector</strong> is deterministic — regex/substring matching against the config's keyword list, zero LLM. Each vertical declares its own keywords:
+- Barbers: "long wait," "couldn't get appointment," "no online booking," "had to call"
+- Restaurants: "couldn't get a reservation," "phone was busy," "no one answered"
+- Bakeries: "sold out," "wish I could pre-order," "gone by the time I got there"</p>
+<p>Friction keywords are demand signals that validate pitch angles. A barber with no website but 4.8 stars and 15 reviews mentioning wait times is not just a "Get a Website" lead — it's a "Your customers are telling you they want to book online" lead.</p>
+<h3 id="cross-geographic-transfer">Cross-Geographic Transfer<a class="headerlink" href="#cross-geographic-transfer" title="Permanent link">&para;</a></h3>
+<p>Knowledge is stored per county. When local sample size is thin, tools can return data from adjacent counties with similar demographics, flagged as borrowed. Each exemplar stores demographic context so agents can reason about relevance.</p>
+<p>In v1, the agent handles this relevance judgment itself based on the metadata. The <code>find_similar_exemplars</code> tool returns exemplars with demographic metadata attached — the agent decides how much weight to give them.</p>
+<hr />
+<h2 id="6-qualification-pipeline-tier-2-industry-parameterized">6. Qualification Pipeline (Tier 2) — Industry-Parameterized<a class="headerlink" href="#6-qualification-pipeline-tier-2-industry-parameterized" title="Permanent link">&para;</a></h2>
+<h3 id="signal-weight-multipliers">Signal Weight Multipliers<a class="headerlink" href="#signal-weight-multipliers" title="Permanent link">&para;</a></h3>
+<p>The base scoring from <code>qualification-pipeline-design.md</code> (Innovation Gap, contact path, domain, pixels, social, JSON-LD, chain detection) is adjusted by industry config multipliers:</p>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Base</th>
+<th>Restaurants</th>
+<th>Barbers</th>
+<th>Bakeries</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Innovation Gap</td>
+<td>+30</td>
+<td>1.0x</td>
+<td>1.0x</td>
+<td>1.0x</td>
+</tr>
+<tr>
+<td>Contact path</td>
+<td>+20</td>
+<td>1.0x</td>
+<td>0.8x</td>
+<td>1.0x</td>
+</tr>
+<tr>
+<td>Analytics pixel</td>
+<td>+10</td>
+<td>1.2x</td>
+<td>0.5x</td>
+<td>0.8x</td>
+</tr>
+<tr>
+<td>Social presence</td>
+<td>+10</td>
+<td>0.8x</td>
+<td>1.5x (Instagram)</td>
+<td>0.8x</td>
+</tr>
+<tr>
+<td>Platform detected</td>
+<td>+10</td>
+<td>1.2x (Toast)</td>
+<td>1.3x (Booksy)</td>
+<td>1.0x (Square)</td>
+</tr>
+<tr>
+<td>Aggregator escape</td>
+<td>+15</td>
+<td>1.5x</td>
+<td>0x (N/A)</td>
+<td>1.2x</td>
+</tr>
+</tbody>
+</table>
+<h3 id="confidence-curve-for-signal-effectiveness-blending">Confidence Curve for Signal Effectiveness Blending<a class="headerlink" href="#confidence-curve-for-signal-effectiveness-blending" title="Permanent link">&para;</a></h3>
+<p>When the qualification scorer has access to signal effectiveness data from the knowledge store:</p>
+<ul>
+<li>Below minimum sample size (~10 businesses): use static config weights only (cold start)</li>
+<li>Above minimum but below confidence threshold (~50): blend config and observed equally</li>
+<li>Above confidence threshold (~100+): lean heavily on observed data, use config as a prior</li>
+</ul>
+<h3 id="friction-detection-in-qualification">Friction Detection in Qualification<a class="headerlink" href="#friction-detection-in-qualification" title="Permanent link">&para;</a></h3>
+<p>If a no-website business has high ratings AND detected friction keywords matching a pitch angle, it qualifies as QUALIFIED_ACTION_REQUIRED with a specialized pitch angle rather than being PARKED. The friction evidence is attached to the qualification decision.</p>
+<hr />
+<h2 id="7-deep-discovery-tier-3-industry-parameterized">7. Deep Discovery (Tier 3) — Industry-Parameterized<a class="headerlink" href="#7-deep-discovery-tier-3-industry-parameterized" title="Permanent link">&para;</a></h2>
+<h3 id="capability-agent-selection-by-vertical">Capability Agent Selection by Vertical<a class="headerlink" href="#capability-agent-selection-by-vertical" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Restaurants</th>
+<th>Barbers</th>
+<th>Bakeries</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SEO Audit</td>
+<td>Yes</td>
+<td>Yes (local pack focus)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Social Media Audit</td>
+<td>Yes</td>
+<td>Yes (Instagram-first)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Menu Analysis</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes (lighter)</td>
+</tr>
+<tr>
+<td>Margin Surgery</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Aggregator Cost Analysis</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Booking Flow Analysis</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Traffic Forecast</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Competitive Analysis</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="agent-instructions-from-config">Agent Instructions from Config<a class="headerlink" href="#agent-instructions-from-config" title="Permanent link">&para;</a></h3>
+<p>Each active agent receives:
+1. <strong>Static instruction text</strong> from the industry config YAML (baseline vertical knowledge)
+2. <strong>Knowledge tools</strong> registered as FunctionTools (accumulated data, called on demand)</p>
+<p>The agent decides how to use both. For straightforward cases, it relies on static instructions. For unusual cases, it queries exemplars or benchmarks.</p>
+<h3 id="state-first-agent-pattern">State-First Agent Pattern<a class="headerlink" href="#state-first-agent-pattern" title="Permanent link">&para;</a></h3>
+<p>Every Tier 3 agent must check <code>session.state</code> first. If Tier 2 qualification already found email, social links, or platform info — skip the redundant tool call, validate/format the existing data. Without this enforcement, cost savings from qualification are theoretical.</p>
+<hr />
+<h2 id="8-the-compounding-loop">8. The Compounding Loop<a class="headerlink" href="#8-the-compounding-loop" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Step 1 — RUN: Pipeline processes businesses for a vertical + zipcode.
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>                Agents use static config + accumulated knowledge.
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>                    │
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>Step 2 — RECORD: As each business completes evaluation,
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>                  Record Outcome tool writes to knowledge store.
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>                    │
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>Step 3 — CALIBRATE: Calibration agent (periodic, every 10 businesses
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>                     or weekly) reads outcomes, updates benchmarks,
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>                     recomputes signal effectiveness, curates exemplars,
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>                     writes qualitative notes about patterns.
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>                    │
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>Step 4 — LOAD: Next workflow loads updated benchmarks through
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>                knowledge tools. Qualification weights are better
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>                calibrated. Exemplar comparisons are richer.
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>                    │
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>Step 5 — IMPROVE: Fewer businesses fail in deep discovery.
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>                   Analysis is more targeted. Pitch angles
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>                   grounded in what worked for similar businesses.
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>                    │
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>                 └──→ Back to Step 1 (compounds each revolution)
+</code></pre></div>
+<p><strong>The first run is generic. The fifth run is informed. The twentieth run is precise.</strong></p>
+<h3 id="calibration-agent">Calibration Agent<a class="headerlink" href="#calibration-agent" title="Permanent link">&para;</a></h3>
+<p>An ADK LlmAgent that runs on schedule (not per-workflow). It reads raw outcome data and produces:
+- Updated benchmark documents
+- Updated signal effectiveness statistics
+- Qualitative calibration notes about patterns and anomalies
+- Curated exemplar set (adding top performers, pruning stale ones)</p>
+<p><strong>Why an agent, not a batch script</strong>: A script sees "low correlation number." An agent reasons about <em>why</em> — "these bakeries all use the same Wix template with no customization, indicating low digital investment despite having a website. Content depth is the real differentiator here."</p>
+<p>The calibration agent flags discrepancies between static config and observed data for human review. It does NOT auto-modify the config — the config is editorial control that humans own.</p>
+<hr />
+<h2 id="9-infrastructure">9. Infrastructure<a class="headerlink" href="#9-infrastructure" title="Permanent link">&para;</a></h2>
+<h3 id="cloud-tasks-fan-out-gcp-native-rate-limiting">Cloud Tasks Fan-Out (GCP-Native Rate Limiting)<a class="headerlink" href="#cloud-tasks-fan-out-gcp-native-rate-limiting" title="Permanent link">&para;</a></h3>
+<p><strong>Qualification Queue</strong> (<code>hephae-qualification-queue</code>):
+- <code>maxDispatchesPerSecond</code>: 5
+- <code>maxConcurrentDispatches</code>: 3
+- <code>maxAttempts</code>: 3 with exponential backoff
+- 60-second task timeout</p>
+<p><strong>Discovery Queue</strong> (<code>hephae-agent-queue</code>):
+- Existing config, 30-minute task timeout
+- Staggered scheduling (15s between businesses)</p>
+<h3 id="separate-cloud-run-services">Separate Cloud Run Services<a class="headerlink" href="#separate-cloud-run-services" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Purpose</th>
+<th>Timeout</th>
+<th>Scaling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hephae-qualification</code></td>
+<td>Tier 2 metadata scan + scoring</td>
+<td>60s</td>
+<td>High throughput, low memory</td>
+</tr>
+<tr>
+<td><code>hephae-forge-api</code></td>
+<td>Tier 3 deep discovery + capabilities</td>
+<td>30 min</td>
+<td>Low throughput, high memory</td>
+</tr>
+</tbody>
+</table>
+<p>Mixed latency causes poor autoscaling. Separate services let Cloud Run optimize each independently.</p>
+<h3 id="barrier-pattern">Barrier Pattern<a class="headerlink" href="#barrier-pattern" title="Permanent link">&para;</a></h3>
+<p>Qualification Cloud Tasks include a <code>research_complete</code> prerequisite check. If area/sector research isn't available in Firestore, the task returns retriable and Cloud Tasks re-dispatches after backoff. Ensures qualification always has full market context.</p>
+<h3 id="research-staleness-guard">Research Staleness Guard<a class="headerlink" href="#research-staleness-guard" title="Permanent link">&para;</a></h3>
+<p>Track <code>research_generated_at</code> on research context. If &gt;30 min old at qualification time, log warning. If &gt;60 min, fall back to base threshold.</p>
+<hr />
+<h2 id="10-qualification-tool-architecture">10. Qualification Tool Architecture<a class="headerlink" href="#10-qualification-tool-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="composable-analyzers-single-fetch-multiple-parsers">Composable Analyzers (Single Fetch, Multiple Parsers)<a class="headerlink" href="#composable-analyzers-single-fetch-multiple-parsers" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>page_fetcher(url) → raw HTML + response headers
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>     │
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>     ├── robots_probe(url) ──────── crawl policy check (0-cost)
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>     ├── domain_analyzer(url) ───── URL classification (no HTTP)
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>     ├── platform_detector(html) ── Shopify/Wix/Toast/MindBody/Booksy
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>     ├── pixel_detector(html) ───── FB Pixel, GA, GTM, Hotjar
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>     ├── contact_path_detector(html, base_url) ── /contact, mailto:
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>     ├── meta_extractor(html, headers) ── og:type, generator, SSL, JSON-LD
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>     └── menu_freshness_detector(html) ── last-modified, specials (dining only)
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>           │
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>     qualification_scanner ──── orchestrates, aggregates, scores
+</code></pre></div>
+<p>Each analyzer is a pure function. New signals are new tools, not modifications to existing ones.</p>
+<h3 id="module-structure">Module Structure<a class="headerlink" href="#module-structure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>packages/capabilities/hephae_agents/qualification/
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  ├── __init__.py
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  ├── page_fetcher.py
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  ├── robots_probe.py
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  ├── domain_analyzer.py
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>  ├── platform_detector.py
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>  ├── pixel_detector.py
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>  ├── contact_path_detector.py
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>  ├── meta_extractor.py
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>  ├── menu_freshness_detector.py
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>  ├── chain_detector.py
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>  ├── friction_detector.py
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>  ├── scorer.py
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>  └── hvt_classifier.py
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>packages/capabilities/hephae_agents/industry_intelligence/
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>  ├── __init__.py
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>  ├── config_loader.py
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>  ├── knowledge_tools.py          (4 ADK FunctionTools)
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>  ├── calibration_agent.py
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>  └── configs/
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>      ├── restaurants/
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>      │   ├── config.yaml
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>      │   └── hooks.py (optional)
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>      ├── barbers/
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>      │   ├── config.yaml
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>      │   └── hooks.py (walk-in detection)
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>      └── bakeries/
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>          └── config.yaml
+</code></pre></div>
+<h3 id="shared-models">Shared Models<a class="headerlink" href="#shared-models" title="Permanent link">&para;</a></h3>
+<p>In <code>packages/common-python/hephae_common/models.py</code>:
+- <code>ProbeResult</code> — aggregated output from all analyzers (versioned with <code>schemaVersion</code>)
+- <code>QualificationDecision</code> — disposition + score + reason + signals
+- <code>HVTClassifierOutput</code> — flat schema: <code>{is_hvt: bool, score: int, reason: str}</code>
+- <code>IndustryConfig</code> — typed representation of the YAML config
+- <code>MarketBenchmark</code>, <code>SignalEffectiveness</code>, <code>Exemplar</code>, <code>Outcome</code> — knowledge store models</p>
+<hr />
+<h2 id="11-qualification-tracks">11. Qualification Tracks<a class="headerlink" href="#11-qualification-tracks" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Track</th>
+<th>Condition</th>
+<th>Pipeline Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>QUALIFIED</strong></td>
+<td>Website + contact + score &gt;= threshold</td>
+<td>Full deep discovery (Tier 3)</td>
+</tr>
+<tr>
+<td><strong>QUALIFIED_ACTION_REQUIRED</strong></td>
+<td>No website but high reputation + friction signals or aggregator presence</td>
+<td>"Get a Website" outreach track</td>
+</tr>
+<tr>
+<td><strong>PARKED</strong></td>
+<td>Below threshold, no website, no strong reputation</td>
+<td>Stored for future batch</td>
+</tr>
+<tr>
+<td><strong>DISQUALIFIED</strong></td>
+<td>Chain, closed, not a business</td>
+<td>Never process</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12-scoring-summary">12. Scoring Summary<a class="headerlink" href="#12-scoring-summary" title="Permanent link">&para;</a></h2>
+<h3 id="hard-gate-before-scoring">Hard Gate (Before Scoring)<a class="headerlink" href="#hard-gate-before-scoring" title="Permanent link">&para;</a></h3>
+<p>Contact path is mandatory for standard qualification. No contact path → PARKED.</p>
+<h3 id="base-scoring-100-point-scale-adjusted-by-industry-config-multipliers">Base Scoring (100-point scale, adjusted by industry config multipliers)<a class="headerlink" href="#base-scoring-100-point-scale-adjusted-by-industry-config-multipliers" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Base Points</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Innovation Gap (platform + marketing gap)</td>
+<td>up to +30</td>
+</tr>
+<tr>
+<td>Contact path (email/form/mailto)</td>
+<td>+20</td>
+</tr>
+<tr>
+<td>Custom domain</td>
+<td>+15</td>
+</tr>
+<tr>
+<td>Not a chain</td>
+<td>+15</td>
+</tr>
+<tr>
+<td>Analytics pixel</td>
+<td>+10</td>
+</tr>
+<tr>
+<td>Social presence (2+ links)</td>
+<td>+10</td>
+</tr>
+<tr>
+<td>JSON-LD structured data</td>
+<td>+5</td>
+</tr>
+</tbody>
+</table>
+<h3 id="market-context-bonuses">Market-Context Bonuses<a class="headerlink" href="#market-context-bonuses" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Bonus</th>
+<th>Points</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Economic Delta</td>
+<td>+15</td>
+<td>Wealthy zip + poor digital presence</td>
+</tr>
+<tr>
+<td>Aggregator Escape</td>
+<td>+15 (+30 for Menu Mismatch auto-qualify)</td>
+<td>On aggregators but no own website/ordering</td>
+</tr>
+<tr>
+<td>Friction detected</td>
+<td>+10</td>
+<td>Operational friction keywords match a pitch angle</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dynamic-threshold">Dynamic Threshold<a class="headerlink" href="#dynamic-threshold" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Base: 40
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>Saturated (40+): 60    High (20-40): 50    Moderate (10-20): 40    Underserved (&lt;10): 30
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>High opportunity (&gt;70): threshold -= 10
+</code></pre></div>
+<p>Saturation definitions come from the industry config (8 barbers = saturated; 8 restaurants = moderate).</p>
+<h3 id="hybrid-classification">Hybrid Classification<a class="headerlink" href="#hybrid-classification" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Rules handle ~80% of cases (free)</li>
+<li>HVT classifier agent handles ~20% ambiguous cases (~$0.001 each, same-model retry, PARKED on failure)</li>
+</ul>
+<hr />
+<h2 id="13-where-mcp-fits-planned-not-v1">13. Where MCP Fits (Planned, Not v1)<a class="headerlink" href="#13-where-mcp-fits-planned-not-v1" title="Permanent link">&para;</a></h2>
+<p>MCP is not needed for the internal pipeline — agents access the knowledge store through ADK FunctionTools backed by direct Firestore reads.</p>
+<p>MCP becomes relevant when external consumers need access:
+- Human-facing research dashboard ("What do we know about bakeries in Bergen County?")
+- Customer-facing insights ("How do I compare to other barber shops in my area?")
+- Third-party integrations</p>
+<p>The migration path: build Firestore-backed tools now (clean, self-contained functions with well-defined I/O), wrap them in an MCP server later when there's a consumer.</p>
+<hr />
+<h2 id="14-success-criteria">14. Success Criteria<a class="headerlink" href="#14-success-criteria" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Adding a new vertical requires ONLY writing a config YAML (and optionally hooks). No pipeline code changes.</li>
+<li>After 50+ businesses for an industry+county, qualification viability rate exceeds 80% (vs ~46% baseline).</li>
+<li>Capability agents produce measurably more targeted analysis with accumulated knowledge vs cold start.</li>
+<li>Calibration agent identifies at least one signal weight miscalibration within first 100 businesses.</li>
+<li>Cross-geographic knowledge transfer works: new zipcode in a county with existing data produces higher accuracy on first run than cold-start county.</li>
+</ol>
+<hr />
+<h2 id="15-deferred-enhancements-v2">15. Deferred Enhancements (v2+)<a class="headerlink" href="#15-deferred-enhancements-v2" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Enhancement</th>
+<th>Why Deferred</th>
+<th>What to Do Now</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Socio-Economic Mirror Matching</td>
+<td>Needs exemplar volume across counties</td>
+<td>Store income bracket + density tier on every exemplar</td>
+</tr>
+<tr>
+<td>Calibration Auto-Tuning</td>
+<td>Needs trust built through human review</td>
+<td>Store structured calibration notes (field, current value, observed, sample size, reasoning)</td>
+</tr>
+<tr>
+<td>Dedicated Review Search Query</td>
+<td>Each query adds cost to cheap qualification</td>
+<td>Track friction detection source (snippet vs review vs website) to measure if snippets suffice</td>
+</tr>
+<tr>
+<td>MCP Server for Knowledge Store</td>
+<td>No external consumer yet</td>
+<td>Keep knowledge tools as clean pure functions, no pipeline internals entangled</td>
+</tr>
+<tr>
+<td>Cross-Vertical Knowledge Transfer</td>
+<td>Needs 50+ outcomes per vertical in overlapping counties</td>
+<td>Knowledge store structure already supports cross-industry queries</td>
+</tr>
+<tr>
+<td>Exemplar-Based Outreach Personalization</td>
+<td>Needs outreach response tracking</td>
+<td>Include <code>pitch_angle_used</code> on every exemplar and outcome</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="16-cost-model">16. Cost Model<a class="headerlink" href="#16-cost-model" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Cost</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Research (area + sector)</td>
+<td>~$0.05 shared</td>
+<td>Once per workflow</td>
+</tr>
+<tr>
+<td>Broad scan (Tier 1)</td>
+<td>~$0.001 shared</td>
+<td>Once per workflow</td>
+</tr>
+<tr>
+<td>Metadata scan (Step A)</td>
+<td>$0 (HTTP)</td>
+<td>All with website</td>
+</tr>
+<tr>
+<td>Full probe (Step B)</td>
+<td>$0 (existing tool)</td>
+<td>~30% ambiguous</td>
+</tr>
+<tr>
+<td>Friction detection</td>
+<td>$0 (regex)</td>
+<td>All businesses</td>
+</tr>
+<tr>
+<td>LLM classifier</td>
+<td>~$0.001 each</td>
+<td>~20% ambiguous</td>
+</tr>
+<tr>
+<td>Knowledge tool queries</td>
+<td>$0 (Firestore reads)</td>
+<td>On-demand</td>
+</tr>
+<tr>
+<td>Deep discovery</td>
+<td>~$0.50 each</td>
+<td>Only qualified</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Before (26 biz, generic)</strong>: 26 × $0.50 = $13.00, 46% viability
+<strong>After (26 biz, industry-aware)</strong>: 6-10 × $0.50 + $0.05 = $3-5, target &gt;80% viability
+<strong>Savings: 60-75% cost, 2x quality</strong></p>
+<hr />
+<h2 id="17-verification-plan">17. Verification Plan<a class="headerlink" href="#17-verification-plan" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Deploy as canary, run workflow for 07110 Restaurants (restaurant config)</li>
+<li>Verify industry config loaded correctly (restaurant-specific signal weights, agent selection)</li>
+<li>Verify research completes before qualification (barrier pattern)</li>
+<li>Verify dynamic threshold adapts to market saturation</li>
+<li>Verify friction keywords detected from available text</li>
+<li>Verify no-website businesses with friction signals → QUALIFIED_ACTION_REQUIRED</li>
+<li>Verify chains → DISQUALIFIED</li>
+<li>Verify only qualified businesses enter deep discovery with restaurant-specific agents</li>
+<li>Verify probe data reused (State-First pattern, agents skipped)</li>
+<li>Verify Record Outcome writes to knowledge store after each business</li>
+<li>Run calibration agent manually, verify benchmark documents created</li>
+<li>Run second workflow for adjacent zipcode, verify knowledge tools return accumulated data</li>
+<li>Compare Gemini API calls: target 60%+ reduction</li>
+<li>Compare viability rate: target &gt;80%</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

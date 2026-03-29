@@ -1,0 +1,1579 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal documentation for the Hephae Forge pipeline">
+      
+      
+      
+        <link rel="canonical" href="https://hephae-co.github.io/hephae-forge/TODO-architecture/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Architectural TODO — ADK-Native Improvements - Hephae Forge Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#architectural-todo-adk-native-improvements" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Hephae Forge Docs" class="md-header__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hephae Forge Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architectural TODO — ADK-Native Improvements
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Hephae Forge Docs" class="md-nav__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Hephae Forge Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/workflow-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../firestore-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firestore Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bigquery-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BigQuery Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcs-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-admin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Admin Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/agent-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/prompt-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pipeline Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qualification-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qualification Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../unified-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-ground-truth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eval Ground Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="architectural-todo-adk-native-improvements">Architectural TODO — ADK-Native Improvements<a class="headerlink" href="#architectural-todo-adk-native-improvements" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Priority order. Each item maps to a Google ADK feature that replaces custom infrastructure.</p>
+</blockquote>
+<hr />
+<h2 id="1-universal-on_model_error_callback">1. Universal <code>on_model_error_callback</code><a class="headerlink" href="#1-universal-on_model_error_callback" title="Permanent link">&para;</a></h2>
+<p><strong>Status</strong>: DONE (2026-03-12) — fixed last 2 missing agents (chat.py, enrichment.py WebsiteFinder)
+<strong>Effort</strong>: Small (1-2 hours)
+<strong>Impact</strong>: High — eliminates silent agent failures from 429/503/529 errors</p>
+<p><strong>What</strong>: Add <code>on_model_error_callback</code> to every <code>LlmAgent</code> definition. On transient errors, retry with a fallback model.</p>
+<p><strong>ADK Feature</strong>: <code>LlmAgent(on_model_error_callback=...)</code> — native retry hook.</p>
+<p><strong>Implementation</strong>:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># hephae_common/adk_helpers.py</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.adk.agents</span><span class="w"> </span><span class="kn">import</span> <span class="n">LlmAgent</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.genai</span><span class="w"> </span><span class="kn">import</span> <span class="n">types</span> <span class="k">as</span> <span class="n">genai_types</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">FALLBACK_MAP</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="s2">&quot;gemini-2.5-flash&quot;</span><span class="p">:</span> <span class="s2">&quot;gemini-2.0-flash&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="s2">&quot;gemini-2.0-flash&quot;</span><span class="p">:</span> <span class="s2">&quot;gemini-2.0-flash-lite&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">}</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="k">def</span><span class="w"> </span><span class="nf">model_error_handler</span><span class="p">(</span><span class="n">callback_context</span><span class="p">,</span> <span class="n">llm_request</span><span class="p">,</span> <span class="n">error</span><span class="p">):</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">current</span> <span class="o">=</span> <span class="n">callback_context</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">model</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">fallback</span> <span class="o">=</span> <span class="n">FALLBACK_MAP</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="k">if</span> <span class="n">fallback</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="n">genai_types</span><span class="o">.</span><span class="n">ClientError</span><span class="p">):</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        <span class="n">callback_context</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">fallback</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        <span class="k">return</span>  <span class="c1"># ADK retries automatically</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="k">raise</span> <span class="n">error</span>
+</code></pre></div></p>
+<p>Then add to every agent:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">LlmAgent</span><span class="p">(</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="o">...</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">on_model_error_callback</span><span class="o">=</span><span class="n">model_error_handler</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="p">)</span>
+</code></pre></div></p>
+<p><strong>Files</strong>: All agent definitions in <code>packages/capabilities/</code>, <code>backend/workflows/agents/</code></p>
+<hr />
+<h2 id="2-complete-output_schema-migration">2. Complete <code>output_schema</code> Migration<a class="headerlink" href="#2-complete-output_schema-migration" title="Permanent link">&para;</a></h2>
+<p><strong>Status</strong>: Sprint 2 in progress — 12 agents migrated (added SocialMediaAuditOutput), ~15+ remaining
+<strong>Effort</strong>: Medium (half day)
+<strong>Impact</strong>: High — eliminates JSON parsing errors across remaining agents</p>
+<p><strong>What</strong>: Migrate all remaining agents from manual JSON parsing (<code>_safe_parse</code>, markdown fence stripping) to ADK's native <code>output_schema</code> parameter.</p>
+<p><strong>ADK Feature</strong>: <code>LlmAgent(output_schema=PydanticModel)</code> — Gemini validates response structure.</p>
+<p><strong>Remaining agents</strong> (non-exhaustive):
+- Discovery sub-agents: <code>ContactAgent</code>, <code>SocialMediaAgent</code>, <code>CompetitorsAgent</code>, <code>MenuAgent</code>, <code>ChallengesAgent</code>, <code>NewsAgent</code>, <code>EntityMatcherAgent</code>
+- Capability runners: SEO, Traffic, Competitive, Margin, Social
+- Workflow agents: Dispatcher, Insights</p>
+<p><strong>Files</strong>: <code>packages/db/hephae_db/schemas/agent_outputs.py</code> (add models), each agent file</p>
+<hr />
+<h2 id="3-composite-agent-rewrites-competitive-margin-social">3. Composite Agent Rewrites (Competitive, Margin, Social)<a class="headerlink" href="#3-composite-agent-rewrites-competitive-margin-social" title="Permanent link">&para;</a></h2>
+<p><strong>Status</strong>: Not started
+<strong>Effort</strong>: Large (2-3 days)
+<strong>Impact</strong>: High — replaces custom asyncio orchestration with declarative ADK agents</p>
+<p><strong>What</strong>: Rewrite capability runners as ADK composite agents using <code>SequentialAgent</code>, <code>ParallelAgent</code>, and <code>output_key</code>.</p>
+<p><strong>ADK Features</strong>:
+- <code>SequentialAgent(sub_agents=[...])</code> — ordered pipeline
+- <code>ParallelAgent(sub_agents=[...])</code> — concurrent execution
+- <code>output_key</code> — each sub-agent writes to <code>session.state[key]</code>
+- Dynamic instructions via <code>lambda ctx: f"Use {ctx.state['key']}"</code></p>
+<p><strong>Example</strong> (Competitive Analysis):
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">competitive_pipeline</span> <span class="o">=</span> <span class="n">SequentialAgent</span><span class="p">(</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;CompetitiveAnalysis&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">sub_agents</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        <span class="n">ParallelAgent</span><span class="p">(</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;DataGathering&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>            <span class="n">sub_agents</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>                <span class="n">competitor_research_agent</span><span class="p">,</span>   <span class="c1"># output_key=&quot;competitor_profiles&quot;</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>                <span class="n">market_position_agent</span><span class="p">,</span>       <span class="c1"># output_key=&quot;market_position&quot;</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>                <span class="n">pricing_comparison_agent</span><span class="p">,</span>    <span class="c1"># output_key=&quot;pricing_data&quot;</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>            <span class="p">],</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        <span class="p">),</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        <span class="n">synthesis_agent</span><span class="p">,</span>  <span class="c1"># reads all 3 keys, output_key=&quot;competitive_report&quot;</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="p">],</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="p">)</span>
+</code></pre></div></p>
+<p><strong>Files</strong>: <code>packages/capabilities/hephae_agents/{competitive,margin_surgeon,social}/</code></p>
+<hr />
+<h2 id="4-standardize-firestoresessionservice">4. Standardize FirestoreSessionService<a class="headerlink" href="#4-standardize-firestoresessionservice" title="Permanent link">&para;</a></h2>
+<p><strong>Status</strong>: DONE (2026-03-12) — all 5 runners accept optional session_service param; _run_workflow_analyze passes FirestoreSessionService
+<strong>Effort</strong>: Small (2-3 hours)
+<strong>Impact</strong>: Medium — enables post-mortem debugging of failed agent runs</p>
+<p><strong>What</strong>: Replace <code>InMemorySessionService</code> with <code>FirestoreSessionService</code> in all capability runners that execute via Cloud Tasks. Session state persists even if the task crashes.</p>
+<p><strong>ADK Feature</strong>: <code>from google.adk.sessions import FirestoreSessionService</code> (or custom <code>hephae_db.firestore.session_service.FirestoreSessionService</code>)</p>
+<p><strong>Files</strong>: All <code>runner.py</code> files in <code>packages/capabilities/</code></p>
+<hr />
+<h2 id="5-session-id-in-task-metadata">5. Session ID in Task Metadata<a class="headerlink" href="#5-session-id-in-task-metadata" title="Permanent link">&para;</a></h2>
+<p><strong>Status</strong>: DONE (2026-03-12) — sessionPrefix stored in task metadata at workflow start
+<strong>Effort</strong>: Tiny (30 min)
+<strong>Impact</strong>: Medium — connects Cloud Task to ADK session for debugging</p>
+<p><strong>What</strong>: When a capability runner creates a session, store the <code>session_id</code> in the Firestore task document's metadata. This lets you trace: task → session → agent turns → model calls.</p>
+<p><strong>Implementation</strong>:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># In _run_workflow_analyze or each runner</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">session_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;cap-</span><span class="si">{</span><span class="n">slug</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">cap_name</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">await</span> <span class="n">update_task</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;metadata.sessionId&quot;</span><span class="p">:</span> <span class="n">session_id</span><span class="p">})</span>
+</code></pre></div></p>
+<p><strong>Files</strong>: <code>apps/api/backend/routers/admin/tasks.py</code>, capability runners</p>
+<hr />
+<h2 id="6-webhook-callback-replace-polling-loop">6. Webhook Callback (Replace Polling Loop)<a class="headerlink" href="#6-webhook-callback-replace-polling-loop" title="Permanent link">&para;</a></h2>
+<p><strong>Status</strong>: Not started
+<strong>Effort</strong>: Medium (half day)
+<strong>Impact</strong>: High — eliminates polling loop, stuck task detection, timeout issues</p>
+<p><strong>What</strong>: Instead of the workflow polling Firestore every 3s to check if Cloud Tasks finished, have each Cloud Task POST a webhook when it completes. The workflow uses <code>asyncio.Event</code> per business to await completion.</p>
+<p><strong>Current flow</strong> (polling):
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Workflow → enqueue Cloud Tasks → poll Firestore every 3s → detect terminal status
+</code></pre></div></p>
+<p><strong>New flow</strong> (webhook):
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Workflow → enqueue Cloud Tasks → await asyncio.Event per business
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>Cloud Task completes → POST /api/internal/task-callback → set event
+</code></pre></div></p>
+<p><strong>Implementation</strong>:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># New endpoint: backend/routers/internal/task_callback.py</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/api/internal/task-callback&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">task_callback</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="n">TaskCallbackRequest</span><span class="p">):</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="c1"># Signal the waiting workflow</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">event</span> <span class="o">=</span> <span class="n">_pending_events</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">task_id</span><span class="p">)</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="k">if</span> <span class="n">event</span><span class="p">:</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        <span class="n">event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="c1"># In analysis.py — replace polling loop</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="n">events</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="k">for</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="n">task_ids</span><span class="p">:</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    <span class="n">events</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    <span class="n">_pending_events</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">events</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">e</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">events</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+</code></pre></div></p>
+<p><strong>Caveat</strong>: Only works if workflow and callback run in the same Cloud Run instance. If Cloud Run scales to multiple instances, need Redis/Pub-Sub or Firestore watch instead. For <code>min-instances=1, max-instances=5</code>, consider Firestore <code>.on_snapshot()</code> as alternative.</p>
+<p><strong>Files</strong>: New <code>backend/routers/internal/task_callback.py</code>, <code>backend/workflows/phases/analysis.py</code>, <code>backend/routers/admin/tasks.py</code></p>
+<hr />
+<h2 id="7-businessanalysispipeline-as-sequentialagent">7. BusinessAnalysisPipeline as SequentialAgent<a class="headerlink" href="#7-businessanalysispipeline-as-sequentialagent" title="Permanent link">&para;</a></h2>
+<p><strong>Status</strong>: Not started
+<strong>Effort</strong>: Large (2-3 days)
+<strong>Impact</strong>: High — replaces <code>_run_workflow_analyze</code> (180 lines of imperative code) with declarative ADK pipeline</p>
+<p><strong>What</strong>: Model the entire business analysis pipeline as a single ADK <code>SequentialAgent</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>SequentialAgent(&quot;BusinessAnalysisPipeline&quot;, sub_agents=[
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    enrichment_agent,           # output_key=&quot;enriched_identity&quot;
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    research_context_agent,     # output_key=&quot;research_context&quot;
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    ParallelAgent(&quot;Capabilities&quot;, sub_agents=[
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>        seo_agent,              # output_key=&quot;seo_report&quot;
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>        traffic_agent,          # output_key=&quot;traffic_forecast&quot;
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>        competitive_agent,      # output_key=&quot;competitive_report&quot;
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        social_agent,           # output_key=&quot;social_audit&quot;
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    ]),
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    insights_agent,             # reads all outputs, output_key=&quot;insights&quot;
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>])
+</code></pre></div>
+<p><strong>Benefits</strong>:
+- ADK manages execution order, parallelism, error handling
+- Session state is the single source of truth
+- Each agent reads predecessors' output via <code>context.state</code>
+- <code>on_model_error_callback</code> covers every agent automatically</p>
+<p><strong>Depends on</strong>: Items 1, 3, 4</p>
+<p><strong>Files</strong>: New <code>packages/capabilities/hephae_agents/pipeline.py</code>, refactor <code>backend/routers/admin/tasks.py</code></p>
+<hr />
+<h2 id="8-eval-coverage-expansion">8. Eval Coverage Expansion<a class="headerlink" href="#8-eval-coverage-expansion" title="Permanent link">&para;</a></h2>
+<p><strong>Status</strong>: Partial (8 eval cases exist for research agents + 4 for outreach)
+<strong>Effort</strong>: Medium-Large (ongoing)
+<strong>Impact</strong>: Medium — catches regressions, validates prompt changes</p>
+<p><strong>What</strong>: Build comprehensive eval suites using ADK's <code>EvalSet</code>/<code>EvalCase</code> framework:</p>
+<ol>
+<li><strong>Structural evals</strong>: Does each agent's output match its <code>output_schema</code>? (automated)</li>
+<li><strong>Quality evals</strong>: Are social links valid URLs? Do competitors exist? Is the SEO report actionable?</li>
+<li><strong>Regression evals</strong>: Golden fixtures from production runs — compare new outputs against known-good baselines</li>
+<li><strong>Pipeline evals</strong>: End-to-end test of <code>BusinessAnalysisPipeline</code> for 5 fixture businesses</li>
+</ol>
+<p><strong>ADK Feature</strong>: <code>google.adk.evaluation.EvalSet</code>, <code>EvalCase</code>, <code>AgentEvaluator</code></p>
+<p><strong>Files</strong>: <code>tests/evals/</code>, <code>contracts/eval-standards.md</code></p>
+<hr />
+<h2 id="priority-matrix">Priority Matrix<a class="headerlink" href="#priority-matrix" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Effort</th>
+<th>Impact</th>
+<th>Depends On</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Model error callback</td>
+<td>Small</td>
+<td>High</td>
+<td>—</td>
+<td>DONE</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Session ID in metadata</td>
+<td>Tiny</td>
+<td>Medium</td>
+<td>—</td>
+<td>DONE</td>
+</tr>
+<tr>
+<td>2</td>
+<td>output_schema migration</td>
+<td>Medium</td>
+<td>High</td>
+<td>—</td>
+<td>In Progress (12/25+)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>FirestoreSessionService</td>
+<td>Small</td>
+<td>Medium</td>
+<td>—</td>
+<td>DONE</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Webhook callback</td>
+<td>Medium</td>
+<td>High</td>
+<td>—</td>
+<td>Not Started</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Composite agent rewrites</td>
+<td>Large</td>
+<td>High</td>
+<td>1, 2</td>
+<td>Not Started</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Pipeline SequentialAgent</td>
+<td>Large</td>
+<td>High</td>
+<td>1, 3, 4</td>
+<td>Not Started</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Eval expansion</td>
+<td>Ongoing</td>
+<td>Medium</td>
+<td>2</td>
+<td>Not Started</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="workflow-observations-live-run-buka21svb4u4ahpovhzf-2026-03-13">Workflow Observations — Live Run <code>Buka21SVb4U4aHPOVHZf</code> (2026-03-13)<a class="headerlink" href="#workflow-observations-live-run-buka21svb4u4ahpovhzf-2026-03-13" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>Workflow: 29 Restaurants in 07110 (Nutley, NJ). Observed in real-time during analysis phase.</p>
+</blockquote>
+<h3 id="issue-9-2029-businesses-complete-analysis-with-zero-capabilities">Issue 9: 20/29 Businesses Complete Analysis with ZERO Capabilities<a class="headerlink" href="#issue-9-2029-businesses-complete-analysis-with-zero-capabilities" title="Permanent link">&para;</a></h3>
+<p><strong>Status</strong>: Not started
+<strong>Effort</strong>: Medium (half day)
+<strong>Impact</strong>: Critical — 69% of businesses produce no useful output</p>
+<p><strong>Problem</strong>: When a business has no <code>officialUrl</code> (20/29 in this run), the capability gating in <code>registry.py</code> skips SEO (needs URL), competitive (needs <code>competitors</code>), and margin (needs <code>menuScreenshotBase64</code>). Traffic and social should run (no gating), but 20 businesses still ended up with <code>capabilitiesCompleted: []</code>. The task completes "successfully" with zero work done.</p>
+<p><strong>Root causes</strong>:
+1. <strong>No early exit or warning</strong> — <code>_run_workflow_analyze</code> in <code>tasks.py:290-302</code> filters caps via <code>should_run</code>, but if all are skipped (or traffic/social fail silently), it returns <code>STATUS_COMPLETED</code> with empty lists. No error, no flag.
+2. <strong>Only 9/29 businesses had URLs</strong> — enrichment's <code>_find_website()</code> fails frequently for small local restaurants (search-based fallback often returns nothing).
+3. <strong>Traffic and social should be URL-independent</strong> — but they may be failing or being skipped by some other mechanism when there's no enriched profile data.</p>
+<p><strong>Fix ideas</strong>:
+- Add minimum-capability threshold: if <code>len(caps_to_run) &lt; 2</code>, flag the business as <code>ANALYSIS_SKIPPED</code> instead of <code>analysis_done</code>
+- Make traffic forecast and social audit truly work without URLs — they only need name + address + zip
+- Log a WARNING when 0 capabilities are eligible, include business name + what's missing
+- Evaluate whether these no-URL businesses should even proceed past enrichment</p>
+<p><strong>Files</strong>: <code>apps/api/backend/routers/admin/tasks.py:290-387</code>, <code>apps/api/backend/workflows/capabilities/registry.py:170-218</code></p>
+<hr />
+<h3 id="issue-10-massive-gemini-429-rate-limiting-resource_exhausted">Issue 10: Massive Gemini 429 Rate Limiting (RESOURCE_EXHAUSTED)<a class="headerlink" href="#issue-10-massive-gemini-429-rate-limiting-resource_exhausted" title="Permanent link">&para;</a></h3>
+<p><strong>Status</strong>: Partially mitigated (fallback works), but needs rate-limiting strategy
+<strong>Effort</strong>: Medium
+<strong>Impact</strong>: High — slows entire workflow, burns fallback model quota</p>
+<p><strong>Problem</strong>: With 29 businesses enqueued as Cloud Tasks simultaneously (all within 3 seconds at 21:21:34-37), the <code>maxConcurrentDispatches: 3</code> queue config means 3 tasks run in parallel. Each task fires multiple Gemini API calls (discovery, enrichment, social, SEO, traffic, competitive). The combined load triggers constant 429s on <code>gemini-3.1-flash-lite-preview</code>.</p>
+<p><strong>Observed behavior</strong>:
+- Dozens of 429 fallbacks from <code>gemini-3.1-flash-lite-preview</code> → <code>gemini-2.5-flash-lite</code> per minute
+- Fallback model succeeds but is slower/more expensive
+- No backoff between retries — model_fallback immediately retries on the fallback model</p>
+<p><strong>Fix ideas</strong>:
+- Add exponential backoff with jitter before retrying on fallback model (not just immediate switch)
+- Consider reducing <code>maxConcurrentDispatches</code> to 2 for large batches, or dynamically adjusting based on batch size
+- Add a pre-flight rate budget: if batch &gt; 15 businesses, stagger task scheduling with 5-10s delays
+- Track 429 count per workflow and surface in admin UI as a health metric</p>
+<p><strong>Files</strong>: <code>hephae_common/model_fallback.py</code>, Cloud Tasks queue config</p>
+<hr />
+<h3 id="issue-11-social-audit-native-json-parse-fails-100-of-the-time">Issue 11: Social Audit Native JSON Parse Fails 100% of the Time<a class="headerlink" href="#issue-11-social-audit-native-json-parse-fails-100-of-the-time" title="Permanent link">&para;</a></h3>
+<p><strong>Status</strong>: Not started
+<strong>Effort</strong>: Small (1-2 hours)
+<strong>Impact</strong>: Medium — fallback extraction works but adds latency and fragility</p>
+<p><strong>Problem</strong>: Every single social audit in this run logged <code>Native JSON parse failed, attempting fallback extraction</code>. The native <code>output_schema</code> or <code>response_schema</code> is not working for the social media auditor — it always falls back to manual extraction.</p>
+<p><strong>Observed</strong>: 6/6 social audit runs showed this warning, all recovered via fallback but this is a reliability risk.</p>
+<p><strong>Fix</strong>: Investigate why the social audit agent's structured output isn't producing valid JSON. Likely a schema mismatch or the agent returning markdown-wrapped JSON despite <code>output_schema</code>.</p>
+<p><strong>Files</strong>: <code>packages/capabilities/hephae_agents/social/media_auditor/runner.py</code></p>
+<hr />
+<h3 id="issue-12-bls-api-key-invalid-placeholder">Issue 12: BLS API Key Invalid ("placeholder")<a class="headerlink" href="#issue-12-bls-api-key-invalid-placeholder" title="Permanent link">&para;</a></h3>
+<p><strong>Status</strong>: Not started
+<strong>Effort</strong>: Tiny (config fix)
+<strong>Impact</strong>: Medium — traffic forecasts missing labor/economic data</p>
+<p><strong>Problem</strong>: BLS API calls fail with <code>The key:placeholder provided by the User is invalid</code>. The <code>BLS_API_KEY</code> env var on Cloud Run is set to a placeholder value.</p>
+<p><strong>Fix</strong>: Set a valid BLS API key in Cloud Run environment variables.</p>
+<p><strong>Files</strong>: <code>apps/api/backend/config.py</code> (env var), Cloud Run service config</p>
+<hr />
+<h3 id="issue-13-pagespeed-api-rate-limiting">Issue 13: PageSpeed API Rate Limiting<a class="headerlink" href="#issue-13-pagespeed-api-rate-limiting" title="Permanent link">&para;</a></h3>
+<p><strong>Status</strong>: Not started
+<strong>Effort</strong>: Small
+<strong>Impact</strong>: Low-Medium — SEO audits delayed but eventually succeed</p>
+<p><strong>Problem</strong>: PageSpeed API returns 429 for concurrent requests. The SEO runner retries 3 times with 5s/15s/30s backoff, which works but adds ~50s latency per business. With 3 concurrent tasks all hitting PageSpeed, rate limits are easily triggered.</p>
+<p><strong>Observed</strong>: Multiple businesses (theoakleykitchen.com, seamless.com/bosphorus) hit all 3 retries.</p>
+<p><strong>Fix ideas</strong>:
+- Add a semaphore or rate limiter for PageSpeed calls (max 1 concurrent across all tasks)
+- Cache PageSpeed results per domain (don't re-check on resume/retry)
+- Consider if PageSpeed for Seamless/aggregator URLs is even useful (Bosphorus had its Seamless page tested instead of thebosphorus.us)</p>
+<p><strong>Files</strong>: <code>packages/capabilities/hephae_agents/seo_auditor/tools.py</code></p>
+<hr />
+<h3 id="issue-14-seo-auditor-testing-wrong-urls-aggregator-pages">Issue 14: SEO Auditor Testing Wrong URLs (Aggregator Pages)<a class="headerlink" href="#issue-14-seo-auditor-testing-wrong-urls-aggregator-pages" title="Permanent link">&para;</a></h3>
+<p><strong>Status</strong>: Not started
+<strong>Effort</strong>: Small-Medium
+<strong>Impact</strong>: Medium — SEO reports are meaningless if they audit Seamless/Grubhub instead of the actual business site</p>
+<p><strong>Problem</strong>: The Bosphorus has <code>officialUrl: https://thebosphorus.us</code> but the SEO runner tested <code>https://www.seamless.com/menu/the-bosphorus-226-franklin-ave-nutley/...</code> — a third-party aggregator page. PageSpeed scores and SEO analysis for Seamless are irrelevant to the business.</p>
+<p><strong>Fix</strong>: Validate that the URL being audited matches the business's own domain, not a marketplace/aggregator. Skip or flag if the URL is from seamless.com, grubhub.com, doordash.com, ubereats.com, yelp.com, etc.</p>
+<p><strong>Files</strong>: <code>packages/capabilities/hephae_agents/seo_auditor/runner.py</code></p>
+<hr />
+<h3 id="issue-15-agents-hallucinating-competitor-names-from-other-cities">Issue 15: Agents Hallucinating Competitor Names from Other Cities<a class="headerlink" href="#issue-15-agents-hallucinating-competitor-names-from-other-cities" title="Permanent link">&para;</a></h3>
+<p><strong>Status</strong>: Not started
+<strong>Effort</strong>: Medium
+<strong>Impact</strong>: Medium — wasted API calls, incorrect competitive analysis</p>
+<p><strong>Problem</strong>: Google search logs show the agents searching for completely unrelated businesses in other cities: "The Fireplace" Brookline MA, "Joe's Stone Crab" Miami Beach, "The Flying Burrito", "The French Pantry" Jacksonville, "The Baked Bear" San Francisco, "The Melting Pot", "Ad Hoc" Yountville. These are NOT competitors in Nutley, NJ 07110.</p>
+<p><strong>Root cause</strong>: The competitive analysis agent is hallucinating well-known restaurants as competitors instead of finding actual local competitors. The prompt likely needs stronger geographic constraints.</p>
+<p><strong>Fix</strong>: Tighten competitive analysis prompts to strictly scope to the same zip code/city. Add post-generation validation that competitor addresses are in the target area.</p>
+<p><strong>Files</strong>: <code>packages/capabilities/hephae_agents/competitive/</code> agent prompts</p>
+<hr />
+<h3 id="issue-16-enrichment-website-search-fails-silently-for-many-businesses">Issue 16: Enrichment Website Search Fails Silently for Many Businesses<a class="headerlink" href="#issue-16-enrichment-website-search-fails-silently-for-many-businesses" title="Permanent link">&para;</a></h3>
+<p><strong>Status</strong>: Not started
+<strong>Effort</strong>: Medium
+<strong>Impact</strong>: High — cascading effect, businesses without URLs get 0 capabilities</p>
+<p><strong>Problem</strong>: 20/29 businesses ended up with no <code>officialUrl</code>. The enrichment phase's <code>_find_website()</code> uses a search-based fallback when no URL is found in discovery, but it fails with empty results for most small local restaurants (logged as <code>Website search failed for X:</code>  with empty error message).</p>
+<p><strong>Observed</strong>: The Old Canal Inn, MEAL, Bella Luce all went through search fallback and got nothing.</p>
+<p><strong>Fix ideas</strong>:
+- Improve the WebsiteFinderAgent to try multiple search strategies (Google Maps URL, Yelp page as proxy)
+- If no official site exists, use the Google Maps/Places listing URL as a proxy <code>officialUrl</code>
+- Consider: should capabilities be gated on URL at all? Traffic and social don't need one.</p>
+<p><strong>Files</strong>: <code>apps/api/backend/workflows/phases/enrichment.py:28-45</code></p>
+<hr />
+<h3 id="updated-priority-matrix">Updated Priority Matrix<a class="headerlink" href="#updated-priority-matrix" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Effort</th>
+<th>Impact</th>
+<th>Depends On</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Model error callback</td>
+<td>Small</td>
+<td>High</td>
+<td>—</td>
+<td>DONE</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Session ID in metadata</td>
+<td>Tiny</td>
+<td>Medium</td>
+<td>—</td>
+<td>DONE</td>
+</tr>
+<tr>
+<td>2</td>
+<td>output_schema migration</td>
+<td>Medium</td>
+<td>High</td>
+<td>—</td>
+<td>In Progress (12/25+)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>FirestoreSessionService</td>
+<td>Small</td>
+<td>Medium</td>
+<td>—</td>
+<td>DONE</td>
+</tr>
+<tr>
+<td><strong>9</strong></td>
+<td><strong>Zero-cap analysis completion</strong></td>
+<td><strong>Medium</strong></td>
+<td><strong>Critical</strong></td>
+<td>—</td>
+<td><strong>Not Started</strong></td>
+</tr>
+<tr>
+<td><strong>16</strong></td>
+<td><strong>Enrichment website search</strong></td>
+<td><strong>Medium</strong></td>
+<td><strong>High</strong></td>
+<td>—</td>
+<td><strong>Not Started</strong></td>
+</tr>
+<tr>
+<td><strong>11</strong></td>
+<td><strong>Social audit JSON parse</strong></td>
+<td><strong>Small</strong></td>
+<td><strong>Medium</strong></td>
+<td>2</td>
+<td><strong>Not Started</strong></td>
+</tr>
+<tr>
+<td><strong>14</strong></td>
+<td><strong>SEO auditing wrong URLs</strong></td>
+<td><strong>Small-Medium</strong></td>
+<td><strong>Medium</strong></td>
+<td>—</td>
+<td><strong>Not Started</strong></td>
+</tr>
+<tr>
+<td><strong>15</strong></td>
+<td><strong>Competitor hallucination</strong></td>
+<td><strong>Medium</strong></td>
+<td><strong>Medium</strong></td>
+<td>—</td>
+<td><strong>Not Started</strong></td>
+</tr>
+<tr>
+<td><strong>12</strong></td>
+<td><strong>BLS API key placeholder</strong></td>
+<td><strong>Tiny</strong></td>
+<td><strong>Medium</strong></td>
+<td>—</td>
+<td><strong>Not Started</strong></td>
+</tr>
+<tr>
+<td>6</td>
+<td>Webhook callback</td>
+<td>Medium</td>
+<td>High</td>
+<td>—</td>
+<td>Not Started</td>
+</tr>
+<tr>
+<td><strong>10</strong></td>
+<td><strong>Gemini 429 rate strategy</strong></td>
+<td><strong>Medium</strong></td>
+<td><strong>High</strong></td>
+<td>—</td>
+<td><strong>Not Started</strong></td>
+</tr>
+<tr>
+<td><strong>13</strong></td>
+<td><strong>PageSpeed rate limiting</strong></td>
+<td><strong>Small</strong></td>
+<td><strong>Low-Medium</strong></td>
+<td>—</td>
+<td><strong>Not Started</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Composite agent rewrites</td>
+<td>Large</td>
+<td>High</td>
+<td>1, 2</td>
+<td>Not Started</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Pipeline SequentialAgent</td>
+<td>Large</td>
+<td>High</td>
+<td>1, 3, 4</td>
+<td>Not Started</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Eval expansion</td>
+<td>Ongoing</td>
+<td>Medium</td>
+<td>2</td>
+<td>Not Started</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

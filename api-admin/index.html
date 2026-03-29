@@ -1,0 +1,4387 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal documentation for the Hephae Forge pipeline">
+      
+      
+      
+        <link rel="canonical" href="https://hephae-co.github.io/hephae-forge/api-admin/">
+      
+      
+        <link rel="prev" href="../api-web/">
+      
+      
+        <link rel="next" href="../agents/agent-catalog/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Admin Routes - Hephae Forge Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#admin-api-routes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Hephae Forge Docs" class="md-header__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hephae Forge Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Admin Routes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Hephae Forge Docs" class="md-nav__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Hephae Forge Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/workflow-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../firestore-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firestore Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bigquery-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BigQuery Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcs-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Admin Routes
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Admin Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#health-top-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Health (top-level)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#post-apiworkflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/workflows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiworkflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/workflows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiworkflowscounty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/workflows/county
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow-stream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow Stream
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflow Stream">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apiworkflowsworkflow_idstream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/workflows/{workflow_id}/stream
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow Actions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflow Actions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apiworkflowsworkflow_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/workflows/{workflow_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiworkflowsworkflow_idresearch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/workflows/{workflow_id}/research
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patch-apiworkflowsworkflow_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PATCH /api/workflows/{workflow_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apiworkflowsworkflow_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/workflows/{workflow_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiworkflowsworkflow_idapprove" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/workflows/{workflow_id}/approve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiworkflowsworkflow_idresume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/workflows/{workflow_id}/resume
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#research-businesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Research Businesses
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Research Businesses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apiresearchbusinesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/research/businesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiresearchbusinessesslug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/research/businesses/{slug}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiresearchbusinesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/research/businesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apiresearchbusinesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/research/businesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiresearchdiscovery-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/research/discovery-status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiresearchactions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/research/actions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#zip-code-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zip Code Research
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Zip Code Research">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apizipcode-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/zipcode-research
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apizipcode-researchzip_code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/zipcode-research/{zip_code}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apizipcode-researchzip_code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/zipcode-research/{zip_code}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apizipcode-researchrunsrun_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/zipcode-research/runs/{run_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apizipcode-researchrunsrun_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/zipcode-research/runs/{run_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#area-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Area Research
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Area Research">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#post-apiarea-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/area-research
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiarea-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/area-research
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiarea-researcharea_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/area-research/{area_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apiarea-researcharea_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/area-research/{area_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiarea-researcharea_idstream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/area-research/{area_id}/stream
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sector-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sector Research
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sector Research">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#post-apisector-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/sector-research
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apisector-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/sector-research
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apisector-researchsector_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/sector-research/{sector_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#combined-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combined Context
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Combined Context">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#post-apicombined-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/combined-context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apicombined-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/combined-context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apicombined-contextcontext_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/combined-context/{context_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apicombined-contextcontext_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/combined-context/{context_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stats
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Stats">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/stats
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fixtures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixtures
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Fixtures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#post-apifixtures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/fixtures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apifixtures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/fixtures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apifixturesfixture_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/fixtures/{fixture_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apifixturesfixture_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/fixtures/{fixture_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-runner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Runner
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test Runner">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#post-apirun-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/run-tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apirun-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/run-tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#food-prices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Food Prices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Food Prices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apifood-pricescpi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/food-prices/cpi
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apifood-pricescommodities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/food-prices/commodities
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apifood-pricessummary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/food-prices/summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Content">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#post-apicontentgenerate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/content/generate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apicontent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/content
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apicontentpost_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/content/{post_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patch-apicontentpost_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PATCH /api/content/{post_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apicontentpost_idpublish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/content/{post_id}/publish
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apicontentpost_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/content/{post_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#discovery-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discovery Jobs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Discovery Jobs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apiadmindiscovery-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/admin/discovery-jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiadmindiscovery-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/admin/discovery-jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiadmindiscovery-jobsjob_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/admin/discovery-jobs/{job_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiadmindiscovery-jobsjob_idrun-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/admin/discovery-jobs/{job_id}/run-now
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apiadmindiscovery-jobsjob_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/admin/discovery-jobs/{job_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tasks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tasks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apiresearchtasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/research/tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiresearchtasksspawn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/research/tasks/spawn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiresearchtasksexecute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/research/tasks/execute
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#weekly-pulse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weekly Pulse
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Weekly Pulse">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#post-apiweekly-pulse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/weekly-pulse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiweekly-pulsejobsjob_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/weekly-pulse/jobs/{job_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiweekly-pulse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/weekly-pulse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiweekly-pulsezip_codebusiness_typelatest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/weekly-pulse/{zip_code}/{business_type}/latest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiweekly-pulsezip_codebusiness_typehistory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/weekly-pulse/{zip_code}/{business_type}/history
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiweekly-pulseidpulse_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/weekly-pulse/id/{pulse_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apiweekly-pulseidpulse_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/weekly-pulse/id/{pulse_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pulse-admin-batch-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pulse Admin (Batch Monitoring)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pulse Admin (Batch Monitoring)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apiweekly-pulsebatches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/weekly-pulse/batches
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiweekly-pulsebatchesbatch_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/weekly-pulse/batches/{batch_id}
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registered-zipcodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registered Zipcodes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Registered Zipcodes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#post-apiregistered-zipcodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/registered-zipcodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiregistered-zipcodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/registered-zipcodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apiregistered-zipcodeszip_code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/registered-zipcodes/{zip_code}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiregistered-zipcodeszip_codepause" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/registered-zipcodes/{zip_code}/pause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiregistered-zipcodeszip_coderesume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/registered-zipcodes/{zip_code}/resume
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiregistered-zipcodeszip_codeapprove" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/registered-zipcodes/{zip_code}/approve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiregistered-zipcodeszip_codebusiness-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/registered-zipcodes/{zip_code}/business-types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apiregistered-zipcodeszip_codebusiness-typesbiz_type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/registered-zipcodes/{zip_code}/business-types/{biz_type}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiregistered-zipcodescron-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/registered-zipcodes/cron-status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#zipcode-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zipcode Profiles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Zipcode Profiles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#post-apizipcode-profilesdiscoverzip_code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/zipcode-profiles/discover/{zip_code}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apizipcode-profileszip_code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/zipcode-profiles/{zip_code}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apizipcode-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/zipcode-profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apizipcode-profileszip_code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/zipcode-profiles/{zip_code}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apizipcode-profileszip_coderefresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/zipcode-profiles/{zip_code}/refresh
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registered-industries-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registered Industries (NEW)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Registered Industries (NEW)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apiregistered-industries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/registered-industries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiregistered-industries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/registered-industries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-apiregistered-industriesindustry_key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/registered-industries/{industry_key}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apiregistered-industriesindustry_key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/registered-industries/{industry_key}
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiregistered-industriesindustry_keypause" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/registered-industries/{industry_key}/pause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiregistered-industriesindustry_keyresume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/registered-industries/{industry_key}/resume
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apiregistered-industriesindustry_keygenerate-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/registered-industries/{industry_key}/generate-now
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/agent-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/prompt-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pipeline Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qualification-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qualification Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../unified-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-ground-truth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eval Ground Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<blockquote>
+<p>Auto-generated from codebase on 2026-03-22.</p>
+</blockquote>
+<h1 id="admin-api-routes">Admin API Routes<a class="headerlink" href="#admin-api-routes" title="Permanent link">&para;</a></h1>
+<p>All admin routes require authentication via <strong>Firebase token</strong> checked against the admin allowlist (<code>verify_admin_request</code>). Requests without a valid <code>x-firebase-token</code> header receive 401; non-allowlisted users receive 403. The one exception is <code>POST /api/research/tasks/execute</code>, which is called internally by Cloud Tasks and has no auth dependency.</p>
+<p>Admin routers are registered <strong>without a global prefix</strong> in <code>main.py</code> — each router defines its own prefix.</p>
+<p><strong>Total: 21 routers, 70+ endpoints</strong> across Admin (21 routers), Batch/Cron (8 routers), plus 2 top-level health endpoints.</p>
+<hr />
+<h2 id="health-top-level">Health (top-level)<a class="headerlink" href="#health-top-level" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/main.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/health</code></td>
+<td>None</td>
+<td>Health check</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/</code></td>
+<td>None</td>
+<td>Root status endpoint</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="workflows">Workflows<a class="headerlink" href="#workflows" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/workflows.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/workflows</code></td>
+<td>Firebase Admin</td>
+<td>Create and start a new workflow for a zip code</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/workflows</code></td>
+<td>Firebase Admin</td>
+<td>List recent workflows (limit 20)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/workflows/county</code></td>
+<td>Firebase Admin</td>
+<td>Create and start a county-wide workflow</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-apiworkflows">POST /api/workflows<a class="headerlink" href="#post-apiworkflows" title="Permanent link">&para;</a></h3>
+<p>Create a new workflow for a single zip code and start the workflow engine in the background.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>zipCode</code> | <code>string</code> | Yes | 5-digit zip code |
+| <code>businessType</code> | <code>string \| null</code> | No | Business type filter |</p>
+<p><strong>Response:</strong> <code>{ workflowId: string, status: "started" }</code></p>
+<h3 id="get-apiworkflows">GET /api/workflows<a class="headerlink" href="#get-apiworkflows" title="Permanent link">&para;</a></h3>
+<p>List the 20 most recent workflows.</p>
+<p><strong>Response:</strong> <code>WorkflowDocument[]</code> (JSON-serialized)</p>
+<h3 id="post-apiworkflowscounty">POST /api/workflows/county<a class="headerlink" href="#post-apiworkflowscounty" title="Permanent link">&para;</a></h3>
+<p>Create a county-wide workflow by resolving zip codes from a county name using the county resolver agent.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>businessType</code> | <code>string</code> | Yes | Business type to discover |
+| <code>county</code> | <code>string</code> | Yes | County name (e.g. "Cook County, IL") |
+| <code>maxZipCodes</code> | <code>int \| null</code> | No | Max zip codes to include (default 10, cap 15) |</p>
+<p><strong>Response:</strong> <code>{ workflowId: string, status: "started", zipCodes: string[], countyName: string, state: string }</code></p>
+<hr />
+<h2 id="workflow-stream">Workflow Stream<a class="headerlink" href="#workflow-stream" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/workflow_stream.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/workflows/{workflow_id}/stream</code></td>
+<td>Firebase Admin</td>
+<td>SSE stream of workflow progress</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apiworkflowsworkflow_idstream">GET /api/workflows/{workflow_id}/stream<a class="headerlink" href="#get-apiworkflowsworkflow_idstream" title="Permanent link">&para;</a></h3>
+<p>Server-Sent Events stream for real-time workflow progress. Sends initial state, then streams progress events. Falls back to Firestore polling (3s intervals, max 30 min) if no in-process engine is found.</p>
+<p><strong>SSE event types:</strong>
+- <code>initial</code> -- full workflow state on connect
+- <code>heartbeat</code> -- keep-alive (every 30s during in-process streaming)
+- <code>phase_changed</code> -- workflow phase transition (polling mode)
+- <code>poll</code> -- progress update (polling mode)
+- <code>done</code> -- workflow reached terminal phase (COMPLETED, FAILED, or APPROVAL)
+- <code>error</code> -- workflow not found</p>
+<p><strong>Response:</strong> <code>text/event-stream</code></p>
+<hr />
+<h2 id="workflow-actions">Workflow Actions<a class="headerlink" href="#workflow-actions" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/workflow_actions.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/workflows/{workflow_id}</code></td>
+<td>Firebase Admin</td>
+<td>Get workflow detail</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/workflows/{workflow_id}/research</code></td>
+<td>Firebase Admin</td>
+<td>Get zip code and area research for a workflow</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td><code>/api/workflows/{workflow_id}</code></td>
+<td>Firebase Admin</td>
+<td>Force-stop a running workflow</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/workflows/{workflow_id}</code></td>
+<td>Firebase Admin</td>
+<td>Delete a workflow</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/workflows/{workflow_id}/approve</code></td>
+<td>Firebase Admin</td>
+<td>Approve/reject businesses in a workflow</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/workflows/{workflow_id}/resume</code></td>
+<td>Firebase Admin</td>
+<td>Resume a failed workflow</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apiworkflowsworkflow_id">GET /api/workflows/{workflow_id}<a class="headerlink" href="#get-apiworkflowsworkflow_id" title="Permanent link">&para;</a></h3>
+<p>Return the full workflow document.</p>
+<p><strong>Response:</strong> <code>WorkflowDocument</code> (JSON-serialized)</p>
+<h3 id="get-apiworkflowsworkflow_idresearch">GET /api/workflows/{workflow_id}/research<a class="headerlink" href="#get-apiworkflowsworkflow_idresearch" title="Permanent link">&para;</a></h3>
+<p>Fetch zip code reports and area research produced during a workflow run. Iterates over all zip codes in the workflow.</p>
+<p><strong>Response:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">&quot;zipReports&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;&lt;zipCode&gt;&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;ZipCodeReport&gt;&quot;</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">&quot;areaResearch&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;&lt;zipCode&gt;&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;area&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;businessType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;AreaSummary&gt;&quot;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="p">}</span>
+</code></pre></div></p>
+<h3 id="patch-apiworkflowsworkflow_id">PATCH /api/workflows/{workflow_id}<a class="headerlink" href="#patch-apiworkflowsworkflow_id" title="Permanent link">&para;</a></h3>
+<p>Force-stop a running workflow by marking it as FAILED.</p>
+<p><strong>Response:</strong> <code>{ success: true, message: "Workflow stopped" }</code></p>
+<h3 id="delete-apiworkflowsworkflow_id">DELETE /api/workflows/{workflow_id}<a class="headerlink" href="#delete-apiworkflowsworkflow_id" title="Permanent link">&para;</a></h3>
+<p>Delete a workflow document.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>force</code> | <code>bool</code> | <code>false</code> | Force delete even if not in terminal state |</p>
+<p><strong>Response:</strong> <code>{ success: true, ... }</code></p>
+<h3 id="post-apiworkflowsworkflow_idapprove">POST /api/workflows/{workflow_id}/approve<a class="headerlink" href="#post-apiworkflowsworkflow_idapprove" title="Permanent link">&para;</a></h3>
+<p>Submit approval/rejection decisions for businesses awaiting review. Records feedback to BigQuery. If any business is approved, starts the outreach engine in the background.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>approvals</code> | <code>dict[string, string]</code> | Yes | Map of business slug to <code>"approve"</code> or <code>"reject"</code> |</p>
+<p><strong>Response:</strong> <code>{ success: true, approved: bool }</code></p>
+<h3 id="post-apiworkflowsworkflow_idresume">POST /api/workflows/{workflow_id}/resume<a class="headerlink" href="#post-apiworkflowsworkflow_idresume" title="Permanent link">&para;</a></h3>
+<p>Resume a failed workflow. Clears the error, increments retry count, and determines the resume phase based on business states (DISCOVERY, ANALYSIS, or EVALUATION).</p>
+<p><strong>Response:</strong> <code>{ success: true, resumePhase: string }</code></p>
+<hr />
+<h2 id="research-businesses">Research Businesses<a class="headerlink" href="#research-businesses" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/research_businesses.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/research/businesses</code></td>
+<td>Firebase Admin</td>
+<td>List businesses with pagination and filters</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/research/businesses/{slug}</code></td>
+<td>Firebase Admin</td>
+<td>Get business profile summary for approval review</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/research/businesses</code></td>
+<td>Firebase Admin</td>
+<td>Discover businesses in a zip code</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/research/businesses</code></td>
+<td>Firebase Admin</td>
+<td>Delete a business by ID</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/research/discovery-status</code></td>
+<td>Firebase Admin</td>
+<td>Get discovery progress for a zip code</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/research/actions</code></td>
+<td>Firebase Admin</td>
+<td>Execute an action on one or more businesses</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apiresearchbusinesses">GET /api/research/businesses<a class="headerlink" href="#get-apiresearchbusinesses" title="Permanent link">&para;</a></h3>
+<p>Paginated business listing with optional filters.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>zipCode</code> | <code>string \| null</code> | <code>null</code> | Filter by zip code |
+| <code>page</code> | <code>int</code> | <code>1</code> | Page number (&gt;= 1) |
+| <code>pageSize</code> | <code>int</code> | <code>25</code> | Results per page (1-100) |
+| <code>category</code> | <code>string \| null</code> | <code>null</code> | Filter by category |
+| <code>status</code> | <code>string \| null</code> | <code>null</code> | Filter by status |
+| <code>hasEmail</code> | <code>bool \| null</code> | <code>null</code> | Filter by email presence |
+| <code>name</code> | <code>string \| null</code> | <code>null</code> | Filter by name |</p>
+<p><strong>Response:</strong> Paginated business list (from <code>get_businesses_paginated</code>)</p>
+<h3 id="get-apiresearchbusinessesslug">GET /api/research/businesses/{slug}<a class="headerlink" href="#get-apiresearchbusinessesslug" title="Permanent link">&para;</a></h3>
+<p>Lightweight business profile summary for the approval UI. Includes identity fields, capability output summaries (scores/headlines only), and insights.</p>
+<p><strong>Response:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">&quot;slug&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">&quot;address&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">&quot;officialUrl&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">&quot;phone&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">&quot;email&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nt">&quot;socialLinks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="nt">&quot;competitors&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">  </span><span class="nt">&quot;persona&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">  </span><span class="nt">&quot;hours&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">  </span><span class="nt">&quot;menuUrl&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">  </span><span class="nt">&quot;logoUrl&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">  </span><span class="nt">&quot;capabilities&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="nt">&quot;&lt;key&gt;&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;score&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;number|null&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;reportUrl&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string|null&quot;</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">  </span><span class="nt">&quot;insights&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="p">}</span>
+</code></pre></div></p>
+<h3 id="post-apiresearchbusinesses">POST /api/research/businesses<a class="headerlink" href="#post-apiresearchbusinesses" title="Permanent link">&para;</a></h3>
+<p>Trigger a zip code scan to discover businesses.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>zipCode</code> | <code>string</code> | Yes | 5-digit zip code to scan |</p>
+<p><strong>Response:</strong> <code>{ count: int, businesses: Business[] }</code></p>
+<h3 id="delete-apiresearchbusinesses">DELETE /api/research/businesses<a class="headerlink" href="#delete-apiresearchbusinesses" title="Permanent link">&para;</a></h3>
+<p>Delete a single business by ID.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>id</code> | <code>string</code> | Yes | Business document ID |</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<h3 id="get-apiresearchdiscovery-status">GET /api/research/discovery-status<a class="headerlink" href="#get-apiresearchdiscovery-status" title="Permanent link">&para;</a></h3>
+<p>Check discovery progress for a zip code (reads from <code>discovery_progress</code> Firestore collection).</p>
+<p><strong>Query params:</strong>
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>zipCode</code> | <code>string</code> | Yes | 5-digit zip code |</p>
+<p><strong>Response:</strong> <code>{ success: bool, progress: dict | null }</code></p>
+<h3 id="post-apiresearchactions">POST /api/research/actions<a class="headerlink" href="#post-apiresearchactions" title="Permanent link">&para;</a></h3>
+<p>Execute an action on one or more businesses. Supports both single and bulk actions.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>action</code> | <code>string</code> | Yes | Action type (see below) |
+| <code>businessId</code> | <code>string \| null</code> | Varies | Target business ID |
+| <code>businessIds</code> | <code>string[] \| null</code> | No | For bulk actions |
+| <code>bulkAction</code> | <code>string \| null</code> | No | Sub-action for bulk (default <code>"deep-dive"</code>) |
+| <code>zipCode</code> | <code>string \| null</code> | No | Zip code context |
+| <code>channel</code> | <code>string \| null</code> | No | Outreach channel |
+| <code>fixtureType</code> | <code>string \| null</code> | No | Fixture type for save-fixture |
+| <code>fixtureId</code> | <code>string \| null</code> | No | Fixture ID for remove-from-test-set |
+| <code>notes</code> | <code>string \| null</code> | No | Notes for fixture |
+| <code>agentName</code> | <code>string \| null</code> | No | Agent name for run-agent |
+| <code>agentKey</code> | <code>string \| null</code> | No | Agent key for save-fixture or delete-agent-result |
+| <code>editedContent</code> | <code>string \| null</code> | No | Edited outreach content |
+| <code>emailSubject</code> | <code>string \| null</code> | No | Email subject for save-outreach-draft |</p>
+<p><strong>Supported actions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Required Fields</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bulk</code></td>
+<td><code>businessIds</code>, <code>bulkAction</code></td>
+<td>Run an action across multiple businesses</td>
+</tr>
+<tr>
+<td><code>deep-dive</code></td>
+<td><code>businessId</code></td>
+<td>Generate AI insights for a business</td>
+</tr>
+<tr>
+<td><code>outreach</code></td>
+<td><code>businessId</code>, <code>channel</code></td>
+<td>Draft and send outreach (email/social)</td>
+</tr>
+<tr>
+<td><code>generate-outreach-content</code></td>
+<td><code>businessId</code></td>
+<td>Generate social posts + CDN assets for all channels</td>
+</tr>
+<tr>
+<td><code>save-outreach-draft</code></td>
+<td><code>businessId</code>, <code>channel</code>, <code>editedContent</code></td>
+<td>Save an edited outreach draft</td>
+</tr>
+<tr>
+<td><code>delete</code></td>
+<td><code>businessId</code></td>
+<td>Delete a business</td>
+</tr>
+<tr>
+<td><code>rediscover</code></td>
+<td><code>businessId</code></td>
+<td>Delete and re-scan the business's zip code</td>
+</tr>
+<tr>
+<td><code>save-fixture</code></td>
+<td><code>businessId</code>, <code>fixtureType</code></td>
+<td>Save business as a test fixture</td>
+</tr>
+<tr>
+<td><code>remove-from-test-set</code></td>
+<td><code>fixtureId</code></td>
+<td>Delete a test fixture</td>
+</tr>
+<tr>
+<td><code>start-discovery</code></td>
+<td><code>businessId</code></td>
+<td>Run enrichment pipeline on a business</td>
+</tr>
+<tr>
+<td><code>run-analysis</code></td>
+<td><code>businessId</code></td>
+<td>Run full analysis pipeline (requires prior discovery)</td>
+</tr>
+<tr>
+<td><code>run-reviewer</code></td>
+<td><code>businessId</code></td>
+<td>Run the reviewer agent on a business</td>
+</tr>
+<tr>
+<td><code>delete-agent-result</code></td>
+<td><code>businessId</code>, <code>agentKey</code></td>
+<td>Delete a specific agent output from latestOutputs</td>
+</tr>
+<tr>
+<td><code>run-agent</code></td>
+<td><code>businessId</code>, <code>agentName</code></td>
+<td>Run a specific capability agent by name</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response:</strong> Varies by action (all include <code>{ success: bool }</code>)</p>
+<hr />
+<h2 id="zip-code-research">Zip Code Research<a class="headerlink" href="#zip-code-research" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/zipcode_research.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/zipcode-research</code></td>
+<td>Firebase Admin</td>
+<td>List recent zip code research runs</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/zipcode-research/{zip_code}</code></td>
+<td>Firebase Admin</td>
+<td>Start research for a zip code</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/zipcode-research/{zip_code}</code></td>
+<td>Firebase Admin</td>
+<td>Get the research report for a zip code</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/zipcode-research/runs/{run_id}</code></td>
+<td>Firebase Admin</td>
+<td>Get a specific research run</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/zipcode-research/runs/{run_id}</code></td>
+<td>Firebase Admin</td>
+<td>Delete a research run</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apizipcode-research">GET /api/zipcode-research<a class="headerlink" href="#get-apizipcode-research" title="Permanent link">&para;</a></h3>
+<p>List recent zip code research runs.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>limit</code> | <code>int</code> | <code>10</code> | Max results (1-50) |</p>
+<p><strong>Response:</strong> <code>Run[]</code> (serialized)</p>
+<h3 id="post-apizipcode-researchzip_code">POST /api/zipcode-research/{zip_code}<a class="headerlink" href="#post-apizipcode-researchzip_code" title="Permanent link">&para;</a></h3>
+<p>Start a zip code research run. Returns cached result if available unless <code>force=true</code>.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>force</code> | <code>bool</code> | <code>false</code> | Force re-research even if cached |</p>
+<p><strong>Response:</strong> <code>{ success: true, report: ZipCodeReport, runId: string }</code></p>
+<h3 id="get-apizipcode-researchzip_code">GET /api/zipcode-research/{zip_code}<a class="headerlink" href="#get-apizipcode-researchzip_code" title="Permanent link">&para;</a></h3>
+<p>Get the latest research report for a zip code.</p>
+<p><strong>Response:</strong> Serialized zip code report document</p>
+<h3 id="get-apizipcode-researchrunsrun_id">GET /api/zipcode-research/runs/{run_id}<a class="headerlink" href="#get-apizipcode-researchrunsrun_id" title="Permanent link">&para;</a></h3>
+<p>Get a specific research run by ID.</p>
+<p><strong>Response:</strong> Serialized run document</p>
+<h3 id="delete-apizipcode-researchrunsrun_id">DELETE /api/zipcode-research/runs/{run_id}<a class="headerlink" href="#delete-apizipcode-researchrunsrun_id" title="Permanent link">&para;</a></h3>
+<p>Delete a research run.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<hr />
+<h2 id="area-research">Area Research<a class="headerlink" href="#area-research" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/area_research.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/area-research</code></td>
+<td>Firebase Admin</td>
+<td>Start area research</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/area-research</code></td>
+<td>Firebase Admin</td>
+<td>List area research documents</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/area-research/{area_id}</code></td>
+<td>Firebase Admin</td>
+<td>Get area research detail</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/area-research/{area_id}</code></td>
+<td>Firebase Admin</td>
+<td>Delete area research</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/area-research/{area_id}/stream</code></td>
+<td>Firebase Admin</td>
+<td>SSE stream of area research progress</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-apiarea-research">POST /api/area-research<a class="headerlink" href="#post-apiarea-research" title="Permanent link">&para;</a></h3>
+<p>Start area research for a geographic area and business type. Resolves zip codes and orchestrates multi-zip research.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>area</code> | <code>string</code> | Yes | Area name (e.g. "Austin, TX") |
+| <code>businessType</code> | <code>string</code> | Yes | Business type to research |
+| <code>maxZipCodes</code> | <code>int \| null</code> | No | Max zip codes to research (default 10, cap 15) |</p>
+<p><strong>Response:</strong> <code>{ areaId: string, status: "started", area: string, businessType: string }</code></p>
+<h3 id="get-apiarea-research">GET /api/area-research<a class="headerlink" href="#get-apiarea-research" title="Permanent link">&para;</a></h3>
+<p>List the 20 most recent area research documents.</p>
+<p><strong>Response:</strong> <code>AreaResearch[]</code> (serialized)</p>
+<h3 id="get-apiarea-researcharea_id">GET /api/area-research/{area_id}<a class="headerlink" href="#get-apiarea-researcharea_id" title="Permanent link">&para;</a></h3>
+<p>Get a specific area research document.</p>
+<p><strong>Response:</strong> Serialized area research document</p>
+<h3 id="delete-apiarea-researcharea_id">DELETE /api/area-research/{area_id}<a class="headerlink" href="#delete-apiarea-researcharea_id" title="Permanent link">&para;</a></h3>
+<p>Delete an area research document. Blocked if the orchestrator is actively running.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<h3 id="get-apiarea-researcharea_idstream">GET /api/area-research/{area_id}/stream<a class="headerlink" href="#get-apiarea-researcharea_idstream" title="Permanent link">&para;</a></h3>
+<p>SSE stream for area research progress. Same streaming pattern as workflow stream: tries in-process streaming first, falls back to Firestore polling (3s intervals, max 30 min).</p>
+<p><strong>SSE event types:</strong>
+- <code>initial</code> -- full document on connect
+- <code>heartbeat</code> -- keep-alive
+- <code>phase_changed</code> -- phase transition
+- <code>poll</code> -- progress update with <code>{ totalZipCodes, completedZipCodes, failedZipCodes }</code>
+- <code>done</code> -- research completed or failed
+- <code>error</code> -- not found</p>
+<p><strong>Response:</strong> <code>text/event-stream</code></p>
+<hr />
+<h2 id="sector-research">Sector Research<a class="headerlink" href="#sector-research" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/sector_research.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/sector-research</code></td>
+<td>Firebase Admin</td>
+<td>Start sector research</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/sector-research</code></td>
+<td>Firebase Admin</td>
+<td>List sector research documents</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/sector-research/{sector_id}</code></td>
+<td>Firebase Admin</td>
+<td>Get sector research detail</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-apisector-research">POST /api/sector-research<a class="headerlink" href="#post-apisector-research" title="Permanent link">&para;</a></h3>
+<p>Start sector-level research. Returns existing research if already completed for this sector. Runs in background.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>sector</code> | <code>string</code> | Yes | Sector/business type |
+| <code>zipCodes</code> | <code>string[] \| null</code> | No | Specific zip codes to include |
+| <code>areaName</code> | <code>string \| null</code> | No | Area name for context |</p>
+<p><strong>Response:</strong> <code>{ status: "started" | "existing", sector: string, ... }</code></p>
+<h3 id="get-apisector-research">GET /api/sector-research<a class="headerlink" href="#get-apisector-research" title="Permanent link">&para;</a></h3>
+<p>List the 20 most recent sector research documents.</p>
+<p><strong>Response:</strong> <code>SectorResearch[]</code> (serialized)</p>
+<h3 id="get-apisector-researchsector_id">GET /api/sector-research/{sector_id}<a class="headerlink" href="#get-apisector-researchsector_id" title="Permanent link">&para;</a></h3>
+<p>Get a specific sector research document.</p>
+<p><strong>Response:</strong> Serialized sector research document</p>
+<hr />
+<h2 id="combined-context">Combined Context<a class="headerlink" href="#combined-context" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/combined_context.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/combined-context</code></td>
+<td>Firebase Admin</td>
+<td>Create a combined context from multiple research runs</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/combined-context</code></td>
+<td>Firebase Admin</td>
+<td>List combined contexts</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/combined-context/{context_id}</code></td>
+<td>Firebase Admin</td>
+<td>Get a combined context</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/combined-context/{context_id}</code></td>
+<td>Firebase Admin</td>
+<td>Delete a combined context</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-apicombined-context">POST /api/combined-context<a class="headerlink" href="#post-apicombined-context" title="Permanent link">&para;</a></h3>
+<p>Combine multiple zip code research runs into a unified context using the context combiner agent. Requires at least 2 run IDs.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>runIds</code> | <code>string[]</code> | Yes | List of research run IDs (min 2) |</p>
+<p><strong>Response:</strong> <code>{ success: true, contextId: string, context: CombinedContext }</code></p>
+<h3 id="get-apicombined-context">GET /api/combined-context<a class="headerlink" href="#get-apicombined-context" title="Permanent link">&para;</a></h3>
+<p>List combined contexts.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>limit</code> | <code>int</code> | <code>10</code> | Max results (1-50) |</p>
+<p><strong>Response:</strong> <code>CombinedContext[]</code> (serialized)</p>
+<h3 id="get-apicombined-contextcontext_id">GET /api/combined-context/{context_id}<a class="headerlink" href="#get-apicombined-contextcontext_id" title="Permanent link">&para;</a></h3>
+<p>Get a specific combined context.</p>
+<p><strong>Response:</strong> Serialized combined context document</p>
+<h3 id="delete-apicombined-contextcontext_id">DELETE /api/combined-context/{context_id}<a class="headerlink" href="#delete-apicombined-contextcontext_id" title="Permanent link">&para;</a></h3>
+<p>Delete a combined context.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<hr />
+<h2 id="stats">Stats<a class="headerlink" href="#stats" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/stats.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/stats</code></td>
+<td>Firebase Admin</td>
+<td>Get dashboard statistics</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apistats">GET /api/stats<a class="headerlink" href="#get-apistats" title="Permanent link">&para;</a></h3>
+<p>Returns aggregated dashboard statistics from Firestore.</p>
+<p><strong>Response:</strong> Dashboard stats object (from <code>get_dashboard_stats</code>)</p>
+<hr />
+<h2 id="fixtures">Fixtures<a class="headerlink" href="#fixtures" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/fixtures.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/fixtures</code></td>
+<td>Firebase Admin</td>
+<td>Create a test fixture from a workflow business</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/fixtures</code></td>
+<td>Firebase Admin</td>
+<td>List test fixtures</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/fixtures/{fixture_id}</code></td>
+<td>Firebase Admin</td>
+<td>Get a fixture</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/fixtures/{fixture_id}</code></td>
+<td>Firebase Admin</td>
+<td>Delete a fixture</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-apifixtures">POST /api/fixtures<a class="headerlink" href="#post-apifixtures" title="Permanent link">&para;</a></h3>
+<p>Save a business from a workflow as a test fixture (for grounding or failure case tracking).</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>workflowId</code> | <code>string</code> | Yes | Source workflow ID |
+| <code>businessSlug</code> | <code>string</code> | Yes | Business slug within the workflow |
+| <code>fixtureType</code> | <code>string</code> | Yes | <code>"grounding"</code> or <code>"failure_case"</code> |
+| <code>notes</code> | <code>string \| null</code> | No | Optional notes |</p>
+<p><strong>Response:</strong> <code>{ success: true, fixtureId: string }</code></p>
+<h3 id="get-apifixtures">GET /api/fixtures<a class="headerlink" href="#get-apifixtures" title="Permanent link">&para;</a></h3>
+<p>List fixtures, optionally filtered by type.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>type</code> | <code>string \| null</code> | <code>null</code> | Filter by fixture type |</p>
+<p><strong>Response:</strong> <code>Fixture[]</code> (serialized)</p>
+<h3 id="get-apifixturesfixture_id">GET /api/fixtures/{fixture_id}<a class="headerlink" href="#get-apifixturesfixture_id" title="Permanent link">&para;</a></h3>
+<p>Get a specific fixture.</p>
+<p><strong>Response:</strong> Serialized fixture document</p>
+<h3 id="delete-apifixturesfixture_id">DELETE /api/fixtures/{fixture_id}<a class="headerlink" href="#delete-apifixturesfixture_id" title="Permanent link">&para;</a></h3>
+<p>Delete a fixture.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<hr />
+<h2 id="test-runner">Test Runner<a class="headerlink" href="#test-runner" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/test_runner.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/run-tests</code></td>
+<td>Firebase Admin</td>
+<td>Run the full QA test suite</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/run-tests</code></td>
+<td>Firebase Admin</td>
+<td>List historical test runs</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-apirun-tests">POST /api/run-tests<a class="headerlink" href="#post-apirun-tests" title="Permanent link">&para;</a></h3>
+<p>Run the full QA suite (4 capabilities x evaluators). Persists results to Firestore.</p>
+<p><strong>Response:</strong> Test run summary object</p>
+<h3 id="get-apirun-tests">GET /api/run-tests<a class="headerlink" href="#get-apirun-tests" title="Permanent link">&para;</a></h3>
+<p>Return historical test runs from Firestore (auto-cleaned after 7 days).</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>limit</code> | <code>int</code> | <code>20</code> | Max results (1-100) |</p>
+<p><strong>Response:</strong> <code>TestRun[]</code></p>
+<hr />
+<h2 id="food-prices">Food Prices<a class="headerlink" href="#food-prices" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/food_prices.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/food-prices/cpi</code></td>
+<td>Firebase Admin</td>
+<td>Get BLS Consumer Price Index data</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/food-prices/commodities</code></td>
+<td>Firebase Admin</td>
+<td>Get USDA NASS commodity prices</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/food-prices/summary</code></td>
+<td>Firebase Admin</td>
+<td>Get combined food price summary</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apifood-pricescpi">GET /api/food-prices/cpi<a class="headerlink" href="#get-apifood-pricescpi" title="Permanent link">&para;</a></h3>
+<p>Get BLS Consumer Price Index data for food categories.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>industry</code> | <code>string</code> | <code>""</code> | Business type for industry-specific series |</p>
+<p><strong>Response:</strong> BLS CPI data object</p>
+<h3 id="get-apifood-pricescommodities">GET /api/food-prices/commodities<a class="headerlink" href="#get-apifood-pricescommodities" title="Permanent link">&para;</a></h3>
+<p>Get USDA NASS commodity prices for agricultural products.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>industry</code> | <code>string</code> | <code>"restaurants"</code> | Business type |
+| <code>state</code> | <code>string</code> | <code>""</code> | State name or 2-letter code (empty = national) |</p>
+<p><strong>Response:</strong> USDA NASS commodity data object</p>
+<h3 id="get-apifood-pricessummary">GET /api/food-prices/summary<a class="headerlink" href="#get-apifood-pricessummary" title="Permanent link">&para;</a></h3>
+<p>Get combined food price summary from both BLS CPI and USDA NASS sources.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>industry</code> | <code>string</code> | <code>"restaurants"</code> | Business type |
+| <code>state</code> | <code>string</code> | <code>""</code> | State for USDA data (empty = national) |</p>
+<p><strong>Response:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">&quot;blsCpi&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;BLS data | null&gt;&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">&quot;usdaNass&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;USDA data | null&gt;&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">&quot;sources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;BLS Consumer Price Index&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;USDA NASS QuickStats&quot;</span><span class="p">],</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">&quot;highlights&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;&lt;merged highlights from both sources&gt;&quot;</span><span class="p">]</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="p">}</span>
+</code></pre></div></p>
+<hr />
+<h2 id="content">Content<a class="headerlink" href="#content" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/content.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/content/generate</code></td>
+<td>Firebase Admin</td>
+<td>Generate content from research data</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/content</code></td>
+<td>Firebase Admin</td>
+<td>List content posts</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/content/{post_id}</code></td>
+<td>Firebase Admin</td>
+<td>Get a content post</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td><code>/api/content/{post_id}</code></td>
+<td>Firebase Admin</td>
+<td>Edit a draft post</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/content/{post_id}/publish</code></td>
+<td>Firebase Admin</td>
+<td>Publish a post</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/content/{post_id}</code></td>
+<td>Firebase Admin</td>
+<td>Delete a draft post</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-apicontentgenerate">POST /api/content/generate<a class="headerlink" href="#post-apicontentgenerate" title="Permanent link">&para;</a></h3>
+<p>Generate content for a platform from research data. Calls the forge content generation endpoint, saves result as a draft.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>platform</code> | <code>ContentPlatform</code> | Yes | <code>"x"</code>, <code>"instagram"</code>, <code>"facebook"</code>, or <code>"blog"</code> |
+| <code>sourceType</code> | <code>ContentSourceType</code> | Yes | <code>"zipcode_research"</code>, <code>"area_research"</code>, or <code>"combined_context"</code> |
+| <code>sourceId</code> | <code>string</code> | Yes | ID of the research source |</p>
+<p><strong>Response:</strong> <code>{ success: true, post: ContentPost }</code></p>
+<h3 id="get-apicontent">GET /api/content<a class="headerlink" href="#get-apicontent" title="Permanent link">&para;</a></h3>
+<p>List content posts with optional platform filter.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>platform</code> | <code>string \| null</code> | <code>null</code> | Filter by platform |
+| <code>limit</code> | <code>int</code> | <code>20</code> | Max results (1-100) |</p>
+<p><strong>Response:</strong> <code>ContentPost[]</code> (serialized)</p>
+<h3 id="get-apicontentpost_id">GET /api/content/{post_id}<a class="headerlink" href="#get-apicontentpost_id" title="Permanent link">&para;</a></h3>
+<p>Get a specific content post.</p>
+<p><strong>Response:</strong> Serialized content post</p>
+<h3 id="patch-apicontentpost_id">PATCH /api/content/{post_id}<a class="headerlink" href="#patch-apicontentpost_id" title="Permanent link">&para;</a></h3>
+<p>Edit a draft content post. Only drafts can be edited.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>content</code> | <code>string \| null</code> | No | Updated content text |
+| <code>title</code> | <code>string \| null</code> | No | Updated title |
+| <code>hashtags</code> | <code>string[] \| null</code> | No | Updated hashtags |</p>
+<p><strong>Response:</strong> Updated content post (serialized)</p>
+<h3 id="post-apicontentpost_idpublish">POST /api/content/{post_id}/publish<a class="headerlink" href="#post-apicontentpost_idpublish" title="Permanent link">&para;</a></h3>
+<p>Publish a content post. Blog posts are marked as published directly. Social posts are published via the platform API client. Character limits enforced per platform (X: 280, Instagram: 2200, Facebook: 63206).</p>
+<p><strong>Response:</strong> <code>{ success: bool, post: ContentPost, error: string | null }</code></p>
+<h3 id="delete-apicontentpost_id">DELETE /api/content/{post_id}<a class="headerlink" href="#delete-apicontentpost_id" title="Permanent link">&para;</a></h3>
+<p>Delete a content post. Published posts cannot be deleted.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<hr />
+<h2 id="discovery-jobs">Discovery Jobs<a class="headerlink" href="#discovery-jobs" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/discovery_jobs.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/admin/discovery-jobs</code></td>
+<td>Firebase Admin</td>
+<td>List all discovery jobs</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/admin/discovery-jobs</code></td>
+<td>Firebase Admin</td>
+<td>Create a new discovery job</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/admin/discovery-jobs/{job_id}</code></td>
+<td>Firebase Admin</td>
+<td>Get job detail</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/admin/discovery-jobs/{job_id}/run-now</code></td>
+<td>Firebase Admin</td>
+<td>Trigger immediate execution of the Cloud Run Job</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/admin/discovery-jobs/{job_id}</code></td>
+<td>Firebase Admin</td>
+<td>Cancel or delete a job</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apiadmindiscovery-jobs">GET /api/admin/discovery-jobs<a class="headerlink" href="#get-apiadmindiscovery-jobs" title="Permanent link">&para;</a></h3>
+<p>List all discovery jobs (up to 100).</p>
+<p><strong>Response:</strong> <code>{ jobs: DiscoveryJob[] }</code></p>
+<h3 id="post-apiadmindiscovery-jobs">POST /api/admin/discovery-jobs<a class="headerlink" href="#post-apiadmindiscovery-jobs" title="Permanent link">&para;</a></h3>
+<p>Create a new batch discovery job with one or more zip code targets.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>name</code> | <code>string</code> | Yes | Job name |
+| <code>targets</code> | <code>DiscoveryTarget[]</code> | Yes | List of targets (must not be empty) |
+| <code>notifyEmail</code> | <code>string</code> | No | Notification email (default <code>admin@hephae.co</code>) |
+| <code>settings</code> | <code>dict</code> | No | Additional job settings |</p>
+<p><strong>DiscoveryTarget:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>zipCode</code> | <code>string</code> | Yes | Target zip code |
+| <code>businessTypes</code> | <code>string[]</code> | No | Business type filters (default <code>[]</code>) |</p>
+<p><strong>Response:</strong> <code>{ success: true, jobId: string }</code></p>
+<h3 id="get-apiadmindiscovery-jobsjob_id">GET /api/admin/discovery-jobs/{job_id}<a class="headerlink" href="#get-apiadmindiscovery-jobsjob_id" title="Permanent link">&para;</a></h3>
+<p>Get detail for a specific discovery job.</p>
+<p><strong>Response:</strong> Discovery job document (with datetime fields serialized to ISO strings)</p>
+<h3 id="post-apiadmindiscovery-jobsjob_idrun-now">POST /api/admin/discovery-jobs/{job_id}/run-now<a class="headerlink" href="#post-apiadmindiscovery-jobsjob_idrun-now" title="Permanent link">&para;</a></h3>
+<p>Trigger an immediate execution of the <code>discovery-batch</code> Cloud Run Job via gcloud CLI. Job must be in <code>pending</code> status. Returns 409 if already running.</p>
+<p><strong>Response:</strong> <code>{ success: true, message: string }</code></p>
+<h3 id="delete-apiadmindiscovery-jobsjob_id">DELETE /api/admin/discovery-jobs/{job_id}<a class="headerlink" href="#delete-apiadmindiscovery-jobsjob_id" title="Permanent link">&para;</a></h3>
+<p>Cancel a pending job or delete a completed/failed job. Running jobs cannot be deleted (returns 409).</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<hr />
+<h2 id="tasks">Tasks<a class="headerlink" href="#tasks" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/tasks.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/research/tasks</code></td>
+<td>Firebase Admin</td>
+<td>List active tasks for specified businesses</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/research/tasks/spawn</code></td>
+<td>Firebase Admin</td>
+<td>Bulk spawn tasks into Cloud Tasks queue</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/research/tasks/execute</code></td>
+<td>None (internal)</td>
+<td>Execute a task (called by Cloud Tasks)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Note: Auth is applied per-route on this router. The <code>/execute</code> endpoint has no auth dependency because it is called internally by Cloud Tasks.</p>
+</blockquote>
+<h3 id="get-apiresearchtasks">GET /api/research/tasks<a class="headerlink" href="#get-apiresearchtasks" title="Permanent link">&para;</a></h3>
+<p>Fetch recent tasks for a list of businesses.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>businessIds</code> | <code>string</code> | Yes | Comma-separated list of business IDs |</p>
+<p><strong>Response:</strong> <code>{ tasks: Task[] }</code> (with datetime fields serialized to ISO strings)</p>
+<h3 id="post-apiresearchtasksspawn">POST /api/research/tasks/spawn<a class="headerlink" href="#post-apiresearchtasksspawn" title="Permanent link">&para;</a></h3>
+<p>Bulk-create tasks and enqueue them in Cloud Tasks.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>businessIds</code> | <code>string[]</code> | Yes | Business IDs to spawn tasks for |
+| <code>actionType</code> | <code>string</code> | Yes | Action type (e.g. <code>"ENRICH"</code>, <code>"ANALYZE_FULL"</code>, <code>"SEO_AUDIT"</code>) |
+| <code>priority</code> | <code>int</code> | No | Priority level (default 5) |</p>
+<p><strong>Response:</strong> <code>{ success: true, count: int, taskIds: string[], enqueueFailed: int }</code></p>
+<h3 id="post-apiresearchtasksexecute">POST /api/research/tasks/execute<a class="headerlink" href="#post-apiresearchtasksexecute" title="Permanent link">&para;</a></h3>
+<p>Internal endpoint called by Cloud Tasks to run the actual agent work. Supports <code>WORKFLOW_ANALYZE</code> (full enrichment + capability pipeline with retry logic) and dispatcher-planned workflows for other action types.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>businessId</code> | <code>string</code> | Yes | Target business ID |
+| <code>actionType</code> | <code>string</code> | Yes | Action type |
+| <code>taskId</code> | <code>string</code> | Yes | Task ledger entry ID |
+| <code>metadata</code> | <code>dict \| null</code> | No | Additional metadata (retry info, source zip code, etc.) |</p>
+<p><strong>Response:</strong> <code>{ success: true, result: {...} }</code> or <code>{ success: true, plan: {...} }</code></p>
+<p>The <code>WORKFLOW_ANALYZE</code> pipeline performs:
+1. Enrichment (profile data gathering)
+2. Research context injection (area, zip code, sector, food pricing)
+3. Context caching for Gemini
+4. Capability execution (all enabled capabilities in parallel)
+5. Result persistence to Firestore
+6. Automatic retry with exponential backoff for retriable failures (429/503), up to 3 rounds</p>
+<hr />
+<h2 id="weekly-pulse">Weekly Pulse<a class="headerlink" href="#weekly-pulse" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/weekly_pulse.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/weekly-pulse</code></td>
+<td>Firebase Admin</td>
+<td>Submit pulse generation job (returns immediately)</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/weekly-pulse/jobs/{job_id}</code></td>
+<td>Firebase Admin</td>
+<td>Poll job status</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/weekly-pulse</code></td>
+<td>Firebase Admin</td>
+<td>List recent pulses</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/weekly-pulse/{zip_code}/{business_type}/latest</code></td>
+<td>Firebase Admin</td>
+<td>Latest pulse for a zip x business type</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/weekly-pulse/{zip_code}/{business_type}/history</code></td>
+<td>Firebase Admin</td>
+<td>Pulse history for a zip x business type</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/weekly-pulse/id/{pulse_id}</code></td>
+<td>Firebase Admin</td>
+<td>Get specific pulse by ID</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/weekly-pulse/id/{pulse_id}</code></td>
+<td>Firebase Admin</td>
+<td>Delete a pulse</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-apiweekly-pulse">POST /api/weekly-pulse<a class="headerlink" href="#post-apiweekly-pulse" title="Permanent link">&para;</a></h3>
+<p>Submit a pulse generation job. Returns immediately with a jobId. Pipeline runs in background.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>zipCode</code> | <code>string</code> | Yes | 5-digit zip code |
+| <code>businessType</code> | <code>string</code> | Yes | Business type |
+| <code>weekOf</code> | <code>string</code> | No | ISO week (e.g. "2026-W13"), defaults to current week |
+| <code>force</code> | <code>bool</code> | No | Force regeneration (default false) |
+| <code>testMode</code> | <code>bool</code> | No | Test mode flag (default false) |</p>
+<p><strong>Response:</strong> <code>{ success: true, jobId: string, status: "QUEUED", testMode: bool }</code></p>
+<h3 id="get-apiweekly-pulsejobsjob_id">GET /api/weekly-pulse/jobs/{job_id}<a class="headerlink" href="#get-apiweekly-pulsejobsjob_id" title="Permanent link">&para;</a></h3>
+<p>Poll job status. Returns full pulse when COMPLETED.</p>
+<p><strong>Response:</strong> Job status with <code>jobId</code>, <code>status</code> (QUEUED/RUNNING/COMPLETED/FAILED), <code>pulse</code> (when completed), <code>diagnostics</code>, <code>pipelineDetails</code>, <code>error</code> (when failed).</p>
+<h3 id="get-apiweekly-pulse">GET /api/weekly-pulse<a class="headerlink" href="#get-apiweekly-pulse" title="Permanent link">&para;</a></h3>
+<p>List all recent pulses across zip codes.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>limit</code> | <code>int</code> | <code>20</code> | Max results (1-100) |
+| <code>testMode</code> | <code>bool \| null</code> | <code>null</code> | Filter by test mode |</p>
+<p><strong>Response:</strong> <code>Pulse[]</code> (serialized)</p>
+<h3 id="get-apiweekly-pulsezip_codebusiness_typelatest">GET /api/weekly-pulse/{zip_code}/{business_type}/latest<a class="headerlink" href="#get-apiweekly-pulsezip_codebusiness_typelatest" title="Permanent link">&para;</a></h3>
+<p>Get the most recent pulse for a zip code + business type.</p>
+<p><strong>Response:</strong> Serialized pulse document</p>
+<h3 id="get-apiweekly-pulsezip_codebusiness_typehistory">GET /api/weekly-pulse/{zip_code}/{business_type}/history<a class="headerlink" href="#get-apiweekly-pulsezip_codebusiness_typehistory" title="Permanent link">&para;</a></h3>
+<p>Get historical pulses for a zip code + business type.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>limit</code> | <code>int</code> | <code>8</code> | Max results (1-52) |</p>
+<p><strong>Response:</strong> <code>Pulse[]</code> (serialized)</p>
+<h3 id="get-apiweekly-pulseidpulse_id">GET /api/weekly-pulse/id/{pulse_id}<a class="headerlink" href="#get-apiweekly-pulseidpulse_id" title="Permanent link">&para;</a></h3>
+<p>Get a specific pulse by document ID.</p>
+<p><strong>Response:</strong> Serialized pulse document</p>
+<h3 id="delete-apiweekly-pulseidpulse_id">DELETE /api/weekly-pulse/id/{pulse_id}<a class="headerlink" href="#delete-apiweekly-pulseidpulse_id" title="Permanent link">&para;</a></h3>
+<p>Delete a specific pulse.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<hr />
+<h2 id="pulse-admin-batch-monitoring">Pulse Admin (Batch Monitoring)<a class="headerlink" href="#pulse-admin-batch-monitoring" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/pulse_admin.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/weekly-pulse/batches</code></td>
+<td>Firebase Admin</td>
+<td>List recent pulse batches with summary stats</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/weekly-pulse/batches/{batch_id}</code></td>
+<td>Firebase Admin</td>
+<td>Get detailed batch status</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apiweekly-pulsebatches">GET /api/weekly-pulse/batches<a class="headerlink" href="#get-apiweekly-pulsebatches" title="Permanent link">&para;</a></h3>
+<p>List recent pulse batches grouped by batchId from work items.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>limit</code> | <code>int</code> | <code>20</code> | Max batch groups to return |</p>
+<p><strong>Response:</strong> <code>Batch[]</code> with <code>{ batchId, businessType, weekOf, totalItems, completed, failed, createdAt }</code></p>
+<h3 id="get-apiweekly-pulsebatchesbatch_id">GET /api/weekly-pulse/batches/{batch_id}<a class="headerlink" href="#get-apiweekly-pulsebatchesbatch_id" title="Permanent link">&para;</a></h3>
+<p>Get detailed status for a specific batch, including per-zip status.</p>
+<p><strong>Response:</strong> Batch summary + <code>items[]</code> with <code>{ zipCode, status, lastError, hasSignals, hasSynthesis, critiquePass }</code></p>
+<hr />
+<h2 id="registered-zipcodes">Registered Zipcodes<a class="headerlink" href="#registered-zipcodes" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/registered_zipcodes.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/registered-zipcodes</code></td>
+<td>Firebase Admin</td>
+<td>Register a new zipcode</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/registered-zipcodes</code></td>
+<td>Firebase Admin</td>
+<td>List all registered zipcodes</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/registered-zipcodes/{zip_code}</code></td>
+<td>Firebase Admin</td>
+<td>Unregister a zipcode</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/registered-zipcodes/{zip_code}/pause</code></td>
+<td>Firebase Admin</td>
+<td>Pause pulse generation</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/registered-zipcodes/{zip_code}/resume</code></td>
+<td>Firebase Admin</td>
+<td>Resume pulse generation</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/registered-zipcodes/{zip_code}/approve</code></td>
+<td>Firebase Admin</td>
+<td>Manually approve (onboard) a zipcode</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/registered-zipcodes/{zip_code}/business-types</code></td>
+<td>Firebase Admin</td>
+<td>Add a business type</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/registered-zipcodes/{zip_code}/business-types/{biz_type}</code></td>
+<td>Firebase Admin</td>
+<td>Remove a business type</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/registered-zipcodes/cron-status</code></td>
+<td>Firebase Admin</td>
+<td>Get cron status (active/paused counts, next run)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-apiregistered-zipcodes">POST /api/registered-zipcodes<a class="headerlink" href="#post-apiregistered-zipcodes" title="Permanent link">&para;</a></h3>
+<p>Register a new zipcode for weekly pulse generation. Resolves geography from BigQuery. Kicks off background zipcode profile discovery with auto-approval on success.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>zipCode</code> | <code>string</code> | Yes | 5-digit zip code |</p>
+<p><strong>Response:</strong> <code>{ success: true, id: string, city: string, state: string, county: string, discoveryStarted: true }</code></p>
+<h3 id="get-apiregistered-zipcodes">GET /api/registered-zipcodes<a class="headerlink" href="#get-apiregistered-zipcodes" title="Permanent link">&para;</a></h3>
+<p>List all registered zipcodes, optionally filtered by status.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>status</code> | <code>string \| null</code> | <code>null</code> | <code>"active"</code> or <code>"paused"</code> |</p>
+<p><strong>Response:</strong> <code>RegisteredZipcode[]</code> (serialized)</p>
+<h3 id="delete-apiregistered-zipcodeszip_code">DELETE /api/registered-zipcodes/{zip_code}<a class="headerlink" href="#delete-apiregistered-zipcodeszip_code" title="Permanent link">&para;</a></h3>
+<p>Unregister a zipcode from weekly pulse generation.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<h3 id="post-apiregistered-zipcodeszip_codepause">POST /api/registered-zipcodes/{zip_code}/pause<a class="headerlink" href="#post-apiregistered-zipcodeszip_codepause" title="Permanent link">&para;</a></h3>
+<p>Pause weekly pulse generation for a zipcode.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<h3 id="post-apiregistered-zipcodeszip_coderesume">POST /api/registered-zipcodes/{zip_code}/resume<a class="headerlink" href="#post-apiregistered-zipcodeszip_coderesume" title="Permanent link">&para;</a></h3>
+<p>Resume weekly pulse generation for a zipcode.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<h3 id="post-apiregistered-zipcodeszip_codeapprove">POST /api/registered-zipcodes/{zip_code}/approve<a class="headerlink" href="#post-apiregistered-zipcodeszip_codeapprove" title="Permanent link">&para;</a></h3>
+<p>Human approval -- marks zip as onboarded.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<h3 id="post-apiregistered-zipcodeszip_codebusiness-types">POST /api/registered-zipcodes/{zip_code}/business-types<a class="headerlink" href="#post-apiregistered-zipcodeszip_codebusiness-types" title="Permanent link">&para;</a></h3>
+<p>Add a business type to a registered zipcode.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>businessType</code> | <code>string</code> | Yes | Business type to add |</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<h3 id="delete-apiregistered-zipcodeszip_codebusiness-typesbiz_type">DELETE /api/registered-zipcodes/{zip_code}/business-types/{biz_type}<a class="headerlink" href="#delete-apiregistered-zipcodeszip_codebusiness-typesbiz_type" title="Permanent link">&para;</a></h3>
+<p>Remove a business type from a registered zipcode. Cannot remove the last business type.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<h3 id="get-apiregistered-zipcodescron-status">GET /api/registered-zipcodes/cron-status<a class="headerlink" href="#get-apiregistered-zipcodescron-status" title="Permanent link">&para;</a></h3>
+<p>Get weekly pulse cron status including active/paused counts, next scheduled run, and recent jobs.</p>
+<p><strong>Response:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">&quot;activeZipcodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">&quot;pausedZipcodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">&quot;nextRunAt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-23T11:00:00Z&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="nt">&quot;schedule&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Every Monday 6:00 AM ET&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="nt">&quot;recentRuns&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;jobId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;zipCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">}]</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">}</span>
+</code></pre></div></p>
+<hr />
+<h2 id="zipcode-profiles">Zipcode Profiles<a class="headerlink" href="#zipcode-profiles" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/zipcode_profiles.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/zipcode-profiles/discover/{zip_code}</code></td>
+<td>Firebase Admin</td>
+<td>Trigger full discovery</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/zipcode-profiles/{zip_code}</code></td>
+<td>Firebase Admin</td>
+<td>View profile</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/zipcode-profiles</code></td>
+<td>Firebase Admin</td>
+<td>List all profiles</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/zipcode-profiles/{zip_code}</code></td>
+<td>Firebase Admin</td>
+<td>Delete profile</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/zipcode-profiles/{zip_code}/refresh</code></td>
+<td>Firebase Admin</td>
+<td>Re-run discovery</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-apizipcode-profilesdiscoverzip_code">POST /api/zipcode-profiles/discover/{zip_code}<a class="headerlink" href="#post-apizipcode-profilesdiscoverzip_code" title="Permanent link">&para;</a></h3>
+<p>Trigger full two-phase discovery for a zip code. Runs synchronously (~60-90s).</p>
+<p><strong>Response:</strong> <code>{ success: true, zipCode: string, confirmedSources: int, unavailableSources: int, profile: object }</code></p>
+<h3 id="get-apizipcode-profileszip_code">GET /api/zipcode-profiles/{zip_code}<a class="headerlink" href="#get-apizipcode-profileszip_code" title="Permanent link">&para;</a></h3>
+<p>View a single zipcode profile.</p>
+<p><strong>Response:</strong> Serialized profile document</p>
+<h3 id="get-apizipcode-profiles">GET /api/zipcode-profiles<a class="headerlink" href="#get-apizipcode-profiles" title="Permanent link">&para;</a></h3>
+<p>List all discovered zipcode profiles.</p>
+<p><strong>Response:</strong> <code>ZipcodeProfile[]</code> (serialized)</p>
+<h3 id="delete-apizipcode-profileszip_code">DELETE /api/zipcode-profiles/{zip_code}<a class="headerlink" href="#delete-apizipcode-profileszip_code" title="Permanent link">&para;</a></h3>
+<p>Delete a zipcode profile.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<h3 id="post-apizipcode-profileszip_coderefresh">POST /api/zipcode-profiles/{zip_code}/refresh<a class="headerlink" href="#post-apizipcode-profileszip_coderefresh" title="Permanent link">&para;</a></h3>
+<p>Re-run discovery for an existing zip code (full refresh).</p>
+<p><strong>Response:</strong> <code>{ success: true, zipCode: string, confirmedSources: int, unavailableSources: int, profile: object }</code></p>
+<hr />
+<h2 id="registered-industries-new">Registered Industries (NEW)<a class="headerlink" href="#registered-industries-new" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/admin/registered_industries.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/registered-industries</code></td>
+<td>Firebase Admin</td>
+<td>List all registered industries</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/registered-industries</code></td>
+<td>Firebase Admin</td>
+<td>Register a new industry</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/registered-industries/{industry_key}</code></td>
+<td>Firebase Admin</td>
+<td>Get a registered industry</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/registered-industries/{industry_key}</code></td>
+<td>Firebase Admin</td>
+<td>Unregister an industry</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/registered-industries/{industry_key}/pause</code></td>
+<td>Firebase Admin</td>
+<td>Pause an industry (skip in cron)</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/registered-industries/{industry_key}/resume</code></td>
+<td>Firebase Admin</td>
+<td>Resume a paused industry</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/registered-industries/{industry_key}/generate-now</code></td>
+<td>Firebase Admin</td>
+<td>Manually trigger an industry pulse</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apiregistered-industries">GET /api/registered-industries<a class="headerlink" href="#get-apiregistered-industries" title="Permanent link">&para;</a></h3>
+<p>List all registered industries, optionally filtered by status.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>status</code> | <code>string \| null</code> | <code>null</code> | Filter by status (e.g. <code>"active"</code>) |</p>
+<p><strong>Response:</strong> <code>{ industries: RegisteredIndustry[] }</code></p>
+<h3 id="post-apiregistered-industries">POST /api/registered-industries<a class="headerlink" href="#post-apiregistered-industries" title="Permanent link">&para;</a></h3>
+<p>Register a new industry for weekly national pulse generation. Validates that an <code>IndustryConfig</code> exists for the given key.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>industryKey</code> | <code>string</code> | Yes | Industry identifier (e.g. <code>"restaurant"</code>, <code>"bakery"</code>, <code>"barber"</code>) |
+| <code>displayName</code> | <code>string</code> | Yes | Human-readable name |</p>
+<p><strong>Response:</strong> <code>{ success: true, industry: RegisteredIndustry }</code></p>
+<h3 id="get-apiregistered-industriesindustry_key">GET /api/registered-industries/{industry_key}<a class="headerlink" href="#get-apiregistered-industriesindustry_key" title="Permanent link">&para;</a></h3>
+<p>Get a registered industry by key.</p>
+<p><strong>Response:</strong> Registered industry document</p>
+<h3 id="delete-apiregistered-industriesindustry_key">DELETE /api/registered-industries/{industry_key}<a class="headerlink" href="#delete-apiregistered-industriesindustry_key" title="Permanent link">&para;</a></h3>
+<p>Unregister an industry.</p>
+<p><strong>Response:</strong> <code>{ success: true }</code></p>
+<h3 id="post-apiregistered-industriesindustry_keypause">POST /api/registered-industries/{industry_key}/pause<a class="headerlink" href="#post-apiregistered-industriesindustry_keypause" title="Permanent link">&para;</a></h3>
+<p>Pause an industry so it is skipped during the cron cycle.</p>
+<p><strong>Response:</strong> <code>{ success: true, status: "paused" }</code></p>
+<h3 id="post-apiregistered-industriesindustry_keyresume">POST /api/registered-industries/{industry_key}/resume<a class="headerlink" href="#post-apiregistered-industriesindustry_keyresume" title="Permanent link">&para;</a></h3>
+<p>Resume a paused industry.</p>
+<p><strong>Response:</strong> <code>{ success: true, status: "active" }</code></p>
+<h3 id="post-apiregistered-industriesindustry_keygenerate-now">POST /api/registered-industries/{industry_key}/generate-now<a class="headerlink" href="#post-apiregistered-industriesindustry_keygenerate-now" title="Permanent link">&para;</a></h3>
+<p>Manually trigger an industry pulse for the current week. Calls <code>generate_industry_pulse</code> with <code>force=True</code>.</p>
+<p><strong>Response:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">&quot;pulseId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">&quot;signalCount&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span><span class="p">,</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="nt">&quot;playbooksMatched&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span><span class="nt">&quot;trendSummary&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string (first 200 chars)&quot;</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="p">}</span>
+</code></pre></div></p>
+<hr />
+<h1 id="batch-cron-routers">Batch / Cron Routers<a class="headerlink" href="#batch-cron-routers" title="Permanent link">&para;</a></h1>
+<p>All cron endpoints are authenticated via <code>CRON_SECRET</code> in the <code>X-Cron-Secret</code> or <code>Authorization</code> header (Bearer token).</p>
+<hr />
+<h2 id="cron-run-analysis">Cron: Run Analysis<a class="headerlink" href="#cron-run-analysis" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/batch/cron.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/cron/run-analysis</code></td>
+<td>CRON_SECRET</td>
+<td>Discover + outreach for a zip code</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apicronrun-analysis">GET /api/cron/run-analysis<a class="headerlink" href="#get-apicronrun-analysis" title="Permanent link">&para;</a></h3>
+<p>Scan a zip code for businesses and run outreach on the first 3. Legacy cron endpoint.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>zip</code> | <code>string</code> | <code>"10001"</code> | Zip code to scan |</p>
+<p><strong>Response:</strong> <code>{ success: true, report: [{ business: string, outreachSuccess: bool }] }</code></p>
+<hr />
+<h2 id="cron-heartbeat-cycle">Cron: Heartbeat Cycle<a class="headerlink" href="#cron-heartbeat-cycle" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/batch/heartbeat_cron.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/cron/heartbeat-cycle</code></td>
+<td>CRON_SECRET</td>
+<td>Run all due heartbeat cycles</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apicronheartbeat-cycle">GET /api/cron/heartbeat-cycle<a class="headerlink" href="#get-apicronheartbeat-cycle" title="Permanent link">&para;</a></h3>
+<p>Run all due heartbeat cycles. Called by Cloud Scheduler weekly. Queries for due heartbeats and re-runs capabilities for each.</p>
+<p><strong>Response:</strong> <code>{ processed: int, emailed: int, skipped: int, details: [...] }</code></p>
+<hr />
+<h2 id="cron-workflow-monitor">Cron: Workflow Monitor<a class="headerlink" href="#cron-workflow-monitor" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/batch/workflow_monitor.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/cron/workflow-monitor</code></td>
+<td>CRON_SECRET</td>
+<td>Check for terminal workflows, send digest email</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apicronworkflow-monitor">GET /api/cron/workflow-monitor<a class="headerlink" href="#get-apicronworkflow-monitor" title="Permanent link">&para;</a></h3>
+<p>Check for recently completed/failed workflows and send a digest email. Called by Cloud Scheduler every 30 minutes.</p>
+<p><strong>Query params:</strong>
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| <code>window</code> | <code>int</code> | <code>30</code> | Lookback window in minutes |</p>
+<p><strong>Response:</strong> <code>{ digested: int, emailed: bool, completed: int, failed: int, paused: int }</code></p>
+<hr />
+<h2 id="cron-batch-workflows">Cron: Batch Workflows<a class="headerlink" href="#cron-batch-workflows" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/batch/batch_workflows.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/cron/batch-workflows</code></td>
+<td>CRON_SECRET</td>
+<td>Create workflows in QUEUED state for sequential processing</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-apicronbatch-workflows">POST /api/cron/batch-workflows<a class="headerlink" href="#post-apicronbatch-workflows" title="Permanent link">&para;</a></h3>
+<p>Create workflows in QUEUED state for the workflow-dispatcher cron to pick up one at a time.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>jobs</code> | <code>dict[]</code> | Yes | Array of <code>{ zipCode: string, businessType: string }</code> |</p>
+<p><strong>Response:</strong> <code>{ total: int, queued: int, failed: int, results: [...] }</code></p>
+<hr />
+<h2 id="cron-workflow-dispatcher">Cron: Workflow Dispatcher<a class="headerlink" href="#cron-workflow-dispatcher" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/batch/workflow_dispatcher.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/cron/workflow-dispatcher</code></td>
+<td>CRON_SECRET</td>
+<td>Start the next queued workflow</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apicronworkflow-dispatcher">GET /api/cron/workflow-dispatcher<a class="headerlink" href="#get-apicronworkflow-dispatcher" title="Permanent link">&para;</a></h3>
+<p>Start the next queued workflow if no workflow is currently active. Called by Cloud Scheduler every 5 minutes. Ensures only one workflow runs at a time by checking for active phases (discovery, qualification, analysis, evaluation, outreach).</p>
+<p><strong>Response:</strong> <code>{ dispatched: bool, workflowId: string, reason: string, remainingQueued: int }</code></p>
+<hr />
+<h2 id="cron-pulse-batch">Cron: Pulse Batch<a class="headerlink" href="#cron-pulse-batch" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/batch/pulse_batch.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/cron/pulse-batch-submit</code></td>
+<td>Firebase Admin</td>
+<td>Create batch work items + launch Cloud Run Job</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/cron/pulse-batch-status/{batch_id}</code></td>
+<td>Firebase Admin</td>
+<td>Check batch progress</td>
+</tr>
+</tbody>
+</table>
+<h3 id="post-apicronpulse-batch-submit">POST /api/cron/pulse-batch-submit<a class="headerlink" href="#post-apicronpulse-batch-submit" title="Permanent link">&para;</a></h3>
+<p>Create work items for all zip codes in a county and launch a batch pulse job.</p>
+<p><strong>Request body:</strong>
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| <code>county</code> | <code>string</code> | Yes | County name |
+| <code>state</code> | <code>string</code> | Yes | State name or code |
+| <code>businessType</code> | <code>string</code> | Yes | Business type |
+| <code>weekOf</code> | <code>string</code> | No | ISO week (defaults to current) |</p>
+<p><strong>Response:</strong> <code>{ success: true, batchId: string, zipCount: int, message: string }</code></p>
+<h3 id="get-apicronpulse-batch-statusbatch_id">GET /api/cron/pulse-batch-status/{batch_id}<a class="headerlink" href="#get-apicronpulse-batch-statusbatch_id" title="Permanent link">&para;</a></h3>
+<p>Get batch progress summary.</p>
+<p><strong>Response:</strong> Batch summary object from <code>get_batch_summary</code></p>
+<hr />
+<h2 id="cron-weekly-pulse">Cron: Weekly Pulse<a class="headerlink" href="#cron-weekly-pulse" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/batch/pulse_cron.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/cron/weekly-pulse</code></td>
+<td>CRON_SECRET</td>
+<td>Trigger weekly pulse generation for all active zipcodes</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/cron/weekly-pulse/status</code></td>
+<td>CRON_SECRET</td>
+<td>Get cron status</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apicronweekly-pulse">GET /api/cron/weekly-pulse<a class="headerlink" href="#get-apicronweekly-pulse" title="Permanent link">&para;</a></h3>
+<p>Trigger weekly pulse generation for all active registered zipcodes. Called by Cloud Scheduler every Monday at 6am ET (11:00 UTC). Idempotent -- skips zipcodes that already have a pulse for the current week. Stagers pulse generation 30 seconds apart to avoid rate limits. Sends summary email on completion.</p>
+<p><strong>Response:</strong> <code>{ triggered: int, skipped: int }</code></p>
+<h3 id="get-apicronweekly-pulsestatus">GET /api/cron/weekly-pulse/status<a class="headerlink" href="#get-apicronweekly-pulsestatus" title="Permanent link">&para;</a></h3>
+<p>Get cron status -- which zipcodes are scheduled, last/next run times.</p>
+<p><strong>Response:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">&quot;activeZipcodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">&quot;pausedZipcodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">&quot;nextRunAt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-23T11:00:00Z&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="nt">&quot;schedule&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Every Monday 6:00 AM ET&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span><span class="nt">&quot;zipcodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;zipCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;businessTypes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;city&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">}],</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span><span class="nt">&quot;recentRuns&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;jobId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">}]</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="p">}</span>
+</code></pre></div></p>
+<hr />
+<h2 id="cron-industry-pulse-new">Cron: Industry Pulse (NEW)<a class="headerlink" href="#cron-industry-pulse-new" title="Permanent link">&para;</a></h2>
+<p>Source: <code>apps/api/hephae_api/routers/batch/industry_pulse_cron.py</code></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/cron/industry-pulse</code></td>
+<td>CRON_SECRET</td>
+<td>Generate industry pulses for all active registered industries</td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-apicronindustry-pulse">GET /api/cron/industry-pulse<a class="headerlink" href="#get-apicronindustry-pulse" title="Permanent link">&para;</a></h3>
+<p>Generate national-level industry pulses for all active registered industries. Called by Cloud Scheduler every Sunday at 3:00 AM ET (08:00 UTC), BEFORE the zip-level pulse cron on Monday. Idempotent -- skips industries that already have a pulse for the current week. Sends summary email on completion.</p>
+<p>Each industry pulse:
+1. Fetches national signals (BLS CPI, USDA prices, FDA recalls)
+2. Computes impact multipliers
+3. Matches industry playbooks
+4. Generates an LLM trend summary
+5. Saves to Firestore (<code>industry_pulses</code> collection)</p>
+<p>Zip-level pulses then load this pre-computed data instead of re-fetching national signals.</p>
+<p><strong>Response:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">&quot;generated&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">&quot;failed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nt">&quot;results&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">      </span><span class="nt">&quot;industryKey&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;restaurant&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">      </span><span class="nt">&quot;displayName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Restaurants &amp; Cafes&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;generated&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">      </span><span class="nt">&quot;pulseId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">      </span><span class="nt">&quot;signalCount&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span><span class="p">,</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w">      </span><span class="nt">&quot;playbooksMatched&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">      </span><span class="nt">&quot;trendPreview&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string (first 200 chars)&quot;</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">  </span><span class="p">]</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="p">}</span>
+</code></pre></div></p>
+<hr />
+<h2 id="router-registration-summary">Router Registration Summary<a class="headerlink" href="#router-registration-summary" title="Permanent link">&para;</a></h2>
+<p>Registered in <code>apps/api/hephae_api/main.py</code> via <code>_register_routers()</code>:</p>
+<h3 id="admin-routers-21-routers">Admin Routers (21 routers)<a class="headerlink" href="#admin-routers-21-routers" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Router</th>
+<th>Prefix</th>
+<th>Source File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>workflows</td>
+<td><code>/api/workflows</code></td>
+<td><code>admin/workflows.py</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>workflow_stream</td>
+<td><code>/api/workflows</code></td>
+<td><code>admin/workflow_stream.py</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>workflow_actions</td>
+<td><code>/api/workflows</code></td>
+<td><code>admin/workflow_actions.py</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>research_businesses</td>
+<td><code>/api/research</code></td>
+<td><code>admin/research_businesses.py</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>zipcode_research</td>
+<td><code>/api/zipcode-research</code></td>
+<td><code>admin/zipcode_research.py</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>area_research</td>
+<td><code>/api/area-research</code></td>
+<td><code>admin/area_research.py</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td>sector_research</td>
+<td><code>/api/sector-research</code></td>
+<td><code>admin/sector_research.py</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td>combined_context</td>
+<td><code>/api/combined-context</code></td>
+<td><code>admin/combined_context.py</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td>stats</td>
+<td><code>/api/stats</code></td>
+<td><code>admin/stats.py</code></td>
+</tr>
+<tr>
+<td>10</td>
+<td>fixtures</td>
+<td><code>/api/fixtures</code></td>
+<td><code>admin/fixtures.py</code></td>
+</tr>
+<tr>
+<td>11</td>
+<td>test_runner</td>
+<td><code>/api/run-tests</code></td>
+<td><code>admin/test_runner.py</code></td>
+</tr>
+<tr>
+<td>12</td>
+<td>food_prices</td>
+<td><code>/api/food-prices</code></td>
+<td><code>admin/food_prices.py</code></td>
+</tr>
+<tr>
+<td>13</td>
+<td>content</td>
+<td><code>/api/content</code></td>
+<td><code>admin/content.py</code></td>
+</tr>
+<tr>
+<td>14</td>
+<td>discovery_jobs</td>
+<td><code>/api/admin/discovery-jobs</code></td>
+<td><code>admin/discovery_jobs.py</code></td>
+</tr>
+<tr>
+<td>15</td>
+<td>tasks</td>
+<td><code>/api/research/tasks</code></td>
+<td><code>admin/tasks.py</code></td>
+</tr>
+<tr>
+<td>16</td>
+<td>weekly_pulse</td>
+<td><code>/api/weekly-pulse</code></td>
+<td><code>admin/weekly_pulse.py</code></td>
+</tr>
+<tr>
+<td>17</td>
+<td>pulse_admin</td>
+<td><code>/api/weekly-pulse/batches</code></td>
+<td><code>admin/pulse_admin.py</code></td>
+</tr>
+<tr>
+<td>18</td>
+<td>registered_zipcodes</td>
+<td><code>/api/registered-zipcodes</code></td>
+<td><code>admin/registered_zipcodes.py</code></td>
+</tr>
+<tr>
+<td>19</td>
+<td>zipcode_profiles</td>
+<td><code>/api/zipcode-profiles</code></td>
+<td><code>admin/zipcode_profiles.py</code></td>
+</tr>
+<tr>
+<td>20</td>
+<td>registered_industries</td>
+<td><code>/api/registered-industries</code></td>
+<td><code>admin/registered_industries.py</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="batch-cron-routers-8-routers">Batch / Cron Routers (8 routers)<a class="headerlink" href="#batch-cron-routers-8-routers" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Router</th>
+<th>Path</th>
+<th>Source File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>cron</td>
+<td><code>/api/cron/run-analysis</code></td>
+<td><code>batch/cron.py</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>heartbeat_cron</td>
+<td><code>/api/cron/heartbeat-cycle</code></td>
+<td><code>batch/heartbeat_cron.py</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>workflow_monitor</td>
+<td><code>/api/cron/workflow-monitor</code></td>
+<td><code>batch/workflow_monitor.py</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>batch_workflows</td>
+<td><code>/api/cron/batch-workflows</code></td>
+<td><code>batch/batch_workflows.py</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>workflow_dispatcher</td>
+<td><code>/api/cron/workflow-dispatcher</code></td>
+<td><code>batch/workflow_dispatcher.py</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>pulse_batch</td>
+<td><code>/api/cron/pulse-batch-*</code></td>
+<td><code>batch/pulse_batch.py</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td>pulse_cron</td>
+<td><code>/api/cron/weekly-pulse</code></td>
+<td><code>batch/pulse_cron.py</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td>industry_pulse_cron</td>
+<td><code>/api/cron/industry-pulse</code></td>
+<td><code>batch/industry_pulse_cron.py</code></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

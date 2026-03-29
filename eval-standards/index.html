@@ -1,0 +1,1479 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal documentation for the Hephae Forge pipeline">
+      
+      
+      
+        <link rel="canonical" href="https://hephae-co.github.io/hephae-forge/eval-standards/">
+      
+      
+        <link rel="prev" href="../unified-pipeline-design/">
+      
+      
+        <link rel="next" href="../eval-ground-truth/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Evaluation Standards - Hephae Forge Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#evaluation-standards" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Hephae Forge Docs" class="md-header__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hephae Forge Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Evaluation Standards
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Hephae Forge Docs" class="md-nav__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Hephae Forge Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/workflow-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../firestore-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firestore Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bigquery-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BigQuery Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcs-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-admin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Admin Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/agent-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/prompt-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pipeline Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../qualification-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qualification Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../unified-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Standards
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-pass-threshold" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pass Threshold
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-evaluator-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Evaluator Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-evaluation-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Evaluation Modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-per-capability-evaluation-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Per-Capability Evaluation Criteria
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Per-Capability Evaluation Criteria">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-seo-evaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 SEO Evaluator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-traffic-evaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Traffic Evaluator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-competitive-evaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Competitive Evaluator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-margin-surgeon-evaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Margin Surgeon Evaluator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-evaluation-feedback-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Evaluation Feedback Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-score-coercion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Score Coercion
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-ground-truth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eval Ground Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="evaluation-standards">Evaluation Standards<a class="headerlink" href="#evaluation-standards" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Auto-generated from codebase on 2026-03-22. Do not edit manually — run <code>/hephae-refresh-docs</code> to update.</p>
+</blockquote>
+<h2 id="1-pass-threshold">1. Pass Threshold<a class="headerlink" href="#1-pass-threshold" title="Permanent link">&para;</a></h2>
+<p>All capability evaluations use the same pass gate:</p>
+<ul>
+<li><strong>Score &gt;= 80</strong> (out of 100)</li>
+<li><strong><code>isHallucinated</code> == false</strong></li>
+</ul>
+<p>Both conditions must be met simultaneously. If either fails, the capability evaluation is considered failed.</p>
+<p>A business passes overall evaluation only if <strong>all</strong> its evaluable capabilities pass:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">biz</span><span class="o">.</span><span class="n">qualityPassed</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="nb">len</span><span class="p">(</span><span class="n">eval_results</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">score</span> <span class="o">&gt;=</span> <span class="mi">80</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">e</span><span class="o">.</span><span class="n">isHallucinated</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">eval_results</span><span class="p">)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="p">)</span>
+</code></pre></div>
+<p>If a business has zero evaluable outputs, it is marked <code>evaluation_done</code> with <code>qualityPassed = False</code>.</p>
+<blockquote>
+<p>Source: <code>apps/api/hephae_api/workflows/phases/evaluation.py</code> lines 158-161</p>
+</blockquote>
+<hr />
+<h2 id="2-evaluator-configuration">2. Evaluator Configuration<a class="headerlink" href="#2-evaluator-configuration" title="Permanent link">&para;</a></h2>
+<p>All four evaluators share the same model and thinking preset:</p>
+<table>
+<thead>
+<tr>
+<th>Evaluator</th>
+<th>Agent Name</th>
+<th>Model</th>
+<th>Thinking</th>
+<th>App Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SEO Evaluator</td>
+<td><code>seo_evaluator</code></td>
+<td><code>gemini-3.1-flash-lite-preview</code></td>
+<td>MEDIUM</td>
+<td><code>wf_seo_eval</code></td>
+</tr>
+<tr>
+<td>Traffic Evaluator</td>
+<td><code>traffic_evaluator</code></td>
+<td><code>gemini-3.1-flash-lite-preview</code></td>
+<td>MEDIUM</td>
+<td><code>wf_traffic_eval</code></td>
+</tr>
+<tr>
+<td>Competitive Evaluator</td>
+<td><code>competitive_evaluator</code></td>
+<td><code>gemini-3.1-flash-lite-preview</code></td>
+<td>MEDIUM</td>
+<td><code>wf_comp_eval</code></td>
+</tr>
+<tr>
+<td>Margin Surgeon Evaluator</td>
+<td><code>margin_surgeon_evaluator</code></td>
+<td><code>gemini-3.1-flash-lite-preview</code></td>
+<td>MEDIUM</td>
+<td><code>wf_margin_eval</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Social Media Insights (<code>social</code>)</strong> has no evaluator and is not evaluated.</p>
+<p>All evaluators use <code>ThinkingPresets.MEDIUM</code> and <code>AgentModels.PRIMARY_MODEL</code>. All have <code>on_model_error_callback=fallback_on_error</code> for automatic model fallback on 429/503/529.</p>
+<p><strong>Output schema</strong> (shared across all evaluators — <code>EvaluationOutput</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="nt">&quot;score&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">nu</span><span class="err">mber</span><span class="w"> </span><span class="err">(</span><span class="mi">0-100</span><span class="err">)</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="nt">&quot;isHallucinated&quot;</span><span class="p">:</span><span class="w"> </span><span class="err">boolea</span><span class="kc">n</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="nt">&quot;issues&quot;</span><span class="p">:</span><span class="w"> </span><span class="err">s</span><span class="kc">tr</span><span class="err">i</span><span class="kc">n</span><span class="err">g</span><span class="p">[]</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">}</span>
+</code></pre></div>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/evaluators/</code></p>
+</blockquote>
+<hr />
+<h2 id="3-evaluation-modes">3. Evaluation Modes<a class="headerlink" href="#3-evaluation-modes" title="Permanent link">&para;</a></h2>
+<p>The evaluation phase supports two modes:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Description</th>
+<th>Controlled By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Batch</strong> (default)</td>
+<td>Collects all eval prompts across all businesses, submits via Vertex AI batch API</td>
+<td><code>BATCH_EVAL_ENABLED=true</code> (env var)</td>
+</tr>
+<tr>
+<td><strong>Sequential</strong> (fallback)</td>
+<td>Runs each evaluator one at a time</td>
+<td>Fallback when batch fails, or <code>debug=True</code></td>
+</tr>
+</tbody>
+</table>
+<p>Batch mode settings:
+- <code>BATCH_EVAL_GCS_BUCKET</code>: <code>hephae-batch-evaluations</code> (default)
+- <code>BATCH_EVAL_FALLBACK_TIMEOUT</code>: 300 seconds (default)</p>
+<p>If batch submission fails, the system falls back to sequential evaluation transparently.</p>
+<blockquote>
+<p>Source: <code>apps/api/hephae_api/workflows/phases/evaluation.py</code></p>
+</blockquote>
+<hr />
+<h2 id="4-per-capability-evaluation-criteria">4. Per-Capability Evaluation Criteria<a class="headerlink" href="#4-per-capability-evaluation-criteria" title="Permanent link">&para;</a></h2>
+<h3 id="41-seo-evaluator">4.1 SEO Evaluator<a class="headerlink" href="#41-seo-evaluator" title="Permanent link">&para;</a></h3>
+<p><strong>Input</strong>: <code>TARGET_URL</code> + <code>ACTUAL_OUTPUT</code> JSON</p>
+<p><strong>Criteria</strong>: Review the SEO audit output for completeness and hallucinations. Verify the output is coherent, belongs to the given URL, and properly describes SEO aspects without fabricating data.</p>
+<p><strong>Eval compressor</strong>: Strips <code>rawPageSpeed</code>, <code>pagespeedData</code>, <code>lighthouseData</code>. Truncates recommendations to 3 per section.</p>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/evaluators/seo_evaluator.py</code></p>
+</blockquote>
+<h3 id="42-traffic-evaluator">4.2 Traffic Evaluator<a class="headerlink" href="#42-traffic-evaluator" title="Permanent link">&para;</a></h3>
+<p><strong>Input</strong>: <code>BUSINESS_IDENTITY</code> + <code>ZIP_CODE</code> + <code>ACTUAL_OUTPUT</code> JSON</p>
+<p><strong>Criteria</strong> (scored 0-100):
+1. <strong>Geographic plausibility</strong> — business type, address, and nearby POIs make sense together
+2. <strong>Time slot logic</strong> — scores align with business hours and day-of-week patterns
+3. <strong>Weather consistency</strong> — weatherNote should be plausible for the location and season
+4. <strong>Event relevance</strong> — localEvents should be real or plausible for the area
+5. <strong>Score reasonability</strong> — traffic scores should reflect realistic patterns (not all high, not all identical)</p>
+<p><strong>Hallucination rules</strong> (conservative):
+- ONLY flag <code>isHallucinated=true</code> for clearly fabricated data: invented addresses, impossible coordinates, business type contradictions, events that could not plausibly exist
+- Do NOT flag as hallucinated because a weather forecast or event cannot be independently verified (the forecaster has search tools)
+- If <code>RESEARCH_CONTEXT</code> is provided, cross-check weather/event claims — contradictions with research data ARE grounds for hallucination flags
+- Minor inaccuracies reduce score but do NOT trigger <code>isHallucinated</code></p>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/evaluators/traffic_evaluator.py</code></p>
+</blockquote>
+<h3 id="43-competitive-evaluator">4.3 Competitive Evaluator<a class="headerlink" href="#43-competitive-evaluator" title="Permanent link">&para;</a></h3>
+<p><strong>Input</strong>: <code>BUSINESS_IDENTITY</code> + <code>ACTUAL_OUTPUT</code> JSON</p>
+<p><strong>Criteria</strong> (scored 0-100):
+1. <strong>Competitor plausibility</strong> — named competitors should be real businesses in the area
+2. <strong>Analysis depth</strong> — pricing comparisons, market gaps, positioning should be specific, not generic
+3. <strong>Internal consistency</strong> — competitor details should align with business type and location
+4. <strong>Actionable insights</strong> — recommendations should be concrete and relevant</p>
+<p><strong>Hallucination rules</strong> (conservative):
+- ONLY flag <code>isHallucinated=true</code> for clearly fabricated competitors (impossible names, wrong business type, contradictory locations) or demonstrably false claims
+- The competitive analyzer has Google Search — do NOT flag because a competitor cannot be independently verified
+- Generic/shallow analysis reduces score but does NOT trigger <code>isHallucinated</code>
+- Specific real-sounding businesses with plausible details in the correct area are assumed real unless clearly contradicted</p>
+<p><strong>Eval compressor</strong>: Strips full competitor profiles, keeps only <code>name</code>, <code>threat_level</code>, <code>summary</code>, <code>score</code> per competitor.</p>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/evaluators/competitive_evaluator.py</code></p>
+</blockquote>
+<h3 id="44-margin-surgeon-evaluator">4.4 Margin Surgeon Evaluator<a class="headerlink" href="#44-margin-surgeon-evaluator" title="Permanent link">&para;</a></h3>
+<p><strong>Input</strong>: <code>BUSINESS_IDENTITY</code> + <code>ACTUAL_OUTPUT</code> JSON</p>
+<p><strong>Criteria</strong>: Validate that menu items are plausible for the business type, strategic advice is coherent, scores are consistent, and data is not hallucinated. Red flags: sushi items for a pizza shop, impossible margins, generic advice.</p>
+<p><strong>Food pricing context validation</strong> (when <code>FOOD_PRICING_CONTEXT</code> is provided):
+- Strategic advice should acknowledge current commodity cost trends
+- Margin optimization suggestions should be realistic given input cost changes
+- Flag if advice recommends cost cuts on categories with &gt; 5% YoY increases without acknowledging the trend
+- Award bonus score points if advice correctly references real cost data</p>
+<blockquote>
+<p>Source: <code>agents/hephae_agents/evaluators/margin_surgeon_evaluator.py</code></p>
+</blockquote>
+<hr />
+<h2 id="5-evaluation-feedback-pipeline">5. Evaluation Feedback Pipeline<a class="headerlink" href="#5-evaluation-feedback-pipeline" title="Permanent link">&para;</a></h2>
+<p>Every evaluation result is recorded to BigQuery (fire-and-forget) for long-term analysis:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>business_slug</code></td>
+<td>Business identifier</td>
+</tr>
+<tr>
+<td><code>capability</code></td>
+<td>Capability name (seo, traffic, competitive, margin_surgeon)</td>
+</tr>
+<tr>
+<td><code>agent_name</code></td>
+<td>Firestore output key</td>
+</tr>
+<tr>
+<td><code>agent_version</code></td>
+<td>From <code>latestOutputs.{cap}.agentVersion</code></td>
+</tr>
+<tr>
+<td><code>eval_score</code></td>
+<td>0-100 score</td>
+</tr>
+<tr>
+<td><code>is_hallucinated</code></td>
+<td>Boolean</td>
+</tr>
+<tr>
+<td><code>zip_code</code></td>
+<td>Source zip code</td>
+</tr>
+<tr>
+<td><code>business_type</code></td>
+<td>Business type</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Source: <code>apps/api/hephae_api/workflows/phases/evaluation.py</code> lines 142-152</p>
+</blockquote>
+<hr />
+<h2 id="6-score-coercion">6. Score Coercion<a class="headerlink" href="#6-score-coercion" title="Permanent link">&para;</a></h2>
+<p>Evaluators sometimes return non-numeric scores (e.g., <code>"85/100"</code>). The evaluation phase coerces scores:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">raw_score</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;score&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">score</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">raw_score</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_score</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">else</span> <span class="n">raw_score</span>
+</code></pre></div>
+<p>If coercion fails, the score defaults to 0 (evaluation fails).</p>
+<blockquote>
+<p>Source: <code>apps/api/hephae_api/workflows/phases/evaluation.py</code> lines 124-129</p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

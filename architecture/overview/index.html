@@ -1,0 +1,1898 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal documentation for the Hephae Forge pipeline">
+      
+      
+      
+        <link rel="canonical" href="https://hephae-co.github.io/hephae-forge/architecture/overview/">
+      
+      
+        <link rel="prev" href="../..">
+      
+      
+        <link rel="next" href="../infrastructure/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>System Overview - Hephae Forge Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#system-overview" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Hephae Forge Docs" class="md-header__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hephae Forge Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              System Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Hephae Forge Docs" class="md-nav__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Hephae Forge Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#service-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service Topology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Services
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#package-dependency-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Package Dependency Graph
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-model-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Model Strategy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#database-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Versioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-layer-pulse-architecture-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two-Layer Pulse Architecture (NEW)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Two-Layer Pulse Architecture (NEW)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#registered-industry-configs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registered Industry Configs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#industry-pulse-orchestrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Industry Pulse Orchestrator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-architectural-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Architectural Patterns
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../workflow-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../firestore-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firestore Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bigquery-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BigQuery Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gcs-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-admin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Admin Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../agents/agent-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../agents/prompt-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pipeline Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../qualification-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qualification Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../unified-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../eval-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../eval-ground-truth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eval Ground Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<blockquote>
+<p>Auto-generated from codebase on 2026-03-22.</p>
+</blockquote>
+<h1 id="system-overview">System Overview<a class="headerlink" href="#system-overview" title="Permanent link">&para;</a></h1>
+<h2 id="service-topology">Service Topology<a class="headerlink" href="#service-topology" title="Permanent link">&para;</a></h2>
+<p>Hephae Forge is a monorepo with three Cloud Run services and four shared Python packages.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+-----------------+     +-----------------+
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>|   apps/web/     |     |   apps/admin/   |
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>|   Next.js 16    |     |   Next.js 14.1  |
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>|   Port 3000     |     |   Port 3000     |
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>|   (hephae.co)   |     |   (admin UI)    |
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>+--------+--------+     +--------+--------+
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>         |  /api/*                |  /api/*
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>         |  (proxy)               |  (proxy)
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>         +-----------+------------+
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                     v
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>         +-----------------------+
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>         |   apps/api/           |
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>         |   FastAPI (Python)    |
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>         |   Port 8080           |
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>         |   Unified Backend API |
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>         +-----------+-----------+
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>              |          |
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    +---------+          +---------+
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    v         v          v         v
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>Firestore  BigQuery    GCS     Gemini API
+</code></pre></div>
+<p>Both UIs call the same API. Capabilities are <strong>direct Python imports</strong> -- no inter-service HTTP.</p>
+<h2 id="services">Services<a class="headerlink" href="#services" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Stack</th>
+<th>Port</th>
+<th>Cloud Run Name</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>apps/web/</code></td>
+<td>Next.js 16 (React 19)</td>
+<td>3000</td>
+<td><code>hephae-forge-web</code></td>
+<td>Customer UI -- proxies <code>/api/*</code> to unified API</td>
+</tr>
+<tr>
+<td><code>apps/admin/</code></td>
+<td>Next.js 14.1 (App Router)</td>
+<td>3000</td>
+<td><code>hephae-admin-web</code></td>
+<td>Admin dashboard -- proxies <code>/api/*</code> to unified API</td>
+</tr>
+<tr>
+<td><code>apps/api/</code></td>
+<td>FastAPI + Python</td>
+<td>8080</td>
+<td><code>hephae-forge-api</code></td>
+<td>Unified backend -- all capabilities, workflows, DB access</td>
+</tr>
+</tbody>
+</table>
+<h2 id="package-dependency-graph">Package Dependency Graph<a class="headerlink" href="#package-dependency-graph" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>apps/api
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  +-- hephae-agents  (agents/)
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  |     +-- hephae-integrations  (lib/integrations/)
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  |     |     +-- hephae-common  (lib/common/)
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  |     +-- hephae-db  (lib/db/)
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  |     |     +-- hephae-common
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  |     +-- hephae-common
+</code></pre></div>
+<p><strong>No dependency cycles.</strong> <code>hephae-common</code> is the leaf -- it depends only on external packages.</p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Path</th>
+<th>Contains</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hephae-common</code></td>
+<td><code>lib/common/</code></td>
+<td>Models, config, auth, Firebase, model fallback, ADK helpers, email, report templates</td>
+</tr>
+<tr>
+<td><code>hephae-db</code></td>
+<td><code>lib/db/</code></td>
+<td>Firestore, BigQuery, GCS access layer</td>
+</tr>
+<tr>
+<td><code>hephae-integrations</code></td>
+<td><code>lib/integrations/</code></td>
+<td>3rd-party API clients (BLS, USDA, FDA, OSM, social media)</td>
+</tr>
+<tr>
+<td><code>hephae-agents</code></td>
+<td><code>agents/</code></td>
+<td>All AI agents + stateless runner functions</td>
+</tr>
+<tr>
+<td><code>@hephae/common</code></td>
+<td><code>lib/common-ts/</code></td>
+<td>Shared TypeScript types for UIs</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ai-model-strategy">AI Model Strategy<a class="headerlink" href="#ai-model-strategy" title="Permanent link">&para;</a></h2>
+<p>All agents use Google Gemini via Google ADK.</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Constant</th>
+<th>Model ID</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PRIMARY</td>
+<td><code>AgentModels.PRIMARY_MODEL</code></td>
+<td><code>gemini-3.1-flash-lite-preview</code></td>
+<td>All agents -- default</td>
+</tr>
+<tr>
+<td>SYNTHESIS</td>
+<td><code>AgentModels.SYNTHESIS_MODEL</code></td>
+<td><code>gemini-3-flash-preview</code></td>
+<td>Higher-quality model for final synthesis stage</td>
+</tr>
+<tr>
+<td>FALLBACK</td>
+<td><code>AgentModels.FALLBACK_MODEL</code></td>
+<td><code>gemini-3-flash-preview</code></td>
+<td>Auto-fallback on 429/503/529</td>
+</tr>
+<tr>
+<td>CREATIVE_VISION</td>
+<td><code>AgentModels.CREATIVE_VISION_MODEL</code></td>
+<td><code>gemini-3.1-flash-image-preview</code></td>
+<td>Image generation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Thinking Presets:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Preset</th>
+<th>Config</th>
+<th>Used By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MEDIUM</td>
+<td><code>thinking_level="MEDIUM"</code></td>
+<td>Evaluators</td>
+</tr>
+<tr>
+<td>HIGH</td>
+<td><code>thinking_level="HIGH"</code></td>
+<td>Competitive analysis, market positioning</td>
+</tr>
+<tr>
+<td>DEEP</td>
+<td><code>thinking_budget=8192</code></td>
+<td>Complex analysis (SEO, research, blog)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Fallback Logic:</strong> When the primary model returns 429/503/529, the system automatically retries with <code>gemini-3-flash-preview</code>. Defined in <code>lib/common/hephae_common/model_fallback.py</code>.</p>
+<h2 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Context</th>
+<th>Mechanism</th>
+<th>Env Var</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UI -&gt; API</td>
+<td>HMAC-SHA256 signing</td>
+<td><code>FORGE_API_SECRET</code></td>
+</tr>
+<tr>
+<td>Legacy v1 endpoints</td>
+<td>API key header</td>
+<td><code>FORGE_V1_API_KEY</code></td>
+</tr>
+<tr>
+<td>Cron / Cloud Tasks</td>
+<td>Bearer token</td>
+<td><code>CRON_SECRET</code></td>
+</tr>
+<tr>
+<td>Cloud Run -&gt; Cloud Run</td>
+<td>GCP identity tokens</td>
+<td>Auto (metadata server)</td>
+</tr>
+<tr>
+<td>Firestore rules</td>
+<td>All client access denied</td>
+<td><code>allow read, write: if false</code></td>
+</tr>
+<tr>
+<td>Admin email allowlist</td>
+<td>Comma-separated emails</td>
+<td><code>ADMIN_EMAIL_ALLOWLIST</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="database-rules">Database Rules<a class="headerlink" href="#database-rules" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>No blobs in Firestore or BigQuery</strong> -- upload to GCS, store only the URL</li>
+<li><strong><code>zipCode</code> is first-class</strong> -- always a top-level field, never derived from address</li>
+<li><strong>No growing arrays</strong> -- no <code>reports[]</code>, no <code>analyses[]</code>. Historical data goes to BigQuery.</li>
+<li><strong>Use <code>update()</code> with dotted paths</strong> for nested Firestore fields. <code>set({merge:true})</code> only for new docs.</li>
+</ol>
+<h2 id="api-structure">API Structure<a class="headerlink" href="#api-structure" title="Permanent link">&para;</a></h2>
+<p>The unified API at <code>apps/api/</code> serves all routes under <code>/api/</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Router Group</th>
+<th>Count</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Web routers</td>
+<td>14</td>
+<td>Customer-facing (auth, chat, discover, analyze, capabilities, blog, social, heartbeat, overview, profile builder, etc.)</td>
+</tr>
+<tr>
+<td>Admin routers</td>
+<td>21</td>
+<td>Workflow CRUD, research, testing, stats, tasks, content, pulse, registered zipcodes/industries</td>
+</tr>
+<tr>
+<td>V1 routers</td>
+<td>5</td>
+<td>Legacy backward-compat (discover, analyze, seo, competitive, traffic)</td>
+</tr>
+<tr>
+<td>Batch/Cron routers</td>
+<td>8</td>
+<td>Cron jobs, workflow monitoring, batch dispatch, pulse cron, industry pulse cron</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Middleware:</strong></p>
+<ul>
+<li><strong>CORS</strong> -- Origins from <code>ALLOWED_ORIGINS</code> env var (default: <code>*</code>)</li>
+<li><strong>TraceMiddleware</strong> -- Assigns <code>trace_id</code> per request (from <code>x-request-id</code> header or uuid4). All logs include trace ID for correlation.</li>
+</ul>
+<p><strong>Source:</strong> <code>apps/api/hephae_api/main.py</code></p>
+<h2 id="agent-versioning">Agent Versioning<a class="headerlink" href="#agent-versioning" title="Permanent link">&para;</a></h2>
+<p>Every agent has a semantic version in <code>apps/api/hephae_api/config.py</code> under <code>AgentVersions</code>:</p>
+<ul>
+<li><strong>MAJOR</strong> -- output schema change (fields added/removed/renamed)</li>
+<li><strong>MINOR</strong> -- logic change, same schema</li>
+<li><strong>PATCH</strong> -- prompt wording, no logic change</li>
+</ul>
+<p>Current agent versions (as of 2026-03-22):</p>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Version</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DISCOVERY_PIPELINE</td>
+<td>5.1.0</td>
+<td>Parallel local context fetch, enhanced MenuAgent delivery search</td>
+</tr>
+<tr>
+<td>SITE_CRAWLER</td>
+<td>1.1.0</td>
+<td></td>
+</tr>
+<tr>
+<td>CONTACT_DISCOVERY</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>CONTACT_AGENT</td>
+<td>2.0.0</td>
+<td>emailStatus, contactFormUrl fields</td>
+</tr>
+<tr>
+<td>QUALITY_GATE_AGENT</td>
+<td>1.0.1</td>
+<td></td>
+</tr>
+<tr>
+<td>MENU_DISCOVERY</td>
+<td>3.0.0</td>
+<td>DoorDash/Grubhub/UberEats platform search</td>
+</tr>
+<tr>
+<td>SOCIAL_DISCOVERY</td>
+<td>2.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>SOCIAL_PROFILER</td>
+<td>2.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>MAPS_DISCOVERY</td>
+<td>2.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>COMPETITOR_DISCOVERY</td>
+<td>2.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>THEME_DISCOVERY</td>
+<td>2.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>BUSINESS_OVERVIEW</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>MARGIN_SURGEON</td>
+<td>1.1.0</td>
+<td>PDF extraction, menuNotFound flow</td>
+</tr>
+<tr>
+<td>SEO_AUDITOR</td>
+<td>1.1.0</td>
+<td>PRIMARY_MODEL + DEEP thinking</td>
+</tr>
+<tr>
+<td>TRAFFIC_FORECASTER</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>COMPETITIVE_ANALYZER</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>MARKETING_SWARM</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>SOCIAL_MEDIA_AUDITOR</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>SOCIAL_POST_GENERATOR</td>
+<td>3.0.0</td>
+<td>CDN report links + social card images</td>
+</tr>
+<tr>
+<td>BLOG_WRITER</td>
+<td>1.1.0</td>
+<td>PRIMARY_MODEL + DEEP thinking</td>
+</tr>
+<tr>
+<td>LOCAL_CATALYST</td>
+<td>1.1.0</td>
+<td>PRIMARY_MODEL + DEEP thinking</td>
+</tr>
+<tr>
+<td>DEMOGRAPHIC_EXPERT</td>
+<td>1.1.0</td>
+<td>PRIMARY_MODEL + DEEP thinking</td>
+</tr>
+<tr>
+<td>WEEKLY_PULSE</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>QUALIFICATION_SCANNER</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>NEWS_DISCOVERY</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+<tr>
+<td>DISCOVERY_REVIEWER</td>
+<td>1.0.0</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Bump the version in the same commit as the breaking change.</p>
+<h2 id="two-layer-pulse-architecture-new">Two-Layer Pulse Architecture (NEW)<a class="headerlink" href="#two-layer-pulse-architecture-new" title="Permanent link">&para;</a></h2>
+<p>The weekly pulse system operates in two layers to avoid redundant national data fetching:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Layer 1: Industry Pulse (Sunday 3 AM ET)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>+----------------------------------------+
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>| For each registered industry:          |
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>|   1. Fetch BLS CPI series             |
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>|   2. Fetch USDA commodity prices      |
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>|   3. Fetch FDA recalls                |
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>|   4. Compute impact multipliers       |
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>|   5. Match industry playbooks         |
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>|   6. Generate LLM trend summary       |
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>|   7. Save to industry_pulses          |
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>+----------------------------------------+
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>         |
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>         | Pre-computed national data
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>         v
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>Layer 2: Zip-Level Pulse (Monday 6 AM ET)
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>+----------------------------------------+
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>| For each registered zip x businessType:|
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>|   1. Load industry pulse (cache hit)   |
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>|   2. Fetch local signals (weather,     |
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>|      events, news, social)             |
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>|   3. Merge national + local signals    |
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>|   4. LLM synthesis                     |
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>|   5. Critique agent review             |
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>|   6. Save to weekly_pulses             |
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>+----------------------------------------+
+</code></pre></div>
+<h3 id="registered-industry-configs">Registered Industry Configs<a class="headerlink" href="#registered-industry-configs" title="Permanent link">&para;</a></h3>
+<p>Three industry verticals are currently defined in <code>apps/api/hephae_api/workflows/orchestrators/industries.py</code>:</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>BLS Series</th>
+<th>USDA Commodities</th>
+<th>Playbooks</th>
+<th>Key Metrics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>restaurant</code></td>
+<td>Restaurants &amp; Cafes</td>
+<td>20 series (food CPI, proteins, dairy, produce)</td>
+<td>CATTLE, HOGS, CHICKENS, EGGS, MILK, WHEAT</td>
+<td>3 (dairy_margin_swap, fda_recall_alert, weather_rain_prep)</td>
+<td>Net margin 3-9%</td>
+</tr>
+<tr>
+<td><code>bakery</code></td>
+<td>Bakeries &amp; Patisseries</td>
+<td>11 series (flour, eggs, butter, sugar, bakery products CPI)</td>
+<td>WHEAT, EGGS, MILK, SUGAR</td>
+<td>6 (flour_cost_alert, egg_spike_response, butter_margin_squeeze, wedding_season_lock, holiday_pre_order_push, fda_allergen_alert)</td>
+<td>Net margin 4-15%, ingredients 20-35% of revenue</td>
+</tr>
+<tr>
+<td><code>barber</code></td>
+<td>Barber Shops &amp; Men's Grooming</td>
+<td>6 series (barber services CPI, rent, energy, services)</td>
+<td>None (non-food)</td>
+<td>6 (service_price_cover, rent_squeeze_response, walk_in_weather_boost, event_upsell, slow_season_fill, new_competitor_alert)</td>
+<td>Net margin 10-20%, labor 40-60%</td>
+</tr>
+</tbody>
+</table>
+<p>Each <code>IndustryConfig</code> is a frozen dataclass containing:
+- <code>bls_series</code> -- BLS CPI series IDs to fetch (e.g. <code>"CUUR0000SAF1"</code> for Food CPI)
+- <code>usda_commodities</code> -- USDA commodity keys (food verticals only)
+- <code>track_labels</code> -- CPI label substrings mapped to named impact variables
+- <code>playbooks</code> -- Conditional playbooks with trigger expressions and actionable plays
+- <code>economist_context</code> / <code>scout_context</code> / <code>synthesis_context</code> -- Prompt context for LLM agents
+- <code>critique_persona</code> -- Persona for the critique agent
+- <code>social_search_terms</code> -- Keywords for social media signal search</p>
+<p>Industry resolution uses alias matching with fuzzy substring fallback. Unknown types fall back to RESTAURANT.</p>
+<p><strong>Source:</strong> <code>apps/api/hephae_api/workflows/orchestrators/industries.py</code></p>
+<h3 id="industry-pulse-orchestrator">Industry Pulse Orchestrator<a class="headerlink" href="#industry-pulse-orchestrator" title="Permanent link">&para;</a></h3>
+<p>The <code>generate_industry_pulse()</code> function in <code>apps/api/hephae_api/workflows/orchestrators/industry_pulse.py</code>:</p>
+<ol>
+<li>Checks Firestore cache (<code>industry_pulses</code> collection) -- skips if pulse exists for this week</li>
+<li>Resolves the <code>IndustryConfig</code> for the given key</li>
+<li>Fetches national signals via <code>fetch_national_signals()</code></li>
+<li>Computes impact multipliers via <code>compute_impact_multipliers()</code></li>
+<li>Matches playbooks via <code>match_playbooks()</code></li>
+<li>Generates a 2-3 paragraph LLM trend summary (PRIMARY_MODEL, no thinking preset)</li>
+<li>Saves to Firestore and returns the pulse dict</li>
+</ol>
+<h2 id="key-architectural-patterns">Key Architectural Patterns<a class="headerlink" href="#key-architectural-patterns" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No inter-service HTTP</td>
+<td>Capabilities are direct Python imports, not HTTP calls</td>
+</tr>
+<tr>
+<td>Stateless agents</td>
+<td>Every agent: <code>runner.py</code> takes identity dict, returns report dict</td>
+</tr>
+<tr>
+<td>Capability registry</td>
+<td>Maps capability names to runner functions + evaluators</td>
+</tr>
+<tr>
+<td>SSE streaming</td>
+<td>Starlette <code>StreamingResponse</code> for real-time workflow progress</td>
+</tr>
+<tr>
+<td>Request correlation</td>
+<td><code>trace_id</code> injected into all log records via middleware</td>
+</tr>
+<tr>
+<td>Firebase auto-init</td>
+<td>Initialized once on API startup via lifespan handler</td>
+</tr>
+<tr>
+<td>Two-layer pulse</td>
+<td>National industry pulse pre-computed Sunday, zip pulses Monday consume cached data</td>
+</tr>
+<tr>
+<td>Industry configs as frozen dataclasses</td>
+<td>Pure data, no methods -- adding a vertical means adding a new instance</td>
+</tr>
+</tbody>
+</table>
+<h2 id="source-files">Source Files<a class="headerlink" href="#source-files" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Monorepo config</td>
+<td><code>CLAUDE.md</code></td>
+</tr>
+<tr>
+<td>API entry point</td>
+<td><code>apps/api/hephae_api/main.py</code></td>
+</tr>
+<tr>
+<td>API config / env vars</td>
+<td><code>apps/api/hephae_api/config.py</code></td>
+</tr>
+<tr>
+<td>Model tiers</td>
+<td><code>lib/common/hephae_common/model_config.py</code></td>
+</tr>
+<tr>
+<td>Model fallback</td>
+<td><code>lib/common/hephae_common/model_fallback.py</code></td>
+</tr>
+<tr>
+<td>Agent versions</td>
+<td><code>apps/api/hephae_api/config.py</code> -&gt; <code>AgentVersions</code></td>
+</tr>
+<tr>
+<td>Industry configs</td>
+<td><code>apps/api/hephae_api/workflows/orchestrators/industries.py</code></td>
+</tr>
+<tr>
+<td>Industry pulse orchestrator</td>
+<td><code>apps/api/hephae_api/workflows/orchestrators/industry_pulse.py</code></td>
+</tr>
+<tr>
+<td>Registered industries DB</td>
+<td><code>lib/db/hephae_db/firestore/registered_industries.py</code></td>
+</tr>
+<tr>
+<td>Industry pulse DB</td>
+<td><code>lib/db/hephae_db/firestore/industry_pulse.py</code></td>
+</tr>
+<tr>
+<td>Industry pulse cron</td>
+<td><code>apps/api/hephae_api/routers/batch/industry_pulse_cron.py</code></td>
+</tr>
+<tr>
+<td>Registered industries admin</td>
+<td><code>apps/api/hephae_api/routers/admin/registered_industries.py</code></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

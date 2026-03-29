@@ -1,0 +1,2793 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Internal documentation for the Hephae Forge pipeline">
+      
+      
+      
+        <link rel="canonical" href="https://hephae-co.github.io/hephae-forge/qualification-pipeline-design/">
+      
+      
+        <link rel="prev" href="../agents/prompt-catalog/">
+      
+      
+        <link rel="next" href="../unified-pipeline-design/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Qualification Design - Hephae Forge Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#qualification-pipeline-design-3-tier-discovery-architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Hephae Forge Docs" class="md-header__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hephae Forge Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Qualification Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Hephae Forge Docs" class="md-nav__button md-logo" aria-label="Hephae Forge Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Hephae Forge Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/workflow-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Database
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../firestore-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Firestore Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bigquery-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BigQuery Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcs-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCS Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-admin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Admin Routes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/agent-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agents/prompt-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pipeline Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qualification Design
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Qualification Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-problem-statement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Problem Statement
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-proposed-architecture-3-tier-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Proposed Architecture: 3-Tier Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-tier-0-research-context-existing-run-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Tier 0: Research Context (Existing, Run First)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Tier 0: Research Context (Existing, Run First)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-research-signals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Research Signals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-research-informs-qualification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Research Informs Qualification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-tier-2-the-qualification-sieve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Tier 2: The Qualification Sieve
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Tier 2: The Qualification Sieve">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-step-a-metadata-scan-composable-tool-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Step A: Metadata Scan — Composable Tool Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.1 Step A: Metadata Scan — Composable Tool Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tool-0-robotstxt-probe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool 0: Robots.txt Probe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-1-domain-analyzer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool 1: Domain Analyzer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-2-platform-detector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool 2: Platform Detector
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-3-pixel-detector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool 3: Pixel Detector
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-4-contact-path-detector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool 4: Contact Path Detector
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-5-meta-extractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tool 5: Meta Extractor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-step-b-full-probe-conditional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Step B: Full Probe (Conditional)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-scoring-algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Scoring Algorithm
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.3 Scoring Algorithm">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hard-requirement-gate-before-scoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hard Requirement (Gate Before Scoring)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#base-scoring-from-probe-signals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Base Scoring (from probe signals)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#market-context-adjustments-from-tier-0-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Market-Context Adjustments (from Tier 0 research)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vertical-specific-scoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vertical-Specific Scoring
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quadrant-based-triage-signal-weight-adaptation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quadrant-Based Triage (Signal Weight Adaptation)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instant-disqualification-score-0" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instant Disqualification (score = 0)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-classification-hybrid-rules-llm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Classification: Hybrid Rules + LLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-robustness-handling-missing-research-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Robustness: Handling Missing Research Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-digital-footprint-proxy-for-no-website-businesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 "Digital Footprint Proxy" for No-Website Businesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-adk-agent-tool-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. ADK / Agent / Tool Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. ADK / Agent / Tool Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new-adk-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New ADK Tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-adk-agent-for-llm-edge-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New ADK Agent (for LLM edge cases)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#structured-output-proberesult-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Structured Output: ProbeResult Model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qualification-scanner-orchestrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Qualification Scanner (Orchestrator)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#skill-organization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill Organization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-probe-data-reuse-qualification-deep-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Probe Data Reuse: Qualification → Deep Discovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-workflow-phase-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Workflow Phase Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Workflow Phase Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#current-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-workflow-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Workflow Phase
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-business-phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Business Phases
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-cost-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Cost Model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Cost Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#impact-estimate-07110-nutley-nj-26-restaurants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Impact Estimate (07110 Nutley NJ, 26 restaurants)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-future-enhancements-v2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Future Enhancements (v2+)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Future Enhancements (v2+)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeper-ai-readiness-signals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deeper AI Readiness Signals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#innovation-readiness-matrix-v2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Innovation Readiness Matrix (v2)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-v2-signals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional v2 Signals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-rate-limit-mitigation-cloud-tasks-fan-out-gcp-native" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Rate-Limit Mitigation: Cloud Tasks Fan-Out (GCP-Native)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Rate-Limit Mitigation: Cloud Tasks Fan-Out (GCP-Native)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dedicated-qualification-queue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dedicated Qualification Queue
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#benefits-over-custom-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benefits Over Custom Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#barrier-pattern-research-must-complete-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Barrier Pattern: Research Must Complete First
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-timeout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task Timeout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-llm-calls-hvt-classifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For LLM Calls (HVT Classifier)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-enhanced-chain-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Enhanced Chain Detection
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Enhanced Chain Detection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#static-list-v1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Static List (v1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fuzzy-chain-matcher-v1-enhancement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fuzzy Chain Matcher (v1 enhancement)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-qualification-tracks-qualified-vs-parked-vs-action_required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Qualification Tracks (QUALIFIED vs PARKED vs ACTION_REQUIRED)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Qualification Tracks (QUALIFIED vs PARKED vs ACTION_REQUIRED)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#track-1-qualified-standard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Track 1: QUALIFIED (standard)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#track-2-qualified_action_required-high-reputation-no-website" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Track 2: QUALIFIED_ACTION_REQUIRED (high-reputation, no-website)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#track-3-parked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Track 3: PARKED
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#track-4-disqualified" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Track 4: DISQUALIFIED
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-infrastructure-separate-cloud-run-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Infrastructure: Separate Cloud Run Service
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-qualification-feedback-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Qualification Feedback Loop
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-research-staleness-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Research Staleness Guard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-menu-freshness-tool-dedicated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Menu Freshness Tool (Dedicated)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-verification-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Verification Plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../unified-pipeline-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Pipeline Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../eval-ground-truth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eval Ground Truth
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="qualification-pipeline-design-3-tier-discovery-architecture">Qualification Pipeline Design — 3-Tier Discovery Architecture<a class="headerlink" href="#qualification-pipeline-design-3-tier-discovery-architecture" title="Permanent link">&para;</a></h1>
+<p><strong>Author</strong>: Hephae Engineering
+<strong>Date</strong>: 2026-03-14
+<strong>Status</strong>: Draft v5 — Comprehensive design with all reviewer feedback</p>
+<hr />
+<h2 id="1-problem-statement">1. Problem Statement<a class="headerlink" href="#1-problem-statement" title="Permanent link">&para;</a></h2>
+<p>In our current workflow, every discovered business immediately enters the full 12-agent deep discovery pipeline (~12 Gemini API calls each, ~$0.50/business). The canary run for 07110 Nutley NJ (26 restaurants) revealed:</p>
+<ul>
+<li><strong>14/26 businesses</strong> failed viability AFTER running full discovery → ~168 wasted Gemini calls</li>
+<li><strong>12/26 businesses</strong> stuck from 429 rate-limit avalanche</li>
+<li><strong>0/26 businesses</strong> completed with capabilities</li>
+<li>No market context was used to decide which businesses were worth targeting</li>
+</ul>
+<p><strong>Root cause</strong>: We have no qualification layer. Every business, regardless of digital maturity, market fit, or reachability, gets the same expensive treatment.</p>
+<hr />
+<h2 id="2-proposed-architecture-3-tier-pipeline">2. Proposed Architecture: 3-Tier Pipeline<a class="headerlink" href="#2-proposed-architecture-3-tier-pipeline" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌─────────────────────────────────────────────────────────────────┐
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│  TIER 0: RESEARCH (runs in parallel with Tier 1)               │
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│  Area Research + Sector Research + Zipcode Research             │
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│  → Market saturation, opportunity scores, demographics,        │
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│    industry benchmarks, commodity pricing                       │
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│  Both Tier 0 and Tier 1 must complete before Tier 2 starts     │
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>└───────────────────────────┬─────────────────────────────────────┘
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                            │
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>┌───────────────────────────▼─────────────────────────────────────┐
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│  TIER 1: BROAD SCAN (~10s, existing)                           │
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│  OSM + ADK Google Search + Municipal Hub directories           │
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│  → 20-40 business candidates with name, address, maybe website │
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>└───────────────────────────┬─────────────────────────────────────┘
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                            │
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>              ┌─────────────┴──────────────┐
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>              │                            │
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>     Has website URL               No website URL
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>              │                            │
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>              ▼                            ▼
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>┌─────────────────────────┐    ┌──────────────────────┐
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>│  TIER 2: QUALIFICATION  │    │  &quot;Digital Footprint  │
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>│  &quot;The Sieve&quot;            │    │   Proxy&quot; Check       │
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>│  (~5-8s per biz)        │    │  Quick Yelp/Maps     │
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>│                         │    │  snippet check:      │
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>│  Step A → Step B → LLM  │    │  &gt;4.5★ + 500+       │
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>│  (cascade)              │    │  reviews? → QUALIFY  │
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>│                         │    │  for &quot;Get a Website&quot; │
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>│                         │    │  outreach track.     │
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>│                         │    │  Otherwise → PARKED  │
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>└───────────┬─────────────┘
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>            │
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>   ┌────────┼─────────┐
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>   │        │         │
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>QUALIFIED  PARKED  DISQUALIFIED
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>   │
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>   ▼
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>┌─────────────────────────────────────────────────────────────────┐
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>│  TIER 3: DEEP DISCOVERY (existing pipeline, expensive)         │
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>│  Only QUALIFIED businesses, staggered Cloud Tasks              │
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>│  Probe data from Tier 2 reused → agents skip redundant work    │
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>└─────────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<hr />
+<h2 id="3-tier-0-research-context-existing-run-first">3. Tier 0: Research Context (Existing, Run First)<a class="headerlink" href="#3-tier-0-research-context-existing-run-first" title="Permanent link">&para;</a></h2>
+<p>The workflow already produces rich research context. We require this to complete BEFORE qualification so we can make market-informed decisions.</p>
+<h3 id="available-research-signals">Available Research Signals<a class="headerlink" href="#available-research-signals" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Research Type</th>
+<th>Key Signals for Qualification</th>
+<th>Already Exists?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Area Research</strong></td>
+<td><code>competitiveLandscape.saturationLevel</code> (low/moderate/high/saturated), <code>existingBusinessCount</code>, <code>marketOpportunity.score</code>, <code>competitiveLandscape.gaps</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>Sector Research</strong></td>
+<td><code>technologyAdoption</code> (what tech is typical), <code>benchmarks</code> (margins, failure rates), <code>synthesis.sectorHealthScore</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>Zipcode Research</strong></td>
+<td><code>demographics.key_facts</code> (income, population), <code>business_landscape</code>, <code>consumer_market</code>, <code>economic_indicators</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>BLS/USDA Data</strong></td>
+<td>Commodity price inflation, labor market indicators</td>
+<td>Yes (via integrations package)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="how-research-informs-qualification">How Research Informs Qualification<a class="headerlink" href="#how-research-informs-qualification" title="Permanent link">&para;</a></h3>
+<p>Research context drives two key decisions:</p>
+<ol>
+<li><strong>Dynamic threshold calibration</strong> — how selective to be</li>
+<li><strong>Vertical-specific scoring</strong> — what signals matter most for this market</li>
+</ol>
+<hr />
+<h2 id="4-tier-2-the-qualification-sieve">4. Tier 2: The Qualification Sieve<a class="headerlink" href="#4-tier-2-the-qualification-sieve" title="Permanent link">&para;</a></h2>
+<h3 id="41-step-a-metadata-scan-composable-tool-architecture">4.1 Step A: Metadata Scan — Composable Tool Architecture<a class="headerlink" href="#41-step-a-metadata-scan-composable-tool-architecture" title="Permanent link">&para;</a></h3>
+<p>A single HTTP fetch feeds multiple specialized analyzers. Each analyzer is a pure function — testable, reusable, extensible.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>┌──────────────────┐
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>│  page_fetcher    │  HTTP GET → raw HTML (~1-2s, plain httpx)
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>│  (url) → HTML    │  No browser, no JavaScript rendering
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>└────────┬─────────┘
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>         │ raw HTML passed to all analyzers
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>         │
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    ┌────┼─────────────┬───────────────┬──────────────────┐
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    │    │             │               │                  │
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    ▼    ▼             ▼               ▼                  ▼
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>┌──────┐┌───────────┐┌─────────────┐┌───────────────┐┌────────────┐
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>│domain││platform   ││pixel        ││contact_path   ││meta        │
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>│analyz││detector   ││detector     ││detector       ││extractor   │
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>│er    ││           ││             ││               ││            │
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>│      ││Shopify    ││FB Pixel     ││/contact links ││og:type     │
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>│custom││Wix        ││Google       ││mailto: links  ││description │
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>│vs    ││WordPress  ││Analytics    ││contact meta   ││generator   │
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>│social││Toast      ││GTM          ││               ││JSON-LD     │
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>│vs    ││MindBody   ││Hotjar       ││               ││SSL         │
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>│direc-││Square     ││             ││               ││            │
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>│tory  ││           ││             ││               ││            │
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>└──────┘└───────────┘└─────────────┘└───────────────┘└────────────┘
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    │         │             │               │                │
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    └─────────┴─────────────┴───────────────┴────────────────┘
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>                            │
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>                    ┌───────▼───────┐
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>                    │qualification  │  Orchestrates tools,
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>                    │scanner        │  aggregates signals,
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>                    │               │  computes score
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>                    └───────────────┘
+</code></pre></div>
+<h4 id="tool-0-robotstxt-probe">Tool 0: Robots.txt Probe<a class="headerlink" href="#tool-0-robotstxt-probe" title="Permanent link">&para;</a></h4>
+<p><strong>Input</strong>: Base URL
+<strong>Output</strong>: Crawl policy</p>
+<p>A 0-cost HEAD/GET request to <code>/robots.txt</code> that tells us:
+- Does the site block crawlers? (<code>Disallow: /</code> for common user agents)
+- Is the site even responding? (Acts as a lightweight liveness check before full fetch)</p>
+<p>If robots.txt blocks all crawlers, flag this early — it prevents "Parsing Failed" bugs in Tier 3 deep discovery. The business still gets scored on other signals, but we know to use search-based discovery instead of direct crawling.</p>
+<h4 id="tool-1-domain-analyzer">Tool 1: Domain Analyzer<a class="headerlink" href="#tool-1-domain-analyzer" title="Permanent link">&para;</a></h4>
+<p><strong>Input</strong>: URL string only (no HTTP needed)
+<strong>Output</strong>: Domain classification</p>
+<table>
+<thead>
+<tr>
+<th>Classification</th>
+<th>Example</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>custom_domain</code></td>
+<td><code>joespizza.com</code></td>
+<td>Strong web investment</td>
+</tr>
+<tr>
+<td><code>platform_subdomain</code></td>
+<td><code>joespizza.wixsite.com</code></td>
+<td>Moderate — has presence but lower maturity</td>
+</tr>
+<tr>
+<td><code>social_page</code></td>
+<td><code>facebook.com/joespizza</code></td>
+<td>No own website — treat as no-website</td>
+</tr>
+<tr>
+<td><code>directory_page</code></td>
+<td><code>yelp.com/biz/joes-pizza</code></td>
+<td>Not own site — treat as no-website</td>
+</tr>
+<tr>
+<td><code>aggregator_page</code></td>
+<td><code>doordash.com/store/joes-pizza</code></td>
+<td>Listed on aggregator only</td>
+</tr>
+</tbody>
+</table>
+<h4 id="tool-2-platform-detector">Tool 2: Platform Detector<a class="headerlink" href="#tool-2-platform-detector" title="Permanent link">&para;</a></h4>
+<p><strong>Input</strong>: Raw HTML
+<strong>Output</strong>: Detected platform(s)</p>
+<p>Detects by looking for characteristic markers in scripts, stylesheets, and meta tags:</p>
+<ul>
+<li><strong>E-commerce/POS</strong>: Shopify, Square Online, Toast, Clover</li>
+<li><strong>Website builders</strong>: Wix, Squarespace, WordPress, Weebly, GoDaddy</li>
+<li><strong>Booking/Services</strong>: MindBody, Vagaro, Acuity, Calendly</li>
+<li><strong>Restaurant-specific</strong>: Toast, ChowNow, Olo, BentoBox</li>
+</ul>
+<p><strong>Why this matters</strong>: Platform detection reveals "digital DNA" — a Toast restaurant is tech-forward, a static HTML page from 2010 is not.</p>
+<h4 id="tool-3-pixel-detector">Tool 3: Pixel Detector<a class="headerlink" href="#tool-3-pixel-detector" title="Permanent link">&para;</a></h4>
+<p><strong>Input</strong>: Raw HTML
+<strong>Output</strong>: Detected tracking/analytics</p>
+<ul>
+<li>Facebook Pixel (<code>fbq('init'</code> or <code>facebook.com/tr</code>)</li>
+<li>Google Analytics (<code>gtag</code> or <code>google-analytics.com</code>)</li>
+<li>Google Tag Manager (<code>googletagmanager.com</code>)</li>
+<li>Hotjar, Mixpanel, other analytics</li>
+</ul>
+<p><strong>Why this matters</strong>: Analytics pixels = the business is actively tracking visitors and likely running paid advertising. Strong commercial intent signal.</p>
+<h4 id="tool-4-contact-path-detector">Tool 4: Contact Path Detector<a class="headerlink" href="#tool-4-contact-path-detector" title="Permanent link">&para;</a></h4>
+<p><strong>Input</strong>: Raw HTML + base URL
+<strong>Output</strong>: Detected contact paths</p>
+<ul>
+<li>Navigation links to <code>/contact</code>, <code>/about</code>, <code>/contact-us</code>, <code>/get-in-touch</code></li>
+<li><code>mailto:</code> links in <code>&lt;head&gt;</code> or early <code>&lt;body&gt;</code></li>
+<li><code>tel:</code> links</li>
+<li>Contact-related meta tags</li>
+</ul>
+<p><strong>Why this matters</strong>: A reachable contact path is the #1 qualification signal. If we can't reach them, deep discovery is wasted.</p>
+<h4 id="tool-5-meta-extractor">Tool 5: Meta Extractor<a class="headerlink" href="#tool-5-meta-extractor" title="Permanent link">&para;</a></h4>
+<p><strong>Input</strong>: Raw HTML + HTTP response headers
+<strong>Output</strong>: Structured metadata</p>
+<ul>
+<li>Open Graph: <code>og:type</code>, <code>og:title</code>, <code>og:description</code></li>
+<li><code>&lt;meta name="generator"&gt;</code> — reveals CMS/platform</li>
+<li><code>&lt;meta name="description"&gt;</code> — SEO awareness indicator</li>
+<li>JSON-LD hints in <code>&lt;head&gt;</code> — <code>@type: Restaurant</code>, <code>@type: LocalBusiness</code></li>
+<li>HTTPS vs HTTP</li>
+<li><strong>SSL certificate status</strong>: Expired SSL = immediate "low-hanging fruit" pitch signal. Detectable from HTTP response (certificate expiry in TLS handshake). A business with expired SSL is the easiest AI growth partner sell.</li>
+</ul>
+<hr />
+<h3 id="42-step-b-full-probe-conditional">4.2 Step B: Full Probe (Conditional)<a class="headerlink" href="#42-step-b-full-probe-conditional" title="Permanent link">&para;</a></h3>
+<p>Only runs if Step A returns ambiguous results (e.g., has a custom domain but no analytics pixels, no contact path detected in head — could be a parked domain or a real site with a body-only contact form).</p>
+<p>Uses the <strong>existing <code>crawl_web_page()</code> tool</strong> from the discovery pipeline. This is the same Playwright-based crawl that already extracts:</p>
+<ul>
+<li>Deterministic contact email/phone via regex</li>
+<li>Contact page URLs (auto-detected from all page links)</li>
+<li>Social anchors (Instagram, Facebook, Twitter, Yelp, TikTok)</li>
+<li>Delivery platform links (DoorDash, UberEats, Grubhub)</li>
+<li>Full JSON-LD parsing</li>
+<li>Body text sample (content depth)</li>
+</ul>
+<p><strong>Step B is NOT new code</strong> — it reuses an existing tool. The innovation is knowing WHEN to call it (only for ambiguous cases) vs calling it for every business.</p>
+<hr />
+<h3 id="43-scoring-algorithm">4.3 Scoring Algorithm<a class="headerlink" href="#43-scoring-algorithm" title="Permanent link">&para;</a></h3>
+<h4 id="hard-requirement-gate-before-scoring">Hard Requirement (Gate Before Scoring)<a class="headerlink" href="#hard-requirement-gate-before-scoring" title="Permanent link">&para;</a></h4>
+<p><strong>Contact path is mandatory</strong>: Even in underserved markets, a business must have at least one detectable contact path (email, contact form URL, mailto: link). A business with no way to reach them is never qualified regardless of score. Check this BEFORE computing the score — if no contact path exists, disposition is PARKED.</p>
+<h4 id="base-scoring-from-probe-signals">Base Scoring (from probe signals)<a class="headerlink" href="#base-scoring-from-probe-signals" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Points</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Innovation Gap</strong> (primary axis)</td>
+<td><strong>up to +30</strong></td>
+<td>Platform Detector + social/pixel absence</td>
+</tr>
+<tr>
+<td>Has reachable contact (email/form/mailto)</td>
+<td><strong>+20</strong></td>
+<td>Step A or B</td>
+</tr>
+<tr>
+<td>Has custom domain</td>
+<td><strong>+15</strong></td>
+<td>Domain Analyzer</td>
+</tr>
+<tr>
+<td>Has analytics pixel (FB/GA/GTM)</td>
+<td><strong>+10</strong></td>
+<td>Pixel Detector</td>
+</tr>
+<tr>
+<td>Has social presence (2+ links)</td>
+<td><strong>+10</strong></td>
+<td>Step A or B</td>
+</tr>
+<tr>
+<td>Has JSON-LD structured data</td>
+<td><strong>+5</strong></td>
+<td>Meta Extractor</td>
+</tr>
+<tr>
+<td>Not a chain/franchise</td>
+<td><strong>+15</strong></td>
+<td>Chain Detector (static list)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Innovation Gap scoring</strong> (primary axis, replaces flat bonuses):
+- Business uses a commercial platform (Toast, Shopify, Square, MindBody, Vagaro) BUT has zero or one of {analytics pixel, social presence, SEO meta description}
+- This is the highest-propensity-to-buy segment: they've invested in operations but not marketing
+- <strong>+30 points</strong> if platform detected + marketing gap identified
+- <strong>+15 points</strong> if platform detected + partial marketing presence</p>
+<h4 id="market-context-adjustments-from-tier-0-research">Market-Context Adjustments (from Tier 0 research)<a class="headerlink" href="#market-context-adjustments-from-tier-0-research" title="Permanent link">&para;</a></h4>
+<p><strong>Dynamic Threshold:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Base threshold: 40
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>Saturated market (40+ competitors)     → threshold = 60
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>High competition (20-40 competitors)   → threshold = 50
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>Moderate market (10-20 competitors)    → threshold = 40
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>Underserved market (&lt;10 competitors)   → threshold = 30
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>High market opportunity score (&gt;70)    → threshold -= 10
+</code></pre></div>
+<p><strong>"Economic Delta" Bonus:</strong>
+- Wealthy zip (high disposable income from census data) + business has poor digital presence (no SEO, no social, no pixels)
+- These businesses have a wealthy audience they're failing to reach → AI-driven SEO has highest ROI
+- <strong>Bonus +15 points</strong></p>
+<p><strong>"Aggregator Escape" Bonus (Restaurants):</strong>
+- Business found on DoorDash/UberEats/Grubhub (from Tier 1 scan data)
+- BUT has no own website, or dead/broken website
+- Losing ~30% to aggregator commissions — highest-value target for direct ordering + SEO
+- <strong>Bonus +15 points</strong>
+- <strong>"Menu Mismatch" upgrade</strong>: If DoorDash menu exists AND official website has NO online ordering → this business is actively burning cash on every transaction. <strong>Auto-qualify at +30 points</strong> — this is the easiest pitch for AI-led direct ordering.</p>
+<p><strong>Cross-Vertical Aggregator Detection</strong>: The Aggregator Escape pattern isn't restaurants-only. Extend to detect:
+- <strong>Services</strong>: Thumbtack, Angi, HomeAdvisor, Bark, Houzz
+- <strong>Beauty/Wellness</strong>: Vagaro, StyleSeat, Booksy
+- <strong>Medical</strong>: Zocdoc, Healthgrades
+- If a business appears on 2+ aggregators but has no own website → same Aggregator Escape bonus applies. They're paying referral fees on every lead.</p>
+<h4 id="vertical-specific-scoring">Vertical-Specific Scoring<a class="headerlink" href="#vertical-specific-scoring" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Vertical</th>
+<th>Primary Signal</th>
+<th>High-Value Pattern</th>
+<th>Bonus</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dining</strong></td>
+<td>Aggregator presence</td>
+<td>On DoorDash but no own website</td>
+<td>+15</td>
+</tr>
+<tr>
+<td><strong>Dining</strong></td>
+<td>Margin compression</td>
+<td>High commodity inflation area (BLS) + outdated site</td>
+<td>+15</td>
+</tr>
+<tr>
+<td><strong>Retail</strong></td>
+<td>Digital bridge gap</td>
+<td>Wealthy zip + no e-commerce platform</td>
+<td>+15</td>
+</tr>
+<tr>
+<td><strong>Services</strong></td>
+<td>Intake friction</td>
+<td>Has website but no booking/contact form</td>
+<td>+10</td>
+</tr>
+</tbody>
+</table>
+<h4 id="quadrant-based-triage-signal-weight-adaptation">Quadrant-Based Triage (Signal Weight Adaptation)<a class="headerlink" href="#quadrant-based-triage-signal-weight-adaptation" title="Permanent link">&para;</a></h4>
+<p>Rather than a single linear score, classify businesses into archetypes that map to different outreach strategies:</p>
+<table>
+<thead>
+<tr>
+<th>Quadrant</th>
+<th>Signals</th>
+<th>Strategy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The Goldilocks</strong></td>
+<td>High reputation, modern platform (Toast/Shopify), low social activity</td>
+<td>Primary target: has the "plumbing", needs AI "brain"</td>
+</tr>
+<tr>
+<td><strong>The Digital Laggard</strong></td>
+<td>High reputation, no website/expired SSL, manual operations</td>
+<td>Action Required: "Get a Website" track</td>
+</tr>
+<tr>
+<td><strong>The Tech Sovereign</strong></td>
+<td>Custom domain, GA4, FB Pixel, active SEO, modern booking</td>
+<td>Secondary: requires specific "Margin Surgery" pitch</td>
+</tr>
+<tr>
+<td><strong>The Ghost</strong></td>
+<td>Low reputation, basic platform, low search volume</td>
+<td>Parked: not worth deep discovery spend</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Signal weight adaptation based on market context</strong>:
+- In a <strong>saturated market</strong>: weight "Contact Path" higher (reachability is king when there are many targets to choose from)
+- In an <strong>underserved market</strong>: weight "Platform Type" higher (who is ready to scale matters more when choices are limited)</p>
+<h4 id="instant-disqualification-score-0">Instant Disqualification (score = 0)<a class="headerlink" href="#instant-disqualification-score-0" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Chain/franchise name match (static list of ~50+ national chains)</li>
+<li>URL is a social media or directory page (not own domain)</li>
+<li>Site returns 404/410 (dead)</li>
+</ul>
+<hr />
+<h3 id="44-classification-hybrid-rules-llm">4.4 Classification: Hybrid Rules + LLM<a class="headerlink" href="#44-classification-hybrid-rules-llm" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>┌─────────────────────────────────────────────────────────────┐
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>│  Rules Engine (~80% of businesses) — FREE                   │
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>│                                                             │
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>│  IF chain name match → DISQUALIFIED                         │
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>│  IF social/directory URL → PARKED (no own website)          │
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>│  IF site dead (404) → DISQUALIFIED                          │
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>│  IF score &gt;= threshold → QUALIFIED                          │
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>│  IF score &lt; (threshold - 20) → PARKED                       │
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>│                                                             │
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>│  ELSE → ambiguous, send to LLM                              │
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>└────────────────────────────┬────────────────────────────────┘
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>                             │ (~20% of businesses)
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>                             ▼
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>┌─────────────────────────────────────────────────────────────┐
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>│  Lite LLM Classifier — ~$0.001 per business                │
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>│                                                             │
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>│  Model: gemini-3.1-flash-lite (cheapest tier)               │
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>│  Input: name, category, domain type, meta signals,          │
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>│         market context (saturation, opportunity)             │
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>│  Output: {is_hvt: bool, reason: str}                        │
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>│                                                             │
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>│  Uses an ADK LlmAgent with a focused instruction:           │
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>│  &quot;You are a High-Value Target classifier. Given the         │
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>│   business signals and market context, determine if this    │
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>│   business would benefit from AI-led innovation.&quot;           │
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>│                                                             │
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>│  Decision logic:                                            │
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>│  - is_hvt: true if Independent + Commercially Active +     │
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>│    Digital Contact Path exists                              │
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>│  - is_hvt: false if Chain + Governmental + Residential +   │
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>│    Inactive                                                 │
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>└─────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<hr />
+<h3 id="45-robustness-handling-missing-research-data">4.5 Robustness: Handling Missing Research Data<a class="headerlink" href="#45-robustness-handling-missing-research-data" title="Permanent link">&para;</a></h3>
+<p>If area/sector research is incomplete (e.g., <code>marketOpportunity.score</code> is missing):
+- Fall back to base threshold of 40 (standard selectivity)
+- Log a warning but don't block qualification
+- The scoring algorithm must handle <code>None</code> values gracefully for all research signals
+- All market-context adjustments are additive — missing data means no adjustment, not a crash</p>
+<h3 id="46-digital-footprint-proxy-for-no-website-businesses">4.6 "Digital Footprint Proxy" for No-Website Businesses<a class="headerlink" href="#46-digital-footprint-proxy-for-no-website-businesses" title="Permanent link">&para;</a></h3>
+<p>Not all no-website businesses should be blindly parked. Some of the best "Innovation Targets" (e.g., a highly-rated historic deli) may have zero website but massive Yelp/Instagram presence.</p>
+<p><strong>Before parking</strong>, run a quick check:
+- If Tier 1 scan data includes Yelp/Google presence signals (name appeared in Google Search results with high ratings)
+- Tiered thresholds (adapts to different market sizes):
+  - 500+ reviews AND 4.5+ stars (major metros)
+  - 200+ reviews AND 4.0+ stars (mid-size markets)
+  - 50+ reviews AND 4.5+ stars (small towns)
+- OR: business found on 2+ aggregators (DoorDash, Thumbtack, Vagaro, etc.) regardless of review count — they're already paying for digital lead gen through high-commission channels
+- → Mark as <strong>"Qualified - Get a Website"</strong> outreach track (different from standard qualification)
+- → These are high-priority leads for a "you need a website" pitch, not for deep discovery</p>
+<p>This creates a second qualification track: businesses that are viable targets for a simpler outreach ("get a website") rather than the full capability suite.</p>
+<hr />
+<h2 id="5-adk-agent-tool-design">5. ADK / Agent / Tool Design<a class="headerlink" href="#5-adk-agent-tool-design" title="Permanent link">&para;</a></h2>
+<h3 id="new-adk-tools">New ADK Tools<a class="headerlink" href="#new-adk-tools" title="Permanent link">&para;</a></h3>
+<p>These are implemented as plain async Python functions (like the existing <code>crawl_web_page</code>, <code>validate_url</code>). They can be used both:
+- Directly from the qualification pipeline (as function calls)
+- As ADK <code>FunctionTool</code> wrappers if needed by agents in the future</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Type</th>
+<th>ADK Integration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>page_fetcher</code></td>
+<td>Async function</td>
+<td>Plain httpx GET, no ADK wrapper needed</td>
+</tr>
+<tr>
+<td><code>domain_analyzer</code></td>
+<td>Sync function</td>
+<td>Pure URL parsing, no ADK wrapper needed</td>
+</tr>
+<tr>
+<td><code>platform_detector</code></td>
+<td>Sync function</td>
+<td>HTML pattern matching</td>
+</tr>
+<tr>
+<td><code>pixel_detector</code></td>
+<td>Sync function</td>
+<td>HTML pattern matching</td>
+</tr>
+<tr>
+<td><code>contact_path_detector</code></td>
+<td>Sync function</td>
+<td>HTML + URL parsing</td>
+</tr>
+<tr>
+<td><code>meta_extractor</code></td>
+<td>Sync function</td>
+<td>HTML parsing</td>
+</tr>
+</tbody>
+</table>
+<h3 id="new-adk-agent-for-llm-edge-cases">New ADK Agent (for LLM edge cases)<a class="headerlink" href="#new-adk-agent-for-llm-edge-cases" title="Permanent link">&para;</a></h3>
+<p><strong>HVTClassifierAgent</strong> — an ADK <code>LlmAgent</code> for the ~20% of ambiguous cases:</p>
+<ul>
+<li><strong>Model</strong>: <code>AgentModels.PRIMARY_MODEL</code> (gemini-3.1-flash-lite)</li>
+<li><strong>Instruction</strong>: Focused on classifying business viability based on probe signals + market context</li>
+<li><strong>Tools</strong>: None (pure analysis, no tool calls needed)</li>
+<li><strong>Output</strong>: Structured JSON <code>{is_hvt: bool, score: int, reason: str}</code></li>
+<li><strong>Fallback</strong>: Uses existing <code>fallback_on_error</code> for 429 handling</li>
+<li><strong>Pattern</strong>: Same as existing <code>QualityGateAgent</code> in <code>quality_gate.py</code> but with richer input signals</li>
+<li><strong>ADK Schema Note</strong>: Keep output schema FLAT — <code>{is_hvt: bool, score: int, reason: str}</code>. Avoid nested Pydantic models in <code>output_schema</code> due to known ADK validation issues with complex nested structures.</li>
+<li><strong>Retry strategy</strong>: On 429, retry 3x with exponential backoff (5s/15s/45s) on the SAME model. Do NOT fall back to a higher-tier model — for a binary classification task, the cheap model is sufficient. If all retries fail, return PARKED (not DISQUALIFIED) so the business gets re-evaluated in the next batch run.</li>
+</ul>
+<h3 id="structured-output-proberesult-model">Structured Output: ProbeResult Model<a class="headerlink" href="#structured-output-proberesult-model" title="Permanent link">&para;</a></h3>
+<p>All analyzer outputs flow into a single typed model (not raw dicts). This follows the codebase's Pydantic-first convention and ensures type safety between qualification and deep discovery:</p>
+<ul>
+<li><code>ProbeResult</code> — aggregated output from all 6 analyzers (domain, platform, pixel, contact, meta, robots)</li>
+<li><code>QualificationDecision</code> — final disposition: track, score, reason, signals</li>
+<li><code>HVTClassifierOutput</code> — flat schema for LLM output: <code>{is_hvt: bool, score: int, reason: str}</code></li>
+</ul>
+<p>These models live in <code>packages/common-python/hephae_common/models.py</code> as the shared source of truth, consumable by both the qualification phase and deep discovery agents.</p>
+<p><strong>Versioning</strong>: <code>ProbeResult</code> must include a <code>schemaVersion</code> field. When v2 adds new signals (sentiment, review velocity), parked businesses probed under v1 can be identified and re-qualified under the new schema. This prevents "stale probe" drift where old businesses never get re-evaluated with improved qualification logic.</p>
+<h3 id="qualification-scanner-orchestrator">Qualification Scanner (Orchestrator)<a class="headerlink" href="#qualification-scanner-orchestrator" title="Permanent link">&para;</a></h3>
+<p>Not an ADK agent — a plain Python async function that orchestrates the tools:</p>
+<ol>
+<li>Calls <code>page_fetcher</code> once per business</li>
+<li>Runs all 5 analyzers on the HTML</li>
+<li>Computes score using signals + market context</li>
+<li>For clear cases: returns immediately (rules)</li>
+<li>For ambiguous cases: calls <code>HVTClassifierAgent</code></li>
+<li>Returns disposition: QUALIFIED / PARKED / DISQUALIFIED</li>
+</ol>
+<h3 id="skill-organization">Skill Organization<a class="headerlink" href="#skill-organization" title="Permanent link">&para;</a></h3>
+<p>All qualification tools grouped under a <code>qualification</code> module in the capabilities package:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>packages/capabilities/hephae_agents/qualification/
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  ├── __init__.py
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  ├── page_fetcher.py         — HTTP fetch
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  ├── domain_analyzer.py      — URL classification
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  ├── platform_detector.py    — Shopify/Wix/Toast detection
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>  ├── pixel_detector.py       — Analytics pixel detection
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>  ├── contact_path_detector.py — Contact reachability
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>  ├── meta_extractor.py       — Meta tags / JSON-LD
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  ├── chain_detector.py       — Static chain name list
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  ├── scorer.py               — Scoring algorithm + dynamic threshold
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  └── hvt_classifier.py       — LLM agent for ambiguous cases
+</code></pre></div>
+<p>The qualification phase in the workflow calls <code>qualification_scanner()</code> which imports and orchestrates these tools.</p>
+<hr />
+<h2 id="6-probe-data-reuse-qualification-deep-discovery">6. Probe Data Reuse: Qualification → Deep Discovery<a class="headerlink" href="#6-probe-data-reuse-qualification-deep-discovery" title="Permanent link">&para;</a></h2>
+<p>When a business passes qualification, the collected signals are persisted so deep discovery <strong>skips redundant work</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Probe Signal</th>
+<th>Reused By</th>
+<th>Skip Logic</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Email found</td>
+<td>ContactAgent</td>
+<td>Already exists in discovery stage gating</td>
+</tr>
+<tr>
+<td>Social links found</td>
+<td>SocialMediaAgent</td>
+<td>Already exists: <code>_should_skip_social()</code></td>
+</tr>
+<tr>
+<td>Contact page URL found</td>
+<td>ContactAgent</td>
+<td>Already exists: targeted crawl of contact page</td>
+</tr>
+<tr>
+<td>Platform detected</td>
+<td>Capability selection</td>
+<td>Can skip Margin Surgeon for non-food businesses</td>
+</tr>
+<tr>
+<td>JSON-LD data</td>
+<td>EntityMatcherAgent</td>
+<td>Can skip entity validation if JSON-LD confirms identity</td>
+</tr>
+</tbody>
+</table>
+<p>This means qualified businesses run through deep discovery FASTER because parts of the pipeline are already answered.</p>
+<p><strong>"State-First" Agent Design</strong>: Each deep discovery agent (SEO, Social, Contact, etc.) must strictly enforce a "check <code>session.state</code> first" pattern: "If <code>session.state['contactData']</code> already has an email from Tier 2 qualification, skip the tool call and just validate/format the existing data." This is already partially implemented via stage gating but must be made explicit and consistent across ALL Tier 3 agents to ensure probe data actually saves API calls. Without this enforcement, the cost savings from qualification are theoretical, not realized.</p>
+<hr />
+<h2 id="7-workflow-phase-integration">7. Workflow Phase Integration<a class="headerlink" href="#7-workflow-phase-integration" title="Permanent link">&para;</a></h2>
+<h3 id="current-flow">Current Flow<a class="headerlink" href="#current-flow" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>DISCOVERY → ANALYSIS → EVALUATION → APPROVAL → OUTREACH
+</code></pre></div>
+<h3 id="new-flow">New Flow<a class="headerlink" href="#new-flow" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>DISCOVERY (scan + research, parallel) → QUALIFICATION → ANALYSIS → EVALUATION → APPROVAL → OUTREACH
+</code></pre></div>
+<ul>
+<li><strong>DISCOVERY</strong>: Runs scan (Tier 1) + area/sector research in parallel. Both must complete.</li>
+<li><strong>QUALIFICATION</strong>: New phase. Uses a dedicated Cloud Tasks queue (<code>hephae-qualification-queue</code>) for rate-limited fan-out. Produces QUALIFIED / PARKED / DISQUALIFIED dispositions.</li>
+<li><strong>ANALYSIS</strong>: Unchanged, but now only processes QUALIFIED businesses. Uses Cloud Tasks with staggered scheduling.</li>
+</ul>
+<h3 id="new-workflow-phase">New Workflow Phase<a class="headerlink" href="#new-workflow-phase" title="Permanent link">&para;</a></h3>
+<p><code>QUALIFICATION</code> added between <code>DISCOVERY</code> and <code>ANALYSIS</code> in the workflow phase enum.</p>
+<h3 id="new-business-phases">New Business Phases<a class="headerlink" href="#new-business-phases" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>QUALIFIED</code></td>
+<td>Passed qualification — enters deep discovery</td>
+</tr>
+<tr>
+<td><code>PARKED</code></td>
+<td>Below threshold or no website — stored for future batch</td>
+</tr>
+<tr>
+<td><code>DISQUALIFIED</code></td>
+<td>Chain / closed / not a business — never process</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-cost-model">8. Cost Model<a class="headerlink" href="#8-cost-model" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Cost per business</th>
+<th>When runs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Research (area + sector)</td>
+<td>Shared (~$0.05 total)</td>
+<td>Once per workflow</td>
+</tr>
+<tr>
+<td>Broad scan (Tier 1)</td>
+<td>~$0.001 shared</td>
+<td>Once per workflow</td>
+</tr>
+<tr>
+<td>Step A: Metadata scan</td>
+<td>$0 (HTTP only)</td>
+<td>All with website</td>
+</tr>
+<tr>
+<td>Step B: Full probe</td>
+<td>$0 (existing tool)</td>
+<td>~30% ambiguous</td>
+</tr>
+<tr>
+<td>LLM classifier</td>
+<td>~$0.001 each</td>
+<td>~20% ambiguous</td>
+</tr>
+<tr>
+<td><strong>Total qualification</strong></td>
+<td><strong>&lt; $0.01 per business</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Deep discovery (Tier 3)</td>
+<td>~$0.50 each</td>
+<td>Only qualified</td>
+</tr>
+</tbody>
+</table>
+<h3 id="impact-estimate-07110-nutley-nj-26-restaurants">Impact Estimate (07110 Nutley NJ, 26 restaurants)<a class="headerlink" href="#impact-estimate-07110-nutley-nj-26-restaurants" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Businesses discovered</td>
+<td>26</td>
+<td>26</td>
+</tr>
+<tr>
+<td>Enter deep discovery</td>
+<td>26 (100%)</td>
+<td>~8-10 (~35%)</td>
+</tr>
+<tr>
+<td>Gemini calls (deep discovery)</td>
+<td>312</td>
+<td>~96-120</td>
+</tr>
+<tr>
+<td>Viability failures post-discovery</td>
+<td>14 (54%)</td>
+<td>~1-2 (~15%)</td>
+</tr>
+<tr>
+<td>Wasted deep discovery calls</td>
+<td>168</td>
+<td>~12-24</td>
+</tr>
+<tr>
+<td><strong>Total cost</strong></td>
+<td>~$13.00</td>
+<td>~$4-5</td>
+</tr>
+<tr>
+<td><strong>Savings</strong></td>
+<td>—</td>
+<td><strong>~60-70%</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="9-future-enhancements-v2">9. Future Enhancements (v2+)<a class="headerlink" href="#9-future-enhancements-v2" title="Permanent link">&para;</a></h2>
+<h3 id="deeper-ai-readiness-signals">Deeper AI Readiness Signals<a class="headerlink" href="#deeper-ai-readiness-signals" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>"Sentiment &amp; Capacity" analysis</strong>: Search snippets for customer pain points ("busy phone", "no one answered email", "hard to get a table") — direct operational friction indicators</li>
+<li><strong>"Lead Leakage" detection</strong>: Review keywords about poor responsiveness + county labor shortage data (BLS) — businesses physically incapable of handling lead flow, perfect for AI communicator</li>
+<li><strong>"Retail Desynchronization"</strong>: Wealthy zip + in-store only + no Google Merchant Center — invisible to modern search-to-shop behavior</li>
+</ul>
+<h3 id="innovation-readiness-matrix-v2">Innovation Readiness Matrix (v2)<a class="headerlink" href="#innovation-readiness-matrix-v2" title="Permanent link">&para;</a></h3>
+<p>Vertical-specific triage that goes beyond basic qualification:</p>
+<table>
+<thead>
+<tr>
+<th>Industry</th>
+<th>Primary Triage Filter</th>
+<th>High-Value Signal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dining</td>
+<td>Menu Freshness</td>
+<td>High aggregator presence + old PDF menu</td>
+</tr>
+<tr>
+<td>Services</td>
+<td>Response Latency</td>
+<td>High rating + "hard to reach" review keywords</td>
+</tr>
+<tr>
+<td>Retail</td>
+<td>Inventory Visibility</td>
+<td>Wealthy zip + no e-commerce/catalog sync</td>
+</tr>
+<tr>
+<td>Medical</td>
+<td>Intake Friction</td>
+<td>High volume + no digital booking/contact</td>
+</tr>
+</tbody>
+</table>
+<h3 id="additional-v2-signals">Additional v2 Signals<a class="headerlink" href="#additional-v2-signals" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>"Menu Freshness" proxy</strong>: Check <code>last-modified</code> header on PDF menus or "Special of the Week" strings — indicates operational activity</li>
+<li><strong>"Review Velocity"</strong>: Frequency matters more than count. 50 reviews in 2 months with no website = "Local Legend" growth spurt</li>
+<li><strong>"Aggregator Price Delta"</strong>: Compare DoorDash prices vs website prices to quantify commission loss — creates immediate "Value-First" pitch</li>
+<li><strong>"Search Engine Saturation" ratio</strong>: High search mentions vs low domain authority = reputation exceeding digital presence</li>
+<li><strong>GMB "Unclaimed" detection</strong>: Unclaimed Google Business Profile for a popular business = red alert outreach signal</li>
+<li><strong>Robots.txt "Developer Signatures"</strong>: CMS platforms and specialized POS systems leave unique fingerprints in robots.txt that meta tags might miss</li>
+</ul>
+<h3 id="batch-operations">Batch Operations<a class="headerlink" href="#batch-operations" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Batch website lookup</strong>: Single LLM call to find websites for all parked businesses</li>
+<li><strong>Periodic re-qualification</strong>: Cron job to re-check parked businesses as markets evolve</li>
+<li><strong>Parked business outreach</strong>: Different, lighter outreach for parked businesses (just "get a website" recommendation)</li>
+</ul>
+<hr />
+<h2 id="10-rate-limit-mitigation-cloud-tasks-fan-out-gcp-native">10. Rate-Limit Mitigation: Cloud Tasks Fan-Out (GCP-Native)<a class="headerlink" href="#10-rate-limit-mitigation-cloud-tasks-fan-out-gcp-native" title="Permanent link">&para;</a></h2>
+<p>Rather than custom semaphores or <code>asyncio.sleep</code> loops, use a <strong>dedicated Cloud Tasks queue</strong> for qualification probes. GCP handles staggering, retries, and backoff natively.</p>
+<h3 id="dedicated-qualification-queue">Dedicated Qualification Queue<a class="headerlink" href="#dedicated-qualification-queue" title="Permanent link">&para;</a></h3>
+<p>Create a <code>hephae-qualification-queue</code> with conservative rate limits:</p>
+<ul>
+<li><code>maxDispatchesPerSecond</code>: 5 (safe for CDN/firewall avoidance)</li>
+<li><code>maxConcurrentDispatches</code>: 3 (limits parallel HTTP probes)</li>
+<li><code>minBackoff</code>: 10s, <code>maxBackoff</code>: 300s, <code>maxDoublings</code>: 4 (automatic exponential backoff on 429/503)</li>
+<li><code>maxAttempts</code>: 3 (retry failed probes)</li>
+</ul>
+<h3 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Tier 1 scan finds 40 businesses</li>
+<li>Orchestrator pushes 40 individual "Qualify" messages to <code>hephae-qualification-queue</code></li>
+<li>GCP dispatches them at the configured safe rate (5/sec)</li>
+<li>Cloud Run receives each task, runs the metadata scan (Step A → Step B), updates Firestore</li>
+<li>If a website returns 429 or is slow → Cloud Tasks retries automatically with backoff</li>
+</ol>
+<h3 id="benefits-over-custom-code">Benefits Over Custom Code<a class="headerlink" href="#benefits-over-custom-code" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Visibility</strong>: Task status visible in GCP Console — in-flight, retrying, failed</li>
+<li><strong>Isolation</strong>: One slow/aggressive website won't crash the entire qualification batch</li>
+<li><strong>Zero rate-limit logic</strong>: No <code>asyncio.sleep</code>, no semaphores, no counters</li>
+<li><strong>Native retries</strong>: Exponential backoff handled by infrastructure, not application code</li>
+</ul>
+<h3 id="barrier-pattern-research-must-complete-first">Barrier Pattern: Research Must Complete First<a class="headerlink" href="#barrier-pattern-research-must-complete-first" title="Permanent link">&para;</a></h3>
+<p>Since Tier 0 (Research) and Tier 1 (Scan) run in parallel, there's a risk qualification tasks execute with incomplete market context. Use a "Barrier Pattern":</p>
+<ul>
+<li>Qualification Cloud Tasks are created and queued immediately after Tier 1 completes</li>
+<li>BUT they include a <code>research_complete</code> prerequisite check — the task handler verifies that area/sector research is available in Firestore before proceeding</li>
+<li>If research is not yet available, the task returns a retriable status and Cloud Tasks re-dispatches after backoff</li>
+<li>This ensures qualification always has full market context for dynamic threshold calibration</li>
+</ul>
+<h3 id="task-timeout">Task Timeout<a class="headerlink" href="#task-timeout" title="Permanent link">&para;</a></h3>
+<p>Set Cloud Run instance timeout for qualification tasks to <strong>60 seconds</strong> — accounts for slow-loading websites, CDN challenges, or retries within the task. This is shorter than the 30-minute timeout used for deep discovery tasks.</p>
+<h3 id="for-llm-calls-hvt-classifier">For LLM Calls (HVT Classifier)<a class="headerlink" href="#for-llm-calls-hvt-classifier" title="Permanent link">&para;</a></h3>
+<p>The ~20% of businesses that need LLM classification use the existing <code>on_model_error_callback</code> (<code>fallback_on_error</code>) which already handles Gemini 429s by switching models. No additional infrastructure needed — ADK's built-in resilience handles this.</p>
+<hr />
+<h2 id="11-enhanced-chain-detection">11. Enhanced Chain Detection<a class="headerlink" href="#11-enhanced-chain-detection" title="Permanent link">&para;</a></h2>
+<h3 id="static-list-v1">Static List (v1)<a class="headerlink" href="#static-list-v1" title="Permanent link">&para;</a></h3>
+<p>A curated list of ~50+ national chains (from existing <code>quality_gate.py</code>). Covers major restaurants, retail, banks, gyms, hotels.</p>
+<h3 id="fuzzy-chain-matcher-v1-enhancement">Fuzzy Chain Matcher (v1 enhancement)<a class="headerlink" href="#fuzzy-chain-matcher-v1-enhancement" title="Permanent link">&para;</a></h3>
+<p>Beyond the static list, detect <strong>regional/local chains</strong> that the static list misses:</p>
+<ul>
+<li><strong>Cross-zipcode dedup signal</strong>: If the same business name (normalized) appears in Tier 1 scans across MULTIPLE zip codes within the same county/area workflow, auto-flag it as a potential chain</li>
+<li><strong>Multi-location detection</strong>: If the Tier 1 scan for a SINGLE zip code finds 2+ businesses with very similar names (e.g., "Joe's Pizza - Main St" and "Joe's Pizza - Oak Ave"), flag as potential multi-location operation</li>
+<li>These flagged businesses go to the LLM classifier for verification rather than auto-DQ — some multi-location businesses are still independently owned</li>
+</ul>
+<p>This works with zero extra API calls — it's a pattern analysis on Tier 1 scan data that's already collected.</p>
+<p><strong>Implementation note</strong>: For county-level workflows that scan multiple zip codes, maintain a "seen names" index in the workflow state so the orchestrator can compare across zip codes within the same run. For cross-workflow detection, store normalized names in a lightweight lookup (Firestore collection or workflow state) that persists across runs.</p>
+<hr />
+<h2 id="12-qualification-tracks-qualified-vs-parked-vs-action_required">12. Qualification Tracks (QUALIFIED vs PARKED vs ACTION_REQUIRED)<a class="headerlink" href="#12-qualification-tracks-qualified-vs-parked-vs-action_required" title="Permanent link">&para;</a></h2>
+<p>Not all qualified businesses enter the same pipeline. Three disposition tracks:</p>
+<h3 id="track-1-qualified-standard">Track 1: QUALIFIED (standard)<a class="headerlink" href="#track-1-qualified-standard" title="Permanent link">&para;</a></h3>
+<p>Businesses with website + contact reachability + positive signals. Enter full deep discovery (Tier 3).</p>
+<h3 id="track-2-qualified_action_required-high-reputation-no-website">Track 2: QUALIFIED_ACTION_REQUIRED (high-reputation, no-website)<a class="headerlink" href="#track-2-qualified_action_required-high-reputation-no-website" title="Permanent link">&para;</a></h3>
+<p>Businesses with <strong>strong reputation but weak digital presence</strong>:
+- High Google/Yelp rating (&gt;4.5 stars) AND 50+ reviews
+- BUT no website
+- These are the highest-value "digital gap" leads — proven demand, massive opportunity
+- Enter a <strong>"Get a Website" outreach track</strong> — different from standard deep discovery
+- Skip full capability suite, instead run targeted outreach: "You have 500 five-star reviews but no website — we can help"</p>
+<h3 id="track-3-parked">Track 3: PARKED<a class="headerlink" href="#track-3-parked" title="Permanent link">&para;</a></h3>
+<p>Businesses that don't meet any qualification criteria:
+- No website, no strong online reputation
+- Below dynamic threshold
+- Stored for future batch processing (periodic re-qualification, batch website lookup)</p>
+<h3 id="track-4-disqualified">Track 4: DISQUALIFIED<a class="headerlink" href="#track-4-disqualified" title="Permanent link">&para;</a></h3>
+<p>Chain/franchise, permanently closed, not a real business. Never process.</p>
+<hr />
+<h2 id="13-infrastructure-separate-cloud-run-service">13. Infrastructure: Separate Cloud Run Service<a class="headerlink" href="#13-infrastructure-separate-cloud-run-service" title="Permanent link">&para;</a></h2>
+<p>Deploy qualification as its own Cloud Run service (<code>hephae-qualification</code>) separate from deep discovery (<code>hephae-forge-api</code>):</p>
+<ul>
+<li><strong>Qualification tasks</strong>: Fast (5-8s typical, 60s max timeout). High throughput, low memory.</li>
+<li><strong>Discovery tasks</strong>: Slow (up to 30 min). Low throughput, high memory (Playwright, multi-agent pipelines).</li>
+<li>If they share a service, Cloud Run's autoscaler sees mixed latency and makes poor scaling decisions — holds instances open for 30 min that could be serving 5s qualification tasks.</li>
+<li>The <code>hephae-qualification-queue</code> targets the qualification service; the existing <code>hephae-agent-queue</code> targets the discovery service.</li>
+</ul>
+<hr />
+<h2 id="14-qualification-feedback-loop">14. Qualification Feedback Loop<a class="headerlink" href="#14-qualification-feedback-loop" title="Permanent link">&para;</a></h2>
+<p>Track qualification accuracy over time to recalibrate scoring weights:</p>
+<ul>
+<li>After each deep discovery run, log: <code>{business_id, qualification_score, threshold_used, deep_discovery_outcome: "viable" | "failed", failure_reason}</code></li>
+<li>Aggregate weekly: compute viability rate by score bucket (e.g., score 30-40: 45% viable, 50-60: 88% viable)</li>
+<li><strong>Target metric</strong>: &gt;80% viability rate for QUALIFIED businesses</li>
+<li>If a score bucket consistently falls below 60% viability, either raise its threshold or investigate which signals are misleading</li>
+<li>This creates a self-improving system: qualification gets smarter over time based on actual outcomes</li>
+</ul>
+<hr />
+<h2 id="15-research-staleness-guard">15. Research Staleness Guard<a class="headerlink" href="#15-research-staleness-guard" title="Permanent link">&para;</a></h2>
+<p>For long-running multi-zipcode workflows:
+- Track <code>research_generated_at</code> timestamp on research context
+- If research is &gt;30 min old at time of qualification, log a warning
+- If &gt;60 min old, fall back to base threshold (40) instead of stale market adjustments
+- Prevents qualification decisions based on outdated market context in multi-hour county workflows</p>
+<hr />
+<h2 id="16-menu-freshness-tool-dedicated">16. Menu Freshness Tool (Dedicated)<a class="headerlink" href="#16-menu-freshness-tool-dedicated" title="Permanent link">&para;</a></h2>
+<p>A lightweight tool that checks whether a restaurant's menu is actively maintained:
+- Check <code>last-modified</code> HTTP header on PDF menu links
+- Detect "Special of the Week", "Today's Special", date-stamped content in HTML
+- A restaurant that updates its menu digitally is operationally active and tech-engaged
+- <strong>Scoring</strong>: Fresh/active menu → +10 points. Stale/PDF-only menu → neutral. No menu online → -5 points.</p>
+<p>This is a dedicated tool under the qualification skill, not part of the general meta_extractor, because menu freshness is a vertical-specific (dining) signal with distinct detection logic.</p>
+<hr />
+<h2 id="17-verification-plan">17. Verification Plan<a class="headerlink" href="#17-verification-plan" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Deploy as canary Cloud Run service for A/B testing</li>
+<li>Run workflow for 07110 Restaurants</li>
+<li>Verify research completes before qualification starts</li>
+<li>Verify qualification threshold adapts to market saturation</li>
+<li>Verify no-website businesses → PARKED</li>
+<li>Verify chains → DISQUALIFIED</li>
+<li>Verify only strong digital-presence businesses → QUALIFIED</li>
+<li>Verify probe data reused by deep discovery (agents skipped)</li>
+<li>Compare Gemini API call count vs production: target 60%+ reduction</li>
+<li>Compare qualified business viability pass rate: target &gt;80%</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

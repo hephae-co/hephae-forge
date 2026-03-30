@@ -1,0 +1,71 @@
+{
+  "businessSnapshot": {
+    "name": "Joe's Pizza NYC",
+    "address": "7 Carmine St, New York, NY 10014",
+    "category": "Restaurant",
+    "rating": 4.3,
+    "reviewCount": 1840
+  },
+  "marketPosition": {
+    "competitorCount": 47,
+    "saturationLevel": "high",
+    "ranking": "Well-reviewed neighborhood pizza institution"
+  },
+  "localEconomy": {
+    "medianIncome": "$92,100",
+    "population": "1,630,000",
+    "keyFact": "Manhattan food spending remains elevated post-pandemic"
+  },
+  "localBuzz": {
+    "headline": null
+  },
+  "keyOpportunities": [
+    {
+      "title": "delivery_optimization",
+      "detail": "High-density area — delivery radius expansion could add 15% revenue"
+    }
+  ],
+  "coverage": "national",
+  "confirmedSources": 6,
+  "dashboard": {
+    "coverage": "national",
+    "confirmedSources": 6,
+    "isNational": true,
+    "pulseHeadline": null,
+    "weeklyBrief": null,
+    "stats": {
+      "city": "New York",
+      "state": "NY",
+      "population": "1,630,000",
+      "medianIncome": "$92,100",
+      "county": "New York County"
+    },
+    "topInsights": [
+      {
+        "title": "national_food_costs",
+        "recommendation": "Food costs are rising nationally — review your supplier contracts this month.",
+        "impactScore": 60,
+        "impactLevel": "MEDIUM"
+      }
+    ],
+    "communityBuzz": null,
+    "events": [],
+    "actionItems": null,
+    "competitorWatch": null,
+    "localFacts": [
+      "Manhattan has over 26,000 food service establishments",
+      "NYC minimum wage is $16/hr — labor cost pressure ongoing"
+    ],
+    "localIntel": {
+      "spendingPower": "high",
+      "priceSensitivity": "low"
+    },
+    "competitors": [
+      { "name": "Bleecker Street Pizza", "cuisine": "Pizza", "distanceM": 180 },
+      { "name": "John's of Bleecker Street", "cuisine": "Pizza", "distanceM": 420 }
+    ],
+    "researchSnippets": null,
+    "playbooks": null,
+    "personalizedTools": null
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "overallScore": 72,
+  "grade": "C+",
+  "summary": "Your Google Business Profile is missing key attributes that are costing you 30-40% of local search visibility.",
+  "sections": {
+    "gmbOptimization": {
+      "score": 65,
+      "label": "Google Business Profile",
+      "items": [
+        { "label": "Business hours complete", "status": "pass" },
+        { "label": "Menu linked", "status": "fail", "impact": "High — adds 22% more search impressions" },
+        { "label": "Photos (10+ recommended)", "status": "warning", "detail": "3 photos found, need 10+" },
+        { "label": "Services listed", "status": "fail" }
+      ]
+    },
+    "localCitations": {
+      "score": 78,
+      "label": "Local Citations",
+      "items": [
+        { "label": "Yelp listing", "status": "pass" },
+        { "label": "TripAdvisor listing", "status": "pass" },
+        { "label": "Foursquare", "status": "fail" }
+      ]
+    },
+    "websiteHealth": {
+      "score": 74,
+      "label": "Website",
+      "items": [
+        { "label": "Mobile-friendly", "status": "pass" },
+        { "label": "Page speed (< 3s)", "status": "warning", "detail": "4.2s load time" },
+        { "label": "Schema markup", "status": "fail" }
+      ]
+    },
+    "reviewSignals": {
+      "score": 85,
+      "label": "Reviews",
+      "items": [
+        { "label": "Rating above 4.0", "status": "pass" },
+        { "label": "Recent reviews (< 30 days)", "status": "pass" },
+        { "label": "Owner responses", "status": "warning", "detail": "Only 20% response rate" }
+      ]
+    }
+  },
+  "topActions": [
+    "Add your full menu to Google Business Profile — adds 22% more impressions",
+    "Upload 7 more photos (need 10 minimum for full visibility)",
+    "Add Schema markup to your website homepage"
+  ]
+}

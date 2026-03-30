@@ -1,0 +1,29 @@
+{
+  "estimatedMargin": 18.5,
+  "industryBenchmark": 22.0,
+  "marginGap": -3.5,
+  "annualLeakage": 28600,
+  "currency": "USD",
+  "breakdown": {
+    "foodCost": { "pct": 34.2, "benchmark": 30.0, "label": "Food Cost %" },
+    "laborCost": { "pct": 31.5, "benchmark": 28.0, "label": "Labor Cost %" },
+    "overhead": { "pct": 15.8, "benchmark": 20.0, "label": "Overhead %" }
+  },
+  "topLevers": [
+    {
+      "title": "Reduce Food Cost",
+      "potential": 12400,
+      "action": "Renegotiate dairy supplier contract — you're paying 8% above market rate"
+    },
+    {
+      "title": "Optimize Labor",
+      "potential": 9800,
+      "action": "Shift 2 part-time staff to lunch shift where demand is 40% lower"
+    },
+    {
+      "title": "Menu Engineering",
+      "potential": 6400,
+      "action": "Raise 4 high-demand low-margin pasta dishes by $1.50"
+    }
+  ]
+}

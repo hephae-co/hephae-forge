@@ -1,0 +1,28 @@
+{
+  "peakHours": {
+    "weekday": ["12:00", "13:00", "18:00", "19:00", "20:00"],
+    "weekend": ["12:00", "13:00", "14:00", "19:00", "20:00", "21:00"]
+  },
+  "dailyForecast": [
+    { "day": "Monday", "expected": 65, "trend": "stable" },
+    { "day": "Tuesday", "expected": 58, "trend": "stable" },
+    { "day": "Wednesday", "expected": 72, "trend": "up" },
+    { "day": "Thursday", "expected": 80, "trend": "up" },
+    { "day": "Friday", "expected": 120, "trend": "up" },
+    { "day": "Saturday", "expected": 145, "trend": "up" },
+    { "day": "Sunday", "expected": 110, "trend": "stable" }
+  ],
+  "weeklyTotal": 650,
+  "weeklyChange": "+12%",
+  "insights": [
+    "Friday dinner (6-9pm) is your peak — 28% of weekly covers",
+    "Wednesday lunch is underutilized — competitors at 80% capacity",
+    "Weather boost expected this weekend (+15% from spring forecast)"
+  ],
+  "heatmapData": [
+    { "day": 0, "hour": 12, "value": 65 },
+    { "day": 0, "hour": 18, "value": 85 },
+    { "day": 4, "hour": 18, "value": 100 },
+    { "day": 5, "hour": 13, "value": 95 }
+  ]
+}

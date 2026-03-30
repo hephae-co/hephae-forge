@@ -1,0 +1,36 @@
+{
+  "summary": "You're #2 in Italian in Nutley by reviews, but Tavola Rustica has 40% more online presence.",
+  "yourPosition": {
+    "rank": 2,
+    "category": "Italian Restaurant",
+    "market": "Nutley, NJ",
+    "strengths": ["Higher average rating (4.5 vs 4.2)", "More consistent review recency", "Better pricing perception"]
+  },
+  "competitors": [
+    {
+      "name": "Tavola Rustica",
+      "rating": 4.2,
+      "reviewCount": 180,
+      "distance": "320m",
+      "strengths": ["More GBP photos", "Higher search visibility"],
+      "weaknesses": ["Closed for lunch — opportunity for you"],
+      "threat": "medium"
+    },
+    {
+      "name": "Casa Mia",
+      "rating": 4.0,
+      "reviewCount": 95,
+      "distance": "580m",
+      "strengths": ["Private dining room"],
+      "weaknesses": ["Lower rating, fewer reviews"],
+      "threat": "low"
+    }
+  ],
+  "opportunities": [
+    "Tavola Rustica stopped lunch service — capture their regulars with a lunch special",
+    "Neither competitor has responded to reviews in 30+ days — your response rate is an advantage"
+  ],
+  "threats": [
+    "New Italian concept opening 0.8mi away in Q2 — monitor"
+  ]
+}

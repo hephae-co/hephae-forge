@@ -37,25 +37,36 @@ interface CaseStudy {
   };
 }
 
-// Mock case studies — in production, fetch from API
+// Fetch case studies from API (published business profiles marked as case studies)
 async function fetchCaseStudies(): Promise<CaseStudy[]> {
-  return [
-    {
-      id: 'meal-07110',
-      slug: 'meal-restaurant-newark-07110',
-      businessName: 'Meal Restaurant',
-      location: 'Newark, NJ 07110',
-      industry: 'Food & Beverage',
-      publishedAt: '2026-03-29',
-      excerpt:
-        'A local restaurant leveraged AI-driven SEO optimization and competitive analysis to identify $50K+ in annual margin recovery opportunities across menu pricing and operational efficiency.',
-      metrics: {
-        seoScore: 62,
-        marginOpportunity: '$50K+ annually',
-        competitorCount: 12,
+  try {
+    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
+    const res = await fetch(`${BACKEND_URL}/api/case-studies?published_only=true`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    const studies = data.case_studies || [];
+
+    return studies.map((s: any) => ({
+      id: s.id || s.slug,
+      slug: s.slug || s.id,
+      businessName: s.name || 'Untitled',
+      location: s.address || 'Unknown Location',
+      industry: s.industry || 'Business',
+      publishedAt: s.caseStudyPublishedAt || new Date().toISOString(),
+      excerpt: s.excerpt || 'Discover how this business leveraged Hephae insights to grow.',
+      metrics: s.metrics || {
+        seoScore: undefined,
+        marginOpportunity: undefined,
+        competitorCount: undefined,
       },
-    },
-  ];
+    }));
+  } catch (error) {
+    console.error('[CaseStudies] Failed to fetch:', error);
+    return [];
+  }
 }
 
 function formatDate(dateStr: string): string {

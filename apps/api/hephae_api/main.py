@@ -128,6 +128,7 @@ def _register_routers() -> None:
         unsubscribe,
         business_profile,
         feedback,
+        case_studies,
     )
 
     app.include_router(auth.router, prefix="/api")
@@ -147,6 +148,7 @@ def _register_routers() -> None:
     app.include_router(pulse_public.router, prefix="/api")
     app.include_router(unsubscribe.router, prefix="/api")
     app.include_router(business_profile.router, prefix="/api")
+    app.include_router(case_studies.router, prefix="/api")
     app.include_router(feedback.router, prefix="/api")
 
     # --- V1 backward-compat routers ---

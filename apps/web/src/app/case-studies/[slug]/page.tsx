@@ -4,14 +4,10 @@ import { notFound } from 'next/navigation';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
-// Map case study slugs to business profile identifiers
-const CASE_STUDY_MAP: Record<string, string> = {
-  'meal-restaurant-newark-07110': 'meal-nj-07110-07110',
-};
-
-async function fetchBusinessProfile(businessSlug: string) {
+async function fetchCaseStudy(slug: string) {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/b/${businessSlug}/public`, {
+    // Fetch from case studies API endpoint
+    const res = await fetch(`${BACKEND_URL}/api/case-studies/${slug}`, {
       cache: 'no-store',
     });
     if (!res.ok) return null;
@@ -27,13 +23,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const businessSlug = CASE_STUDY_MAP[slug];
 
-  if (!businessSlug) {
-    return { title: 'Case Study | Hephae' };
-  }
-
-  const profile = await fetchBusinessProfile(businessSlug);
+  const profile = await fetchCaseStudy(slug);
 
   if (!profile) {
     return { title: 'Case Study | Hephae' };
@@ -102,13 +93,8 @@ export default async function CaseStudyPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const businessSlug = CASE_STUDY_MAP[slug];
 
-  if (!businessSlug) {
-    notFound();
-  }
-
-  const profile = await fetchBusinessProfile(businessSlug);
+  const profile = await fetchCaseStudy(slug);
 
   if (!profile) {
     notFound();

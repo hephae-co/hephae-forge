@@ -1,0 +1,132 @@
+{
+  "businessSnapshot": {
+    "name": "Arturo's Tavern",
+    "address": "128 Washington Ave, Nutley, NJ 07110",
+    "category": "Restaurant",
+    "rating": 4.5,
+    "reviewCount": 312,
+    "phone": "+19737515535",
+    "website": "https://arturos.com"
+  },
+  "marketPosition": {
+    "competitorCount": 11,
+    "saturationLevel": "moderate",
+    "ranking": "Top 3 Italian restaurants in Nutley by review count"
+  },
+  "localEconomy": {
+    "medianIncome": "$78,400",
+    "population": "28,500",
+    "keyFact": "Nutley's food spending grew 8% YoY — above state average"
+  },
+  "localBuzz": {
+    "headline": "Rising food costs hit NJ diners — smart operators are pivoting menus now"
+  },
+  "keyOpportunities": [
+    {
+      "title": "lunch_crowd",
+      "detail": "Weekday lunch traffic is underserved — competitors close at 3pm"
+    },
+    {
+      "title": "catering_events",
+      "detail": "3 local corporate offices within 0.5mi with no catering contracts"
+    }
+  ],
+  "coverage": "ultralocal",
+  "confirmedSources": 14,
+  "dashboard": {
+    "coverage": "ultralocal",
+    "confirmedSources": 14,
+    "isNational": false,
+    "pulseHeadline": "Rising food costs hit NJ diners — smart operators are pivoting menus now",
+    "weeklyBrief": "This week, Nutley's restaurant scene faces margin pressure from rising dairy costs (+4.2% MoM). Local foot traffic is up 12% due to spring weather, but three major competitors cut lunch service. Opportunity: capture displaced lunch crowd.",
+    "stats": {
+      "city": "Nutley",
+      "state": "NJ",
+      "population": "28,500",
+      "medianIncome": "$78,400",
+      "county": "Essex County"
+    },
+    "topInsights": [
+      {
+        "title": "dairy_cost_spike",
+        "recommendation": "Raise pasta dish prices by $1.50 this Friday — dairy costs up 4.2% MoM, your margin is compressed.",
+        "impactScore": 85,
+        "impactLevel": "HIGH"
+      },
+      {
+        "title": "lunch_opportunity",
+        "recommendation": "Add a $14.99 express lunch special by Wednesday — 3 competitors just cut lunch service.",
+        "impactScore": 78,
+        "impactLevel": "HIGH"
+      },
+      {
+        "title": "spring_traffic",
+        "recommendation": "Post outdoor seating photos to Instagram this weekend — foot traffic is up 12% with the warm forecast.",
+        "impactScore": 65,
+        "impactLevel": "MEDIUM"
+      }
+    ],
+    "communityBuzz": "Nutley residents are buzzing about the new Saturday Farmers Market launch at Community Park — expect 200+ foot traffic boost nearby.",
+    "events": [
+      { "what": "Nutley Farmers Market Opening", "when": "Saturday April 5" },
+      { "what": "Spring Restaurant Week", "when": "April 7-13" }
+    ],
+    "actionItems": [
+      "Raise pasta dish prices by $1.50 — dairy up 4.2%",
+      "Launch $14.99 express lunch special by Wednesday",
+      "Post outdoor seating content this weekend"
+    ],
+    "competitorWatch": [
+      {
+        "business": "Tavola Rustica",
+        "observation": "Cut weekday lunch service as of this week",
+        "implication": "~40 displaced lunch covers available to capture"
+      }
+    ],
+    "localFacts": [
+      "Nutley has 28,500 residents with median income of $78,400",
+      "Essex County food establishment count grew 3.1% YoY",
+      "3 SBA loans issued to food service businesses in the past 90 days",
+      "Local CPI for food away from home: +2.8% YoY",
+      "Nutley Community Park hosting 12 events this spring",
+      "Dairy wholesale prices up 4.2% MoM — highest since Q3 2023"
+    ],
+    "localIntel": {
+      "spendingPower": "moderate-high",
+      "priceSensitivity": "low"
+    },
+    "competitors": [
+      { "name": "Tavola Rustica", "cuisine": "Italian", "distanceM": 320 },
+      { "name": "Casa Mia", "cuisine": "Italian", "distanceM": 580 },
+      { "name": "The Nutley Grill", "cuisine": "American", "distanceM": 210 }
+    ],
+    "researchSnippets": {
+      "landscape": "The NJ restaurant market is experiencing a bifurcation: value-focused chains are gaining share while mid-market independents face margin compression.",
+      "keyFindings": [
+        "Food-away-from-home CPI rose 2.8% YoY in the Northeast",
+        "Restaurant closures in Essex County down 18% vs prior year"
+      ]
+    },
+    "playbooks": [
+      {
+        "name": "dairy_cost_spike",
+        "headline": "Dairy costs up 4.2% — protect your margin now",
+        "action": "Raise cream/cheese-heavy dishes by $1-2 this week"
+      }
+    ],
+    "personalizedTools": [
+      {
+        "id": "menu-optimizer",
+        "label": "Menu Optimizer",
+        "description": "Identify which dishes to raise or cut based on current dairy costs",
+        "icon": "DollarSign"
+      },
+      {
+        "id": "lunch-rush",
+        "label": "Lunch Rush Capture",
+        "description": "Build a lunch special strategy targeting displaced competitors' customers",
+        "icon": "TrendingUp"
+      }
+    ]
+  }
+}

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from typing import Any
+from collections import defaultdict
 
 from google.adk.agents import LlmAgent
 from google.adk.runners import Runner
@@ -13,7 +15,7 @@ from google.genai import types
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
-from hephae_api.lib.auth import optional_firebase_user
+from hephae_api.lib.auth import verify_firebase_token
 from hephae_agents.discovery import LocatorAgent
 from hephae_common.adk_helpers import user_msg
 from hephae_common.model_config import AgentModels
@@ -30,6 +32,12 @@ APP_NAME = "hephae-chat"
 _session_service = FirestoreSessionService()
 _memory_service = None  # lazy init
 
+# Rate limiting — per-user request tracking (uid → [(timestamp, ...), ...])
+# Cleanup happens on each request; for high-volume consider Redis + TTL
+_rate_limit_tracker: dict[str, list[float]] = defaultdict(list)
+CHAT_RATE_LIMIT = 10  # requests
+CHAT_RATE_WINDOW = 60  # seconds
+
 
 def _get_memory_service():
     """Lazy-init Firestore memory service (for authenticated users)."""
@@ -38,6 +46,26 @@ def _get_memory_service():
         from hephae_db.memory.firestore_memory_service import FirestoreMemoryService
         _memory_service = FirestoreMemoryService()
     return _memory_service
+
+
+def _check_rate_limit(user_id: str) -> None:
+    """Check rate limit for user. Raises 429 if exceeded.
+
+    Tracks requests per user_id within CHAT_RATE_WINDOW.
+    """
+    now = time.time()
+    requests = _rate_limit_tracker[user_id]
+
+    # Remove old requests outside the window
+    _rate_limit_tracker[user_id] = [ts for ts in requests if now - ts < CHAT_RATE_WINDOW]
+
+    # Check limit
+    if len(_rate_limit_tracker[user_id]) >= CHAT_RATE_LIMIT:
+        logger.warning(f"[Chat] Rate limit exceeded for user {user_id}")
+        raise Exception(f"Rate limited: max {CHAT_RATE_LIMIT} requests per {CHAT_RATE_WINDOW}s")
+
+    # Record this request
+    _rate_limit_tracker[user_id].append(now)
 
 SYSTEM_INSTRUCTION = (
     "You are Hephae, an intelligent assistant for business owners. "
@@ -170,14 +198,25 @@ def _build_chat_agent(
 
 
 @router.post("/chat")
-async def chat(request: Request, firebase_user: dict | None = Depends(optional_firebase_user)):
+async def chat(request: Request, firebase_user: dict = Depends(verify_firebase_token)):
     try:
+        # Authentication is now required — verify_firebase_token will raise 401 if missing/invalid
+        user_id = firebase_user.get("uid")
+
+        # Rate limit check
+        try:
+            _check_rate_limit(user_id)
+        except Exception as rate_err:
+            logger.warning(f"[Chat] {rate_err}")
+            return JSONResponse(
+                {"error": str(rate_err)},
+                status_code=429,  # Too Many Requests
+            )
+
         body = await request.json()
         messages = body.get("messages")
         context = body.get("context")
         session_id = body.get("sessionId")
-        # Use authenticated uid if available, fall back to body or "anonymous"
-        user_id = (firebase_user or {}).get("uid") or body.get("userId", "anonymous")
         business_located = body.get("businessLocated", False)
 
         if not messages or not isinstance(messages, list):
@@ -229,13 +268,12 @@ async def chat(request: Request, firebase_user: dict | None = Depends(optional_f
                     )
                     await _session_service.append_event(session, event)
 
-        # Run the agent — with long-term memory for authenticated users
-        is_authenticated = user_id != "anonymous"
+        # Run the agent — all users are now authenticated, enable long-term memory
         runner = Runner(
             app_name=APP_NAME,
             agent=agent,
             session_service=_session_service,
-            memory_service=_get_memory_service() if is_authenticated else None,
+            memory_service=_get_memory_service(),
         )
 
         response_text = ""

@@ -42,6 +42,13 @@ export function toDashboardData(overview: any): DashboardData | null {
     confirmedSources: dash.confirmedSources,
     localIntel: dash.localIntel,
     localFacts: dash.localFacts,
+    // Digest fields (from synthesis pipeline)
+    weeklyBrief: dash.weeklyBrief ?? null,
+    actionItems: dash.actionItems ?? null,
+    competitorWatch: dash.competitorWatch ?? null,
+    playbooks: dash.playbooks ?? null,
+    personalizedTools: dash.personalizedTools ?? null,
+    researchSnippets: dash.researchSnippets ?? null,
   };
 }
 

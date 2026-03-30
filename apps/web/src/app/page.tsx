@@ -2642,7 +2642,7 @@ export default function Home() {
           )}
         </header>
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-12 gap-6 items-start">
           <div className="col-span-12 md:col-span-5" style={{ minHeight: 280 }}><MapCard business={dashBusiness} /></div>
           <div className="col-span-12 md:col-span-7" style={{ minHeight: 280 }}>
             <WeeklyPulseCard dashboard={dashboardData} onNominateZip={isNationalCoverage ? () => submitUltralocalInterest() : undefined} />
@@ -2651,7 +2651,7 @@ export default function Home() {
           <div className="col-span-12"><MarketPositionCard dashboard={dashboardData} onNominateZip={isNationalCoverage ? () => submitUltralocalInterest() : undefined} /></div>
 
           {/* Profile card — invitation, building progress, or saved profile summary */}
-          <div className="col-span-12 md:col-span-6 flex flex-col">
+          <div className="col-span-12 md:col-span-6">
             <ProfileDiscoveryCard
               status={profileStatus}
               profileData={{
@@ -2672,17 +2672,48 @@ export default function Home() {
             />
           </div>
 
-          <div className="col-span-12 md:col-span-6 flex flex-col"><AiToolsCard tools={dashboardData?.aiTools} businessSlug={businessSlug ?? undefined} zipCode={(locatedBusiness as any)?.zipCode} vertical={(locatedBusiness as any)?.businessType} /></div>
+          <div className="col-span-12 md:col-span-6"><AiToolsCard tools={dashboardData?.aiTools} personalizedTools={dashboardData?.personalizedTools} businessSlug={businessSlug ?? undefined} zipCode={(locatedBusiness as any)?.zipCode} vertical={(locatedBusiness as any)?.businessType} /></div>
 
-          <div className={`col-span-12 ${profileIncomplete ? 'md:col-span-4' : 'md:col-span-4'}`}><WeekCalendarCard events={dashboardData?.events} /></div>
+          <div className="col-span-12 md:col-span-4"><WeekCalendarCard events={dashboardData?.events} /></div>
           <div className="col-span-12 md:col-span-8">
-            {dashboardData?.competitors?.length ? (
-              <Card className="p-5 h-full flex flex-col justify-center">
-                <Label>Nearby Rivals</Label>
-                <div className="mt-3"><CompetitorsStrip competitors={dashboardData.competitors} /></div>
-              </Card>
-            ) : null}
+            <BuzzCard buzz={dashboardData?.communityBuzz} insights={dashboardData?.topInsights} />
           </div>
+
+          {/* Nearby rivals — compact inline strip */}
+          {dashboardData?.competitors?.length ? (
+            <div className="col-span-12">
+              <CompetitorsStrip competitors={dashboardData.competitors} />
+            </div>
+          ) : null}
+
+          {/* Research snippets — industry insights */}
+          {dashboardData?.researchSnippets?.keyFindings?.length ? (
+            <div className="col-span-12">
+              <Card className="p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <BarChart3 className="w-4 h-4 text-indigo-400" />
+                  <Label>Industry Research</Label>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {dashboardData.researchSnippets.keyFindings.slice(0, 3).map((finding, i) => (
+                    <div key={i} className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3">
+                      <p className="text-xs text-slate-700 leading-relaxed">{typeof finding === 'string' ? finding.slice(0, 150) : ''}{typeof finding === 'string' && finding.length > 150 ? '...' : ''}</p>
+                    </div>
+                  ))}
+                </div>
+                {dashboardData.researchSnippets.recommendedReading?.length ? (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {dashboardData.researchSnippets.recommendedReading.slice(0, 3).map((r, i) => (
+                      <a key={i} href={r.url} target="_blank" rel="noopener noreferrer"
+                        className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 hover:bg-indigo-100 transition-colors">
+                        {r.title.slice(0, 35)}{r.title.length > 35 ? '...' : ''}
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </Card>
+            </div>
+          ) : null}
 
           {!user && (
             <div className="col-span-12 flex items-center gap-4 py-2">

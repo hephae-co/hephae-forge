@@ -133,6 +133,20 @@ def _build_chat_agent(
                     ov_parts.append("AI & Tech Tools Available:\n" + "\n".join(tool_lines))
             if dash.get("techHighlight") and not ai_tools:
                 ov_parts.append(f"Tech Highlight: {dash['techHighlight']}")
+            # Digest data — pre-synthesized weekly brief + action items
+            if dash.get("weeklyBrief"):
+                ov_parts.append(f"Weekly Brief:\n{dash['weeklyBrief']}")
+            if dash.get("actionItems"):
+                ov_parts.append("This Week's Action Items:\n" + "\n".join(f"- {a}" for a in dash["actionItems"][:5]))
+            if dash.get("competitorWatch"):
+                comp_lines = []
+                for c in dash["competitorWatch"][:3]:
+                    if isinstance(c, dict):
+                        comp_lines.append(f"- {c.get('business', c.get('name', '?'))}: {c.get('observation', c.get('change', '?'))}")
+                if comp_lines:
+                    ov_parts.append("Competitor Watch:\n" + "\n".join(comp_lines))
+            if dash.get("localFacts"):
+                ov_parts.append("Local Facts:\n" + "\n".join(f"- {f}" for f in dash["localFacts"][:5]))
             if ov_parts:
                 parts.append("Business Overview:\n" + "\n".join(ov_parts))
 

@@ -70,40 +70,32 @@ export function ProfileDiscoveryCard({
     }
 
     return (
-      <Card className="p-6 border-l-4 border-emerald-500 h-full flex flex-col">
-        <div className="flex justify-between items-start mb-3">
-          <div>
-            <Label>Business Profile</Label>
-            <h3 className="text-lg font-bold tracking-tight text-slate-900 mt-1">Profile Complete</h3>
-          </div>
+      <Card className="p-5 border-l-4 border-emerald-500">
+        <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
-              <CheckCircle className="w-4 h-4 text-emerald-500" />
-            </div>
+            <CheckCircle className="w-4 h-4 text-emerald-500" />
+            <Label>Business Profile</Label>
           </div>
+          <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase tracking-widest">{completed}/{total}</span>
         </div>
 
         {links.length > 0 && (
-          <div className="flex-1 space-y-1.5 mb-4">
+          <div className="space-y-1 mb-3">
             {links.map(({ label, url }) => (
-              <div key={label + url} className="flex items-center gap-2 text-xs">
-                <span className="font-semibold text-slate-600 w-16 flex-shrink-0">{label}</span>
+              <div key={label + url} className="flex items-center gap-2 text-[11px]">
+                <span className="font-semibold text-slate-400 w-14 flex-shrink-0">{label}</span>
                 <a href={url} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 truncate flex items-center gap-1">
-                  {url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)}
-                  <ExternalLink className="w-2.5 h-2.5 flex-shrink-0 opacity-50" />
+                  {url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 30)}
+                  <ExternalLink className="w-2.5 h-2.5 flex-shrink-0 opacity-40" />
                 </a>
               </div>
             ))}
           </div>
         )}
 
-        {links.length === 0 && (
-          <p className="text-xs text-slate-400 mb-4 flex-1">No links saved yet. Click below to add.</p>
-        )}
-
         <button
           onClick={onEditProfile ?? onStartBuild}
-          className="w-full flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-xs font-semibold transition-colors"
+          className="w-full flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-xs font-semibold transition-colors mt-auto"
         >
           <Pencil className="w-3 h-3" /> Edit profile / add more links
         </button>

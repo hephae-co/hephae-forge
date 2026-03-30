@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin, Utensils, Calendar, Database, TrendingUp } from 'lucide-react';
+import { MapPin, Utensils, Calendar, Database, TrendingUp, FileText } from 'lucide-react';
 import { Card, Label } from './Card';
 import type { DashboardData } from './types';
 
@@ -12,7 +12,9 @@ export function MarketPositionCard({ dashboard, onNominateZip }: { dashboard: Da
 
   const localIntel = dashboard?.localIntel;
 
-  // ── Build primary stat pills (max 4, most compelling first) ──────
+  const researchSnippets = dashboard?.researchSnippets;
+
+  // ── Build primary stat pills (max 3, curated) ──────────────────
   const pills: { label: string; value: string; accent: string }[] = [];
 
   // Location always first
@@ -25,35 +27,31 @@ export function MarketPositionCard({ dashboard, onNominateZip }: { dashboard: Da
     pills.push({ label: 'Competitors', value: `${stats.competitorCount} nearby`, accent: 'text-purple-700' });
   }
 
-  // Local intel — the real value (spending power, outdoor favorability, etc.)
-  if (localIntel) {
-    const intelMap: Record<string, { label: string; accent: string }> = {
-      spendingPower: { label: 'Spending Power', accent: 'text-emerald-600' },
-      priceSensitivity: { label: 'Price Sensitivity', accent: 'text-amber-600' },
-      outdoorFavorability: { label: 'Outdoor Traffic', accent: 'text-sky-600' },
-      economicStress: { label: 'Economic Stress', accent: 'text-slate-600' },
-      healthProfile: { label: 'Health Profile', accent: 'text-teal-600' },
-      selfEmploymentRate: { label: 'Self-Employed', accent: 'text-violet-600' },
-      avgIncome: { label: 'Avg Income (IRS)', accent: 'text-emerald-600' },
-    };
-    for (const [key, val] of Object.entries(localIntel)) {
-      if (val && pills.length < 4 && intelMap[key]) {
-        const formatted = typeof val === 'string' ? val.charAt(0).toUpperCase() + val.slice(1) : String(val);
-        pills.push({ label: intelMap[key].label, value: formatted, accent: intelMap[key].accent });
+  // Pick ONE curated metric from keyMetrics — the most impactful, with a human-readable label
+  if (keyMetrics && pills.length < 3) {
+    // Priority order: big movers that affect a restaurant owner's bottom line
+    const curatedMetrics: { key: string; label: string }[] = [
+      { key: 'beef_&_veal_yoy_pct', label: 'Beef Cost YoY' },
+      { key: 'pork_yoy_pct', label: 'Pork Cost YoY' },
+      { key: 'fish_&_seafood_mom_pct', label: 'Seafood MoM' },
+      { key: 'food_(all_items)_yoy_pct', label: 'Food Inflation' },
+      { key: 'fda_recent_recall_count', label: 'FDA Recalls' },
+      { key: 'fresh_vegetables_yoy_pct', label: 'Produce YoY' },
+    ];
+    for (const { key, label } of curatedMetrics) {
+      const val = keyMetrics[key];
+      if (typeof val === 'number' && val !== 0 && pills.length < 3) {
+        const isPercent = key.includes('pct');
+        const formatted = isPercent ? `${val > 0 ? '+' : ''}${val.toFixed(1)}%` : val.toLocaleString();
+        pills.push({ label, value: formatted, accent: val > 0 ? 'text-red-500' : 'text-emerald-600' });
+        break; // Only one metric
       }
     }
   }
 
-  // Key pulse metrics as fallback
-  if (keyMetrics && pills.length < 4) {
-    for (const [key, val] of Object.entries(keyMetrics)) {
-      if (typeof val === 'number' && val !== 0 && pills.length < 4) {
-        const isPercent = key.toLowerCase().includes('pct') || key.toLowerCase().includes('%');
-        const formatted = isPercent ? `${val > 0 ? '+' : ''}${val.toFixed(1)}%` : val.toLocaleString();
-        const label = key.replace(/_/g, ' ').replace(/pct$/i, '').replace(/\b\w/g, c => c.toUpperCase()).trim();
-        pills.push({ label, value: formatted, accent: val > 0 ? 'text-emerald-600' : 'text-red-500' });
-      }
-    }
+  // Data sources as trust signal
+  if (stats?.confirmedSources && pills.length < 3) {
+    pills.push({ label: 'Data Sources', value: `${stats.confirmedSources} verified`, accent: 'text-slate-500' });
   }
 
   // ── Events by name (not just a count) ────────────────────────────
@@ -111,6 +109,14 @@ export function MarketPositionCard({ dashboard, onNominateZip }: { dashboard: Da
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Research insight — one key finding */}
+      {researchSnippets?.keyFindings?.[0] && (
+        <div className="mt-3 flex items-start gap-2.5 bg-indigo-50/50 border border-indigo-100 rounded-xl px-4 py-2.5">
+          <FileText className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-indigo-700 leading-relaxed">{researchSnippets.keyFindings[0].slice(0, 150)}{researchSnippets.keyFindings[0].length > 150 ? '...' : ''}</p>
         </div>
       )}
 

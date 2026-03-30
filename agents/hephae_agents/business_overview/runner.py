@@ -314,41 +314,11 @@ def _build_dashboard(
     irs = signals.get("irs", {})
     weather = signals.get("weather", {})
     census_full = signals.get("census", {})
-
-    # Build specific, surprising facts — not generic labels
-    local_facts: list[str] = []
-    if irs.get("avgAGI"):
-        local_facts.append(f"Avg household income ${int(irs['avgAGI']):,} (IRS)")
-    if irs.get("selfEmploymentRate") and float(irs["selfEmploymentRate"]) > 10:
-        local_facts.append(f"{irs['selfEmploymentRate']}% are self-employed — fellow business owners")
-    if census_full.get("medianRent"):
-        local_facts.append(f"Median rent ${census_full['medianRent']:,}")
-    if census_full.get("medianHomeValue"):
-        local_facts.append(f"Median home value ${census_full['medianHomeValue']:,}")
-    if census_full.get("vacancyRate"):
-        vr = census_full["vacancyRate"]
-        label = "very tight market" if vr < 5 else "moderate availability" if vr < 10 else "high vacancy"
-        local_facts.append(f"{vr}% vacancy rate — {label}")
-    if weather.get("outdoorFavorability"):
-        fav = weather["outdoorFavorability"]
-        if fav.lower() in ("high", "very high"):
-            local_facts.append("Great outdoor conditions this week — expect foot traffic boost")
-        elif fav.lower() in ("low", "very low"):
-            local_facts.append("Poor outdoor conditions — expect lower walk-in traffic")
-
-    # Add research key_facts (from zipcode_research)
     research_facts = signals.get("researchFacts", [])
-    for fact in research_facts:
-        if fact and fact not in local_facts:
-            local_facts.append(fact)
 
-    dashboard["localFacts"] = local_facts[:6]
-
-    # Also include the localIntel summary fields for the card pills
-    local_intel: dict[str, str] = {}
-    if irs.get("spendingPower"): local_intel["spendingPower"] = irs["spendingPower"]
-    if census_full.get("priceSensitivity"): local_intel["priceSensitivity"] = census_full["priceSensitivity"]
-    dashboard["localIntel"] = local_intel
+    from hephae_common.local_facts import build_local_facts, build_local_intel
+    dashboard["localFacts"] = build_local_facts(irs, weather, census_full, research_facts)
+    dashboard["localIntel"] = build_local_intel(irs, census_full)
 
     if pulse_data:
         dashboard["pulseHeadline"] = pulse_data.get("headline")
@@ -367,6 +337,53 @@ def _build_dashboard(
         dashboard["techPlatforms"] = tech_intel.get("platforms", {})
 
     return dashboard
+
+
+async def _enrich_dashboard_with_recommendations(
+    dashboard: dict[str, Any],
+    identity: dict[str, Any],
+    business_type_key: str,
+) -> None:
+    """Add personalized tool recommendations and research snippets to dashboard (in-place)."""
+    # Personalized tool recommendations
+    try:
+        from hephae_common.tool_recommender import recommend_tools
+        from hephae_db.firestore.ai_tools import get_tools_for_vertical
+        all_tools = await get_tools_for_vertical(business_type_key, limit=60)
+        business_profile = {
+            **identity,
+            "localIntel": dashboard.get("localIntel", {}),
+            "stats": dashboard.get("stats", {}),
+        }
+        recs = recommend_tools(all_tools, business_profile, max_results=5)
+        dashboard["personalizedTools"] = [
+            {
+                "tool": r["tool"].get("toolName"),
+                "reason": r["reason"],
+                "priority": r["priority"],
+                "score": r["score"],
+                "url": r["tool"].get("url"),
+                "pricing": r["tool"].get("pricing"),
+                "isFree": r["tool"].get("isFree"),
+                "capability": r["tool"].get("aiCapability", ""),
+            }
+            for r in recs
+        ]
+    except Exception as e:
+        logger.warning(f"[BusinessOverview] Recommendation engine failed: {e}")
+
+    # Research snippets
+    try:
+        from hephae_db.firestore.research_digests import get_latest_research_digest
+        research = await get_latest_research_digest(business_type_key)
+        if research:
+            dashboard["researchSnippets"] = {
+                "keyFindings": research.get("keyFindings", [])[:3],
+                "landscape": (research.get("landscape") or "")[:300],
+                "recommendedReading": research.get("recommendedReading", [])[:3],
+            }
+    except Exception:
+        pass
 
 
 async def run_business_overview(identity: dict[str, Any], light: bool = False) -> dict[str, Any]:
@@ -388,7 +405,62 @@ async def run_business_overview(identity: dict[str, Any], light: bool = False) -
     latitude = coords.get("lat", 0)
     longitude = coords.get("lng", 0)
 
+    # Resolve vertical key for tool lookups
+    bt_lower = business_type.lower()
+    business_type_key = (
+        "barber" if any(x in bt_lower for x in ["barber", "salon", "beauty"]) else
+        "bakery" if "bak" in bt_lower else
+        "restaurant"
+    )
+
     logger.info(f"[BusinessOverview] Starting overview for: {name} ({zip_code})")
+
+    # Fast path: check for pre-computed weekly digest (from synthesis pipeline)
+    if zip_code and business_type:
+        try:
+            from hephae_db.firestore.weekly_digests import get_latest_weekly_digest
+            digest = await get_latest_weekly_digest(zip_code, business_type)
+            if digest and digest.get("weeklyBrief"):
+                logger.info(f"[BusinessOverview] Using pre-computed digest {digest.get('id')} for {zip_code}/{business_type}")
+                # Build dashboard from digest — single read instead of 6
+                dashboard = {
+                    "businessLocation": {"lat": latitude, "lng": longitude} if latitude and longitude else None,
+                    "competitors": [],  # will be filled by OSM below
+                    "stats": {
+                        "city": digest.get("city"),
+                        "state": digest.get("state"),
+                        "county": digest.get("county"),
+                    },
+                    "confirmedSources": digest.get("confirmedSources", 0),
+                    "pulseHeadline": digest.get("headline"),
+                    "topInsights": digest.get("insights", []),
+                    "events": digest.get("events", []),
+                    "communityBuzz": digest.get("communityBuzz"),
+                    "coverage": "ultralocal",
+                    "keyMetrics": digest.get("keyMetrics", {}),
+                    "localFacts": digest.get("localFacts", []),
+                    "localIntel": digest.get("localIntel", {}),
+                    "techHighlight": digest.get("techHighlight"),
+                    "aiTools": digest.get("aiTools", []),
+                    "weeklyBrief": digest.get("weeklyBrief"),
+                    "actionItems": digest.get("actionItems", []),
+                    "competitorWatch": digest.get("competitorWatch", []),
+                    "playbooks": digest.get("playbooks", []),
+                }
+                # Still load OSM competitors (cheap, no LLM)
+                osm_competitors = await _load_osm_competitors(latitude, longitude, business_type)
+                dashboard["competitors"] = osm_competitors[:10]
+                dashboard["stats"]["competitorCount"] = len(osm_competitors)
+
+                # Add personalized recommendations + research snippets
+                await _enrich_dashboard_with_recommendations(dashboard, identity, business_type_key)
+
+                if light:
+                    return {"dashboard": dashboard, "light": True, "fromDigest": True}
+                # For full mode, we still run the synthesizer for rich overview fields
+                # but use the digest dashboard as the base
+        except Exception as e:
+            logger.warning(f"[BusinessOverview] Digest fast-path failed, falling back: {e}")
 
     # Load all data sources in parallel (including tech intel + local signals)
     zipcode_context, zipcode_profile, pulse_data, osm_competitors, tech_intel, local_signals = await asyncio.gather(
@@ -409,6 +481,7 @@ async def run_business_overview(identity: dict[str, Any], light: bool = False) -
     # Light mode: skip LLM pipeline, return dashboard from pre-existing data only
     if light:
         dashboard = _build_dashboard(zipcode_profile, pulse_data, osm_competitors, latitude, longitude, tech_intel, local_signals)
+        await _enrich_dashboard_with_recommendations(dashboard, identity, business_type_key)
         return {"dashboard": dashboard, "light": True}
 
     # --- Build ADK agents ---
@@ -524,6 +597,7 @@ Search for this business and its competitors in the area."""
             zipcode_profile, pulse_data, osm_competitors,
             latitude, longitude, tech_intel, local_signals,
         )
+        await _enrich_dashboard_with_recommendations(dashboard, identity, business_type_key)
 
         # Parse JSON from the last text output
         if last_text:

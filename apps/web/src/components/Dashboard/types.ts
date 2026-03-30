@@ -32,6 +32,18 @@ export interface DashboardData {
   localIntel?: Record<string, string>;
   /** Specific discovered facts — the real value */
   localFacts?: string[];
+  /** Pre-synthesized weekly brief from digest pipeline */
+  weeklyBrief?: string | null;
+  /** Action items from digest pipeline */
+  actionItems?: string[] | null;
+  /** Competitor watch from digest pipeline */
+  competitorWatch?: { business?: string; name?: string; observation?: string; change?: string; implication?: string }[] | null;
+  /** Playbooks from industry digest */
+  playbooks?: { name: string; play?: string }[] | null;
+  /** Personalized tool recommendations */
+  personalizedTools?: { tool: string; reason: string; priority: string; score: number; url?: string; pricing?: string; isFree?: boolean; capability?: string }[] | null;
+  /** Research snippets from research digest */
+  researchSnippets?: { keyFindings?: string[]; landscape?: string; recommendedReading?: { title: string; url: string; reason: string }[] } | null;
 }
 
 export interface MarginCardData {

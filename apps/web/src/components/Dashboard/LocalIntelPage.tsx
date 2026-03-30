@@ -27,6 +27,11 @@ export function LocalIntelPage({
   const localIntel = dashboard?.localIntel;
   const competitors = dashboard?.competitors;
   const isUltralocal = dashboard && !dashboard.isNational;
+  const weeklyBrief = dashboard?.weeklyBrief;
+  const actionItems = dashboard?.actionItems;
+  const competitorWatch = dashboard?.competitorWatch;
+  const playbooks = dashboard?.playbooks;
+  const researchSnippets = dashboard?.researchSnippets;
 
   return (
     <div className="space-y-6">
@@ -53,6 +58,59 @@ export function LocalIntelPage({
           <p className="text-lg font-bold text-slate-900 mt-2 leading-snug">{headline}</p>
         </Card>
       )}
+
+      {/* Weekly Brief — the synthesized narrative */}
+      {weeklyBrief && (
+        <Card className="p-6 border-l-4 border-purple-500">
+          <Label>Weekly Brief</Label>
+          <p className="text-sm text-slate-700 mt-2 leading-relaxed whitespace-pre-line">{weeklyBrief}</p>
+        </Card>
+      )}
+
+      {/* Action Items + Competitor Watch side by side */}
+      {(actionItems?.length || competitorWatch?.length) ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {actionItems && actionItems.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
+                <Label>Action Items This Week</Label>
+              </div>
+              <Card className="p-5 h-full">
+                <div className="space-y-2.5">
+                  {actionItems.map((item, i) => (
+                    <div key={i} className="flex items-start gap-3 text-sm">
+                      <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-[10px] font-black text-emerald-600">{i + 1}</span>
+                      </div>
+                      <p className="text-slate-700 leading-relaxed">{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          )}
+          {competitorWatch && competitorWatch.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Building2 className="w-4 h-4 text-orange-400" />
+                <Label>Competitor Watch</Label>
+              </div>
+              <Card className="p-5 h-full">
+                <div className="space-y-3">
+                  {competitorWatch.map((c, i) => (
+                    <div key={i} className="border-l-2 border-orange-300 pl-3">
+                      <p className="text-sm font-semibold text-slate-800">{c.business || c.name || 'Competitor'}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{c.observation || c.change}</p>
+                      {c.implication && <p className="text-xs text-orange-600 mt-1 font-medium">{c.implication}</p>}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {/* Community Buzz + Events — the most immediate value */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -231,6 +289,40 @@ export function LocalIntelPage({
           </Card>
         </div>
       )}
+
+      {/* Research Snippets */}
+      {researchSnippets && (researchSnippets.keyFindings?.length || researchSnippets.landscape) ? (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="w-4 h-4 text-purple-400" />
+            <Label>Industry Research</Label>
+          </div>
+          {researchSnippets.landscape && (
+            <Card className="p-5 mb-4">
+              <p className="text-sm text-slate-600 leading-relaxed">{researchSnippets.landscape}</p>
+            </Card>
+          )}
+          {researchSnippets.keyFindings && researchSnippets.keyFindings.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              {researchSnippets.keyFindings.map((finding, i) => (
+                <Card key={i} className="p-4 border-l-4 border-indigo-300">
+                  <p className="text-xs text-slate-700 leading-relaxed">{finding}</p>
+                </Card>
+              ))}
+            </div>
+          )}
+          {researchSnippets.recommendedReading && researchSnippets.recommendedReading.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {researchSnippets.recommendedReading.map((r, i) => (
+                <a key={i} href={r.url} target="_blank" rel="noopener noreferrer"
+                  className="text-[10px] font-medium px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 hover:bg-indigo-100 transition-colors flex items-center gap-1">
+                  {r.title.slice(0, 40)}{r.title.length > 40 ? '...' : ''}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {/* Not ultralocal — CTA */}
       {!isUltralocal && (

@@ -59,8 +59,9 @@ export function LeftSidebar({
           const isGated = GATED_SECTIONS.includes(id);
           const hasReport = !!availableReports[id];
           const isReady = !!capabilityReady[id];
-          const isLocked = isGated && !hasReport && !isReady && !isLoggedIn;
-          const lockReason = !isLoggedIn ? 'Sign in to unlock' : '';
+          // Locked if: gated AND no report exists AND (not logged in, OR logged in but not ready)
+          const isLocked = isGated && !hasReport && (!isLoggedIn || !isReady);
+          const lockReason = !isLoggedIn ? 'Sign in to unlock' : !isReady ? 'Complete profile to unlock' : '';
           return (
             <div key={id}>
             {showDivider && (

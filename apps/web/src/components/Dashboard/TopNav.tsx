@@ -93,14 +93,6 @@ export function TopNav({
             </button>
           </div>
         )}
-        {business && nextAnalysisLabel && (
-          <button
-            onClick={onRunAnalysis}
-            className="bg-gradient-to-br from-purple-700 to-violet-600 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md shadow-purple-900/20 hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all"
-          >
-            Run {nextAnalysisLabel}
-          </button>
-        )}
       </div>
     </nav>
   );

@@ -18,22 +18,33 @@ def _query_case_studies_sync(published_only: bool = True) -> list[dict[str, Any]
     """Query Firestore for all case studies (published business profiles).
 
     Returns list of business documents where isCaseStudy = true, sorted by publishedAt DESC.
+
+    Note: Avoids composite index requirement by doing filtering in Python.
     """
     try:
         db = get_db()
-        query = db.collection("businesses").where("isCaseStudy", "==", True)
 
-        if published_only:
-            query = query.where("caseStudyStatus", "==", "published")
-
-        docs = query.order_by("caseStudyPublishedAt", direction="DESCENDING").stream()
+        # Query only by isCaseStudy=true to avoid composite index requirement
+        docs = db.collection("businesses").where("isCaseStudy", "==", True).stream()
 
         case_studies = []
         for doc in docs:
             data = doc.to_dict()
-            if data:
-                data["id"] = doc.id  # slug
-                case_studies.append(data)
+            if not data:
+                continue
+
+            # Filter by status in Python (avoids needing a composite index)
+            if published_only and data.get("caseStudyStatus") != "published":
+                continue
+
+            data["id"] = doc.id  # slug
+            case_studies.append(data)
+
+        # Sort by published date (newest first)
+        case_studies.sort(
+            key=lambda x: x.get("caseStudyPublishedAt", ""),
+            reverse=True
+        )
 
         return case_studies
     except Exception as err:
@@ -59,6 +70,7 @@ def _get_case_study_by_slug_sync(slug: str) -> Optional[dict[str, Any]]:
         doc = db.document(f"businesses/{slug}").get()
 
         if not doc.exists:
+            logger.debug(f"[DB] Case study {slug} not found")
             return None
 
         data = doc.to_dict()
@@ -66,11 +78,17 @@ def _get_case_study_by_slug_sync(slug: str) -> Optional[dict[str, Any]]:
             return None
 
         # Only return if marked as published case study
-        if data.get("isCaseStudy") and data.get("caseStudyStatus") == "published":
-            data["id"] = slug
-            return data
+        if not data.get("isCaseStudy"):
+            logger.debug(f"[DB] {slug} is not marked as case study")
+            return None
 
-        return None
+        if data.get("caseStudyStatus") != "published":
+            logger.debug(f"[DB] {slug} case study status is {data.get('caseStudyStatus')}, not published")
+            return None
+
+        data["id"] = slug
+        return data
+
     except Exception as err:
         logger.warning(f"[DB] Firestore case study read failed for {slug}: {err}")
         return None
